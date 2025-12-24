@@ -54,6 +54,7 @@
       alert("💥 강화 실패");
     }
     update();
+    save();
   }
 
   function hunt() {
@@ -61,9 +62,54 @@
     gold += earn;
     alert(`사냥 성공! 골드 +${earn}`);
     update();
+    save();
   }
 
   update();
+</script>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyC-KjkMnJzN-fOBgg4P4sUo4U_VyhJTOn0",
+    authDomain: "sword-game-1d1a1.firebaseapp.com",
+    databaseURL: "https://sword-game-1d1a1-default-rtdb.firebaseio.com",
+    projectId: "sword-game-1d1a1",
+    storageBucket: "sword-game-1d1a1.firebasestorage.app",
+    messagingSenderId: "595986310730",
+    appId: "1:595986310730:web:d794cb2b6daa75125f68b3"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // 🔑 유저 코드
+  const userCode = prompt("당신의 코드 입력 (PC/모바일 공통)");
+
+  const userRef = db.ref("users/" + userCode);
+
+  // 🔄 불러오기
+  userRef.once("value").then(snapshot => {
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      sword = data.sword ?? sword;
+      power = data.power ?? power;
+      gold = data.gold ?? gold;
+      update();
+    }
+  });
+
+  // 💾 저장 함수
+  function save() {
+    userRef.set({
+      sword,
+      power,
+      gold,
+      updated: Date.now()
+    });
+  }
 </script>
 
 </body>
