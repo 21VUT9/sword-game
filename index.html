@@ -35,6 +35,61 @@
       from { background-position: 0% }
       to { background-position: 100% }
     }
+
+  /* 🔔 하단 토스트 */
+#toastLog {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 600px;
+  background: rgba(0,0,0,0.75);
+  border: 1px solid #444;
+  padding: 8px;
+  font-size: 14px;
+  z-index: 1000;
+}
+
+.toast-item {
+  padding: 4px 0;
+  border-bottom: 1px solid #333;
+}
+
+/* 🔴 파괴 강조 */
+.toast-destroy {
+  color: red;
+  font-weight: bold;
+}
+
+/* 📜 로그 버튼 */
+#logToggle {
+  position: fixed;
+  bottom: 80px;
+  right: 10px;
+  z-index: 1001;
+}
+
+/* 📜 전체 로그 패널 */
+#logPanel {
+  position: fixed;
+  top: 60px;
+  right: 10px;
+  width: 90%;
+  max-width: 400px;
+  height: 60%;
+  background: rgba(0,0,0,0.9);
+  border: 1px solid #555;
+  padding: 10px;
+  overflow-y: auto;
+  z-index: 1002;
+}
+
+#logPanel h3 {
+  margin-top: 0;
+  border-bottom: 1px solid #555;
+}
+
   </style>
 </head>
 
@@ -130,10 +185,18 @@ function upgrade() {
       }
     }
   }
-
+if (sword >= 20) {
+  writeLog(
+    `${userCode}이 ${sword}강 도전에 성공하여 ${sword + 1}강이 되었습니다!`
+  );
+}
   update();
   save();
 }
+writeLog(
+  `${userCode}이 ${sword}강 도전에 실패하여 파괴 되었습니다!`,
+  true
+);
 
 
   function hunt() {
@@ -163,6 +226,17 @@ function upgrade() {
 
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
+
+  const logRef = db.ref("logs");
+
+  function writeLog(message, isDestroy = false) {
+  logRef.push({
+    message,
+    isDestroy,
+    time: Date.now()
+  });
+}
+
 
   // 🔑 유저 코드
   let userCode = prompt("당신의 코드 입력 (PC/모바일 공통)");
@@ -296,6 +370,59 @@ document.getElementById("ranking").innerHTML = html;
 
   loadRanking();
 </script>
+<!-- 🔔 하단 실시간 로그 (토스트) -->
+<div id="toastLog">
+  <div id="toastList"></div>
+</div>
 
+<!-- 📜 전체 로그 보기 버튼 -->
+<button id="logToggle" onclick="toggleLog()">📜 로그</button>
+
+<!-- 📜 전체 로그 패널 -->
+<div id="logPanel" style="display:none;">
+  <h3>📢 강화 로그</h3>
+  <div id="logPanelList"></div>
+</div>
+
+logRef
+  .limitToLast(50)
+  .on("child_added", snapshot => {
+    const data = snapshot.val();
+
+    /* 🔔 토스트 */
+    const toast = document.createElement("div");
+    toast.className = "toast-item";
+    toast.innerText = data.message;
+
+    if (data.isDestroy) {
+      toast.classList.add("toast-destroy");
+    }
+
+    const toastList = document.getElementById("toastList");
+    toastList.prepend(toast);
+
+    // 5줄 유지
+    while (toastList.children.length > 5) {
+      toastList.removeChild(toastList.lastChild);
+    }
+
+    /* 📜 패널 */
+    const panelItem = document.createElement("div");
+    panelItem.innerText = data.message;
+
+    if (data.isDestroy) {
+      panelItem.style.color = "red";
+      panelItem.style.fontWeight = "bold";
+    }
+
+    document.getElementById("logPanelList").prepend(panelItem);
+  });
+
+  function toggleLog() {
+  const panel = document.getElementById("logPanel");
+  panel.style.display = panel.style.display === "none" ? "block" : "none";
+}
+
+  
 </body>
 </html>
