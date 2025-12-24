@@ -91,9 +91,14 @@
 
   // 🔑 유저 코드
   let userCode = prompt("당신의 코드 입력 (PC/모바일 공통)");
-
 if (!userCode) {
-  alert("코드를 입력해야 게임을 시작할 수 있습니다.");
+  alert("코드를 입력해야 합니다.");
+  location.reload();
+}
+
+let userPassword = prompt("비밀번호 입력");
+if (!userPassword) {
+  alert("비밀번호를 입력해야 합니다.");
   location.reload();
 }
 
@@ -101,15 +106,45 @@ if (!userCode) {
   const userRef = db.ref("users/" + userCode);
 
   // 🔄 불러오기
-  userRef.once("value").then(snapshot => {
-    if (snapshot.exists()) {
-      const data = snapshot.val();
-      sword = data.sword ?? sword;
-      power = data.power ?? power;
-      gold = data.gold ?? gold;
-      update();
+userRef.once("value").then(snapshot => {
+  if (!snapshot.exists()) {
+    // 🆕 신규 유저
+    if (!confirm("신규 계정입니다. 이 비밀번호로 생성할까요?")) {
+      location.reload();
+      return;
     }
-  });
+
+    userRef.set({
+      password: userPassword,
+      sword,
+      power,
+      gold,
+      created: Date.now()
+    });
+
+    alert("계정 생성 완료!");
+    update();
+    loadRanking();
+  } else {
+    // 🔐 기존 유저
+    const data = snapshot.val();
+
+    if (data.password !== userPassword) {
+      alert("❌ 비밀번호가 틀렸습니다.");
+      location.reload();
+      return;
+    }
+
+    sword = data.sword;
+    power = data.power;
+    gold = data.gold;
+
+    alert("로그인 성공!");
+    update();
+    loadRanking();
+  }
+});
+
 
   // 💾 저장 함수
   function save() {
