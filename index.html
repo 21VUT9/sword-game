@@ -18,15 +18,18 @@
     }
 
     /* 🌈 30강 무지개 효과 */
-    .rainbow {
-      background: linear-gradient(
-        90deg,
-        red, orange, yellow, green, cyan, blue, violet
-      );
-      -webkit-background-clip: text;
-      color: transparent;
-      animation: rainbow 2s linear infinite;
-    }
+.rainbow {
+  background: linear-gradient(
+    90deg,
+    red, orange, yellow, green, cyan, blue, violet
+  );
+  background-size: 400% 400%;   /* ⭐ 추가 */
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: rainbow 2s linear infinite;
+  display: inline-block;        /* ⭐ 추가 */
+}
+
 
     @keyframes rainbow {
       from { background-position: 0% }
