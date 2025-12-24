@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>검 키우기</title>
+  <style>
+    body {
+      background: #111;
+      color: white;
+      text-align: center;
+      font-family: Arial;
+    }
+    button {
+      padding: 15px 30px;
+      font-size: 18px;
+      margin: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>⚔️ 검 키우기</h1>
+
+<p id="status"></p>
+
+<button onclick="upgrade()">🔨 강화</button>
+<button onclick="hunt()">⚔️ 사냥</button>
+
+<script>
+  let sword = 1;
+  let power = 10;
+  let gold = 100;
+
+  function update() {
+    document.getElementById("status").innerHTML =
+      `검 레벨: ${sword}<br>
+       공격력: ${power}<br>
+       골드: ${gold}`;
+  }
+
+  function upgrade() {
+    if (gold < 20) {
+      alert("골드 부족!");
+      return;
+    }
+
+    gold -= 20;
+
+    if (Math.random() < 0.7) {
+      sword++;
+      power += 5;
+      alert("✨ 강화 성공!");
+    } else {
+      alert("💥 강화 실패");
+    }
+    update();
+  }
+
+  function hunt() {
+    const earn = Math.floor(Math.random() * power);
+    gold += earn;
+    alert(`사냥 성공! 골드 +${earn}`);
+    update();
+  }
+
+  update();
+</script>
+
+</body>
+</html>
