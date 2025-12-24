@@ -90,7 +90,13 @@
   const db = firebase.database();
 
   // 🔑 유저 코드
-  const userCode = prompt("당신의 코드 입력 (PC/모바일 공통)");
+  let userCode = prompt("당신의 코드 입력 (PC/모바일 공통)");
+
+if (!userCode) {
+  alert("코드를 입력해야 게임을 시작할 수 있습니다.");
+  location.reload();
+}
+
 
   const userRef = db.ref("users/" + userCode);
 
