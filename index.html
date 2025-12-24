@@ -10,13 +10,31 @@
       text-align: center;
       font-family: Arial;
     }
+
     button {
       padding: 15px 30px;
       font-size: 18px;
       margin: 10px;
     }
+
+    /* 🌈 30강 무지개 효과 */
+    .rainbow {
+      background: linear-gradient(
+        90deg,
+        red, orange, yellow, green, cyan, blue, violet
+      );
+      -webkit-background-clip: text;
+      color: transparent;
+      animation: rainbow 2s linear infinite;
+    }
+
+    @keyframes rainbow {
+      from { background-position: 0% }
+      to { background-position: 100% }
+    }
   </style>
 </head>
+
 <body>
 
 <h1>⚔️ 검 키우기</h1>
@@ -215,30 +233,52 @@ function save() {
 
 </script>
 <script>
-  function loadRanking() {
-    db.ref("users")
-      .orderByChild("power")
-      .limitToLast(10)
-      .once("value", snapshot => {
-        let list = [];
-        snapshot.forEach(child => {
-          list.push({
-            code: child.key,
-            ...child.val()
-          });
+function getSwordColor(level) {
+  if (level >= 30) return "rainbow";
+  if (level === 29) return "gold";
+  if (level === 28) return "silver";
+  if (level === 27) return "hotpink";
+  if (level === 26) return "brown";
+  if (level === 25) return "purple";
+  if (level === 24) return "dodgerblue";
+  if (level === 23) return "limegreen";
+  if (level === 22) return "yellow";
+  if (level === 21) return "red";
+  return "white";
+}
+
+function loadRanking() {
+  db.ref("users")
+    .orderByChild("sword")   // ✅ 강화 단계 기준
+    .limitToLast(10)
+    .once("value", snapshot => {
+      let list = [];
+
+      snapshot.forEach(child => {
+        list.push({
+          code: child.key,
+          sword: child.val().sword
         });
-
-        // 공격력 높은 순 정렬
-        list.reverse();
-
-        let html = "";
-        list.forEach((u, i) => {
-          html += `${i + 1}. ${u.code} | ⚔️ ${u.power}<br>`;
-        });
-
-        document.getElementById("ranking").innerHTML = html;
       });
-  }
+
+      // 높은 강화부터
+      list.reverse();
+
+      let html = "";
+      list.forEach((u, i) => {
+        const color = getSwordColor(u.sword);
+
+        html += `
+          <div style="color:${color}; font-weight:bold;">
+            ${i + 1}. ${u.code} | +${u.sword}강
+          </div>
+        `;
+      });
+
+      document.getElementById("ranking").innerHTML = html;
+    });
+}
+
 
   loadRanking();
 </script>
