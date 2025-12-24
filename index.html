@@ -266,13 +266,23 @@ function loadRanking() {
 
       let html = "";
       list.forEach((u, i) => {
-        const color = getSwordColor(u.sword);
+list.forEach((u, i) => {
+  if (u.sword >= 30) {
+    html += `
+      <div class="rainbow" style="font-weight:bold;">
+        ${i + 1}. ${u.code} | +${u.sword}강
+      </div>
+    `;
+  } else {
+    const color = getSwordColor(u.sword);
+    html += `
+      <div style="color:${color}; font-weight:bold;">
+        ${i + 1}. ${u.code} | +${u.sword}강
+      </div>
+    `;
+  }
+});
 
-        html += `
-          <div style="color:${color}; font-weight:bold;">
-            ${i + 1}. ${u.code} | +${u.sword}강
-          </div>
-        `;
       });
 
       document.getElementById("ranking").innerHTML = html;
