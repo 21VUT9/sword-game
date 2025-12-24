@@ -23,6 +23,10 @@
 
 <p id="status"></p>
 
+<hr>
+<h2>🏆 랭킹 TOP 10</h2>
+<div id="ranking">불러오는 중...</div>
+  
 <button onclick="upgrade()">🔨 강화</button>
 <button onclick="hunt()">⚔️ 사냥</button>
 
@@ -109,7 +113,38 @@
       gold,
       updated: Date.now()
     });
+
+    loadRanking();
+
   }
+</script>
+<script>
+  function loadRanking() {
+    db.ref("users")
+      .orderByChild("power")
+      .limitToLast(10)
+      .once("value", snapshot => {
+        let list = [];
+        snapshot.forEach(child => {
+          list.push({
+            code: child.key,
+            ...child.val()
+          });
+        });
+
+        // 공격력 높은 순 정렬
+        list.reverse();
+
+        let html = "";
+        list.forEach((u, i) => {
+          html += `${i + 1}. ${u.code} | ⚔️ ${u.power}<br>`;
+        });
+
+        document.getElementById("ranking").innerHTML = html;
+      });
+  }
+
+  loadRanking();
 </script>
 
 </body>
