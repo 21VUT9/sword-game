@@ -41,25 +41,49 @@
        공격력: ${power}<br>
        골드: ${gold}`;
   }
+function getUpgradeChance(level) {
+  let chance = 90;
 
-  function upgrade() {
-    if (gold < 20) {
-      alert("골드 부족!");
-      return;
-    }
-
-    gold -= 20;
-
-    if (Math.random() < 0.7) {
-      sword++;
-      power += 5;
-      alert("✨ 강화 성공!");
-    } else {
-      alert("💥 강화 실패");
-    }
-    update();
-    save();
+  if (level <= 10) {
+    chance -= (level - 1) * 4;
+  } else {
+    chance -= 9 * 4;              // 1~10강 감소량
+    chance -= (level - 10) * 3;   // 11강 이후 감소
   }
+
+  // 최소 확률 5%
+  if (chance < 5) chance = 5;
+
+  return chance;
+}
+
+function upgrade() {
+  if (sword >= 30) {
+    alert("⚠️ 이미 최대 강화입니다!");
+    return;
+  }
+
+  if (gold < 20) {
+    alert("골드 부족!");
+    return;
+  }
+
+  gold -= 20;
+
+  const chance = getUpgradeChance(sword);
+
+  if (Math.random() < chance / 100) {
+    sword++;
+    power += 5;
+    alert(`✨ 강화 성공! (성공 확률 ${chance}%)`);
+  } else {
+    alert(`💥 강화 실패… (성공 확률 ${chance}%)`);
+  }
+
+  update();
+  save();
+}
+
 
   function hunt() {
     const earn = Math.floor(Math.random() * power);
@@ -147,17 +171,18 @@ userRef.once("value").then(snapshot => {
 
 
   // 💾 저장 함수
-  function save() {
-    userRef.set({
-      sword,
-      power,
-      gold,
-      updated: Date.now()
-    });
+function save() {
+  userRef.set({
+    password: userPassword, // 🔐 유지
+    sword,
+    power,
+    gold,
+    updated: Date.now()
+  });
 
-    loadRanking();
+  loadRanking();
+}
 
-  }
 </script>
 <script>
   function loadRanking() {
