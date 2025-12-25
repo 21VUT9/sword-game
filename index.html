@@ -221,7 +221,6 @@ userRef.update({
   updated: Date.now()
 });
 
-  loadRanking();
 }
 
 /* 색상 */
@@ -250,15 +249,8 @@ function loadRanking(){
     `).join("");
   });
 }
-snapshot.forEach(child => {
-  const data = child.val();
 
-  list.push({
-    code: child.key,
-    sword: data.sword ?? 1,   // ⭐ 없으면 1강으로 강제
-    gold: data.gold ?? 0
-  });
-});
+
 
 /* 로그 */
 function writeLog(message,isDestroy=false){
