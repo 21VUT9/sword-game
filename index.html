@@ -5,101 +5,117 @@
 <title>검 키우기</title>
 
 <style>
-body{
-  background:#111;
-  color:white;
-  text-align:center;
-  font-family:Arial;
-  margin:0;
+body {
+  margin: 0;
+  background: #111;
+  color: white;
+  font-family: Arial;
+  text-align: center;
 }
 
-/* 로그인 */
-#loginScreen{
-  max-width:360px;
-  margin:120px auto;
-  padding:20px;
-  border:1px solid #444;
-  background:#000;
-}
-#loginScreen input{
-  width:90%;
-  padding:10px;
-  margin:6px 0;
+button {
+  padding: 14px 26px;
+  font-size: 16px;
+  margin: 8px;
 }
 
-/* 버튼 */
-button{
-  padding:12px 26px;
-  font-size:18px;
-  margin:8px;
-  cursor:pointer;
+/* 🌈 30강 무지개 */
+.rainbow {
+  background: linear-gradient(90deg, red, orange, yellow, green, cyan, blue, violet);
+  background-size: 400% 400%;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: rainbow 2s linear infinite;
+}
+@keyframes rainbow {
+  from { background-position: 0% }
+  to { background-position: 100% }
 }
 
-/* 상태 */
-#status,#upgradeInfo{
-  max-width:360px;
-  margin:10px auto;
-  padding:12px;
-  border:1px solid #444;
-  background:#000;
+/* 🔐 로그인 */
+#loginScreen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+#loginScreen input {
+  padding: 10px;
+  font-size: 16px;
+  margin: 6px;
 }
 
-/* 무지개 */
-.rainbow{
-  background:linear-gradient(90deg,red,orange,yellow,green,cyan,blue,violet);
-  background-size:400% 400%;
-  -webkit-background-clip:text;
-  color:transparent;
-  animation:rb 2s linear infinite;
+/* 🔔 토스트 로그 (로그인 후만) */
+#toastLog {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 600px;
+  background: rgba(0,0,0,0.8);
+  border: 1px solid #444;
+  padding: 8px;
+  display: none;
+  max-height: 120px;       /* ⭐ 5줄 */
+  overflow: hidden;
+  z-index: 1000;
 }
-@keyframes rb{from{background-position:0%}to{background-position:100%}}
-
-/* 로그 */
-#toastLog{
-  position:fixed;
-  bottom:10px;
-  left:50%;
-  transform:translateX(-50%);
-  width:90%;
-  max-width:600px;
-  background:rgba(0,0,0,.8);
-  border:1px solid #444;
-  padding:6px;
+.toast-item {
+  line-height: 20px;
+  height: 20px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid #333;
+  font-size: 13px;
 }
-.toast-item{border-bottom:1px solid #333;padding:4px}
-.toast-destroy{color:red;font-weight:bold}
+.toast-destroy {
+  color: red;
+  font-weight: bold;
+}
 
-#logToggle{position:fixed;right:10px;bottom:80px}
-#logPanel{
-  position:fixed;
-  top:60px;
-  right:10px;
-  width:90%;
-  max-width:420px;
-  height:60%;
-  background:#000;
-  border:1px solid #555;
-  overflow-y:auto;
-  display:none;
-  padding:10px;
+/* 📜 로그 버튼 */
+#logToggle {
+  position: fixed;
+  bottom: 140px;
+  right: 10px;
+  z-index: 1001;
+}
+
+/* 📜 전체 로그 패널 */
+#logPanel {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 420px;
+  height: 60%;
+  background: rgba(0,0,0,0.95);
+  border: 1px solid #555;
+  padding: 10px;
+  overflow-y: auto;
+  display: none;
+  z-index: 1002;
 }
 </style>
 </head>
 
 <body>
 
-<!-- 로그인 -->
+<!-- 🔐 로그인 -->
 <div id="loginScreen">
   <h2>🔐 로그인</h2>
   <input id="loginId" placeholder="아이디">
   <input id="loginPw" type="password" placeholder="비밀번호">
-  <br>
   <button onclick="login()">접속</button>
 </div>
 
-<!-- 게임 -->
-<div id="gameScreen" style="display:none">
+<!-- 🎮 게임 -->
+<div id="gameScreen" style="display:none;">
   <h1>⚔️ 검 키우기</h1>
+
   <div id="status"></div>
   <div id="upgradeInfo"></div>
 
@@ -111,146 +127,149 @@ button{
   <div id="ranking">불러오는 중...</div>
 </div>
 
+<!-- 🔔 로그 -->
 <div id="toastLog"><div id="toastList"></div></div>
 <button id="logToggle" onclick="toggleLog()">📜 로그</button>
-<div id="logPanel"><h3>강화 로그</h3><div id="logPanelList"></div></div>
 
+<div id="logPanel">
+  <h3>📢 강화 로그</h3>
+  <div id="logPanelList"></div>
+</div>
+
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
 <script>
+/* 🔥 Firebase */
 firebase.initializeApp({
-  apiKey:"AIzaSyC-KjkMnJzN-fOBgg4P4sUo4U_VyhJTOn0",
-  databaseURL:"https://sword-game-1d1a1-default-rtdb.firebaseio.com"
+  apiKey: "AIzaSyC-KjkMnJzN-fOBgg4P4sUo4U_VyhJTOn0",
+  databaseURL: "https://sword-game-1d1a1-default-rtdb.firebaseio.com"
 });
-const db=firebase.database();
-const logRef=db.ref("logs");
+const db = firebase.database();
+const logRef = db.ref("logs");
 
-let sword=1,power=10,gold=100;
-let userId="",userRef=null;
+/* 🎮 상태 */
+let sword = 1, power = 10, gold = 100;
+let userId = "", userPassword = "", userRef = null;
 
-/* 색상 */
-function getSwordColor(l){
-  if(l>=30)return"rainbow";
-  if(l>=25)return"gold";
-  if(l>=20)return"red";
-  if(l>=15)return"yellow";
-  if(l>=10)return"lime";
-  return"white";
-}
-function coloredLevel(l){
-  if(l>=30)return `<span class="rainbow">+${l}강</span>`;
-  return `<span style="color:${getSwordColor(l)}">+${l}강</span>`;
-}
-
-/* 확률 */
-function getChance(){
-  if(sword<10)return 80;
-  if(sword<20)return 40;
-  if(sword<25)return 20;
-  return 5;
-}
-
-/* UI */
-function update(){
-  status.innerHTML=`
-    🔰 강화: <b>+${sword}</b><br>
-    ⚔️ 공격력: <b>${power}</b><br>
-    💰 골드: <b>${gold}</b>
+/* 📊 UI */
+function update() {
+  document.getElementById("status").innerHTML = `
+    🔰 강화 : +${sword}강<br>
+    ⚔️ 공격력 : ${power}<br>
+    💰 골드 : ${gold}
   `;
-  upgradeInfo.innerHTML=`성공확률 ${getChance()}% / 필요 골드 20`;
+  document.getElementById("upgradeInfo").innerHTML = `
+    강화 확률 : ${getUpgradeChance(sword)}%<br>
+    필요 골드 : 20
+  `;
 }
 
-/* 로그인 */
-function login(){
-  userId=loginId.value.trim();
-  const pw=loginPw.value;
-  if(!userId||!pw)return alert("입력 필요");
+/* 🎯 확률 */
+function getUpgradeChance(lv) {
+  if (lv < 10) return 80;
+  if (lv < 20) return 40;
+  if (lv < 25) return 20;
+  if (lv < 30) return 5;
+  return 0;
+}
 
-  userRef=db.ref("users/"+userId);
-  userRef.once("value").then(s=>{
-    if(!s.exists()){
-      userRef.set({password:pw,sword,power,gold});
-    }else{
-      if(s.val().password!==pw)return alert("비밀번호 오류");
-      sword=s.val().sword; power=s.val().power; gold=s.val().gold;
+/* 🔨 강화 */
+function upgrade() {
+  if (gold < 20) return alert("골드 부족");
+  gold -= 20;
+
+  const chance = getUpgradeChance(sword);
+  const before = sword;
+
+  if (Math.random() < chance / 100) {
+    sword++; power += 5;
+    if (before >= 20) writeLog(`${userId}이 +${before} → +${sword} 성공`);
+  } else {
+    if (sword <= 10) {}
+    else if (sword <= 20 && Math.random() < 0.5) {}
+    else if (sword <= 20) { sword--; power -= 5; }
+    else {
+      sword = 1; power = 10;
+      writeLog(`${userId}이 +${before} 도전 실패 → 파괴`, true);
+    }
+  }
+  update(); save();
+}
+
+/* ⚔️ 사냥 */
+function hunt() {
+  const earn = Math.floor(Math.random() * power);
+  gold += earn;
+  update(); save();
+}
+
+/* 🔐 로그인 */
+function login() {
+  userId = loginId.value.trim();
+  userPassword = loginPw.value;
+  if (!userId || !userPassword) return alert("입력하세요");
+
+  userRef = db.ref("users/" + userId);
+  userRef.once("value").then(s => {
+    if (!s.exists()) {
+      userRef.set({ password:userPassword, sword, power, gold });
+    } else {
+      const d = s.val();
+      if (d.password && d.password !== userPassword) return alert("비밀번호 오류");
+      sword = d.sword ?? 1;
+      power = d.power ?? 10;
+      gold = d.gold ?? 100;
     }
     loginScreen.style.display="none";
     gameScreen.style.display="block";
+    toastLog.style.display="block";
     update(); loadRanking();
   });
 }
 
-/* 강화 */
-function upgrade(){
-  if(gold<20)return alert("골드 부족");
-  gold-=20;
-  const before=sword;
-
-  if(Math.random()<getChance()/100){
-    sword++; power+=5;
-    if(before>=21) writeLog(`${userId} ${coloredLevel(before)} → ${coloredLevel(sword)} 성공`);
-  }else{
-    if(sword<=10){}
-    else if(sword<=20){sword--;power-=5;}
-    else{
-      if(Math.random()<0.5){sword--;power-=5;}
-      else{
-        sword=1;power=10;
-        writeLog(`${userId} ${coloredLevel(before)} 도전 중 파괴!`,true);
-      }
-    }
-  }
-  save(); update(); loadRanking();
+/* 💾 저장 */
+function save() {
+  if (!userRef) return;
+  userRef.update({ sword, power, gold, updated: Date.now() });
+  loadRanking();
 }
 
-/* 사냥 */
-function hunt(){
-  const earn=Math.floor(Math.random()*power);
-  gold+=earn;
-  alert(`골드 +${earn}`);
-  save(); update();
-}
-
-/* 저장 */
-function save(){
-  userRef.update({sword,power,gold,updated:Date.now()});
-}
-
-/* 랭킹 */
-function loadRanking(){
-  db.ref("users").once("value").then(s=>{
-    let arr=[];
-    s.forEach(c=>arr.push({...c.val(),id:c.key}));
-    arr.sort((a,b)=>b.sword-a.sword);
-    ranking.innerHTML=arr.slice(0,10).map((u,i)=>`
-      <div style="color:${getSwordColor(u.sword)}">
-        ${i+1}. ${u.id} | +${u.sword}강 | 💰 ${u.gold}
-      </div>
-    `).join("");
+/* 🏆 랭킹 */
+function loadRanking() {
+  db.ref("users").orderByChild("sword").limitToLast(10).once("value", s=>{
+    let html="";
+    s.forEach(c=>{
+      html=`<div>${c.key} | +${c.val().sword}강</div>`+html;
+    });
+    ranking.innerHTML=html;
   });
 }
 
-/* 로그 */
-function writeLog(msg,destroy=false){
-  logRef.push({msg,destroy,time:Date.now()});
+/* 🔔 로그 */
+function writeLog(msg, destroy=false) {
+  logRef.push({
+    message: `[${new Date().toLocaleTimeString()}] ${msg}`,
+    isDestroy: destroy
+  });
 }
-logRef.limitToLast(5).on("child_added",s=>{
-  const d=s.val();
-  const line=document.createElement("div");
-  line.className="toast-item"+(d.destroy?" toast-destroy":"");
-  line.innerHTML=`[${new Date(d.time).toLocaleTimeString()}] ${d.msg}`;
-  toastList.prepend(line);
-  while(toastList.children.length>5)toastList.lastChild.remove();
 
-  const p=line.cloneNode(true);
+logRef.limitToLast(50).on("child_added", s=>{
+  const d=s.val();
+  const el=document.createElement("div");
+  el.className="toast-item"+(d.isDestroy?" toast-destroy":"");
+  el.innerHTML=d.message;
+  toastList.prepend(el);
+  while(toastList.children.length>5) toastList.lastChild.remove();
+
+  const p=document.createElement("div");
+  p.innerHTML=d.message;
   logPanelList.prepend(p);
-  while(logPanelList.children.length>5)logPanelList.lastChild.remove();
 });
 
-/* 로그 패널 */
-function toggleLog(){
-  logPanel.style.display=logPanel.style.display==="none"?"block":"none";
+function toggleLog() {
+  logPanel.style.display = logPanel.style.display==="block"?"none":"block";
 }
 </script>
 </body>
