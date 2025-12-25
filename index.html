@@ -162,10 +162,10 @@ function coloredLevel(l){
 
 /* 확률 */
 function getUpgradeChance(l){
-  if(l<10)return80;
-  if(l<20)return40;
-  if(l<25)return20;
-  return5;
+  if (l < 10) return 80;
+  if (l < 20) return 40;
+  if (l < 25) return 20;
+  return 5;
 }
 
 /* UI */
@@ -232,7 +232,14 @@ function login(){
   userRef=db.ref("users/"+userId);
   userRef.once("value").then(s=>{
     if(!s.exists()){
-      userRef.set({password:userPassword,sword, power, gold});
+ userRef.set({
+  password: userPassword,
+  sword: sword,
+  power: power,
+  gold: gold,
+  updated: Date.now()
+});
+
     }else{
       if(s.val().password!==userPassword){alert("비밀번호 오류");return;}
       sword=s.val().sword; power=s.val().power; gold=s.val().gold;
@@ -316,6 +323,10 @@ function toggleLog(){
 }
 </script>
 
+  <script>
+  loadRanking();
+</script>
+  
 <div id="toastLog"><div id="toastList"></div></div>
 <button id="logToggle" onclick="toggleLog()">📜 로그</button>
 <div id="logPanel"><h3>📢 강화 로그</h3><div id="logPanelList"></div></div>
