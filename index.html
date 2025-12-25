@@ -111,28 +111,6 @@
   let power = 10;
   let gold = 100;
 
-  function update() {
-    document.getElementById("status").innerHTML =
-      `검 레벨: ${sword}<br>
-       공격력: ${power}<br>
-       골드: ${gold}`;
-  }
-function getUpgradeChance(level) {
-  let chance = 90;
-
-  if (level <= 10) {
-    chance -= (level - 1) * 4;
-  } else {
-    chance -= 9 * 4;              // 1~10강 감소량
-    chance -= (level - 10) * 3;   // 11강 이후 감소
-  }
-
-  // 최소 확률 5%
-  if (chance < 5) chance = 5;
-
-  return chance;
-}
-
 function upgrade() {
   if (sword >= 30) {
     alert("⚠️ 이미 최대 강화입니다!");
@@ -150,9 +128,18 @@ function upgrade() {
 
   // ✅ 강화 성공
   if (Math.random() < chance / 100) {
+    const before = sword;
     sword++;
     power += 5;
+
     alert(`✨ 강화 성공! (${sword}강)`);
+
+    // 🔔 20강 이상 성공 로그
+    if (before >= 20) {
+      writeLog(
+        `${userCode}이 ${before}강 도전에 성공하여 ${sword}강이 되었습니다!`
+      );
+    }
   }
   // ❌ 강화 실패
   else {
@@ -172,31 +159,32 @@ function upgrade() {
       }
     }
 
-    // 🔴 21~30강 : 강등 / 파괴 (유지 없음)
+    // 🔴 21~30강 : 강등 / 파괴
     else {
       if (Math.random() < 0.4) {
         sword--;
         power -= 5;
         alert("☠️ 강화 실패! ➜ 단계 하락 (-1)");
       } else {
+        const before = sword;
         sword = 1;
         power = 10;
+
         alert("💣 검이 파괴되었습니다… 처음부터 다시!");
+
+        // 🔴 파괴 로그
+        writeLog(
+          `${userCode}이 ${before}강 도전에 실패하여 파괴 되었습니다!`,
+          true
+        );
       }
     }
   }
-if (sword >= 20) {
-  writeLog(
-    `${userCode}이 ${sword}강 도전에 성공하여 ${sword + 1}강이 되었습니다!`
-  );
-}
+
   update();
   save();
 }
-writeLog(
-  `${userCode}이 ${sword}강 도전에 실패하여 파괴 되었습니다!`,
-  true
-);
+
 
 
   function hunt() {
@@ -383,7 +371,7 @@ document.getElementById("ranking").innerHTML = html;
   <h3>📢 강화 로그</h3>
   <div id="logPanelList"></div>
 </div>
-
+<script>
 logRef
   .limitToLast(50)
   .on("child_added", snapshot => {
@@ -401,7 +389,6 @@ logRef
     const toastList = document.getElementById("toastList");
     toastList.prepend(toast);
 
-    // 5줄 유지
     while (toastList.children.length > 5) {
       toastList.removeChild(toastList.lastChild);
     }
@@ -418,11 +405,12 @@ logRef
     document.getElementById("logPanelList").prepend(panelItem);
   });
 
-  function toggleLog() {
+function toggleLog() {
   const panel = document.getElementById("logPanel");
   panel.style.display = panel.style.display === "none" ? "block" : "none";
 }
+</script>
 
-  
+ 
 </body>
 </html>
