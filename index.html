@@ -36,11 +36,11 @@ button{
   cursor:pointer;
 }
 
-/* 상태 카드 */
-#status{
-  margin:12px auto;
-  padding:12px;
+/* 상태 UI */
+#status, #upgradeInfo{
+  margin:10px auto;
   max-width:360px;
+  padding:12px;
   border:1px solid #444;
   background:#000;
   font-size:16px;
@@ -59,7 +59,7 @@ button{
   to{background-position:100%}
 }
 
-/* 로그 토스트 */
+/* 로그 */
 #toastLog{
   position:fixed;
   bottom:10px;
@@ -72,21 +72,10 @@ button{
   padding:6px;
   font-size:14px;
 }
-.toast-item{
-  padding:4px 0;
-  border-bottom:1px solid #333;
-}
-.toast-destroy{
-  color:red;
-  font-weight:bold;
-}
+.toast-item{padding:4px 0;border-bottom:1px solid #333;}
+.toast-destroy{color:red;font-weight:bold;}
 
-/* 로그 패널 */
-#logToggle{
-  position:fixed;
-  bottom:90px;
-  right:10px;
-}
+#logToggle{position:fixed;bottom:90px;right:10px;}
 #logPanel{
   position:fixed;
   top:60px;
@@ -105,7 +94,6 @@ button{
 
 <body>
 
-<!-- 로그인 -->
 <div id="loginScreen">
   <h2>🔐 로그인</h2>
   <input id="loginId" placeholder="아이디">
@@ -114,27 +102,21 @@ button{
   <button onclick="login()">접속</button>
 </div>
 
-<!-- 게임 -->
 <div id="gameScreen" style="display:none;">
   <h1>⚔️ 검 키우기</h1>
-
   <div id="status"></div>
   <div id="upgradeInfo"></div>
-
   <button onclick="upgrade()">🔨 강화</button>
   <button onclick="hunt()">⚔️ 사냥</button>
-
   <hr>
   <h2>🏆 랭킹 TOP 10</h2>
   <div id="ranking">불러오는 중...</div>
 </div>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
 <script>
-/* Firebase */
 firebase.initializeApp({
   apiKey:"AIzaSyC-KjkMnJzN-fOBgg4P4sUo4U_VyhJTOn0",
   authDomain:"sword-game-1d1a1.firebaseapp.com",
@@ -144,26 +126,10 @@ firebase.initializeApp({
 const db=firebase.database();
 const logRef=db.ref("logs");
 
-/* 상태 */
 let sword=1,power=10,gold=100;
 let userId="",userRef=null;
 
-/* 색상 */
-function getSwordColor(l){
-  if(l>=30)return"rainbow";
-  if(l==29)return"gold";
-  if(l==28)return"silver";
-  if(l==27)return"hotpink";
-  if(l==26)return"brown";
-  if(l==25)return"purple";
-  if(l==24)return"dodgerblue";
-  if(l==23)return"limegreen";
-  if(l==22)return"yellow";
-  if(l==21)return"red";
-  return"white";
-}
-
-/* 확률 */
+/* 확률 유지 */
 function getUpgradeChance(l){
   if(l<10)return 80;
   if(l<20)return 40;
@@ -181,32 +147,41 @@ function update(){
   upgradeInfo.innerHTML=`성공확률: ${getUpgradeChance(sword)}% / 필요 골드: 20`;
 }
 
-/* 강화 */
+/* 강화 로직 (요청사항 정확히 반영) */
 function upgrade(){
   if(sword>=30){alert("이미 최대 강화!");return;}
   if(gold<20){alert("골드 부족!");return;}
   gold-=20;
 
+  const chance=getUpgradeChance(sword);
   const before=sword;
-  if(Math.random()<getUpgradeChance(sword)/100){
+
+  if(Math.random()<chance/100){
     sword++; power+=5;
     alert(`✨ 강화 성공! +${sword}강`);
     if(before>=20){
       writeLog(`${userId}이 +${before}강 → +${sword}강 강화 성공`);
     }
   }else{
-    const safe=[5,10,15,20,25];
-    if(!safe.includes(sword)){
-      if(sword>20 && Math.random()>=0.4){
+    // 1~10강 : 실패만
+    if(sword<=10){
+      alert("강화 실패!");
+    }
+    // 11~20강 : 실패 or 강등
+    else if(sword<=20){
+      sword--; power-=5;
+      alert("강화 실패! 단계 하락");
+    }
+    // 21~30강 : 실패 / 강등 / 파괴
+    else{
+      if(Math.random()<0.4){
+        sword--; power-=5;
+        alert("강화 실패! 단계 하락");
+      }else{
         sword=1; power=10;
         alert("💣 검 파괴!");
         writeLog(`${userId}의 검이 파괴되었습니다!`,true);
-      }else{
-        sword--; power-=5;
-        alert("강화 실패! 단계 하락");
       }
-    }else{
-      alert("강화 실패… 하지만 보호!");
     }
   }
   update(); save();
@@ -236,7 +211,8 @@ function login(){
     }
     loginScreen.style.display="none";
     gameScreen.style.display="block";
-    update(); loadRanking();
+    setTimeout(update,0); // ✅ UI 보장
+    loadRanking();
   });
 }
 
@@ -249,7 +225,6 @@ function save(){
 
 /* 랭킹 */
 function loadRanking(){
-  ranking.innerHTML="불러오는 중...";
   db.ref("users").once("value").then(s=>{
     let list=[];
     s.forEach(c=>{
@@ -257,13 +232,11 @@ function loadRanking(){
       list.push({id:c.key,sword:v.sword||1,gold:v.gold||0});
     });
     list.sort((a,b)=>b.sword-a.sword);
-    ranking.innerHTML=list.slice(0,10).map((u,i)=>{
-      const cls=u.sword>=30?"rainbow":"";
-      return `
-        <div class="${cls}" style="font-weight:bold;color:${cls?"":getSwordColor(u.sword)}">
-          ${i+1}. ${u.id} | +${u.sword}강 | 💰 ${u.gold}
-        </div>`;
-    }).join("");
+    ranking.innerHTML=list.slice(0,10).map((u,i)=>
+      `<div style="font-weight:bold">
+        ${i+1}. ${u.id} | +${u.sword}강 | 💰 ${u.gold}
+      </div>`
+    ).join("");
   });
 }
 
@@ -271,29 +244,10 @@ function loadRanking(){
 function writeLog(msg,isDestroy=false){
   logRef.push({message:msg,isDestroy,time:Date.now()});
 }
-logRef.limitToLast(50).on("child_added",s=>{
-  const d=s.val();
-  const t=new Date(d.time).toLocaleTimeString();
-
-  const toast=document.createElement("div");
-  toast.className="toast-item"+(d.isDestroy?" toast-destroy":"");
-  toast.innerHTML=`[${t}] ${d.message}`;
-  toastList.prepend(toast);
-  while(toastList.children.length>5)toastList.lastChild.remove();
-
-  const panel=document.createElement("div");
-  panel.innerHTML=`[${t}] ${d.message}`;
-  logPanelList.prepend(panel);
-});
-
-/* 로그 패널 */
-function toggleLog(){
-  logPanel.style.display=logPanel.style.display==="none"?"block":"none";
-}
 </script>
 
 <div id="toastLog"><div id="toastList"></div></div>
-<button id="logToggle" onclick="toggleLog()">📜 로그</button>
+<button id="logToggle" onclick="logPanel.style.display=logPanel.style.display==='none'?'block':'none'">📜 로그</button>
 <div id="logPanel"><h3>📢 강화 로그</h3><div id="logPanelList"></div></div>
 
 </body>
