@@ -94,6 +94,19 @@
 </head>
 
 <body>
+<!-- 🔐 로그인 화면 -->
+<div id="loginScreen">
+  <h2>🔐 로그인</h2>
+
+  <input id="loginId" placeholder="아이디" /><br><br>
+  <input id="loginPw" type="password" placeholder="비밀번호" /><br><br>
+
+  <button onclick="login()">접속</button>
+</div>
+
+<!-- 🎮 게임 화면 -->
+<div id="gameScreen" style="display:none;">
+  <!-- 👇 기존 게임 내용 전부 이 안으로 이동 -->
 
 <h1>⚔️ 검 키우기</h1>
 
@@ -137,7 +150,7 @@ function upgrade() {
     // 🔔 20강 이상 성공 로그
     if (before >= 20) {
       writeLog(
-        `${userCode}이 ${before}강 도전에 성공하여 ${sword}강이 되었습니다!`
+        `${userId}이 ${before}강 도전에 성공하여 ${sword}강이 되었습니다!`
       );
     }
   }
@@ -174,7 +187,7 @@ function upgrade() {
 
         // 🔴 파괴 로그
         writeLog(
-          `${userCode}이 ${before}강 도전에 실패하여 파괴 되었습니다!`,
+          `${userId}이 ${before}강 도전에 실패하여 파괴 되었습니다!`,
           true
         );
       }
@@ -227,66 +240,69 @@ function upgrade() {
 
 
   // 🔑 유저 코드
-  let userCode = prompt("당신의 코드 입력 (PC/모바일 공통)");
-if (!userCode) {
-  alert("코드를 입력해야 합니다.");
-  location.reload();
-}
 
-let userPassword = prompt("비밀번호 입력");
-if (!userPassword) {
-  alert("비밀번호를 입력해야 합니다.");
-  location.reload();
-}
+  let userId = "";
+let userPassword = "";
+let userRef = null;
 
+  function login() {
+  userId = document.getElementById("loginId").value.trim();
+  userPassword = document.getElementById("loginPw").value;
 
-  const userRef = db.ref("users/" + userCode);
-
-  // 🔄 불러오기
-userRef.once("value").then(snapshot => {
-  if (!snapshot.exists()) {
-    // 🆕 신규 유저
-    if (!confirm("신규 계정입니다. 이 비밀번호로 생성할까요?")) {
-      location.reload();
-      return;
-    }
-
-    userRef.set({
-      password: userPassword,
-      sword,
-      power,
-      gold,
-      created: Date.now()
-    });
-
-    alert("계정 생성 완료!");
-    update();
-    loadRanking();
-  } else {
-    // 🔐 기존 유저
-    const data = snapshot.val();
-
-    if (data.password !== userPassword) {
-      alert("❌ 비밀번호가 틀렸습니다.");
-      location.reload();
-      return;
-    }
-
-    sword = data.sword;
-    power = data.power;
-    gold = data.gold;
-
-    alert("로그인 성공!");
-    update();
-    loadRanking();
+  if (!userId || !userPassword) {
+    alert("아이디와 비밀번호를 입력하세요.");
+    return;
   }
-});
+
+  userRef = db.ref("users/" + userId);
+
+  userRef.once("value").then(snapshot => {
+    if (!snapshot.exists()) {
+      // 🆕 신규 계정
+      if (!confirm("신규 계정입니다. 생성할까요?")) return;
+
+      userRef.set({
+        password: userPassword,
+        sword,
+        power,
+        gold,
+        created: Date.now()
+      });
+
+      alert("계정 생성 완료!");
+    } else {
+      // 🔐 기존 계정
+      const data = snapshot.val();
+
+      if (data.password !== userPassword) {
+        alert("❌ 비밀번호가 틀렸습니다.");
+        return;
+      }
+
+      sword = data.sword;
+      power = data.power;
+      gold = data.gold;
+
+      alert("로그인 성공!");
+    }
+
+    // 🎮 게임 화면 표시
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("gameScreen").style.display = "block";
+
+    update();
+    loadRanking();
+  });
+}
 
 
-  // 💾 저장 함수
+
+// 💾 저장 함수
 function save() {
+  if (!userRef) return;   // 🔒 로그인 전 저장 방지
+
   userRef.set({
-    password: userPassword, // 🔐 유지
+    password: userPassword,
     sword,
     power,
     gold,
@@ -295,6 +311,7 @@ function save() {
 
   loadRanking();
 }
+
 
 </script>
 <script>
@@ -350,8 +367,6 @@ list.forEach((u, i) => {
 
 document.getElementById("ranking").innerHTML = html;
 
-
-      document.getElementById("ranking").innerHTML = html;
     });
 }
 
@@ -411,6 +426,7 @@ function toggleLog() {
 }
 </script>
 
- 
+ </div> <!-- gameScreen 끝 -->
+
 </body>
 </html>
