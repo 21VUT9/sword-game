@@ -28,6 +28,11 @@ body {
   margin:6px 0;
 }
 
+/* 게임 */
+#gameScreen {
+  display:none;
+}
+
 /* 버튼 */
 button {
   padding:12px 26px;
@@ -106,20 +111,28 @@ button {
 </div>
 
 <!-- 게임 -->
-<div id="gameScreen" style="display:none;">
+<div id="gameScreen">
+  <h1>⚔️ 검 키우기</h1>
 
-<h1>⚔️ 검 키우기</h1>
+  <div id="status"></div>
+  <div id="upgradeInfo"></div>
 
-<div id="status"></div>
-<div id="upgradeInfo"></div>
+  <button onclick="upgrade()">🔨 강화</button>
+  <button onclick="hunt()">⚔️ 사냥</button>
 
-<button onclick="upgrade()">🔨 강화</button>
-<button onclick="hunt()">⚔️ 사냥</button>
+  <hr>
+  <h2>🏆 랭킹 TOP 10</h2>
+  <div id="ranking">불러오는 중...</div>
+</div>
 
-<hr>
-<h2>🏆 랭킹 TOP 10</h2>
-<div id="ranking">불러오는 중...</div>
-
+<!-- 로그 -->
+<div id="toastLog">
+  <div id="toastList"></div>
+</div>
+<button id="logToggle" onclick="toggleLog()">📜 로그</button>
+<div id="logPanel">
+  <h3>📢 강화 로그</h3>
+  <div id="logPanelList"></div>
 </div>
 
 <!-- Firebase -->
@@ -127,7 +140,7 @@ button {
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
 <script>
-/* Firebase 설정 */
+/* Firebase */
 firebase.initializeApp({
   apiKey: "AIzaSyC-KjkMnJzN-fOBgg4P4sUo4U_VyhJTOn0",
   authDomain: "sword-game-1d1a1.firebaseapp.com",
@@ -138,8 +151,8 @@ const db = firebase.database();
 const logRef = db.ref("logs");
 
 /* 상태 */
-let sword=1, power=10, gold=100;
-let userId="", userPassword="", userRef=null;
+let sword = 1, power = 10, gold = 100;
+let userId = "", userRef = null;
 
 /* 색상 */
 function getSwordColor(l){
@@ -162,34 +175,31 @@ function coloredLevel(l){
 
 /* 확률 */
 function getUpgradeChance(l){
-  if (l < 10) return 80;
-  if (l < 20) return 40;
-  if (l < 25) return 20;
+  if(l<10)return 80;
+  if(l<20)return 40;
+  if(l<25)return 20;
   return 5;
 }
 
 /* UI */
 function update(){
-  document.getElementById("status").innerHTML=`
+  status.innerHTML=`
     🔰 강화: <b>+${sword}강</b><br>
     ⚔️ 공격력: <b>${power}</b><br>
     💰 골드: <b>${gold}</b>
   `;
-  document.getElementById("upgradeInfo").innerHTML=`
+  upgradeInfo.innerHTML=`
     성공확률: ${getUpgradeChance(sword)}% / 필요 골드: 20
   `;
 }
 
 /* 강화 */
 function upgrade(){
-  if(sword>=30){alert("이미 최대 강화!");return;}
   if(gold<20){alert("골드 부족!");return;}
   gold-=20;
 
-  const chance=getUpgradeChance(sword);
   const before=sword;
-
-  if(Math.random()<chance/100){
+  if(Math.random()<getUpgradeChance(sword)/100){
     sword++; power+=5;
     alert(`✨ 강화 성공! +${sword}강`);
     if(before>=20){
@@ -197,20 +207,17 @@ function upgrade(){
     }
   }else{
     const safe=[5,10,15,20,25];
-    if(safe.includes(sword)){
-      alert("강화 실패… 하지만 보호!");
-    }else if(sword<=20){
-      sword--; power-=5;
-      alert("강화 실패! 단계 하락");
-    }else{
-      if(Math.random()<0.4){
-        sword--; power-=5;
-        alert("강화 실패! 단계 하락");
-      }else{
+    if(!safe.includes(sword)){
+      if(sword>20 && Math.random()>0.4){
         sword=1; power=10;
         alert("💣 검 파괴!");
         writeLog(`${userId}이 ${coloredLevel(before)} 도전에 실패하여 <span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`,true);
+      }else{
+        sword--; power-=5;
+        alert("강화 실패! 단계 하락");
       }
+    }else{
+      alert("강화 실패… 하지만 보호!");
     }
   }
   update(); save();
@@ -227,81 +234,48 @@ function hunt(){
 /* 로그인 */
 function login(){
   userId=loginId.value.trim();
-  userPassword=loginPw.value;
-  if(!userId||!userPassword){alert("입력 필요");return;}
+  const pw=loginPw.value;
+  if(!userId||!pw){alert("입력 필요");return;}
+
   userRef=db.ref("users/"+userId);
   userRef.once("value").then(s=>{
     if(!s.exists()){
- userRef.set({
-  password: userPassword,
-  sword: sword,
-  power: power,
-  gold: gold,
-  updated: Date.now()
-});
-
+      userRef.set({password:pw,sword,power,gold});
+    }else if(s.val().password!==pw){
+      alert("비밀번호 오류");return;
     }else{
-      if(s.val().password!==userPassword){alert("비밀번호 오류");return;}
-      sword=s.val().sword; power=s.val().power; gold=s.val().gold;
+      sword=s.val().sword;
+      power=s.val().power;
+      gold=s.val().gold;
     }
+
     loginScreen.style.display="none";
     gameScreen.style.display="block";
-    update(); loadRanking();
+    update();
+    loadRanking();
   });
 }
 
 /* 저장 */
 function save(){
-  if(!userRef)return;
-  userRef.update({sword,power,gold,updated:Date.now()});
+  userRef.update({sword,power,gold});
   loadRanking();
 }
 
 /* 랭킹 */
-function loadRanking() {
-  db.ref("users")
-    .once("value", snapshot => {
-
-      let list = [];
-
-      snapshot.forEach(child => {
-        const data = child.val();
-
-        // 🔒 sword 값 없는 유저 방어
-        const swordLevel = (data && typeof data.sword === "number")
-          ? data.sword
-          : 1;
-
-        list.push({
-          id: child.key,
-          sword: swordLevel
-        });
-      });
-
-      // 강화 높은 순 정렬
-      list.sort((a, b) => b.sword - a.sword);
-
-      // TOP 10만
-      list = list.slice(0, 10);
-
-      if (list.length === 0) {
-        document.getElementById("ranking").innerHTML = "아직 랭킹 데이터가 없습니다.";
-        return;
-      }
-
-      let html = "";
-      list.forEach((u, i) => {
-        html += `
-          <div style="font-weight:bold;">
-            ${i + 1}. ${u.id} | ${coloredLevel(u.sword)}
-          </div>
-        `;
-      });
-
-      document.getElementById("ranking").innerHTML = html;
+function loadRanking(){
+  ranking.innerHTML="불러오는 중...";
+  db.ref("users").once("value").then(s=>{
+    let list=[];
+    s.forEach(c=>{
+      list.push({id:c.key,sword:c.val().sword||1});
     });
+    list.sort((a,b)=>b.sword-a.sword);
+    ranking.innerHTML=list.slice(0,10).map((u,i)=>
+      `${i+1}. ${u.id} | ${coloredLevel(u.sword)}`
+    ).join("<br>");
+  });
 }
-
 
 /* 로그 */
 function writeLog(msg,isDestroy=false){
@@ -319,17 +293,9 @@ logRef.limitToLast(50).on("child_added",s=>{
 
 /* 로그 패널 */
 function toggleLog(){
-  logPanel.style.display=logPanel.style.display==="none"?"block":"none";
+  logPanel.style.display=logPanel.style.display==="block"?"none":"block";
 }
 </script>
-
-  <script>
-  loadRanking();
-</script>
-  
-<div id="toastLog"><div id="toastList"></div></div>
-<button id="logToggle" onclick="toggleLog()">📜 로그</button>
-<div id="logPanel"><h3>📢 강화 로그</h3><div id="logPanelList"></div></div>
 
 </body>
 </html>
