@@ -120,11 +120,10 @@
 <button onclick="hunt()">⚔️ 사냥</button>
 
 <script>
-  let sword = 1;
-  let power = 10;
-  let gold = 100;
+let sword = 1;
+let power = 10;
+let gold = 100;
 
-  <script>
 function update() {
   document.getElementById("status").innerHTML = `
     <div style="font-size:18px; margin:10px 0;">
@@ -135,6 +134,7 @@ function update() {
   `;
 }
 </script>
+
 
 
 function upgrade() {
@@ -259,8 +259,10 @@ writeLog(
   let userId = "";
 let userPassword = "";
 let userRef = null;
+let userId = "";
+let userPassword = "";
+let userRef = null;
 
-<script>
 function login() {
   userId = document.getElementById("loginId").value.trim();
   userPassword = document.getElementById("loginPw").value;
@@ -297,11 +299,10 @@ function login() {
     else {
       const data = snapshot.val();
 
-      /* ⚠️ 과거 계정 (비밀번호 없음) */
+      /* 과거 계정 (password 없음) */
       if (!data.password) {
         userRef.update({ password: userPassword });
       }
-      /* ❌ 비밀번호 불일치 */
       else if (data.password !== userPassword) {
         alert("❌ 비밀번호가 틀렸습니다.");
         return;
@@ -321,7 +322,7 @@ function login() {
     loadRanking();
   });
 }
-</script>
+
 
 
 
