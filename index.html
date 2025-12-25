@@ -5,7 +5,7 @@
 <title>검 키우기</title>
 
 <style>
-body {
+body{
   background:#111;
   color:white;
   text-align:center;
@@ -14,49 +14,53 @@ body {
 }
 
 /* 로그인 */
-#loginScreen {
+#loginScreen{
   max-width:360px;
   margin:120px auto;
   padding:20px;
   border:1px solid #444;
   background:#000;
 }
-#loginScreen input {
+#loginScreen input{
   width:90%;
   padding:10px;
   font-size:16px;
   margin:6px 0;
 }
 
-/* 게임 */
-#gameScreen {
-  display:none;
-}
-
 /* 버튼 */
-button {
+button{
   padding:12px 26px;
   font-size:18px;
   margin:8px;
   cursor:pointer;
 }
 
+/* 상태 카드 */
+#status{
+  margin:12px auto;
+  padding:12px;
+  max-width:360px;
+  border:1px solid #444;
+  background:#000;
+  font-size:16px;
+}
+
 /* 무지개 */
-.rainbow {
+.rainbow{
   background:linear-gradient(90deg,red,orange,yellow,green,cyan,blue,violet);
   background-size:400% 400%;
   -webkit-background-clip:text;
   color:transparent;
   animation:rainbow 2s linear infinite;
-  display:inline-block;
 }
-@keyframes rainbow {
-  from {background-position:0%}
-  to {background-position:100%}
+@keyframes rainbow{
+  from{background-position:0%}
+  to{background-position:100%}
 }
 
 /* 로그 토스트 */
-#toastLog {
+#toastLog{
   position:fixed;
   bottom:10px;
   left:50%;
@@ -68,22 +72,22 @@ button {
   padding:6px;
   font-size:14px;
 }
-.toast-item {
+.toast-item{
   padding:4px 0;
   border-bottom:1px solid #333;
 }
-.toast-destroy {
+.toast-destroy{
   color:red;
   font-weight:bold;
 }
 
 /* 로그 패널 */
-#logToggle {
+#logToggle{
   position:fixed;
   bottom:90px;
   right:10px;
 }
-#logPanel {
+#logPanel{
   position:fixed;
   top:60px;
   right:10px;
@@ -111,7 +115,7 @@ button {
 </div>
 
 <!-- 게임 -->
-<div id="gameScreen">
+<div id="gameScreen" style="display:none;">
   <h1>⚔️ 검 키우기</h1>
 
   <div id="status"></div>
@@ -125,16 +129,6 @@ button {
   <div id="ranking">불러오는 중...</div>
 </div>
 
-<!-- 로그 -->
-<div id="toastLog">
-  <div id="toastList"></div>
-</div>
-<button id="logToggle" onclick="toggleLog()">📜 로그</button>
-<div id="logPanel">
-  <h3>📢 강화 로그</h3>
-  <div id="logPanelList"></div>
-</div>
-
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
@@ -142,17 +136,17 @@ button {
 <script>
 /* Firebase */
 firebase.initializeApp({
-  apiKey: "AIzaSyC-KjkMnJzN-fOBgg4P4sUo4U_VyhJTOn0",
-  authDomain: "sword-game-1d1a1.firebaseapp.com",
-  databaseURL: "https://sword-game-1d1a1-default-rtdb.firebaseio.com",
-  projectId: "sword-game-1d1a1"
+  apiKey:"AIzaSyC-KjkMnJzN-fOBgg4P4sUo4U_VyhJTOn0",
+  authDomain:"sword-game-1d1a1.firebaseapp.com",
+  databaseURL:"https://sword-game-1d1a1-default-rtdb.firebaseio.com",
+  projectId:"sword-game-1d1a1"
 });
-const db = firebase.database();
-const logRef = db.ref("logs");
+const db=firebase.database();
+const logRef=db.ref("logs");
 
 /* 상태 */
-let sword = 1, power = 10, gold = 100;
-let userId = "", userRef = null;
+let sword=1,power=10,gold=100;
+let userId="",userRef=null;
 
 /* 색상 */
 function getSwordColor(l){
@@ -168,10 +162,6 @@ function getSwordColor(l){
   if(l==21)return"red";
   return"white";
 }
-function coloredLevel(l){
-  if(l>=30)return `<span class="rainbow">+${l}강</span>`;
-  return `<span style="color:${getSwordColor(l)};font-weight:bold;">+${l}강</span>`;
-}
 
 /* 확률 */
 function getUpgradeChance(l){
@@ -184,17 +174,16 @@ function getUpgradeChance(l){
 /* UI */
 function update(){
   status.innerHTML=`
-    🔰 강화: <b>+${sword}강</b><br>
+    🔰 강화 단계: <b>+${sword}강</b><br>
     ⚔️ 공격력: <b>${power}</b><br>
-    💰 골드: <b>${gold}</b>
+    💰 현재 골드: <b>${gold}</b>
   `;
-  upgradeInfo.innerHTML=`
-    성공확률: ${getUpgradeChance(sword)}% / 필요 골드: 20
-  `;
+  upgradeInfo.innerHTML=`성공확률: ${getUpgradeChance(sword)}% / 필요 골드: 20`;
 }
 
 /* 강화 */
 function upgrade(){
+  if(sword>=30){alert("이미 최대 강화!");return;}
   if(gold<20){alert("골드 부족!");return;}
   gold-=20;
 
@@ -203,15 +192,15 @@ function upgrade(){
     sword++; power+=5;
     alert(`✨ 강화 성공! +${sword}강`);
     if(before>=20){
-      writeLog(`${userId}이 ${coloredLevel(before)} 도전에 성공하여 ${coloredLevel(sword)}이 되었습니다!`);
+      writeLog(`${userId}이 +${before}강 → +${sword}강 강화 성공`);
     }
   }else{
     const safe=[5,10,15,20,25];
     if(!safe.includes(sword)){
-      if(sword>20 && Math.random()>0.4){
+      if(sword>20 && Math.random()>=0.4){
         sword=1; power=10;
         alert("💣 검 파괴!");
-        writeLog(`${userId}이 ${coloredLevel(before)} 도전에 실패하여 <span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`,true);
+        writeLog(`${userId}의 검이 파괴되었습니다!`,true);
       }else{
         sword--; power-=5;
         alert("강화 실패! 단계 하락");
@@ -240,25 +229,21 @@ function login(){
   userRef=db.ref("users/"+userId);
   userRef.once("value").then(s=>{
     if(!s.exists()){
-      userRef.set({password:pw,sword,power,gold});
-    }else if(s.val().password!==pw){
-      alert("비밀번호 오류");return;
+      userRef.set({password:pw,sword,power,gold,updated:Date.now()});
     }else{
-      sword=s.val().sword;
-      power=s.val().power;
-      gold=s.val().gold;
+      if(s.val().password!==pw){alert("비밀번호 오류");return;}
+      sword=s.val().sword; power=s.val().power; gold=s.val().gold;
     }
-
     loginScreen.style.display="none";
     gameScreen.style.display="block";
-    update();
-    loadRanking();
+    update(); loadRanking();
   });
 }
 
 /* 저장 */
 function save(){
-  userRef.update({sword,power,gold});
+  if(!userRef)return;
+  userRef.update({sword,power,gold,updated:Date.now()});
   loadRanking();
 }
 
@@ -268,12 +253,17 @@ function loadRanking(){
   db.ref("users").once("value").then(s=>{
     let list=[];
     s.forEach(c=>{
-      list.push({id:c.key,sword:c.val().sword||1});
+      const v=c.val();
+      list.push({id:c.key,sword:v.sword||1,gold:v.gold||0});
     });
     list.sort((a,b)=>b.sword-a.sword);
-    ranking.innerHTML=list.slice(0,10).map((u,i)=>
-      `${i+1}. ${u.id} | ${coloredLevel(u.sword)}`
-    ).join("<br>");
+    ranking.innerHTML=list.slice(0,10).map((u,i)=>{
+      const cls=u.sword>=30?"rainbow":"";
+      return `
+        <div class="${cls}" style="font-weight:bold;color:${cls?"":getSwordColor(u.sword)}">
+          ${i+1}. ${u.id} | +${u.sword}강 | 💰 ${u.gold}
+        </div>`;
+    }).join("");
   });
 }
 
@@ -284,18 +274,27 @@ function writeLog(msg,isDestroy=false){
 logRef.limitToLast(50).on("child_added",s=>{
   const d=s.val();
   const t=new Date(d.time).toLocaleTimeString();
-  const div=document.createElement("div");
-  div.className="toast-item"+(d.isDestroy?" toast-destroy":"");
-  div.innerHTML=`[${t}] ${d.message}`;
-  toastList.prepend(div);
+
+  const toast=document.createElement("div");
+  toast.className="toast-item"+(d.isDestroy?" toast-destroy":"");
+  toast.innerHTML=`[${t}] ${d.message}`;
+  toastList.prepend(toast);
   while(toastList.children.length>5)toastList.lastChild.remove();
+
+  const panel=document.createElement("div");
+  panel.innerHTML=`[${t}] ${d.message}`;
+  logPanelList.prepend(panel);
 });
 
 /* 로그 패널 */
 function toggleLog(){
-  logPanel.style.display=logPanel.style.display==="block"?"none":"block";
+  logPanel.style.display=logPanel.style.display==="none"?"block":"none";
 }
 </script>
+
+<div id="toastLog"><div id="toastList"></div></div>
+<button id="logToggle" onclick="toggleLog()">📜 로그</button>
+<div id="logPanel"><h3>📢 강화 로그</h3><div id="logPanelList"></div></div>
 
 </body>
 </html>
