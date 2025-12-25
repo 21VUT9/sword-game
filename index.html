@@ -187,13 +187,30 @@ function upgrade() {
     sword++; power += 5;
     if (before >= 20) writeLog(`${userId}이 +${before} → +${sword} 성공`);
   } else {
-    if (sword <= 10) {}
-    else if (sword <= 20 && Math.random() < 0.5) {}
-    else if (sword <= 20) { sword--; power -= 5; }
-    else {
-      sword = 1; power = 10;
-      writeLog(`${userId}이 +${before} 도전 실패 → 파괴`, true);
-    }
+const safeLevels = [5, 10, 15, 20, 25];
+
+if (safeLevels.includes(before)) {
+  // 보호 구간: 실패만 하고 아무 변화 없음
+  alert(`❌ 강화 실패 (보호 구간 +${before})`);
+}
+else if (before <= 20) {
+  // 6~19강: 유지 또는 강등
+  if (Math.random() < 0.5) {
+    alert("❌ 강화 실패 (유지)");
+  } else {
+    sword--;
+    power -= 5;
+    alert("⬇️ 강화 실패 (강등)");
+  }
+}
+else {
+  // 21강 이상: 무조건 파괴
+  sword = 1;
+  power = 10;
+  alert("💥 강화 실패 → 파괴");
+  writeLog(`${userId}이 +${before} 도전 실패 → 파괴`, true);
+}
+
   }
   update(); save();
 }
@@ -217,10 +234,17 @@ function login() {
       userRef.set({ password:userPassword, sword, power, gold });
     } else {
       const d = s.val();
-      if (d.password && d.password !== userPassword) return alert("비밀번호 오류");
-      sword = d.sword ?? 1;
-      power = d.power ?? 10;
-      gold = d.gold ?? 100;
+// 비밀번호가 저장돼 있으면 검사
+if (d.password !== undefined && d.password !== userPassword) {
+  alert("비밀번호 오류");
+  return;
+}
+
+// 기존 데이터 로딩 (없으면 기본값)
+sword = typeof d.sword === "number" ? d.sword : 1;
+power = typeof d.power === "number" ? d.power : 10;
+gold  = typeof d.gold  === "number" ? d.gold  : 100;
+
     }
     loginScreen.style.display="none";
     gameScreen.style.display="block";
