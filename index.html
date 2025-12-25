@@ -251,16 +251,50 @@ function save(){
 }
 
 /* 랭킹 */
-function loadRanking(){
-  db.ref("users").orderByChild("sword").limitToLast(10).once("value",s=>{
-    let arr=[];
-    s.forEach(c=>arr.push({id:c.key,s:c.val().sword}));
-    arr.reverse();
-    ranking.innerHTML=arr.map((u,i)=>`
-      <div>${i+1}. ${u.id} | ${coloredLevel(u.s)}</div>
-    `).join("");
-  });
+function loadRanking() {
+  db.ref("users")
+    .once("value", snapshot => {
+
+      let list = [];
+
+      snapshot.forEach(child => {
+        const data = child.val();
+
+        // 🔒 sword 값 없는 유저 방어
+        const swordLevel = (data && typeof data.sword === "number")
+          ? data.sword
+          : 1;
+
+        list.push({
+          id: child.key,
+          sword: swordLevel
+        });
+      });
+
+      // 강화 높은 순 정렬
+      list.sort((a, b) => b.sword - a.sword);
+
+      // TOP 10만
+      list = list.slice(0, 10);
+
+      if (list.length === 0) {
+        document.getElementById("ranking").innerHTML = "아직 랭킹 데이터가 없습니다.";
+        return;
+      }
+
+      let html = "";
+      list.forEach((u, i) => {
+        html += `
+          <div style="font-weight:bold;">
+            ${i + 1}. ${u.id} | ${coloredLevel(u.sword)}
+          </div>
+        `;
+      });
+
+      document.getElementById("ranking").innerHTML = html;
+    });
 }
+
 
 /* 로그 */
 function writeLog(msg,isDestroy=false){
