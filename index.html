@@ -247,7 +247,8 @@ writeLog(
 let userPassword = "";
 let userRef = null;
 
-  function login() {
+<script>
+function login() {
   userId = document.getElementById("loginId").value.trim();
   userPassword = document.getElementById("loginPw").value;
 
@@ -259,9 +260,14 @@ let userRef = null;
   userRef = db.ref("users/" + userId);
 
   userRef.once("value").then(snapshot => {
+
+    /* 🆕 신규 계정 */
     if (!snapshot.exists()) {
-      // 🆕 신규 계정
       if (!confirm("신규 계정입니다. 생성할까요?")) return;
+
+      sword = 1;
+      power = 10;
+      gold = 100;
 
       userRef.set({
         password: userPassword,
@@ -272,23 +278,29 @@ let userRef = null;
       });
 
       alert("계정 생성 완료!");
-    } else {
-      // 🔐 기존 계정
+    }
+
+    /* 🔐 기존 계정 */
+    else {
       const data = snapshot.val();
 
-      if (data.password !== userPassword) {
+      /* ⚠️ 과거 계정 (비밀번호 없음) */
+      if (!data.password) {
+        userRef.update({ password: userPassword });
+      }
+      /* ❌ 비밀번호 불일치 */
+      else if (data.password !== userPassword) {
         alert("❌ 비밀번호가 틀렸습니다.");
         return;
       }
 
-      sword = data.sword;
-      power = data.power;
-      gold = data.gold;
+      sword = data.sword ?? 1;
+      power = data.power ?? 10;
+      gold = data.gold ?? 100;
 
       alert("로그인 성공!");
     }
 
-    // 🎮 게임 화면 표시
     document.getElementById("loginScreen").style.display = "none";
     document.getElementById("gameScreen").style.display = "block";
 
@@ -296,6 +308,8 @@ let userRef = null;
     loadRanking();
   });
 }
+</script>
+
 
 
 
@@ -303,13 +317,13 @@ let userRef = null;
 function save() {
   if (!userRef) return;   // 🔒 로그인 전 저장 방지
 
-  userRef.set({
-    password: userPassword,
-    sword,
-    power,
-    gold,
-    updated: Date.now()
-  });
+userRef.update({
+  sword,
+  power,
+  gold,
+  updated: Date.now()
+});
+
 
   loadRanking();
 }
