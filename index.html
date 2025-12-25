@@ -124,6 +124,19 @@
   let power = 10;
   let gold = 100;
 
+  <script>
+function update() {
+  document.getElementById("status").innerHTML = `
+    <div style="font-size:18px; margin:10px 0;">
+      🔰 현재 강화 : <b>+${sword}강</b><br>
+      ⚔️ 공격력 : <b>${power}</b><br>
+      💰 골드 : <b>${gold}</b>
+    </div>
+  `;
+}
+</script>
+
+
 function upgrade() {
   if (sword >= 30) {
     alert("⚠️ 이미 최대 강화입니다!");
