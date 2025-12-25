@@ -137,6 +137,13 @@ function update() {
 
 
 function upgrade() {
+
+  if (!userRef) {
+  alert("로그인 후 이용해주세요!");
+  return;
+}
+
+  
   if (sword >= 30) {
     alert("⚠️ 이미 최대 강화입니다!");
     return;
@@ -150,13 +157,7 @@ function upgrade() {
   gold -= 20;
 
   const chance = getUpgradeChance(sword);
-function getUpgradeChance(level) {
-  if (level < 10) return 80;
-  if (level < 20) return 40;
-  if (level < 25) return 20;
-  if (level < 30) return 5;   // 🔥 네가 말한 최소 5%
-  return 0;
-}
+
 
 
   
@@ -232,6 +233,17 @@ writeLog(
   }
 
   update();
+
+function getUpgradeChance(level) {
+  if (level < 10) return 80;
+  if (level < 20) return 40;
+  if (level < 25) return 20;
+  if (level < 30) return 5;  
+  return 0;
+}
+
+
+  
 </script>
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
