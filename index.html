@@ -233,7 +233,7 @@ function coloredLevel(l){
 
 /* 랭킹 */
 function loadRanking(){
-  db.ref("users").orderByChild("sword").limitToLast(10).once("value", s=>{
+  db.ref("users").orderByChild("sword").limitToLast(10).on("value", s=>{
     let arr=[];
     s.forEach(c=>arr.push({id:c.key,...c.val()}));
     arr.reverse();
