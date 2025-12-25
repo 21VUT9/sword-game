@@ -214,7 +214,13 @@ function login(){
 /* 저장 */
 function save(){
   if(!userRef) return;
-  userRef.update({sword,power,gold,updated:Date.now()});
+userRef.update({
+  sword: Number(sword),
+  power: Number(power),
+  gold: Number(gold),
+  updated: Date.now()
+});
+
   loadRanking();
 }
 
@@ -244,6 +250,15 @@ function loadRanking(){
     `).join("");
   });
 }
+snapshot.forEach(child => {
+  const data = child.val();
+
+  list.push({
+    code: child.key,
+    sword: data.sword ?? 1,   // ⭐ 없으면 1강으로 강제
+    gold: data.gold ?? 0
+  });
+});
 
 /* 로그 */
 function writeLog(message,isDestroy=false){
