@@ -133,7 +133,6 @@ function update() {
     </div>
   `;
 }
-</script>
 
 
 
@@ -151,7 +150,16 @@ function upgrade() {
   gold -= 20;
 
   const chance = getUpgradeChance(sword);
+function getUpgradeChance(level) {
+  if (level < 10) return 80;
+  if (level < 20) return 40;
+  if (level < 25) return 20;
+  if (level < 30) return 5;   // 🔥 네가 말한 최소 5%
+  return 0;
+}
 
+
+  
   // ✅ 강화 성공
   if (Math.random() < chance / 100) {
     const before = sword;
@@ -259,9 +267,7 @@ writeLog(
   let userId = "";
 let userPassword = "";
 let userRef = null;
-let userId = "";
-let userPassword = "";
-let userRef = null;
+
 
 function login() {
   userId = document.getElementById("loginId").value.trim();
