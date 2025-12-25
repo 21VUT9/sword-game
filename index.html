@@ -149,9 +149,10 @@ function upgrade() {
 
     // 🔔 20강 이상 성공 로그
     if (before >= 20) {
-      writeLog(
-        `${userId}이 ${before}강 도전에 성공하여 ${sword}강이 되었습니다!`
-      );
+writeLog(
+  `${userId}이 ${coloredLevel(before)} 도전에 성공하여 ${coloredLevel(sword)}이 되었습니다!`
+);
+
     }
   }
   // ❌ 강화 실패
@@ -186,10 +187,11 @@ function upgrade() {
         alert("💣 검이 파괴되었습니다… 처음부터 다시!");
 
         // 🔴 파괴 로그
-        writeLog(
-          `${userId}이 ${before}강 도전에 실패하여 파괴 되었습니다!`,
-          true
-        );
+writeLog(
+  `${userId}이 ${coloredLevel(before)} 도전에 실패하여 <span style="color:red; font-weight:bold;">파괴</span> 되었습니다!`,
+  true
+);
+
       }
     }
   }
@@ -329,6 +331,18 @@ function getSwordColor(level) {
   return "white";
 }
 
+function coloredLevel(level) {
+  const color = getSwordColor(level);
+
+  // 30강은 rainbow 클래스
+  if (level >= 30) {
+    return `<span class="rainbow">+${level}강</span>`;
+  }
+
+  return `<span style="color:${color}; font-weight:bold;">+${level}강</span>`;
+}
+
+  
 function loadRanking() {
   db.ref("users")
     .orderByChild("sword")   // ✅ 강화 단계 기준
@@ -395,7 +409,7 @@ logRef
     /* 🔔 토스트 */
     const toast = document.createElement("div");
     toast.className = "toast-item";
-    toast.innerText = data.message;
+toast.innerHTML = data.message;
 
     if (data.isDestroy) {
       toast.classList.add("toast-destroy");
@@ -410,7 +424,8 @@ logRef
 
     /* 📜 패널 */
     const panelItem = document.createElement("div");
-    panelItem.innerText = data.message;
+panelItem.innerHTML = data.message;
+
 
     if (data.isDestroy) {
       panelItem.style.color = "red";
