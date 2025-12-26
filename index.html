@@ -271,7 +271,7 @@ function getSwordColor(l){
   return "white";
 }
 
-  function coloredLevel(l){
+function coloredLevel(l){
   // 🌈 30강
   if (l >= 30) {
     return `<span class="rainbow">+${l}강</span>`;
@@ -300,14 +300,10 @@ function getSwordColor(l){
     return `<span style="color:${colorMap[l]};font-weight:bold;">+${l}강</span>`;
   }
 
-  // 11~20
-  if (l >= 11) {
-    return `<span style="color:lime;font-weight:bold;">+${l}강</span>`;
-  }
-
-  // 기본
+  // 👉 11~20은 색 없음 (기본 흰색)
   return `+${l}강`;
 }
+
 
 
 /* 랭킹 */
