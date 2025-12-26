@@ -437,7 +437,8 @@ logRef.limitToLast(50).on("child_added",s=>{
   const el=document.createElement("div");
   el.className="toast-item"+(d.isDestroy?" toast-destroy":"");
 
-  el.innerHTML = `<span style="color:#6cf;">[${ts}]</span> ${d.message}`;
+el.innerHTML = `<span style="color:#888;">[${ts}]</span> ${d.message}`;
+
 
   toastList.prepend(el);
   while(toastList.children.length>5) toastList.lastChild.remove();
