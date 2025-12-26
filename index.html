@@ -139,7 +139,7 @@ button {
 
 <button onclick="upgrade()">🔨 강화</button>
 <button onclick="hunt()">⚔️ 사냥</button>
-
+<button onclick="sell()">💰 판매</button>
 
   <hr>
   <h2>🏆 랭킹 TOP 10</h2>
@@ -232,6 +232,8 @@ function update(){
   // 🔸 강화 비용 계산
   const cost = getUpgradeCost(sword);
 
+
+  
   // ⭐ 5의 배수 레벨 세이프 안내
   let safeNote = "";
   if (sword % 5 === 0 && sword !== 0) { // 5,10,15,... 에서만 표시하고 싶으면 이렇게
@@ -316,8 +318,65 @@ function getUpgradeCost(level) {
   return costTable[level] ?? 0;
 }
 
+// 판매 시, 그 레벨에서 다음 강화를 몇 번 정도 도전 가능하게 해줄지 결정
+function getSellAttemptFactor(level) {
+  // 30강은 29강 기준으로 본다 (비용/확률 테이블이 29까지라서)
+  const forChance = Math.min(level, 29);
 
-/* 확률 */
+  const chance = getUpgradeChance(forChance); // 0~100
+  if (chance <= 0) return 2; // 안전 장치
+
+  const expectedTries = 100 / chance; // 성공까지 평균 시도 횟수
+
+  if (expectedTries <= 2.0) {
+    return 2;   // 성공률 높음 → 2번 정도 도전권
+  } else if (expectedTries <= 3.5) {
+    return 3;
+  } else if (expectedTries <= 4.5) {
+    return 4;
+  } else if (expectedTries <= 7.0) {
+    return 5;   // 예: 20%~25%대 확률
+  } else {
+    return 6;   // 아주 낮은 확률 → 5~6번 도전권
+  }
+}
+
+// L강 장비 판매 시 받을 골드 계산
+// A = 0→L까지 성공 가정 총비용
+// B = L강 강화비용 × (기댓값 기반 도전 횟수)
+// 보상 = (A + B) × 1.15~1.20
+function getSellReward(level) {
+  if (level <= 0) return 0; // 0강은 팔 게 없음
+
+  const totalCost = getTotalCostToLevel(level);   // A
+  const costNow   = getUpgradeCost(Math.min(level, 29)); // L강 시도 비용 (30강 보호)
+
+  const attemptFactor = getSellAttemptFactor(level); // 도전 횟수 보정
+  const B = costNow * attemptFactor;
+
+  const base = totalCost + B;
+  const mul  = randRange(1.15, 1.20); // 115% ~ 120%
+
+  const reward = Math.floor(base * mul);
+  return reward;
+}
+
+  
+// 0강 → level강 까지, 모두 1트 성공한다고 가정한 총 강화비용
+function getTotalCostToLevel(level) {
+  let sum = 0;
+  for (let i = 0; i < level; i++) {
+    sum += getUpgradeCost(i);
+  }
+  return sum;
+}
+
+// min ~ max 사이 랜덤 실수
+function randRange(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+  
 /* 확률 */
 function getUpgradeChance(level) {
   // 0 -> 1 은 100% 고정
@@ -429,6 +488,35 @@ gold -= cost;
   update(); save();
 }
 
+function sell() {
+  if (!userRef || !userId) {
+    alert("로그인 후 이용 가능합니다.");
+    return;
+  }
+
+  if (sword <= 0) {
+    alert("판매할 장비가 없습니다.");
+    return;
+  }
+
+  const before = sword;
+  const reward = getSellReward(before);
+
+  gold += reward;
+  sword = 0;
+  power = 10;
+
+  alert(`+${before}강 장비를 판매하여 ${formatGold(reward)} 골드를 획득했습니다!`);
+
+  writeLog(
+    `${userId}님이 ${coloredLevel(before)} 장비를 판매하여 ${formatGold(reward)} 골드를 획득했습니다!`
+  );
+
+  update();
+  save();
+}
+
+  
 /* 사냥 */
 function hunt(){
 const earn = Math.floor(Math.random()*power);
@@ -491,6 +579,17 @@ function login(){
   });
 }
 
+function save() {
+  if (!userRef) return;
+  userRef.update({
+    sword: Number(sword),
+    power: Number(power),
+    gold: Number(gold),
+    updated: Date.now(),
+    attendanceCount: attendanceCount,
+    lastAttendanceDate: lastAttendanceDate
+  });
+}
 
 
 /* 색상 */
