@@ -120,10 +120,15 @@ button {
 <!-- 🎮 게임 -->
 <div id="gameScreen" style="display:none;">
   <h1>⚔️ 검 키우기</h1>
-  <p id="status"></p>
+<p id="status"></p>
 
-  <button onclick="upgrade()">🔨 강화</button>
-  <button onclick="hunt()">⚔️ 사냥</button>
+<p id="upgradeInfo"
+   style="font-size:14px; margin-top:4px; margin-bottom:8px; color:#ccc;">
+</p>
+
+<button onclick="upgrade()">🔨 강화</button>
+<button onclick="hunt()">⚔️ 사냥</button>
+
 
   <hr>
   <h2>🏆 랭킹 TOP 10</h2>
@@ -159,6 +164,8 @@ let userId="", userPassword="", userRef=null;
 
 /* UI */
 function update(){
+
+  // 기존 상태 표시
   document.getElementById("status").innerHTML = `
     <div style="font-size:18px;">
       🔰 현재 강화 : <b>+${sword}강</b><br>
@@ -166,7 +173,54 @@ function update(){
       💰 골드 : <b>${gold}</b>
     </div>
   `;
+
+  // 성공 확률
+  const success = getUpgradeChance(sword);
+
+  let failInfo = "";
+  let failRemain = 100 - success; // 실패 총 비율
+
+  // -----------------------------
+  // ⭐ 단계 구간별 확률 표시 규칙
+  // -----------------------------
+
+  if (sword <= 10) {
+
+    failInfo = `
+      실패: <b>${failRemain}%</b> (유지)
+    `;
+
+  } else if (sword <= 20) {
+
+    const keep = Math.round(failRemain * 0.5);
+    const down = failRemain - keep;
+
+    failInfo = `
+      실패: <b>${failRemain}%</b>
+      — 유지 <b>${keep}%</b> / 강등 <b>${down}%</b>
+    `;
+
+  } else {
+
+    const down = Math.round(failRemain * 0.4);
+    const destroy = failRemain - down;
+
+    failInfo = `
+      실패: <b>${failRemain}%</b>
+      — 강등 <b>${down}%</b> / 파괴 <span style="color:red;font-weight:bold;">${destroy}%</span>
+    `;
+  }
+
+  // -----------------------------
+  // UI 출력
+  // -----------------------------
+
+  document.getElementById("upgradeInfo").innerHTML = `
+    성공 <b>${success}%</b> / ${failInfo}
+    <br>필요 골드 <b>20</b>
+  `;
 }
+
 
 /* 확률 */
 function getUpgradeChance(level){
