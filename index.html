@@ -228,12 +228,28 @@ button {
 <div id="toastLog"><div id="toastList"></div></div>
 
 <!-- 🎒 인벤토리 버튼 (로그 버튼 위) -->
-<button id="inventoryBtn" onclick="toggleInventory()" style="position:fixed; bottom:150px; right:10px; z-index:1001;">
+<button id="inventoryBtn" onclick="toggleInventory()" style="
+  position:fixed;
+  bottom:150px;
+  right:10px;
+  z-index:1001;
+  display:none;
+">
   🎒 인벤토리
 </button>
 
 
-<button id="logToggle" onclick="toggleLog()">📜 로그</button>
+
+<button id="logToggle" onclick="toggleLog()" style="
+  position:fixed;
+  bottom:80px;
+  right:10px;
+  z-index:1001;
+  display:none;
+">
+  📜 로그
+</button>
+
 
 <!-- 🎒 인벤토리 패널 -->
 <div id="inventoryPanel" style="
@@ -993,12 +1009,15 @@ userRef.set({
 
     }
 
-    // 화면 전환 + 출석 버튼 표시
-    loginScreen.style.display  = "none";
-    gameScreen.style.display   = "block";
-    document.getElementById("attendanceBtn").style.display = "block";
+// 화면 전환 + 출석 / 로그 / 인벤토리 버튼 표시
+loginScreen.style.display  = "none";
+gameScreen.style.display   = "block";
+document.getElementById("attendanceBtn").style.display = "block";
+document.getElementById("inventoryBtn").style.display = "block";
+document.getElementById("logToggle").style.display = "block";
 
-    update();
+update();
+
   });
 }
 
