@@ -171,7 +171,7 @@ function update(){
     <div style="font-size:18px;">
       🔰 현재 강화 : <b>+${sword}강</b><br>
       ⚔️ 공격력 : <b>${power}</b><br>
-      💰 골드 : <b>${gold}</b>
+      💰 골드 : <b>${formatGold(gold)}</b>
     </div>
   `;
 
@@ -226,13 +226,41 @@ function update(){
   // -----------------------------
   // UI 출력
   // -----------------------------
-  document.getElementById("upgradeInfo").innerHTML = `
-    성공 <b>${success}%</b> / ${failInfo}
-    <br>필요 골드 <b>${cost.toLocaleString()}</b>
-    ${safeNote}
-  `;
+document.getElementById("upgradeInfo").innerHTML = `
+  성공 <b>${success}%</b> / ${failInfo}
+  <br>필요 골드 <b>${formatGold(cost)}</b>
+  ${safeNote}
+`;
+
 }
 
+  // 숫자 골드를 "12억 8,765만 4,252" 형태로 변환
+function formatGold(value) {
+  const n = Number(value) || 0;
+
+  // 100만 미만은 그냥 숫자+콤마로
+  if (n < 1_000_000) {
+    return n.toLocaleString();
+  }
+
+  const EOK = 100_000_000; // 억
+  const MAN = 10_000;      // 만
+
+  const eok = Math.floor(n / EOK);
+  let rest = n % EOK;
+  const man = Math.floor(rest / MAN);
+  const won = rest % MAN;
+
+  const parts = [];
+  if (eok > 0) parts.push(`${eok.toLocaleString()}억`);
+  if (man > 0) parts.push(`${man.toLocaleString()}만`);
+  if (won > 0) parts.push(won.toLocaleString());
+
+  if (parts.length === 0) return "0";
+  return parts.join(" ");
+}
+
+  
 function getUpgradeCost(level) {
 
   const costTable = {
@@ -286,9 +314,10 @@ function upgrade(){
 const cost = getUpgradeCost(sword);
 
 if (gold < cost) {
-  alert(`골드 부족! (필요: ${cost.toLocaleString()} G)`);
+  alert(`골드 부족! (필요: ${formatGold(cost)} G)`);
   return;
 }
+
 
 gold -= cost;
 
@@ -337,9 +366,9 @@ gold -= cost;
 
 /* 사냥 */
 function hunt(){
-  const earn=Math.floor(Math.random()*power);
-  gold+=earn;
-  alert(`골드 +${earn}`);
+const earn = Math.floor(Math.random()*power);
+gold += earn;
+alert(`골드 +${formatGold(earn)}`);
   update(); save();
 }
 
@@ -463,11 +492,12 @@ function loadRanking(){
         return a.updated - b.updated;
       });
 
-      ranking.innerHTML = arr.map((u,i)=>`
-        <div style="font-weight:bold;">
-          ${i+1}. ${u.id} | ${coloredLevel(u.sword)} | 💰 ${u.gold.toLocaleString()}
-        </div>
-      `).join("");
+ranking.innerHTML = arr.map((u,i)=>`
+  <div style="font-weight:bold;">
+    ${i+1}. ${u.id} | ${coloredLevel(u.sword)} | 💰 ${formatGold(u.gold)}
+  </div>
+`).join("");
+
     });
 
   // 👇 내 랭킹 계산
@@ -503,9 +533,11 @@ function loadRanking(){
         myRank.innerText = "내 랭킹: 기록 없음";
       } else {
         const myInfo = arr[idx];
-        myRank.innerHTML = `
-          내 랭킹: <b>${idx + 1}위</b> (${coloredLevel(myInfo.sword)}, 💰 ${myInfo.gold.toLocaleString()})
-        `;
+myRank.innerHTML = `
+  내 랭킹: <b>${idx + 1}위</b> 
+  (${coloredLevel(myInfo.sword)}, 💰 ${formatGold(myInfo.gold)})
+`;
+
       }
     });
 }
