@@ -115,6 +115,52 @@ button {
   z-index:1002;
   display:none;
 }
+  
+  /* 🗺 MAP 버튼 */
+#mapBtn {
+  position:fixed;
+  top:10px;
+  right:10px;
+  z-index:1100;
+  font-size:14px;
+  padding:8px 16px;
+}
+
+/* 🗺 MAP 패널 */
+#mapPanel {
+  position:fixed;
+  top:60px;
+  right:10px;
+  width:260px;
+  max-height:70%;
+  background:rgba(0,0,0,0.95);
+  border:1px solid #555;
+  padding:10px;
+  overflow-y:auto;
+  z-index:1101;
+  display:none;
+  text-align:left;
+  font-size:14px;
+}
+#mapPanel h3 {
+  margin-top:0;
+}
+.map-field {
+  padding:6px 4px;
+  border-bottom:1px solid #333;
+  cursor:pointer;
+}
+.map-field:hover {
+  background:#222;
+}
+
+/* 사냥 정보 텍스트 */
+#huntInfo {
+  font-size:14px;
+  color:#ccc;
+  margin-top:4px;
+}
+
 </style>
 </head>
 
@@ -138,9 +184,20 @@ button {
 </p>
 
 <button onclick="upgrade()">🔨 강화</button>
-<button onclick="hunt()">⚔️ 사냥</button>
+<button id="huntBtn" onclick="hunt()">⚔️ 사냥</button>
 <button onclick="sell()">💰 판매</button>
 
+<p id="huntInfo"></p>
+
+  <!-- 🗺 MAP -->
+  <button id="mapBtn" onclick="toggleMap()">🗺 MAP</button>
+  <div id="mapPanel">
+    <h3>🗺 사냥터 선택</h3>
+    <div id="mapList"></div>
+    <button style="margin-top:8px; width:100%;" onclick="toggleMap()">닫기</button>
+  </div>
+
+  
   <hr>
   <h2>🏆 랭킹 TOP 10</h2>
   <div id="ranking">불러오는 중...</div>
@@ -179,50 +236,61 @@ let userId="", userPassword="", userRef=null;
   let attendanceCount = 0;
 let lastAttendanceDate = "";
 
+  // 🗺 사냥 관련 상태
+let currentField = 1;          // 1~10 사냥터
+let huntCountToday = 0;        // 오늘 사냥 횟수
+let lastHuntDate = "";         // 마지막 사냥 날짜 (YYYY-MM-DD)
+
+// 사냥터 정보 (추천 레벨 / 이름)
+const HUNT_FIELDS = [
+  null, // 인덱스 0 비움 (1부터 시작)
+  { id:1, name:"평화로운 버섯마을",   recLevel:0  },
+  { id:2, name:"역병쥐가 들끓는 시궁창", recLevel:3  },
+  { id:3, name:"무법자들의 황야",     recLevel:6  },
+  { id:4, name:"늪엘프의 숲",         recLevel:9  },
+  { id:5, name:"서리여왕의 동굴",     recLevel:12 },
+  { id:6, name:"망령왕의 죽음세계",   recLevel:15 },
+  { id:7, name:"베히모스의 불구덩이", recLevel:18 },
+  { id:8, name:"대천사의 요람",       recLevel:21 },
+  { id:9, name:"신의 처소",           recLevel:24 },
+  { id:10,name:"차원의 틈새",         recLevel:27 }
+];
+
 
 /* UI */
 function update(){
 
-  // 기존 상태 표시
+  // ⚔️ 현재 공격력 = 강화비용 기반
+  power = getBaseAttack(sword);
+
+  // 상태 표시
   document.getElementById("status").innerHTML = `
     <div style="font-size:18px;">
       🔰 현재 강화 : <b>+${sword}강</b><br>
-      ⚔️ 공격력 : <b>${power}</b><br>
+      ⚔️ 공격력 : <b>${power}</b> <span style="font-size:12px;color:#888;">(±5%)</span><br>
       💰 골드 : <b>${formatGold(gold)}</b>
     </div>
   `;
 
-  // 성공 확률
+  // 🔹 강화 성공/실패 정보
   const success = getUpgradeChance(sword);
-
   let failInfo = "";
   let failRemain = 100 - success; // 실패 총 비율
 
-  // -----------------------------
-  // ⭐ 단계 구간별 확률 표시 규칙
-  // -----------------------------
-
   if (sword <= 10) {
-
     failInfo = `
       실패: <b>${failRemain}%</b> (유지)
     `;
-
   } else if (sword <= 20) {
-
     const keep = Math.round(failRemain * 0.5);
     const down = failRemain - keep;
-
     failInfo = `
       실패: <b>${failRemain}%</b>
       — 유지 <b>${keep}%</b> / 강등 <b>${down}%</b>
     `;
-
   } else {
-
     const down = Math.round(failRemain * 0.4);
     const destroy = failRemain - down;
-
     failInfo = `
       실패: <b>${failRemain}%</b>
       — 강등 <b>${down}%</b> / 파괴 <span style="color:red;font-weight:bold;">${destroy}%</span>
@@ -232,26 +300,47 @@ function update(){
   // 🔸 강화 비용 계산
   const cost = getUpgradeCost(sword);
 
-
-  
   // ⭐ 5의 배수 레벨 세이프 안내
   let safeNote = "";
-  if (sword % 5 === 0 && sword !== 0) { // 5,10,15,... 에서만 표시하고 싶으면 이렇게
+  if (sword % 5 === 0 && sword !== 0) {
     safeNote = `<br><span style="color:#6cf;">
       ※ 세이프 구간: 실패해도 강등/파괴되지 않습니다.
     </span>`;
   }
 
-  // -----------------------------
-  // UI 출력
-  // -----------------------------
-document.getElementById("upgradeInfo").innerHTML = `
-  성공 <b>${success}%</b> / ${failInfo}
-  <br>필요 골드 <b>${formatGold(cost)}</b>
-  ${safeNote}
-`;
+  // 강화 정보 UI 출력
+  document.getElementById("upgradeInfo").innerHTML = `
+    성공 <b>${success}%</b> / ${failInfo}
+    <br>필요 골드 <b>${formatGold(cost)}</b>
+    ${safeNote}
+  `;
 
+  // 🎯 사냥 정보 UI 업데이트
+  const field = HUNT_FIELDS[currentField];
+  const huntSuccess = getHuntSuccessChance(sword, currentField);
+
+  const today = getTodayDateString();
+  if (lastHuntDate !== today) {
+    // 날짜 바뀌면 카운트 리셋
+    huntCountToday = 0;
+    lastHuntDate = today;
+  }
+
+  const huntInfoEl = document.getElementById("huntInfo");
+  const huntBtnEl  = document.getElementById("huntBtn");
+
+  if (field && huntInfoEl && huntBtnEl) {
+    huntInfoEl.innerHTML = `
+      🗺 현재 사냥터: <b>${field.name}</b><br>
+      추천 레벨: <b>+${field.recLevel}강</b> / 내 레벨: <b>+${sword}강</b><br>
+      예상 사냥 성공 확률: <b>${huntSuccess}%</b><br>
+      (하루 10회 제한)
+    `;
+    huntBtnEl.textContent = \`⚔️ 사냥 (\${huntCountToday}/10)\`;
+  }
 }
+
+
 
   // 숫자 골드를 "12억 8,765만 4,252" 형태로 변환
 function formatGold(value) {
@@ -371,6 +460,14 @@ function getTotalCostToLevel(level) {
   return sum;
 }
 
+// ⚔️ 강화비용 기반 공격력 계산
+function getBaseAttack(level) {
+  // 0강도 최소 10 이상은 나오게
+  const total = getTotalCostToLevel(level); // 0→level까지 총 강화비용
+  const atk = Math.floor(total / 1000) + 10;
+  return atk;
+}
+  
 // min ~ max 사이 랜덤 실수
 function randRange(min, max) {
   return min + Math.random() * (max - min);
@@ -451,7 +548,7 @@ gold -= cost;
 
   if(Math.random()<chance/100){
     // ✅ 성공
-    sword++; power+=5;
+    sword++; 
     alert("강화 성공!");
     if(before>=20){
       writeLog(`${userId}이 ${coloredLevel(before)} 도전에 성공하여 ${coloredLevel(sword)}이 되었습니다!`);
@@ -472,13 +569,13 @@ gold -= cost;
         if(Math.random()<0.5) {
           alert("실패 (유지)");
         } else {
-          sword--; power-=5; alert("강등");
+          sword--;  alert("강등");
         }
       }else{
         if(Math.random()<0.4){
-          sword--; power-=5; alert("강등");
+          sword--;  alert("강등");
         }else{
-          sword=0; power=10;
+          sword=0; 
           writeLog(`${userId}이 ${coloredLevel(before)} 도전에 실패하여 <span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`,true);
           alert("파괴");
         }
@@ -504,7 +601,6 @@ function sell() {
 
   gold += reward;
   sword = 0;
-  power = 10;
 
   alert(`+${before}강 장비를 판매하여 ${formatGold(reward)} 골드를 획득했습니다!`);
 
@@ -519,12 +615,91 @@ function sell() {
   
 /* 사냥 */
 function hunt(){
-const earn = Math.floor(Math.random()*power);
-gold += earn;
-alert(`골드 +${formatGold(earn)}`);
-  update(); save();
+  if (!userRef || !userId) {
+    alert("로그인 후 이용 가능합니다.");
+    return;
+  }
+
+  const today = getTodayDateString();
+
+  // 날짜 바뀌면 카운트 리셋
+  if (lastHuntDate !== today) {
+    lastHuntDate = today;
+    huntCountToday = 0;
+  }
+
+  if (huntCountToday >= 10) {
+    alert("오늘 사냥 가능 횟수를 모두 사용했습니다. (하루 10회)");
+    return;
+  }
+
+  const field = HUNT_FIELDS[currentField];
+  if (!field) {
+    alert("사냥터가 선택되지 않았습니다.");
+    return;
+  }
+
+  const successChance = getHuntSuccessChance(sword, currentField);
+
+  if (successChance <= 0) {
+    alert("이 사냥터는 지금 장비로는 너무 위험합니다! (성공률 0%)");
+    return;
+  }
+
+  // 실제 공격력은 ±5% 랜덤 오차 (지금은 표시만, 향후 확률에 반영 가능)
+  const baseAtk = getBaseAttack(sword);
+  const realAtk = Math.floor(randRange(baseAtk * 0.95, baseAtk * 1.05));
+
+  // 성공 여부
+  const r = Math.random() * 100;
+  if (r < successChance) {
+    // ✅ 성공
+    const reward = getHuntReward(currentField);
+    gold += reward;
+
+    alert(`사냥 성공! 💰 ${formatGold(reward)} 골드를 획득했습니다.`);
+
+    // (아이템 드랍은 2단계에서 추가 예정)
+  } else {
+    // ❌ 실패
+    alert("사냥에 실패했습니다...");
+  }
+
+  huntCountToday++;
+  update();
+  save();
 }
 
+
+// 🎯 사냥 성공 확률 계산
+function getHuntSuccessChance(myLevel, fieldId) {
+  const field = HUNT_FIELDS[fieldId];
+  if (!field) return 0;
+
+  const rec = field.recLevel; // 추천 강화 레벨
+  const diff = rec - myLevel;
+
+  if (diff <= 0) return 100;     // 권장 레벨 이상이면 100%
+  if (diff >= 5) return 0;       // 너무 차이나면 0%
+
+  // 1~4 차이: 80 / 60 / 40 / 20 %
+  return 100 - diff * 20;
+}
+
+  // 💰 사냥 성공 시 골드 보상
+function getHuntReward(fieldId) {
+  const field = HUNT_FIELDS[fieldId];
+  if (!field) return 0;
+
+  // 설명에 따라: 예) 3LV → 6강 강화비용 사용
+  const refLevel = field.recLevel;    // 0,3,6,...,27
+  const baseCost = getUpgradeCost(refLevel); // 해당 강의 강화비용
+
+  const mul = randRange(1.0, 1.5);   // 1.0 ~ 1.5 배
+  return Math.floor(baseCost * mul);
+}
+
+  
 /* 로그인 */
 function login(){
   userId = loginId.value.trim();
@@ -541,15 +716,19 @@ function login(){
     // ⭐ 신규 계정 생성 시
     if (!s.exists()) {
 
-      userRef.set({
-        password: userPassword,
-        sword,
-        power,
-        gold,
-        updated: Date.now(),
-        attendanceCount: 0,
-        lastAttendanceDate: ""
-      });
+userRef.set({
+  password: userPassword,
+  sword,
+  power,
+  gold,
+  updated: Date.now(),
+  attendanceCount: 0,
+  lastAttendanceDate: "",
+  currentField: 1,
+  huntCountToday: 0,
+  lastHuntDate: ""
+});
+
 
     } 
     // ⭐ 기존 계정 로그인 시
@@ -563,11 +742,15 @@ function login(){
       const data = s.val();
 
       sword = data.sword ?? 0;
-      power = data.power ?? 10;
-      gold  = data.gold  ?? 100;
+power = data.power ?? 10;
+gold  = data.gold  ?? 100;
 
-      attendanceCount    = data.attendanceCount    ?? 0;
-      lastAttendanceDate = data.lastAttendanceDate ?? "";
+attendanceCount    = data.attendanceCount    ?? 0;
+lastAttendanceDate = data.lastAttendanceDate ?? "";
+currentField   = data.currentField   ?? 1;
+huntCountToday = data.huntCountToday ?? 0;
+lastHuntDate   = data.lastHuntDate   ?? "";
+
     }
 
     // 화면 전환 + 출석 버튼 표시
@@ -582,13 +765,17 @@ function login(){
 function save() {
   if (!userRef) return;
   userRef.update({
-    sword: Number(sword),
-    power: Number(power),
-    gold: Number(gold),
-    updated: Date.now(),
-    attendanceCount: attendanceCount,
-    lastAttendanceDate: lastAttendanceDate
-  });
+  sword: Number(sword),
+  power: Number(power),
+  gold: Number(gold),
+  updated: Date.now(),
+  attendanceCount: attendanceCount,
+  lastAttendanceDate: lastAttendanceDate,
+  currentField: currentField,
+  huntCountToday: huntCountToday,
+  lastHuntDate: lastHuntDate
+});
+
 }
 
 
@@ -646,6 +833,51 @@ function coloredLevel(l){
   return `+${l}강`;
 }
 
+// 🗺 MAP 토글
+function toggleMap() {
+  const panel = document.getElementById("mapPanel");
+  if (!panel) return;
+
+  if (panel.style.display === "none" || panel.style.display === "") {
+    renderMap();
+    panel.style.display = "block";
+  } else {
+    panel.style.display = "none";
+  }
+}
+
+// 🗺 MAP 내용 렌더링
+function renderMap() {
+  const listEl = document.getElementById("mapList");
+  if (!listEl) return;
+
+  listEl.innerHTML = "";
+
+  for (let i = 1; i <= 10; i++) {
+    const field = HUNT_FIELDS[i];
+    const success = getHuntSuccessChance(sword, i);
+
+    const div = document.createElement("div");
+    div.className = "map-field";
+    div.innerHTML = `
+      <b>LV${i} - ${field.name}</b><br>
+      추천: +${field.recLevel}강 / 현재 예상 성공률: ${success}%
+    `;
+    div.onclick = function() {
+      currentField = i;
+      toggleMap(); // 선택 후 닫기
+      update();    // UI 갱신
+      save();      // 선택 사냥터 저장
+    };
+
+    // 현재 선택 사냥터 표시
+    if (i === currentField) {
+      div.style.borderLeft = "3px solid #6cf";
+    }
+
+    listEl.appendChild(div);
+  }
+}
 
 
 /* 랭킹 */
