@@ -187,6 +187,23 @@ button {
 <button id="huntBtn" onclick="hunt()">⚔️ 사냥</button>
 <button onclick="sell()">💰 판매</button>
 
+<!-- 🎯 강화 아이템 사용 체크박스 -->
+<div id="upgradeItems" style="margin-top:8px; font-size:13px;">
+  <label style="margin-right:8px;">
+    <input type="checkbox" id="useScroll15">
+    15강 강화 주문서 사용
+  </label>
+  <label style="margin-right:8px;">
+    <input type="checkbox" id="useProtect">
+    파괴방지 주문서 사용
+  </label>
+  <label>
+    <input type="checkbox" id="useSuper">
+    슈퍼강화 주문서 사용
+  </label>
+</div>
+
+
 <p id="huntInfo"></p>
 
   <!-- 🗺 MAP -->
@@ -209,11 +226,42 @@ button {
   
 <!-- 🔔 로그 -->
 <div id="toastLog"><div id="toastList"></div></div>
+
+<!-- 🎒 인벤토리 버튼 (로그 버튼 위) -->
+<button id="inventoryBtn" onclick="toggleInventory()" style="position:fixed; bottom:120px; right:10px; z-index:1001;">
+  🎒 인벤토리
+</button>
+
 <button id="logToggle" onclick="toggleLog()">📜 로그</button>
+
+<!-- 🎒 인벤토리 패널 -->
+<div id="inventoryPanel" style="
+  position:fixed;
+  top:60px;
+  left:50%;
+  transform:translateX(-50%);
+  width:90%;
+  max-width:360px;
+  max-height:70%;
+  background:rgba(0,0,0,0.95);
+  border:1px solid #555;
+  padding:10px;
+  overflow-y:auto;
+  z-index:1002;
+  display:none;
+  text-align:left;
+  font-size:14px;
+">
+  <h3>🎒 인벤토리</h3>
+  <div id="inventoryList"></div>
+  <button style="margin-top:8px; width:100%;" onclick="toggleInventory()">닫기</button>
+</div>
+
 <div id="logPanel">
   <h3>📢 강화 로그</h3>
   <div id="logPanelList"></div>
 </div>
+
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -241,6 +289,12 @@ let currentField = 1;          // 1~10 사냥터
 let huntCountToday = 0;        // 오늘 사냥 횟수
 let lastHuntDate = "";         // 마지막 사냥 날짜 (YYYY-MM-DD)
 
+
+// 🎁 아이템 보유 수량
+let itemScroll15 = 0;   // 15강 강화 주문서
+let itemProtect  = 0;   // 파괴방지 주문서
+let itemSuper    = 0;   // 슈퍼강화 주문서
+  
 // 사냥터 정보 (추천 레벨 / 이름)
 const HUNT_FIELDS = [
   null, // 인덱스 0 비움 (1부터 시작)
@@ -816,8 +870,12 @@ userRef.set({
   lastAttendanceDate: "",
   currentField: 1,
   huntCountToday: 0,
-  lastHuntDate: ""
+  lastHuntDate: "",
+  itemScroll15: 0,
+  itemProtect: 0,
+  itemSuper: 0
 });
+
 
 
     } 
@@ -840,6 +898,10 @@ lastAttendanceDate = data.lastAttendanceDate ?? "";
 currentField   = data.currentField   ?? 1;
 huntCountToday = data.huntCountToday ?? 0;
 lastHuntDate   = data.lastHuntDate   ?? "";
+itemScroll15 = data.itemScroll15 ?? 0;
+itemProtect  = data.itemProtect  ?? 0;
+itemSuper    = data.itemSuper    ?? 0;
+
 
     }
 
@@ -863,8 +925,12 @@ function save() {
   lastAttendanceDate: lastAttendanceDate,
   currentField: currentField,
   huntCountToday: huntCountToday,
-  lastHuntDate: lastHuntDate
+  lastHuntDate: lastHuntDate,
+  itemScroll15: Number(itemScroll15),
+  itemProtect: Number(itemProtect),
+  itemSuper: Number(itemSuper)
 });
+
 
 }
 
@@ -1096,6 +1162,35 @@ el.innerHTML = `<span style="color:#888;">[${ts}]</span> ${d.message}`;
 function toggleLog(){
   logPanel.style.display = logPanel.style.display==="none"?"block":"none";
 }
+
+// 🎒 인벤토리 토글
+function toggleInventory() {
+  const panel = document.getElementById("inventoryPanel");
+  if (!panel) return;
+
+  if (panel.style.display === "none" || panel.style.display === "") {
+    renderInventory();
+    panel.style.display = "block";
+  } else {
+    panel.style.display = "none";
+  }
+}
+
+// 🎒 인벤토리 내용 렌더링
+function renderInventory() {
+  const listEl = document.getElementById("inventoryList");
+  if (!listEl) return;
+
+  listEl.innerHTML = `
+    <p>보유 아이템 현황</p>
+    <ul style="list-style:none; padding-left:0;">
+      <li>📜 15강 강화 주문서: <b>${itemScroll15}</b>개</li>
+      <li>🛡 파괴방지 주문서: <b>${itemProtect}</b>개</li>
+      <li>✨ 슈퍼강화 주문서: <b>${itemSuper}</b>개</li>
+    </ul>
+  `;
+}
+
   
   loadRanking();
 </script>
