@@ -160,7 +160,7 @@ const db = firebase.database();
 const logRef = db.ref("logs");
 
 /* 상태 */
-let sword=1, power=10, gold=100;
+let sword = 0, power = 10, gold = 100;
 let userId="", userPassword="", userRef=null;
 
 /* UI */
@@ -211,24 +211,64 @@ function update(){
       — 강등 <b>${down}%</b> / 파괴 <span style="color:red;font-weight:bold;">${destroy}%</span>
     `;
   }
-// ⭐ 5의 배수 레벨 세이프 안내
-let safeNote = "";
-if (sword % 5 === 0) {
-  safeNote = `<br><span style="color:#6cf;">
-    ※ 세이프 구간: 실패해도 강등/파괴되지 않습니다.
-  </span>`;
+
+  // 🔸 강화 비용 계산
+  const cost = getUpgradeCost(sword);
+
+  // ⭐ 5의 배수 레벨 세이프 안내
+  let safeNote = "";
+  if (sword % 5 === 0 && sword !== 0) { // 5,10,15,... 에서만 표시하고 싶으면 이렇게
+    safeNote = `<br><span style="color:#6cf;">
+      ※ 세이프 구간: 실패해도 강등/파괴되지 않습니다.
+    </span>`;
+  }
+
+  // -----------------------------
+  // UI 출력
+  // -----------------------------
+  document.getElementById("upgradeInfo").innerHTML = `
+    성공 <b>${success}%</b> / ${failInfo}
+    <br>필요 골드 <b>${cost.toLocaleString()}</b>
+    ${safeNote}
+  `;
 }
 
-// -----------------------------
-// UI 출력
-// -----------------------------
+function getUpgradeCost(level) {
 
-document.getElementById("upgradeInfo").innerHTML = `
-  성공 <b>${success}%</b> / ${failInfo}
-  <br>필요 골드 <b>20</b>
-  ${safeNote}
-`;
+  const costTable = {
+    0: 0,
+    1: 20,
+    2: 50,
+    3: 100,
+    4: 500,
+    5: 1000,
+    6: 3000,
+    7: 5000,
+    8: 10000,
+    9: 30000,
+    10: 50000,
+    11: 100000,
+    12: 300000,
+    13: 500000,
+    14: 1000000,
+    15: 3000000,
+    16: 5000000,
+    17: 10000000,
+    18: 30000000,
+    19: 50000000,
+    20: 100000000,
+    21: 300000000,
+    22: 500000000,
+    23: 1000000000,
+    24: 3000000000,
+    25: 5000000000,
+    26: 10000000000,
+    27: 30000000000,
+    28: 50000000000,
+    29: 100000000000
+  };
 
+  return costTable[level] ?? 0;
 }
 
 
@@ -243,8 +283,15 @@ function getUpgradeChance(level){
 /* 강화 */
 function upgrade(){
   if(sword>=30){alert("최대 강화");return;}
-  if(gold<20){alert("골드 부족");return;}
-  gold-=20;
+const cost = getUpgradeCost(sword);
+
+if (gold < cost) {
+  alert(`골드 부족! (필요: ${cost.toLocaleString()} G)`);
+  return;
+}
+
+gold -= cost;
+
 
   const chance=getUpgradeChance(sword);
   const before=sword;
@@ -278,7 +325,7 @@ function upgrade(){
         if(Math.random()<0.4){
           sword--; power-=5; alert("강등");
         }else{
-          sword=1; power=10;
+          sword=0; power=10;
           writeLog(`${userId}이 ${coloredLevel(before)} 도전에 실패하여 <span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`,true);
           alert("파괴");
         }
@@ -446,13 +493,17 @@ ranking.innerHTML = arr.map((u,i)=>{
       s.forEach(c => {
         const d = c.val();
         arr.push({
-          id: c.key,
-          sword: Number(d.sword || 0)
-        });
-      });
+  id: c.key,
+  sword: Number(d.sword || 0),
+  gold:  Number(d.gold  || 0),
+  updated: Number(d.updated || 0)
+});
 
-      // 전체 유저를 sword 내림차순 정렬
-      arr.sort((a,b)=>b.sword-a.sword);
+arr.sort((a, b) => {
+  if (b.sword !== a.sword) return b.sword - a.sword;
+  return a.updated - b.updated;
+});
+
 
       const idx = arr.findIndex(u => u.id === userId);
 
