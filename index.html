@@ -260,17 +260,15 @@ const HUNT_FIELDS = [
 /* UI */
 function update(){
 
-  // ⚔️ 현재 공격력 = 강화비용 기반
-  power = getBaseAttack(sword);
-
-  // 상태 표시
+  // 상태 표시 (power는 이미 고정값으로 계산된 상태를 그대로 사용)
   document.getElementById("status").innerHTML = `
     <div style="font-size:18px;">
       🔰 현재 강화 : <b>+${sword}강</b><br>
-      ⚔️ 공격력 : <b>${power}</b> <span style="font-size:12px;color:#888;">(±5%)</span><br>
+      ⚔️ 공격력 : <b>${power}</b><br>
       💰 골드 : <b>${formatGold(gold)}</b>
     </div>
   `;
+
 
   // 🔹 강화 성공/실패 정보
   const success = getUpgradeChance(sword);
@@ -468,6 +466,13 @@ function getBaseAttack(level) {
   const atk = Math.floor(total / 1000) + 10;
   return atk;
 }
+
+// ⚔️ 현재 강화 단계 기준으로 실제 공격력 랜덤 부여 (±5% 편차, 고정)
+function rollPowerForCurrentSword() {
+  const base = getBaseAttack(sword);
+  power = Math.floor(randRange(base * 0.95, base * 1.05));
+}
+
   
 // min ~ max 사이 랜덤 실수
 function randRange(min, max) {
@@ -550,6 +555,7 @@ gold -= cost;
   if(Math.random()<chance/100){
     // ✅ 성공
     sword++; 
+    rollPowerForCurrentSword();  // 🔥 새 레벨 기준 공격력 재계산 (±5% 고정)
     alert("강화 성공!");
     if(before>=20){
       writeLog(`${userId}이 ${coloredLevel(before)} 도전에 성공하여 ${coloredLevel(sword)}이 되었습니다!`);
@@ -570,13 +576,18 @@ gold -= cost;
         if(Math.random()<0.5) {
           alert("실패 (유지)");
         } else {
-          sword--;  alert("강등");
+          sword--;  
+          rollPowerForCurrentSword();
+          alert("강등");
         }
       }else{
         if(Math.random()<0.4){
-          sword--;  alert("강등");
+          sword--;  
+          rollPowerForCurrentSword();
+          alert("강등");
         }else{
           sword=0; 
+           rollPowerForCurrentSword();
           writeLog(`${userId}이 ${coloredLevel(before)} 도전에 실패하여 <span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`,true);
           alert("파괴");
         }
@@ -602,6 +613,7 @@ function sell() {
 
   gold += reward;
   sword = 0;
+  rollPowerForCurrentSword();
 
   alert(`+${before}강 장비를 판매하여 ${formatGold(reward)} 골드를 획득했습니다!`);
 
@@ -647,9 +659,9 @@ function hunt(){
     return;
   }
 
-  // 실제 공격력은 ±5% 랜덤 오차 (지금은 표시만, 향후 확률에 반영 가능)
-  const baseAtk = getBaseAttack(sword);
-  const realAtk = Math.floor(randRange(baseAtk * 0.95, baseAtk * 1.05));
+// 실제 공격력은 미리 굴려둔 power 사용 (±5% 편차 반영된 값)
+const atk = power; // 지금은 사용 X, 나중에 사냥 데미지/성공률에 반영 가능
+
 
   // 성공 여부
   const r = Math.random() * 100;
@@ -691,7 +703,11 @@ function getHuntSuccessChance(myLevel, fieldId) {
 function getHuntReward(fieldId) {
   const field = HUNT_FIELDS[fieldId];
   if (!field) return 0;
-
+  
+  // 🌱 LV1 사냥터는 0~20골드 랜덤
+  if (fieldId === 1) {
+    return Math.floor(randRange(0, 21)); // 0 이상 21 미만 → 0~20
+  }
   // 설명에 따라: 예) 3LV → 6강 강화비용 사용
   const refLevel = field.recLevel;    // 0,3,6,...,27
   const baseCost = getUpgradeCost(refLevel); // 해당 강의 강화비용
@@ -717,6 +733,9 @@ function login(){
     // ⭐ 신규 계정 생성 시
     if (!s.exists()) {
 
+        // 처음 계정 생성 시, 현재 sword 기준으로 공격력 한 번 굴려두기
+  rollPowerForCurrentSword();
+      
 userRef.set({
   password: userPassword,
   sword,
