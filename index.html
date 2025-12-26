@@ -574,19 +574,24 @@ function getUpgradeChance(level) {
 
   if (level < 20) {
     // 1 ~ 19강 구간 : 레벨 1 오를 때마다 -4%
-    // 예) 1강 -> 2강: 96%, 10강 -> 11강: 60%
     chance = 100 - (level * 4);
   } else {
     // 20강 이후 : -2%씩 감소
-    // 20강 기준값 = 100 - 20*4 = 20%
     const base20 = 100 - (20 * 4); // 20%
     const extra = level - 20;
     chance = base20 - (extra * 2);
   }
 
-  // 최소 5% 보장
-  return Math.max(5, chance);
+  // 💫 전체 구간 소폭 상향 (+5%)
+  chance += 5;
+
+  // 상한/하한 정리
+  chance = Math.min(100, chance); // 100% 넘지 않게
+  chance = Math.max(5, chance);   // 안전 하한 (실제로는 거의 10% 이상일 것)
+
+  return chance;
 }
+
 
 
 function checkAttendance() {
@@ -791,13 +796,17 @@ function sell() {
 
   alert(`+${before}강 장비를 판매하여 ${formatGold(reward)} 골드를 획득했습니다!`);
 
-  writeLog(
-    `${userId}님이 ${coloredLevel(before)} 장비를 판매하여 ${formatGold(reward)} 골드를 획득했습니다!`
-  );
+  // ✅ 20강 이상일 때만 로그 남기기
+  if (before >= 20) {
+    writeLog(
+      `${userId}님이 ${coloredLevel(before)} 장비를 판매하여 ${formatGold(reward)} 골드를 획득했습니다!`
+    );
+  }
 
   update();
   save();
 }
+
 
   
 /* 사냥 */
