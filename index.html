@@ -12,6 +12,17 @@ body {
   font-family:Arial;
 }
 
+  /* 🎫 출석 버튼 */
+#attendanceBtn {
+  position:fixed;
+  top:10px;
+  left:10px;
+  z-index:1100;
+  display:none;          /* 로그인 후 JS로 보이게 */
+  font-size:14px;
+  padding:8px 16px;
+}
+
 /* 버튼 */
 button {
   padding:15px 30px;
@@ -136,6 +147,9 @@ button {
   <div id="myRank" style="margin-top:8px; font-size:14px; color:#ccc;"></div>
 </div>
 
+<button id="attendanceBtn" onclick="checkAttendance()">출석</button>
+
+  
 <!-- 🔔 로그 -->
 <div id="toastLog"><div id="toastList"></div></div>
 <button id="logToggle" onclick="toggleLog()">📜 로그</button>
@@ -162,6 +176,9 @@ const logRef = db.ref("logs");
 /* 상태 */
 let sword = 0, power = 10, gold = 100;
 let userId="", userPassword="", userRef=null;
+  let attendanceCount = 0;
+let lastAttendanceDate = "";
+
 
 /* UI */
 function update(){
@@ -308,6 +325,37 @@ function getUpgradeChance(level){
   return 5;
 }
 
+function checkAttendance() {
+  if (!userRef || !userId) {
+    alert("로그인 후 이용 가능합니다.");
+    return;
+  }
+
+  const today = getTodayDateString();
+
+  // 이미 오늘 출석 했는지 체크
+  if (lastAttendanceDate === today) {
+    alert("오늘은 이미 출석하셨습니다!");
+    return;
+  }
+
+  // 출석 처리
+  lastAttendanceDate = today;
+  attendanceCount = (attendanceCount || 0) + 1;
+
+  const reward = 60000;
+  gold += reward;
+
+  alert(`출석 완료! 골드 +${formatGold(reward)}`);
+
+  // 출석 로그 남기기
+  writeLog(`${userId}님이 출석했습니다. (${attendanceCount}회차)`);
+
+  update();
+  save();
+}
+
+  
 /* 강화 */
 function upgrade(){
   if(sword>=30){alert("최대 강화");return;}
@@ -374,41 +422,59 @@ alert(`골드 +${formatGold(earn)}`);
 
 /* 로그인 */
 function login(){
-  userId=loginId.value.trim();
-  userPassword=loginPw.value;
-  if(!userId||!userPassword){alert("입력 필요");return;}
+  userId = loginId.value.trim();
+  userPassword = loginPw.value;
+  if (!userId || !userPassword) {
+    alert("입력 필요");
+    return;
+  }
 
-  userRef=db.ref("users/"+userId);
-  userRef.once("value").then(s=>{
-    if(!s.exists()){
-userRef.set({
-  password:userPassword,
-  sword,
-  power,
-  gold,
-  updated: Date.now()
-});
-    }else{
-      if(s.val().password!==userPassword){alert("비밀번호 오류");return;}
-      sword=s.val().sword; power=s.val().power; gold=s.val().gold;
+  userRef = db.ref("users/" + userId);
+
+  userRef.once("value").then(s => {
+
+    // ⭐ 신규 계정 생성 시
+    if (!s.exists()) {
+
+      userRef.set({
+        password: userPassword,
+        sword,
+        power,
+        gold,
+        updated: Date.now(),
+        attendanceCount: 0,
+        lastAttendanceDate: ""
+      });
+
+    } 
+    // ⭐ 기존 계정 로그인 시
+    else {
+
+      if (s.val().password !== userPassword) {
+        alert("비밀번호 오류");
+        return;
+      }
+
+      const data = s.val();
+
+      sword = data.sword ?? 0;
+      power = data.power ?? 10;
+      gold  = data.gold  ?? 100;
+
+      attendanceCount    = data.attendanceCount    ?? 0;
+      lastAttendanceDate = data.lastAttendanceDate ?? "";
     }
-    loginScreen.style.display="none";
-    gameScreen.style.display="block";
-    update(); 
+
+    // 화면 전환 + 출석 버튼 표시
+    loginScreen.style.display  = "none";
+    gameScreen.style.display   = "block";
+    document.getElementById("attendanceBtn").style.display = "block";
+
+    update();
   });
 }
 
-/* 저장 */
-function save(){
-  if(!userRef) return;
-userRef.update({
-  sword: Number(sword),
-  power: Number(power),
-  gold: Number(gold),
-  updated: Date.now()
-});
 
-}
 
 /* 색상 */
 function getSwordColor(l){
@@ -542,7 +608,16 @@ myRank.innerHTML = `
     });
 }
 
+// 오늘 날짜를 "YYYY-MM-DD" 형태로 반환 (출석 체크용)
+function getTodayDateString() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
+  
 function formatTime(ts) {
   const d = new Date(ts);
 
