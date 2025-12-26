@@ -240,24 +240,38 @@ function upgrade(){
   const before=sword;
 
   if(Math.random()<chance/100){
+    // ✅ 성공
     sword++; power+=5;
     alert("강화 성공!");
     if(before>=20){
       writeLog(`${userId}이 ${coloredLevel(before)} 도전에 성공하여 ${coloredLevel(sword)}이 되었습니다!`);
     }
   }else{
-    if(sword<=10){
-      alert("실패 (유지)");
-    }else if(sword<=20){
-      if(Math.random()<0.5) alert("실패 (유지)");
-      else{ sword--; power-=5; alert("강등"); }
-    }else{
-      if(Math.random()<0.4){
-        sword--; power-=5; alert("강등");
+    // ❌ 실패
+    const isSafeLevel = (before % 5 === 0); // 5,10,15,20,25,30 세이프
+
+    if (isSafeLevel) {
+      // 세이프 구간: 실패해도 강등/파괴 없음
+      alert("실패 (세이프 구간 유지)");
+      // sword, power 변화 없음
+    } else {
+      // 🔻 기존 페널티 로직 유지
+      if(sword<=10){
+        alert("실패 (유지)");
+      }else if(sword<=20){
+        if(Math.random()<0.5) {
+          alert("실패 (유지)");
+        } else {
+          sword--; power-=5; alert("강등");
+        }
       }else{
-        sword=1; power=10;
-        writeLog(`${userId}이 ${coloredLevel(before)} 도전에 실패하여 <span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`,true);
-        alert("파괴");
+        if(Math.random()<0.4){
+          sword--; power-=5; alert("강등");
+        }else{
+          sword=1; power=10;
+          writeLog(`${userId}이 ${coloredLevel(before)} 도전에 실패하여 <span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`,true);
+          alert("파괴");
+        }
       }
     }
   }
