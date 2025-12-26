@@ -621,105 +621,146 @@ function checkAttendance() {
 
   
 /* 강화 */
-function upgrade(){
-  if(sword>=30){alert("최대 강화");return;}
-const cost = getUpgradeCost(sword);
+function upgrade() {
+  if (sword >= 30) {
+    alert("최대 강화");
+    return;
+  }
 
-if (gold < cost) {
-  alert(`골드 부족! (필요: ${formatGold(cost)} G)`);
-  return;
-}
+  // 🔘 체크박스 상태 읽기
+  const scroll15El = document.getElementById("useScroll15");
+  const protectEl  = document.getElementById("useProtect");
+  const superEl    = document.getElementById("useSuper");
 
+  const wantScroll15 = !!(scroll15El && scroll15El.checked);
+  const wantProtect  = !!(protectEl  && protectEl.checked);
+  const wantSuper    = !!(superEl    && superEl.checked);
 
-gold -= cost;
+  // ⚠️ 아이템 없는 상태에서 체크한 경우 → 강화 진행 금지
+  if (wantScroll15 && itemScroll15 <= 0) {
+    alert("15강 강화 주문서가 없습니다.");
+    return;
+  }
+  if (wantProtect && itemProtect <= 0) {
+    alert("파괴방지 주문서가 없습니다.");
+    return;
+  }
+  if (wantSuper && itemSuper <= 0) {
+    alert("슈퍼강화 주문서가 없습니다.");
+    return;
+  }
 
+  // 🎯 15강 강화 주문서 전용 처리
+  //  - 15강 미만 장비에만 사용 가능
+  //  - 골드 소모 X, 확률 X, 그냥 바로 15강
+  if (wantScroll15) {
 
-  const chance=getUpgradeChance(sword);
-  const before=sword;
-
-  if(Math.random()<chance/100){
-    // ✅ 성공
-    sword++; 
-    rollPowerForCurrentSword();  // 🔥 새 레벨 기준 공격력 재계산 (±5% 고정)
-    alert("강화 성공!");
-    if(before>=20){
-      writeLog(`${userId}이 ${coloredLevel(before)} 도전에 성공하여 ${coloredLevel(sword)}이 되었습니다!`);
+    if (sword >= 15) {
+      alert("15강 이상의 무기에는 15강 강화 주문서를 사용할 수 없습니다.");
+      return;
     }
-   }else{
+
+    itemScroll15 -= 1;
+    sword = 15;
+
+    if (scroll15El) scroll15El.checked = false; // 한 번 쓰고 체크 해제
+
+    writeLog(
+      `${userId}님이 <span style="color:#6cf;">15강 강화 주문서</span>를 사용하여 무기가 ${coloredLevel(15)}이 되었습니다!`
+    );
+    alert("15강 강화 주문서를 사용했습니다! 무기가 15강이 되었습니다.");
+
+    update();
+    save();
+    return; // 여기서 끝 (일반 강화 로직 건너뜀)
+  }
+
+  // 🪙 일반 강화 (파괴방지 / 슈퍼강화만 영향)
+  const cost = getUpgradeCost(sword);
+
+  if (gold < cost) {
+    alert(`골드 부족! (필요: ${formatGold(cost)} G)`);
+    return;
+  }
+
+  gold -= cost;
+
+  const chance = getUpgradeChance(sword);
+  const before = sword;
+
+  // 실제로 사용할 아이템 플래그 (수량 0인 경우는 이미 위에서 리턴됨)
+  const useProtect = wantProtect && itemProtect > 0;
+  const useSuper   = wantSuper   && itemSuper   > 0;
+
+  // 📉 아이템은 "시도한 순간" 소비 (성공/실패와 무관)
+  if (useProtect) itemProtect -= 1;
+  if (useSuper)   itemSuper   -= 1;
+
+  // 🎲 성공 / 실패 판정
+  if (Math.random() < chance / 100) {
+    // ✅ 성공
+    let up = useSuper ? 2 : 1; // 슈퍼강화면 +2
+
+    while (up > 0 && sword < 30) {
+      sword++;
+      up--;
+    }
+
+    alert(useSuper ? "강화 대성공! (+2강)" : "강화 성공!");
+
+    if (before >= 20) {
+      writeLog(
+        `${userId}이 ${coloredLevel(before)} 도전에 성공하여 ${coloredLevel(sword)}이 되었습니다!`
+      );
+    }
+
+  } else {
     // ❌ 실패
     const isSafeLevel = (before % 5 === 0); // 5,10,15,20,25,30 세이프
 
-    if (isSafeLevel) {
-      // 세이프 구간: 실패해도 강등/파괴 없음
-      alert("실패 (세이프 구간 유지)");
-    } else {
+    // 🛡 파괴방지 주문서 사용 시 → 실패해도 강등/파괴 모두 막고 유지
+    if (useProtect) {
+      alert("강화에 실패했지만, 파괴방지 주문서 효과로 장비가 보호되었습니다.");
+      // sword 그대로 유지
+    }
 
-      // 16~19강용 파괴 비율 (실패 중 몇 %를 파괴로 할지)
-      const midDestroyRatio = {
-        16: 0.10,
-        17: 0.12,
-        18: 0.13,
-        19: 0.14
-      };
-
-      if (before <= 10) {
-        // 0~10강: 그냥 실패 = 유지
-        alert("실패 (유지)");
-
-      } else if (before >= 16 && before <= 19) {
-        // 🧨 16~19강: 약한 파괴 구간
-
-        const failRemain = 100 - getUpgradeChance(before); // 전체 실패율
-        const destroyProb = failRemain * midDestroyRatio[before] / 100; // 절대 파괴 확률
-
-        const r = Math.random() * 100;
-
-        if (r < destroyProb) {
-          // 파괴
-          sword = 0;
-          writeLog(
-            `${userId}이 ${coloredLevel(before)} 도전에 실패하여 ` +
-            `<span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`,
-            true
-          );
-          alert("파괴");
-        } else {
-          // 나머지 실패는 강등
-          sword--;
-          alert("강등");
-        }
-
-      } else if (before <= 20) {
-        // 11~15, 20강: 기존 로직 (실패 시 50% 유지 / 50% 강등)
-
-        if(Math.random()<0.5) {
-          alert("실패 (유지)");
-        } else {
-          sword--;
-          alert("강등");
-        }
-
+    // 파괴방지 없음 → 기존 실패 로직 적용
+    else {
+      if (isSafeLevel) {
+        alert("실패 (세이프 구간 유지)");
       } else {
-        // 21강 이상: 기존 지옥 구간 (실패 시 40% 강등 / 60% 파괴)
-
-        if(Math.random()<0.4){
-          sword--;
-          alert("강등");
-        }else{
-          sword=0;
-          writeLog(
-            `${userId}이 ${coloredLevel(before)} 도전에 실패하여 ` +
-            `<span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`,
-            true
-          );
-          alert("파괴");
+        // 🔻 기존 페널티 로직
+        if (sword <= 10) {
+          alert("실패 (유지)");
+        } else if (sword <= 20) {
+          if (Math.random() < 0.5) {
+            alert("실패 (유지)");
+          } else {
+            sword--;
+            alert("강등");
+          }
+        } else {
+          if (Math.random() < 0.4) {
+            sword--;
+            alert("강등");
+          } else {
+            sword = 0;
+            writeLog(
+              `${userId}이 ${coloredLevel(before)} 도전에 실패하여 ` +
+              `<span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`,
+              true
+            );
+            alert("파괴");
+          }
         }
       }
     }
   }
 
-  update(); save();
+  update();
+  save();
 }
+
 
 function sell() {
   if (!userRef || !userId) {
@@ -796,11 +837,36 @@ const atk = power; // 지금은 사용 X, 나중에 사냥 데미지/성공률�
 
     alert(`사냥 성공! 💰 ${formatGold(reward)} 골드를 획득했습니다.`);
 
-    // (아이템 드랍은 2단계에서 추가 예정)
+    // 🎁 아이템 드랍 처리
+    // LV6 이상: 3% 확률로 15강 강화 주문서
+    if (currentField >= 6 && Math.random() < 0.03) {
+      itemScroll15 += 1;
+      writeLog(
+        `${userId}님이 사냥에서 <span style="color:#6cf;">15강 강화 주문서</span>를 획득했습니다!`
+      );
+    }
+
+    // LV7 이상: 2% 확률로 파괴방지 주문서
+    if (currentField >= 7 && Math.random() < 0.02) {
+      itemProtect += 1;
+      writeLog(
+        `${userId}님이 사냥에서 <span style="color:#6cf;">파괴방지 주문서</span>를 획득했습니다!`
+      );
+    }
+
+    // LV8 이상: 1% 확률로 슈퍼강화 주문서
+    if (currentField >= 8 && Math.random() < 0.01) {
+      itemSuper += 1;
+      writeLog(
+        `${userId}님이 사냥에서 <span style="color:#6cf;">슈퍼강화 주문서</span>를 획득했습니다!`
+      );
+    }
+
   } else {
     // ❌ 실패
     alert("사냥에 실패했습니다...");
   }
+
 
   huntCountToday++;
   update();
