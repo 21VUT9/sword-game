@@ -737,13 +737,15 @@ function getTodayDateString() {
 function formatTime(ts) {
   const d = new Date(ts);
 
-  const mm = String(d.getMonth() + 1).padStart(2, "0"); // 월
-  const dd = String(d.getDate()).padStart(2, "0");      // 일
-  const min = String(d.getMinutes()).padStart(2, "0");  // 분
-  const sec = String(d.getSeconds()).padStart(2, "0");  // 초
+  const MM  = String(d.getMonth() + 1).padStart(2, "0"); // 월
+  const DD  = String(d.getDate()).padStart(2, "0");      // 일
+  const hh  = String(d.getHours()).padStart(2, "0");     // 시
+  const mm  = String(d.getMinutes()).padStart(2, "0");   // 분
+  const ss  = String(d.getSeconds()).padStart(2, "0");   // 초
 
-  return `${mm}/${dd} ${min}:${sec}`;
+  return `${MM}/${DD} ${hh}:${mm}:${ss}`;
 }
+
 
 
 /* 로그 */
