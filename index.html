@@ -133,6 +133,7 @@ button {
   <hr>
   <h2>🏆 랭킹 TOP 10</h2>
   <div id="ranking">불러오는 중...</div>
+  <div id="myRank" style="margin-top:8px; font-size:14px; color:#ccc;"></div>
 </div>
 
 <!-- 🔔 로그 -->
@@ -385,7 +386,10 @@ function coloredLevel(l){
 
 /* 랭킹 */
 function loadRanking(){
-  db.ref("users")
+  const usersRef = db.ref("users");
+
+  // 🔝 TOP 10 표시 (기존 코드)
+  usersRef
     .orderByChild("sword")
     .limitToLast(10)
     .on("value", s=>{
@@ -401,14 +405,47 @@ function loadRanking(){
 
       ranking.innerHTML = arr.map((u,i)=>{
 
-return `
-  <div style="font-weight:bold;">
-    ${i+1}. ${u.id} | ${coloredLevel(u.sword)}
-  </div>
-`;
+        return `
+          <div style="font-weight:bold;">
+            ${i+1}. ${u.id} | ${coloredLevel(u.sword)}
+          </div>
+        `;
 
-}).join("");
+      }).join("");
+    });
 
+  // 👇 여기부터 “내 랭킹” 계산
+  usersRef
+    .orderByChild("sword")
+    .on("value", s=>{
+      // 아직 로그인 안 했으면 표시 안 함
+      if (!userId) {
+        myRank.innerText = "";
+        return;
+      }
+
+      let arr = [];
+      s.forEach(c => {
+        const d = c.val();
+        arr.push({
+          id: c.key,
+          sword: Number(d.sword || 0)
+        });
+      });
+
+      // 전체 유저를 sword 내림차순 정렬
+      arr.sort((a,b)=>b.sword-a.sword);
+
+      const idx = arr.findIndex(u => u.id === userId);
+
+      if (idx === -1) {
+        myRank.innerText = "내 랭킹: 기록 없음";
+      } else {
+        const myInfo = arr[idx];
+        myRank.innerHTML = `
+          내 랭킹: <b>${idx + 1}위</b> (${coloredLevel(myInfo.sword)})
+        `;
+      }
     });
 }
 
