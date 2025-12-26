@@ -315,13 +315,13 @@ const HUNT_FIELDS = [
 function update(){
 
   // 상태 표시 (power는 이미 고정값으로 계산된 상태를 그대로 사용)
-  document.getElementById("status").innerHTML = `
-    <div style="font-size:18px;">
-      🔰 현재 강화 : <b>+${sword}강</b><br>
-      ⚔️ 공격력 : <b>${power}</b><br>
-      💰 골드 : <b>${formatGold(gold)}</b>
-    </div>
-  `;
+document.getElementById("status").innerHTML = `
+  <div style="font-size:18px;">
+    🔰 현재 강화 : <b>+${sword}강</b><br>
+    ⚔️ 공격력 : <b>${formatGold(power)}</b><br>
+    💰 골드 : <b>${formatGold(gold)}</b>
+  </div>
+`;
 
 
   // 🔹 강화 성공/실패 정보
@@ -660,8 +660,11 @@ function upgrade() {
       return;
     }
 
-    itemScroll15 -= 1;
-    sword = 15;
+     itemScroll15 -= 1;
+  sword = 15;
+  rollPowerForCurrentSword();   // ✅ 15강 기준 공격력 재설정
+
+    
 
     if (scroll15El) scroll15El.checked = false; // 한 번 쓰고 체크 해제
 
@@ -706,6 +709,9 @@ function upgrade() {
       up--;
     }
 
+  // ✅ 새 강화 단계 기준으로 공격력 재설정
+  rollPowerForCurrentSword();
+    
     alert(useSuper ? "강화 대성공! (+2강)" : "강화 성공!");
 
     if (before >= 20) {
@@ -737,14 +743,17 @@ function upgrade() {
             alert("실패 (유지)");
           } else {
             sword--;
+            rollPowerForCurrentSword();   // ✅ 한 단계 강등된 공격력 재설정
             alert("강등");
           }
         } else {
           if (Math.random() < 0.4) {
             sword--;
+             rollPowerForCurrentSword();   // ✅ 고레벨 강등 시 재설정
             alert("강등");
           } else {
             sword = 0;
+            rollPowerForCurrentSword();   // ✅ 0강 공격력으로 리셋
             writeLog(
               `${userId}이 ${coloredLevel(before)} 도전에 실패하여 ` +
               `<span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`,
@@ -953,20 +962,23 @@ userRef.set({
         return;
       }
 
-      const data = s.val();
+  const data = s.val();
 
-      sword = data.sword ?? 0;
-power = data.power ?? 10;
-gold  = data.gold  ?? 100;
+  sword = data.sword ?? 0;
+  gold  = data.gold  ?? 100;
 
-attendanceCount    = data.attendanceCount    ?? 0;
-lastAttendanceDate = data.lastAttendanceDate ?? "";
-currentField   = data.currentField   ?? 1;
-huntCountToday = data.huntCountToday ?? 0;
-lastHuntDate   = data.lastHuntDate   ?? "";
-itemScroll15 = data.itemScroll15 ?? 0;
-itemProtect  = data.itemProtect  ?? 0;
-itemSuper    = data.itemSuper    ?? 0;
+  attendanceCount    = data.attendanceCount    ?? 0;
+  lastAttendanceDate = data.lastAttendanceDate ?? "";
+  currentField   = data.currentField   ?? 1;
+  huntCountToday = data.huntCountToday ?? 0;
+  lastHuntDate   = data.lastHuntDate   ?? "";
+  itemScroll15 = data.itemScroll15 ?? 0;
+  itemProtect  = data.itemProtect  ?? 0;
+  itemSuper    = data.itemSuper    ?? 0;
+
+  // ✅ 로그인 시 현재 강화 단계 기준으로 공격력 재설정
+  rollPowerForCurrentSword();
+
 
 
     }
