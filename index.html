@@ -32,6 +32,33 @@ button {
   from {background-position:0%}
   to {background-position:100%}
 }
+  /* ✨ 실버 / 골드 반짝임 */
+.sparkle-silver {
+  color: #C0C0C0;
+  font-weight: bold;
+  text-shadow: 0 0 5px rgba(192,192,192,0.8);
+  animation: sparkle 1.5s infinite alternate;
+}
+
+.sparkle-gold {
+  color: #FFD700;
+  font-weight: bold;
+  text-shadow: 0 0 8px rgba(255,215,0,0.9);
+  animation: sparkle 1.2s infinite alternate;
+}
+
+/* ✨ 공통 반짝 애니메이션 */
+@keyframes sparkle {
+  from {
+    opacity: 0.85;
+    filter: brightness(1);
+  }
+  to {
+    opacity: 1;
+    filter: brightness(1.4);
+  }
+}
+
 
 /* 🔔 토스트 */
 #toastLog {
@@ -225,16 +252,63 @@ userRef.update({
 
 /* 색상 */
 function getSwordColor(l){
-  if(l>=30) return "rainbow";
-  if(l>=21) return "red";
-  if(l>=16) return "yellow";
-  if(l>=11) return "lime";
+  if (l >= 30) return "rainbow";
+  if (l === 29) return "sparkle-gold";
+  if (l === 28) return "sparkle-silver";
+
+  const colorMap = {
+    21: "red",
+    22: "yellow",
+    23: "lime",
+    24: "cyan",
+    25: "violet",
+    26: "brown",
+    27: "pink"
+  };
+
+  if (l >= 21) return colorMap[l] || "white";
+  if (l >= 11) return "lime";
   return "white";
 }
-function coloredLevel(l){
-  if(l>=30) return `<span class="rainbow">+${l}강</span>`;
-  return `<span style="color:${getSwordColor(l)};font-weight:bold;">+${l}강</span>`;
+
+  function coloredLevel(l){
+  // 🌈 30강
+  if (l >= 30) {
+    return `<span class="rainbow">+${l}강</span>`;
+  }
+
+  // ✨ 29 / 28 반짝
+  if (l === 29) {
+    return `<span class="sparkle-gold">+${l}강</span>`;
+  }
+  if (l === 28) {
+    return `<span class="sparkle-silver">+${l}강</span>`;
+  }
+
+  // 🎨 21~27 개별 색상
+  const colorMap = {
+    21: "red",
+    22: "yellow",
+    23: "lime",
+    24: "cyan",
+    25: "violet",
+    26: "brown",
+    27: "pink"
+  };
+
+  if (l >= 21) {
+    return `<span style="color:${colorMap[l]};font-weight:bold;">+${l}강</span>`;
+  }
+
+  // 11~20
+  if (l >= 11) {
+    return `<span style="color:lime;font-weight:bold;">+${l}강</span>`;
+  }
+
+  // 기본
+  return `+${l}강`;
 }
+
 
 /* 랭킹 */
 function loadRanking(){
@@ -252,11 +326,16 @@ function loadRanking(){
       });
       arr.sort((a,b)=>b.sword-a.sword);
 
-      ranking.innerHTML=arr.map((u,i)=>`
-        <div style="color:${getSwordColor(u.sword)};font-weight:bold;">
-          ${i+1}. ${u.id} | +${u.sword}강
-        </div>
-      `).join("");
+      ranking.innerHTML = arr.map((u,i)=>{
+  const cls = getSwordColor(u.sword);
+
+  return `
+    <div class="${cls}" style="font-weight:bold;">
+      ${i+1}. ${u.id} | +${u.sword}강
+    </div>
+  `;
+}).join("");
+
     });
 }
 
