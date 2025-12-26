@@ -305,7 +305,13 @@ function login(){
   userRef=db.ref("users/"+userId);
   userRef.once("value").then(s=>{
     if(!s.exists()){
-      userRef.set({password:userPassword,sword,power,gold});
+userRef.set({
+  password:userPassword,
+  sword,
+  power,
+  gold,
+  updated: Date.now()
+});
     }else{
       if(s.val().password!==userPassword){alert("비밀번호 오류");return;}
       sword=s.val().sword; power=s.val().power; gold=s.val().gold;
@@ -396,14 +402,23 @@ function loadRanking(){
       let arr=[];
       s.forEach(c=>{
         const d=c.val();
-       arr.push({
+arr.push({
   id: c.key,
   sword: Number(d.sword || 0),
-  gold:  Number(d.gold  || 0)
+  gold:  Number(d.gold  || 0),
+  updated: Number(d.updated || 0)   // 🔹 추가
 });
 
       });
-      arr.sort((a,b)=>b.sword-a.sword);
+arr.sort((a, b) => {
+  // 1️⃣ 먼저 강화 수치 높은 사람이 위
+  if (b.sword !== a.sword) {
+    return b.sword - a.sword;
+  }
+  // 2️⃣ 같은 강화 수치면, updated가 더 작은(더 예전) 사람이 위
+  return a.updated - b.updated;
+});
+
 
 ranking.innerHTML = arr.map((u,i)=>{
 
