@@ -275,25 +275,56 @@ function update(){
   let failInfo = "";
   let failRemain = 100 - success; // 실패 총 비율
 
+  // 16~19강에서 쓸 파괴 비율 (실패 중에서 몇 %를 파괴로)
+  const midDestroyRatio = {
+    16: 0.10, // 실패 중 10% → 파괴  ≒ 전체 6% 정도
+    17: 0.12, // 실패 중 12% → 파괴  ≒ 전체 8% 정도
+    18: 0.13, // 실패 중 13% → 파괴  ≒ 전체 9% 정도
+    19: 0.14  // 실패 중 14% → 파괴  ≒ 전체 10% 정도
+  };
+
   if (sword <= 10) {
+
     failInfo = `
       실패: <b>${failRemain}%</b> (유지)
     `;
+
+  } else if (sword >= 16 && sword <= 19) {
+    // 🧨 16~19강 구간: 약한 파괴 + 강등
+
+    const destroy = Math.round(failRemain * midDestroyRatio[sword]);
+    const down    = failRemain - destroy;
+
+    failInfo = `
+      실패: <b>${failRemain}%</b>
+      — 강등 <b>${down}%</b> /
+      파괴 <span style="color:red;font-weight:bold;">${destroy}%</span>
+    `;
+
   } else if (sword <= 20) {
+    // 11~15, 20강 : 예전처럼 실패 시 유지/강등
+
     const keep = Math.round(failRemain * 0.5);
     const down = failRemain - keep;
+
     failInfo = `
       실패: <b>${failRemain}%</b>
       — 유지 <b>${keep}%</b> / 강등 <b>${down}%</b>
     `;
+
   } else {
+    // 21강 이상: 기존처럼 강등/파괴 (40/60 비율)
+
     const down = Math.round(failRemain * 0.4);
     const destroy = failRemain - down;
+
     failInfo = `
       실패: <b>${failRemain}%</b>
-      — 강등 <b>${down}%</b> / 파괴 <span style="color:red;font-weight:bold;">${destroy}%</span>
+      — 강등 <b>${down}%</b> /
+      파괴 <span style="color:red;font-weight:bold;">${destroy}%</span>
     `;
   }
+
 
   // 🔸 강화 비용 계산
   const cost = getUpgradeCost(sword);
@@ -560,40 +591,79 @@ gold -= cost;
     if(before>=20){
       writeLog(`${userId}이 ${coloredLevel(before)} 도전에 성공하여 ${coloredLevel(sword)}이 되었습니다!`);
     }
-  }else{
+   }else{
     // ❌ 실패
     const isSafeLevel = (before % 5 === 0); // 5,10,15,20,25,30 세이프
 
     if (isSafeLevel) {
       // 세이프 구간: 실패해도 강등/파괴 없음
       alert("실패 (세이프 구간 유지)");
-      // sword, power 변화 없음
     } else {
-      // 🔻 기존 페널티 로직 유지
-      if(sword<=10){
+
+      // 16~19강용 파괴 비율 (실패 중 몇 %를 파괴로 할지)
+      const midDestroyRatio = {
+        16: 0.10,
+        17: 0.12,
+        18: 0.13,
+        19: 0.14
+      };
+
+      if (before <= 10) {
+        // 0~10강: 그냥 실패 = 유지
         alert("실패 (유지)");
-      }else if(sword<=20){
+
+      } else if (before >= 16 && before <= 19) {
+        // 🧨 16~19강: 약한 파괴 구간
+
+        const failRemain = 100 - getUpgradeChance(before); // 전체 실패율
+        const destroyProb = failRemain * midDestroyRatio[before] / 100; // 절대 파괴 확률
+
+        const r = Math.random() * 100;
+
+        if (r < destroyProb) {
+          // 파괴
+          sword = 0;
+          writeLog(
+            `${userId}이 ${coloredLevel(before)} 도전에 실패하여 ` +
+            `<span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`,
+            true
+          );
+          alert("파괴");
+        } else {
+          // 나머지 실패는 강등
+          sword--;
+          alert("강등");
+        }
+
+      } else if (before <= 20) {
+        // 11~15, 20강: 기존 로직 (실패 시 50% 유지 / 50% 강등)
+
         if(Math.random()<0.5) {
           alert("실패 (유지)");
         } else {
-          sword--;  
-          rollPowerForCurrentSword();
+          sword--;
           alert("강등");
         }
-      }else{
+
+      } else {
+        // 21강 이상: 기존 지옥 구간 (실패 시 40% 강등 / 60% 파괴)
+
         if(Math.random()<0.4){
-          sword--;  
-          rollPowerForCurrentSword();
+          sword--;
           alert("강등");
         }else{
-          sword=0; 
-           rollPowerForCurrentSword();
-          writeLog(`${userId}이 ${coloredLevel(before)} 도전에 실패하여 <span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`,true);
+          sword=0;
+          writeLog(
+            `${userId}이 ${coloredLevel(before)} 도전에 실패하여 ` +
+            `<span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`,
+            true
+          );
           alert("파괴");
         }
       }
     }
   }
+
   update(); save();
 }
 
