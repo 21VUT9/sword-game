@@ -207,7 +207,7 @@ function login(){
     }
     loginScreen.style.display="none";
     gameScreen.style.display="block";
-    update(); loadRanking();
+    update(); 
   });
 }
 
@@ -238,17 +238,28 @@ function coloredLevel(l){
 
 /* 랭킹 */
 function loadRanking(){
-  db.ref("users").orderByChild("sword").limitToLast(10).on("value", s=>{
-    let arr=[];
-    s.forEach(c=>arr.push({id:c.key,...c.val()}));
-    arr.reverse();
-    ranking.innerHTML=arr.map((u,i)=>`
-      <div style="color:${getSwordColor(u.sword)};font-weight:bold;">
-        ${i+1}. ${u.id} | +${u.sword}강
-      </div>
-    `).join("");
-  });
+  db.ref("users")
+    .orderByChild("sword")
+    .limitToLast(10)
+    .on("value", s=>{
+      let arr=[];
+      s.forEach(c=>{
+        const d=c.val();
+        arr.push({
+          id: c.key,
+          sword: Number(d.sword || 0)
+        });
+      });
+      arr.sort((a,b)=>b.sword-a.sword);
+
+      ranking.innerHTML=arr.map((u,i)=>`
+        <div style="color:${getSwordColor(u.sword)};font-weight:bold;">
+          ${i+1}. ${u.id} | +${u.sword}강
+        </div>
+      `).join("");
+    });
 }
+
 
 
 
@@ -272,6 +283,8 @@ logRef.limitToLast(50).on("child_added",s=>{
 function toggleLog(){
   logPanel.style.display = logPanel.style.display==="none"?"block":"none";
 }
+  
+  loadRanking();
 </script>
 
 </body>
