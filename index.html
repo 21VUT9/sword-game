@@ -396,22 +396,25 @@ function loadRanking(){
       let arr=[];
       s.forEach(c=>{
         const d=c.val();
-        arr.push({
-          id: c.key,
-          sword: Number(d.sword || 0)
-        });
+       arr.push({
+  id: c.key,
+  sword: Number(d.sword || 0),
+  gold:  Number(d.gold  || 0)
+});
+
       });
       arr.sort((a,b)=>b.sword-a.sword);
 
-      ranking.innerHTML = arr.map((u,i)=>{
+ranking.innerHTML = arr.map((u,i)=>{
 
-        return `
-          <div style="font-weight:bold;">
-            ${i+1}. ${u.id} | ${coloredLevel(u.sword)}
-          </div>
-        `;
+  return `
+    <div style="font-weight:bold;">
+      ${i+1}. ${u.id} | ${coloredLevel(u.sword)} | 💰 ${u.gold.toLocaleString()}
+    </div>
+  `;
 
-      }).join("");
+}).join("");
+
     });
 
   // 👇 여기부터 “내 랭킹” 계산
