@@ -210,15 +210,24 @@ function update(){
       — 강등 <b>${down}%</b> / 파괴 <span style="color:red;font-weight:bold;">${destroy}%</span>
     `;
   }
+// ⭐ 5의 배수 레벨 세이프 안내
+let safeNote = "";
+if (sword % 5 === 0) {
+  safeNote = `<br><span style="color:#6cf;">
+    ※ 세이프 구간: 실패해도 강등/파괴되지 않습니다.
+  </span>`;
+}
 
-  // -----------------------------
-  // UI 출력
-  // -----------------------------
+// -----------------------------
+// UI 출력
+// -----------------------------
 
-  document.getElementById("upgradeInfo").innerHTML = `
-    성공 <b>${success}%</b> / ${failInfo}
-    <br>필요 골드 <b>20</b>
-  `;
+document.getElementById("upgradeInfo").innerHTML = `
+  성공 <b>${success}%</b> / ${failInfo}
+  <br>필요 골드 <b>20</b>
+  ${safeNote}
+`;
+
 }
 
 
