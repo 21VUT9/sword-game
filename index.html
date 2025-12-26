@@ -327,13 +327,13 @@ function loadRanking(){
       arr.sort((a,b)=>b.sword-a.sword);
 
       ranking.innerHTML = arr.map((u,i)=>{
-  const cls = getSwordColor(u.sword);
 
-  return `
-    <div class="${cls}" style="font-weight:bold;">
-      ${i+1}. ${u.id} | +${u.sword}강
-    </div>
-  `;
+return `
+  <div style="font-weight:bold;">
+    ${i+1}. ${u.id} | ${coloredLevel(u.sword)}
+  </div>
+`;
+
 }).join("");
 
     });
