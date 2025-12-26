@@ -413,6 +413,16 @@ return `
 }
 
 
+function formatTime(ts) {
+  const d = new Date(ts);
+
+  const mm = String(d.getMonth() + 1).padStart(2, "0"); // 월
+  const dd = String(d.getDate()).padStart(2, "0");      // 일
+  const min = String(d.getMinutes()).padStart(2, "0");  // 분
+  const sec = String(d.getSeconds()).padStart(2, "0");  // 초
+
+  return `${mm}/${dd} ${min}:${sec}`;
+}
 
 
 /* 로그 */
@@ -421,9 +431,14 @@ function writeLog(message,isDestroy=false){
 }
 logRef.limitToLast(50).on("child_added",s=>{
   const d=s.val();
+
+  const ts = formatTime(d.time); // ⏱ 타임스탬프 변환
+
   const el=document.createElement("div");
   el.className="toast-item"+(d.isDestroy?" toast-destroy":"");
-  el.innerHTML=d.message;
+
+  el.innerHTML = `<span style="color:#6cf;">[${ts}]</span> ${d.message}`;
+
   toastList.prepend(el);
   while(toastList.children.length>5) toastList.lastChild.remove();
 
