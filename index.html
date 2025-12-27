@@ -386,6 +386,10 @@ firebase.initializeApp({
 const db = firebase.database();
 const logRef = db.ref("logs");
 
+function getTutorialKeyForUser(id) {
+  return `swordGameTutorialSeen_${id}`;
+}
+  
 /* 상태 */
 let sword = 0, power = 10, gold = 100;
 let userId="", userPassword="", userRef=null;
@@ -562,30 +566,34 @@ function showNpcMessage(text, imgPath = "images/npc/blacksmith_idle.png") {
 }
 
 function showTutorialIfFirstTime() {
+
+  if (!userId) return;   // 로그인 안 됐으면 수행 안 함
+
+  const key = getTutorialKeyForUser(userId);
+
   try {
-    // 이미 본 적 있으면 패스
-    if (localStorage.getItem("swordGameTutorialSeen") === "1") return;
-  } catch (e) {
-    // localStorage 막혀 있어도 게임은 돌아가게
-  }
+    if (localStorage.getItem(key) === "1") return;
+  } catch (e) {}
 
   const overlay = document.getElementById("tutorialOverlay");
   if (overlay) {
-    overlay.style.display = "flex";   // 중앙 배치
+    overlay.style.display = "flex";
   }
 }
+
 
 function closeTutorial() {
   const overlay = document.getElementById("tutorialOverlay");
-  if (overlay) {
-    overlay.style.display = "none";
-  }
+  if (overlay) overlay.style.display = "none";
+
+  if (!userId) return;
+
+  const key = getTutorialKeyForUser(userId);
 
   try {
-    localStorage.setItem("swordGameTutorialSeen", "1");
+    localStorage.setItem(key, "1");
   } catch (e) {}
 }
-
   
 function closeNpcPopup() {
   const popup = document.getElementById("npcPopup");
