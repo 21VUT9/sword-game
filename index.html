@@ -11,7 +11,7 @@ body {
   text-align:center;
   font-family:Arial;
 }
-
+  
   /* 🎫 출석 버튼 */
 #attendanceBtn {
   position:fixed;
@@ -161,6 +161,46 @@ button {
   margin-top:4px;
 }
 
+/* 🧔 NPC 팝업 */
+#npcPopup {
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.7);
+  display:none;              /* 기본 숨김 */
+  align-items:center;
+  justify-content:center;
+  z-index:2000;
+}
+
+.npc-popup-inner {
+  background:#222;
+  border:1px solid #555;
+  border-radius:10px;
+  padding:16px 20px;
+  max-width:360px;
+  width:90%;
+  text-align:center;
+  box-shadow:0 0 15px rgba(0,0,0,0.8);
+}
+
+.npc-popup-img {
+  width:140px;
+  height:auto;
+  display:block;
+  margin:0 auto 8px auto;
+}
+
+.npc-popup-text {
+  font-size:16px;
+  margin:8px 0 12px 0;
+}
+
+.npc-popup-btn {
+  padding:8px 20px;
+  font-size:14px;
+  cursor:pointer;
+}
+  
 </style>
 </head>
 
@@ -452,6 +492,27 @@ huntBtnEl.textContent = `⚔️ 사냥 (${remaining}/10)`;
   }
 }
 
+function showNpcMessage(text, imgPath = "images/npc/blacksmith_idle.png") {
+  const popup = document.getElementById("npcPopup");
+  const msgEl = document.getElementById("npcPopupText");
+  const imgEl = document.getElementById("npcPopupImg");
+
+  // 혹시 엘리먼트 못 찾으면 그냥 alert로 폴백
+  if (!popup || !msgEl || !imgEl) {
+    alert(text);
+    return;
+  }
+
+  msgEl.textContent = text;
+  imgEl.src = imgPath;
+
+  popup.style.display = "flex";   // 중앙 정렬로 표시
+}
+
+function closeNpcPopup() {
+  const popup = document.getElementById("npcPopup");
+  if (popup) popup.style.display = "none";
+}
 
 
   // 숫자 골드를 "12억 8,765만 4,252" 형태로 변환
@@ -671,17 +732,17 @@ function upgrade() {
 
   // ⚠️ 아이템 없는 상태에서 체크한 경우 → 강화 진행 금지
   if (wantScroll15 && itemScroll15 <= 0) {
-    alert("15강 강화 주문서가 없습니다.");
-    return;
-  }
-  if (wantProtect && itemProtect <= 0) {
-    alert("파괴방지 주문서가 없습니다.");
-    return;
-  }
-  if (wantSuper && itemSuper <= 0) {
-    alert("슈퍼강화 주문서가 없습니다.");
-    return;
-  }
+  showNpcMessage("15강 강화 주문서가 필요해.");
+  return;
+}
+if (wantProtect && itemProtect <= 0) {
+  showNpcMessage("파괴방지 주문서가 필요해.");
+  return;
+}
+if (wantSuper && itemSuper <= 0) {
+  showNpcMessage("슈퍼강화 주문서가 필요해.");
+  return;
+}
 
   // 🎯 15강 강화 주문서 전용 처리
   //  - 15강 미만 장비에만 사용 가능
@@ -714,10 +775,13 @@ function upgrade() {
   // 🪙 일반 강화 (파괴방지 / 슈퍼강화만 영향)
   const cost = getUpgradeCost(sword);
 
-  if (gold < cost) {
-    alert(`골드 부족! (필요: ${formatGold(cost)} G)`);
-    return;
-  }
+ if (gold < cost) {
+  showNpcMessage(
+    "자네, 골드는 충분한게 맞나?",
+    "images/npc/blacksmith_idle.png"
+  );
+  return;
+}
 
   gold -= cost;
 
@@ -1309,9 +1373,20 @@ function renderInventory() {
   `;
 }
 
-  
   loadRanking();
 </script>
 
+  <!-- 🧔 대장장이 NPC 팝업 -->
+<div id="npcPopup">
+  <div class="npc-popup-inner">
+    <img id="npcPopupImg"
+         src="images/npc/blacksmith_idle.png"
+         alt="대장장이"
+         class="npc-popup-img">
+    <div class="npc-popup-text" id="npcPopupText"></div>
+    <button class="npc-popup-btn" onclick="closeNpcPopup()">확인</button>
+  </div>
+</div>
+  
 </body>
 </html>
