@@ -449,7 +449,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.294)
+    (v3.296)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -935,16 +935,16 @@ fieldInfoEl.innerHTML = `
   }
 
   // ⚔️ 사냥 버튼(남은 횟수)
-  const remaining = 10 - huntCountToday;
+  const remaining = 20 - huntCountToday;
   if (huntBtnEl) {
-    huntBtnEl.textContent = `⚔️ 사냥 (${remaining}/10)`;
+    huntBtnEl.textContent = `⚔️ 사냥 (${remaining}/20)`;
   }
 
   // 버튼 아래 텍스트는 심플하게 남은 횟수만 (원하면 삭제 가능)
   if (huntInfoEl) {
     huntInfoEl.style.fontSize = "13px";
     huntInfoEl.style.color = "#ccc";
-    huntInfoEl.textContent = `오늘 사냥 가능 횟수: ${remaining} / 10`;
+    huntInfoEl.textContent = `오늘 사냥 가능 횟수: ${remaining} / 20`;
   }
 
 
@@ -1643,8 +1643,8 @@ function hunt(){
     huntCountToday = 0;
   }
 
-  if (huntCountToday >= 10) {
-    alert("오늘 사냥 가능 횟수를 모두 사용했습니다. (하루 10회)");
+  if (huntCountToday >= 20) {
+    alert("오늘 사냥 가능 횟수를 모두 사용했습니다. (하루 20회)");
     return;
   }
 
