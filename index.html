@@ -429,6 +429,10 @@ button {
     <input type="checkbox" id="useProtect">
     파괴방지 주문서 사용
   </label>
+  <label style="margin-right:8px;">
+    <input type="checkbox" id="useDownProtect">
+    강등방지 주문서 사용
+  </label>
   <label>
     <input type="checkbox" id="useSuper">
     슈퍼강화 주문서 사용
@@ -552,6 +556,7 @@ let lastHuntDate = "";         // 마지막 사냥 날짜 (YYYY-MM-DD)
 let itemScroll15 = 0;   // 15강 강화 주문서
 let itemProtect  = 0;   // 파괴방지 주문서
 let itemSuper    = 0;   // 슈퍼강화 주문서
+let itemDownProtect = 0;  // 🆕 강등방지 주문서
   
 // 사냥터 정보 (추천 레벨 / 이름)
 const HUNT_FIELDS = [
@@ -1010,10 +1015,12 @@ function upgrade() {
   // 🔘 체크박스 상태 읽기
   const scroll15El = document.getElementById("useScroll15");
   const protectEl  = document.getElementById("useProtect");
+  const downProtEl = document.getElementById("useDownProtect");
   const superEl    = document.getElementById("useSuper");
 
   const wantScroll15 = !!(scroll15El && scroll15El.checked);
   const wantProtect  = !!(protectEl  && protectEl.checked);
+  const wantDownProt = !!(downProtEl && downProtEl.checked);
   const wantSuper    = !!(superEl    && superEl.checked);
 
   // ⚠️ 아이템 없는 상태에서 체크한 경우 → 강화 진행 금지
@@ -1025,10 +1032,15 @@ function upgrade() {
     showNpcMessage("파괴방지 주문서가 필요해.");
     return;
   }
+  if (wantDownProt && itemDownProtect <= 0) {
+    showNpcMessage("강등방지 주문서가 필요해.");
+    return;
+  }
   if (wantSuper && itemSuper <= 0) {
     showNpcMessage("슈퍼강화 주문서가 필요해.");
     return;
   }
+
 
   // 🎯 15강 강화 주문서 전용 처리 (즉시 처리, 딜레이 X)
   if (wantScroll15) {
@@ -1091,9 +1103,13 @@ showNpcMessage(
 
   const useProtect = wantProtect && itemProtect > 0;
   const useSuper   = wantSuper   && itemSuper   > 0;
+  const useDownProt = wantDownProt && itemDownProtect > 0;
 
   if (useProtect) itemProtect -= 1;
   if (useSuper)   itemSuper   -= 1;
+  // 강등방지는 실제로 '강등이 발생했을 때만' 차감할 것이므로 여기선 빼지 않음
+  let usedDownProt = false; // 실제 발동 여부 체크
+
 
   // 🕒 1~2초 랜덤 딜레이 동안 "강화 중..." 팝업
   const delayMs = 1000 + Math.random() * 1000; // 1000~2000ms
@@ -1216,40 +1232,70 @@ if (Math.random() < chance / 100) {
               "images/npc/blacksmith_fail.png"
             );
           } else {
-            // 강등
-            sword--;
-            rollPowerForCurrentSword();
-            showNpcMessage(
-              `
-              <div style="font-size:18px; font-weight:bold; color:#FFA500;">
-                강등 발생!
-              </div>
-              <div style="margin-top:6px;">
-                에구, 한 단계 내려가 버렸네…
-              </div>
-              `,
-              "images/npc/blacksmith_fail.png"
-            );
+            // 강등 or 강등방지 발동
+            if (useDownProt && itemDownProtect > 0) {
+              usedDownProt = true;
+              showNpcMessage(
+                `
+                <div style="font-size:18px; font-weight:bold; color:#FFA500;">
+                  강등 방지!
+                </div>
+                <div style="margin-top:6px;">
+                  아슬아슬했네… 강등방지 주문서가 단계를 지켜줬다네.
+                </div>
+                `,
+                "images/npc/blacksmith_fail.png"
+              );
+            } else {
+              sword--;
+              rollPowerForCurrentSword();
+              showNpcMessage(
+                `
+                <div style="font-size:18px; font-weight:bold; color:#FFA500;">
+                  강등 발생!
+                </div>
+                <div style="margin-top:6px;">
+                  에구, 한 단계 내려가 버렸네…
+                </div>
+                `,
+                "images/npc/blacksmith_fail.png"
+              );
+            }
           }
         } else {
           // 21강 이상
           if (Math.random() < 0.4) {
-            // 강등
-            sword--;
-            rollPowerForCurrentSword();
-            showNpcMessage(
-              `
-              <div style="font-size:18px; font-weight:bold; color:#FFA500;">
-                강등 발생!
-              </div>
-              <div style="margin-top:6px;">
-                에구, 한 단계 내려가 버렸네…
-              </div>
-              `,
-              "images/npc/blacksmith_fail.png"
-            );
+            // 강등 or 강등방지 발동
+            if (useDownProt && itemDownProtect > 0) {
+              usedDownProt = true;
+              showNpcMessage(
+                `
+                <div style="font-size:18px; font-weight:bold; color:#FFA500;">
+                  강등 방지!
+                </div>
+                <div style="margin-top:6px;">
+                  방금 건 정말 위험했네… 단계는 그대로라네.
+                </div>
+                `,
+                "images/npc/blacksmith_fail.png"
+              );
+            } else {
+              sword--;
+              rollPowerForCurrentSword();
+              showNpcMessage(
+                `
+                <div style="font-size:18px; font-weight:bold; color:#FFA500;">
+                  강등 발생!
+                </div>
+                <div style="margin-top:6px;">
+                  에구, 한 단계 내려가 버렸네…
+                </div>
+                `,
+                "images/npc/blacksmith_fail.png"
+              );
+            }
           } else {
-            // 파괴
+            // 파괴 (강등방지는 파괴엔 효과 없음)
             sword = 0;
             rollPowerForCurrentSword();
             writeLog(
@@ -1274,6 +1320,13 @@ if (Math.random() < chance / 100) {
     }
   }
 
+    // 강등방지 주문서가 실제로 발동했으면 수량 1개 차감
+    if (usedDownProt) {
+      itemDownProtect -= 1;
+      writeLog(
+        `${userId}님이 <span style="color:#6cf;">강등방지 주문서</span>를 사용해 강등을 막았습니다!`
+      );
+    }
 
     // UI 갱신 + 저장 + 플래그 해제
     update();
@@ -1385,7 +1438,15 @@ const atk = power; // 지금은 사용 X, 나중에 사냥 데미지/성공률�
         `${userId}님이 사냥에서 <span style="color:#6cf;">슈퍼강화 주문서</span>를 획득했습니다!`
       );
     }
+    // 🆕 LV4 이상: 10% 확률로 강등방지 주문서
+    if (currentField >= 4 && Math.random() < 0.10) {
+      itemDownProtect += 1;
+      writeLog(
+        `${userId}님이 사냥에서 <span style="color:#6cf;">강등방지 주문서</span>를 획득했습니다!`
+      );
+    }
 
+    
   } else {
     // ❌ 실패
     alert("사냥에 실패했습니다...");
@@ -1464,6 +1525,7 @@ userRef.set({
   itemScroll15: 0,
   itemProtect: 0,
   itemSuper: 0
+  itemDownProtect: 0
 });
 
 
@@ -1490,6 +1552,7 @@ userRef.set({
   itemScroll15 = data.itemScroll15 ?? 0;
   itemProtect  = data.itemProtect  ?? 0;
   itemSuper    = data.itemSuper    ?? 0;
+  itemDownProtect = data.itemDownProtect ?? 0;
 
   // ✅ 로그인 시 현재 강화 단계 기준으로 공격력 재설정
   rollPowerForCurrentSword();
@@ -1526,6 +1589,7 @@ function save() {
   itemScroll15: Number(itemScroll15),
   itemProtect: Number(itemProtect),
   itemSuper: Number(itemSuper)
+  itemDownProtect: Number(itemDownProtect)
 });
 
 
@@ -1782,6 +1846,7 @@ function renderInventory() {
     <ul style="list-style:none; padding-left:0;">
       <li>📜 15강 강화 주문서: <b>${itemScroll15}</b>개</li>
       <li>🛡 파괴방지 주문서: <b>${itemProtect}</b>개</li>
+      <li>🔒 강등방지 주문서: <b>${itemDownProtect}</b>개</li>
       <li>✨ 슈퍼강화 주문서: <b>${itemSuper}</b>개</li>
     </ul>
   `;
