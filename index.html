@@ -207,10 +207,11 @@ button {
   position:fixed;
   inset:0;
   background:rgba(0,0,0,0.75);
-  display:none;               /* 기본 숨김 */
-  align-items:center;
-  justify-content:center;
+  display:none;
+  align-items:flex-start;   /* ⬅️ 위쪽 기준으로 정렬 */
+  justify-content:center;   /* 가로는 중앙 유지 */
   z-index:1900;
+  padding-top:60px;         /* ⬅️ 위에서 약간 띄워주기 */
 }
 
 .tutorial-box {
