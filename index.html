@@ -3,6 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <title>검 키우기</title>
+.field-bg {
+  max-width: 430px;
+  margin: 0 auto 20px auto;
+  /* padding: 10px 10px 20px 10px; */   /* ✅ 박스 두께 제거 (원하면 유지 가능) */
+  /* border-radius: 20px; */            /* ✅ 모서리 둥근 박스 제거 */
+  position: relative;
+
+  /* 배경 이미지는 ::before에서만 사용 */
+  background: transparent;              /* ✅ 까만 배경 제거 */
+}
 
 
 <style>
@@ -700,25 +710,12 @@ function applyFieldBackground() {
   const bgEl = document.getElementById("fieldBg");
   if (!bgEl) return;
 
-  const imgMap = {
-    1: "images/fields/field1_mushroom_village.png",   // 평화로운 버섯마을
-    2: "images/fields/field2_sewer_plague_rat.png",   // 시궁창
-    3: "images/fields/field3_outlaw_west.png",        // 무법자들의 황야
-    4: "images/fields/field4_swamp_elf.png",          // 늪엘프의 숲
-    5: "images/fields/field5_frost_queen_cave.png",   // 서리여왕의 동굴
-    6: "images/fields/field6_death_king.png",         // 망령왕의 죽음세계
-    7: "images/fields/field7_behemoth_hell.png",      // 베히모스의 불구덩이
-    8: "images/fields/field8_archangel_cradle.png",   // 대천사의 요람
-    9: "images/fields/field9_god_realm.png",          // 신의 처소
-    10:"images/fields/field10_dimension_rift.png"     // 차원의 틈새
-  };
+  // 이미 위에서 선언한 FIELD_BACKGROUNDS 사용
+  const url = FIELD_BACKGROUNDS[currentField] || FIELD_BACKGROUNDS[1];
 
-  const url = imgMap[currentField] || imgMap[1];
-
-  // CSS 커스텀 변수로 넘겨서 ::before가 사용
+  // CSS ::before가 쓸 커스텀 속성에 주입
   bgEl.style.setProperty("--field-bg-image", `url('${url}')`);
 }
-
   
 /* UI */
 
