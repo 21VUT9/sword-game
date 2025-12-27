@@ -118,16 +118,35 @@ button {
   display:none;
 }
 
+  /* 🗺 사냥터별 배경 박스 */
+.field-bg {
+  max-width: 430px;
+  margin: 0 auto 20px auto;
+  padding: 10px 10px 20px 10px;
+  border-radius: 20px;
+  position: relative;
+
+  /* 배경 이미지용 */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: #000; /* 이미지 없을 때 */
+}
+  
 /* ================= 유저 프로필 카드 ================ */
 
 #userProfileArea {
   max-width: 320px;
   margin: 10px auto 20px auto;
-  background: #181818;
+
+  /* 🔁 불투명 → 반투명 + 블러 */
+  background: rgba(24, 24, 24, 0.55);
+  backdrop-filter: blur(5px);
+
   border-radius: 16px;
   box-shadow: 0 0 18px rgba(0,0,0,0.7);
   padding: 16px 12px 14px 12px;
-    position: relative;           /* ⬅️ 공유 버튼 위치 기준 */
+  position: relative;  /* 공유 버튼 기준 */
 }
 
 /* 프로필 상단 오른쪽 공유 버튼 */
@@ -358,7 +377,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.26)
+    (v3.27)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -370,6 +389,9 @@ button {
 <div id="gameScreen" style="display:none;">
   <h1>⚔️ 검 키우기</h1>
 
+  <!-- 🔥 사냥터 배경 박스 (프로필~랭킹 전체를 감쌈) -->
+  <div id="fieldBg" class="field-bg">
+  
 <!-- 🧾 유저 프로필 카드 -->
 <div id="userProfileArea">
 
@@ -460,6 +482,9 @@ button {
   <h2>🏆 랭킹 TOP 10</h2>
   <div id="ranking">불러오는 중...</div>
   <div id="myRank" style="margin-top:8px; font-size:14px; color:#ccc;"></div>
+
+     </div> <!-- 🔚 fieldBg -->
+  
 </div>
 
 <button id="attendanceBtn" onclick="checkAttendance()">출석</button>
@@ -475,9 +500,6 @@ button {
 ">
   로그아웃
 </button>
-
-<button id="attendanceBtn" onclick="checkAttendance()">출석</button>
-
   
 <!-- 🔔 로그 -->
 <div id="toastLog"><div id="toastList"></div></div>
@@ -594,6 +616,20 @@ const HUNT_FIELDS = [
   { id:9, name:"신의 처소",           recLevel:24 },
   { id:10,name:"차원의 틈새",         recLevel:27 }
 ];
+  // 각 사냥터별 배경 이미지 (파일명은 예시)
+const FIELD_BACKGROUNDS = {
+  1: "images/fields/field1_mushroom_heinesis.png",    // 평화로운 버섯마을
+  2: "images/fields/field2_sewer_zaun.png",           // 역병쥐가 들끓는 시궁창
+  3: "images/fields/field3_outlaw_west.png",          // 무법자들의 황야
+  4: "images/fields/field4_swamp_elf.png",            // 늪엘프의 숲
+  5: "images/fields/field5_frost_queen_cave.png",     // 서리여왕의 동굴
+  6: "images/fields/field6_lich_deathrealm.png",      // 망령왕의 죽음세계
+  7: "images/fields/field7_behemoth_hellpit.png",     // 베히모스의 불구덩이
+  8: "images/fields/field8_archangel_cradle.png",     // 대천사의 요람
+  9: "images/fields/field9_gods_throne.png",          // 신의 처소
+  10:"images/fields/field10_dimensional_rift.png"     // 차원의 틈새
+};
+
 
 function logout() {
   // 저장된 자동 로그인 정보 삭제
@@ -636,8 +672,20 @@ function logout() {
 
   
 /* UI */
+
 function update(){
 
+  // 🔥 현재 사냥터 배경 업데이트
+  const fieldBgEl = document.getElementById("fieldBg");
+  if (fieldBgEl) {
+    const bgPath = FIELD_BACKGROUNDS[currentField];
+    if (bgPath) {
+      fieldBgEl.style.backgroundImage = `url('${bgPath}')`;
+    } else {
+      fieldBgEl.style.backgroundImage = "none";
+    }
+  }
+  
   /* 🧾 유저 프로필 영역 갱신 */
   const nickEl   = document.getElementById("profileNickname");
   const swordEl  = document.getElementById("profileSword");
