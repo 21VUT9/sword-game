@@ -562,7 +562,7 @@ function showNpcMessage(text, imgPath = "images/npc/blacksmith_idle.png", showBu
     return;
   }
 
-  msgEl.textContent = text;
+  msgEl.innerHTML = text;
   imgEl.src = imgPath;
 
   // 버튼 표시 여부 제어
@@ -862,9 +862,17 @@ function upgrade() {
 
 // 퍼그란트 대사 + 성공 이미지
 showNpcMessage(
-  "좋지! 15강, 단숨에 올려주지.",
-  "images/npc/blacksmith_success.png"   // ← 15강 성공 이미지 경로
+  `
+  <div style="font-size:18px; font-weight:bold; color:#C0C0C0;">
+    15강 강화!
+  </div>
+  <div style="margin-top:6px;">
+    좋지! 15강, 단숨에 올려주지.
+  </div>
+  `,
+  "images/npc/blacksmith_success.png"
 );
+
 
 
     update();
@@ -928,14 +936,30 @@ if (Math.random() < chance / 100) {
   // 퍼그란트 성공 멘트
   if (useSuper) {
     showNpcMessage(
-      "두 단계나 올라갔다고!? 전설이 보이는군!",
-      "images/npc/blacksmith_success.png"
-    );
+  `
+  <div style="font-size:18px; font-weight:bold; color:#FFD700;">
+    슈퍼강화성공!
+  </div>
+  <div style="margin-top:6px;">
+    두 단계나 올라갔다고!? 전설이 보이는군!
+  </div>
+  `,
+  "images/npc/blacksmith_success.png"
+);
+
   } else {
     showNpcMessage(
-      "좋아! 제대로 붙었구만!",
-      "images/npc/blacksmith_success.png"
-    );
+  `
+  <div style="font-size:18px; font-weight:bold; color:#FFFFFF;">
+    강화성공!
+  </div>
+  <div style="margin-top:6px;">
+    좋아! 제대로 붙었구만!
+  </div>
+  `,
+  "images/npc/blacksmith_success.png"
+);
+
   }
 
   if (before >= 20) {
