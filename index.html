@@ -21,18 +21,22 @@ body {
   margin-top: 6px;
 }
 
-.action-buttons button {
-  flex: 1;
-  max-width: 120px;
-  margin: 0;            /* 🔥 여기서 margin 제거해서 줄 안 넘어가게 */
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  margin-top: 6px;
 }
 
-/* 전체 버튼 기본 스타일 */
-button {
-  padding:15px 30px;
-  font-size:18px;
-  margin:10px;          /* 공용 버튼 마진 */
+.action-buttons button {
+  flex: 0 0 auto;        /* 버튼 폭을 글자 길이에 맞게 */
+  padding: 10px 18px;    /* 가로 패딩 줄여서 폭 확보 */
+  font-size: 16px;       /* 글자 조금만 줄이기 */
+  margin: 0;             /* 공용 button 마진 제거 */
+  white-space: nowrap;   /* 🔥 버튼 안에서 줄바꿈 금지 */
 }
+
   
   /* 🎫 출석 버튼 */
 #attendanceBtn {
@@ -498,7 +502,19 @@ button {
   <button onclick="sell()">💰 판매</button>
 </div>
 
+/* 🎯 강화 아이템 체크박스 줄 정리 */
+#upgradeItems {
+  display: flex;
+  flex-wrap: wrap;           /* 화면 좁으면 라벨 단위로 다음 줄로 내려가게 */
+  justify-content: center;
+  gap: 4px 12px;             /* 라벨 사이 간격 */
+}
 
+#upgradeItems label {
+  white-space: nowrap;       /* 🔥 라벨 안에서 줄바꿈 금지 (항상 한 줄) */
+}
+
+    
 <!-- 🎯 강화 아이템 사용 체크박스 -->
 <div id="upgradeItems" style="margin-top:8px; font-size:13px;">
   <label style="margin-right:8px;">
