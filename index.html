@@ -12,19 +12,27 @@ body {
   font-family:Arial;
 }
 
+/* 🔨 강화 / 사냥 / 판매 버튼 묶음 */
 .action-buttons {
   display: flex;
-  justify-content: center;  /* 가운데 정렬 */
-  gap: 10px;                /* 버튼 간 간격 */
-  flex-wrap: nowrap;        /* 줄바꿈 안되게 */
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: nowrap;
   margin-top: 6px;
 }
 
 .action-buttons button {
-  flex: 1;                  /* 버튼을 균등 너비로 */
-  max-width: 110px;         /* 버튼 너무 길어지지 않게 제한 */
+  flex: 1;
+  max-width: 120px;
+  margin: 0;            /* 🔥 여기서 margin 제거해서 줄 안 넘어가게 */
 }
 
+/* 전체 버튼 기본 스타일 */
+button {
+  padding:15px 30px;
+  font-size:18px;
+  margin:10px;          /* 공용 버튼 마진 */
+}
   
   /* 🎫 출석 버튼 */
 #attendanceBtn {
@@ -384,10 +392,13 @@ button {
 
 /* fieldBg 안의 내용은 그대로, 배경만 ::before로 깔기 */
 .field-bg {
+  max-width: 430px;
+  margin: 0 auto 20px auto;
   position: relative;
-  z-index: 1;        /* 내용이 배경보다 위에 오게 */
+  z-index: 0;                     /* 스택 기준 */
 }
 
+/* 진짜 배경은 가상 요소로: 가로는 화면 전체, 세로는 fieldBg 높이까지만 */
 .field-bg::before {
   content: "";
   position: absolute;
@@ -400,9 +411,10 @@ button {
   background-size: cover;
   background-position: center top;
   background-repeat: no-repeat;
-  /* filter: blur(3px) brightness(0.6);  ← 삭제 */
-  filter: brightness(0.6);  /* 살짝만 어둡게, 선명함 유지 */
+  filter: brightness(0.6);
+  z-index: -1;                    /* 👈 내용 뒤로 확실하게 보내기 */
 }
+
 
   
 </style>
@@ -432,7 +444,6 @@ button {
   
 <!-- 🧾 유저 프로필 카드 -->
 <div id="userProfileArea">
-
   <div class="profile-card-inner">
 
     <!-- 센터 무기 이미지 -->
