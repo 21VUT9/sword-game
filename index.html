@@ -565,6 +565,9 @@ let lastAttendanceDate = "";
 // 🆕 강화 진행 중인지 여부
 let isUpgrading = false;
 
+// 🧭 사냥터 이동 중인지 여부
+let isMoving = false;
+
   // 🗺 사냥 관련 상태
 let currentField = 1;          // 1~10 사냥터
 let huntCountToday = 0;        // 오늘 사냥 횟수
@@ -844,7 +847,42 @@ function closeNpcPopup() {
   if (popup) popup.style.display = "none";
 }
 
+// 🧭 사냥터 이동 전용 팝업 (NPC 이미지/버튼 숨김)
+function showMovePopup() {
+  const popup = document.getElementById("npcPopup");
+  const msgEl = document.getElementById("npcPopupText");
+  const imgEl = document.getElementById("npcPopupImg");
+  const btnEl = document.querySelector(".npc-popup-btn");
 
+  if (!popup || !msgEl || !imgEl) return;
+
+  // 이미지 / 버튼 숨기고, 텍스트만 표시
+  imgEl.style.display = "none";
+  if (btnEl) btnEl.style.display = "none";
+
+  msgEl.innerHTML = `
+    <div style="font-size:18px; font-weight:bold; color:#FFFFFF;">
+      사냥터 이동 중...
+    </div>
+  `;
+
+  popup.style.display = "flex";
+}
+
+function closeMovePopup() {
+  const popup = document.getElementById("npcPopup");
+  const imgEl = document.getElementById("npcPopupImg");
+  const btnEl = document.querySelector(".npc-popup-btn");
+
+  if (!popup) return;
+
+  // 다음에 NPC 대사 쓸 수 있도록 원상복구
+  if (imgEl) imgEl.style.display = "block";
+  if (btnEl) btnEl.style.display = "inline-block";
+
+  popup.style.display = "none";
+}
+  
   // 숫자 골드를 "12억 8,765만 4,252" 형태로 변환
 function formatGold(value) {
   const n = Number(value) || 0;
@@ -1758,11 +1796,33 @@ function renderMap() {
       추천: +${field.recLevel}강 / 현재 예상 성공률: ${success}%
     `;
     div.onclick = function() {
-      currentField = i;
-      toggleMap(); // 선택 후 닫기
-      update();    // UI 갱신
-      save();      // 선택 사냥터 저장
+
+      // 이미 이동 중이면 무시
+      if (isMoving) return;
+
+      isMoving = true;
+
+      // "사냥터 이동 중..." 팝업 표시
+      showMovePopup();
+
+      const delay = 1000 + Math.random() * 1000; // 1~2초 랜덤
+
+      setTimeout(() => {
+        // 실제 사냥터 변경
+        currentField = i;
+
+        // UI 갱신 + 저장
+        update();
+        save();
+
+        // 맵 패널 닫기 + 이동 팝업 닫기
+        toggleMap();
+        closeMovePopup();
+
+        isMoving = false;
+      }, delay);
     };
+
 
     // 현재 선택 사냥터 표시
     if (i === currentField) {
