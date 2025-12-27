@@ -724,19 +724,8 @@ function applyFieldBackground() {
   
 /* UI */
 
-function update(){
+function update() {
 
-  // 🔥 현재 사냥터 배경 업데이트
-  const fieldBgEl = document.getElementById("fieldBg");
-  if (fieldBgEl) {
-    const bgPath = FIELD_BACKGROUNDS[currentField];
-    if (bgPath) {
-      fieldBgEl.style.backgroundImage = `url('${bgPath}')`;
-    } else {
-      fieldBgEl.style.backgroundImage = "none";
-    }
-  }
-  
   /* 🧾 유저 프로필 영역 갱신 */
   const nickEl   = document.getElementById("profileNickname");
   const swordEl  = document.getElementById("profileSword");
@@ -758,72 +747,55 @@ function update(){
     goldEl.textContent  = formatGold(gold);
   }
   if (weaponValueEl) {
-    const avgValue = getSellRewardAverage(sword);     // 🆕 평균 판매가
+    const avgValue = getSellRewardAverage(sword); // 평균 판매가
     weaponValueEl.textContent = formatGold(avgValue);
   }
   if (huntEl) {
     const today = getTodayDateString();
     if (lastHuntDate !== today) {
-      // 날짜 바뀌면 0/10 으로 보이도록
       huntEl.textContent = `0 / 10`;
     } else {
       huntEl.textContent = `${huntCountToday} / 10`;
     }
   }
 
-const statusEl = document.getElementById("status");
-if (statusEl) statusEl.innerHTML = "";
-
-
+  const statusEl = document.getElementById("status");
+  if (statusEl) statusEl.innerHTML = "";
 
   // 🔹 강화 성공/실패 정보
   const success = getUpgradeChance(sword);
   let failInfo = "";
   let failRemain = 100 - success; // 실패 총 비율
 
-  // 16~19강에서 쓸 파괴 비율 (실패 중에서 몇 %를 파괴로)
   const midDestroyRatio = {
-    16: 0.10, // 실패 중 10% → 파괴  ≒ 전체 6% 정도
-    17: 0.12, // 실패 중 12% → 파괴  ≒ 전체 8% 정도
-    18: 0.13, // 실패 중 13% → 파괴  ≒ 전체 9% 정도
-    19: 0.14  // 실패 중 14% → 파괴  ≒ 전체 10% 정도
+    16: 0.10,
+    17: 0.12,
+    18: 0.13,
+    19: 0.14
   };
 
   if (sword <= 10) {
-
     failInfo = `
       실패: <b>${failRemain}%</b> (유지)
     `;
-
   } else if (sword >= 16 && sword <= 19) {
-    // 🧨 16~19강 구간: 약한 파괴 + 강등
-
     const destroy = Math.round(failRemain * midDestroyRatio[sword]);
     const down    = failRemain - destroy;
-
     failInfo = `
       실패: <b>${failRemain}%</b>
       — 강등 <b>${down}%</b> /
       파괴 <span style="color:red;font-weight:bold;">${destroy}%</span>
     `;
-
   } else if (sword <= 20) {
-    // 11~15, 20강 : 예전처럼 실패 시 유지/강등
-
     const keep = Math.round(failRemain * 0.5);
     const down = failRemain - keep;
-
     failInfo = `
       실패: <b>${failRemain}%</b>
       — 유지 <b>${keep}%</b> / 강등 <b>${down}%</b>
     `;
-
   } else {
-    // 21강 이상: 기존처럼 강등/파괴 (40/60 비율)
-
     const down = Math.round(failRemain * 0.4);
     const destroy = failRemain - down;
-
     failInfo = `
       실패: <b>${failRemain}%</b>
       — 강등 <b>${down}%</b> /
@@ -831,11 +803,8 @@ if (statusEl) statusEl.innerHTML = "";
     `;
   }
 
-
-  // 🔸 강화 비용 계산
   const cost = getUpgradeCost(sword);
 
-  // ⭐ 5의 배수 레벨 세이프 안내
   let safeNote = "";
   if (sword % 5 === 0 && sword !== 0) {
     safeNote = `<br><span style="color:#6cf;">
@@ -843,12 +812,14 @@ if (statusEl) statusEl.innerHTML = "";
     </span>`;
   }
 
-  // 강화 정보 UI 출력
-  document.getElementById("upgradeInfo").innerHTML = `
-    성공 <b>${success}%</b> / ${failInfo}
-    <br>필요 골드 <b>${formatGold(cost)}</b>
-    ${safeNote}
-  `;
+  const upgradeInfoEl = document.getElementById("upgradeInfo");
+  if (upgradeInfoEl) {
+    upgradeInfoEl.innerHTML = `
+      성공 <b>${success}%</b> / ${failInfo}
+      <br>필요 골드 <b>${formatGold(cost)}</b>
+      ${safeNote}
+    `;
+  }
 
   // 🎯 사냥 정보 UI 업데이트
   const field = HUNT_FIELDS[currentField];
@@ -856,7 +827,6 @@ if (statusEl) statusEl.innerHTML = "";
 
   const today = getTodayDateString();
   if (lastHuntDate !== today) {
-    // 날짜 바뀌면 카운트 리셋
     huntCountToday = 0;
     lastHuntDate = today;
   }
@@ -865,38 +835,30 @@ if (statusEl) statusEl.innerHTML = "";
   const huntBtnEl  = document.getElementById("huntBtn");
 
   if (field && huntInfoEl && huntBtnEl) {
-huntInfoEl.innerHTML = `
-  <div style="font-size:18px; color:#FFA500; font-weight:bold;">
-    🗺 현재 사냥터: ${field.name}
-  </div>
+    huntInfoEl.innerHTML = `
+      <div style="font-size:18px; color:#FFA500; font-weight:bold;">
+        🗺 현재 사냥터: ${field.name}
+      </div>
 
-  <div style="margin-top:4px;">
-    추천 레벨: <b>+${field.recLevel}강</b>
-    &nbsp;/&nbsp;
-    내 레벨: <b>+${sword}강</b>
-  </div>
+      <div style="margin-top:4px;">
+        추천 레벨: <b>+${field.recLevel}강</b>
+        &nbsp;/&nbsp;
+        내 레벨: <b>+${sword}강</b>
+      </div>
 
-  <div style="margin-top:6px; font-size:18px; color:#FFA500; font-weight:bold;">
-    사냥 성공 확률: ${huntSuccess}%
-  </div>
-`;
-
-const remaining = 10 - huntCountToday;
-huntBtnEl.textContent = `⚔️ 사냥 (${remaining}/10)`;
-
-      if (field && huntInfoEl && huntBtnEl) {
-    // ... (지금 있는 코드 그대로) ...
+      <div style="margin-top:6px; font-size:18px; color:#FFA500; font-weight:bold;">
+        사냥 성공 확률: ${huntSuccess}%
+      </div>
+    `;
 
     const remaining = 10 - huntCountToday;
     huntBtnEl.textContent = `⚔️ 사냥 (${remaining}/10)`;
   }
 
-  // 🔥 현재 사냥터에 맞는 배경 적용
+  // 🔥 현재 사냥터 배경 적용 (CSS ::before용 변수 세팅)
   applyFieldBackground();
 }
 
-
-  }
 }
 
 function showNpcMessage(text, imgPath = "images/npc/blacksmith_idle.png", showButton = true) {
