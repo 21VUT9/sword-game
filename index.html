@@ -16,13 +16,14 @@ body {
   /* 🎫 출석 버튼 */
 #attendanceBtn {
   position:fixed;
-  top:10px;
+  top:40px;          /* ⬅️ 10 → 40 으로 변경 */
   left:10px;
   z-index:1100;
-  display:none;          /* 로그인 후 JS로 보이게 */
+  display:none;
   font-size:14px;
   padding:8px 16px;
 }
+
 
 /* 버튼 */
 button {
@@ -463,6 +464,20 @@ button {
 
 <button id="attendanceBtn" onclick="checkAttendance()">출석</button>
 
+  <button id="logoutBtn" onclick="logout()" style="
+  position:fixed;
+  top:10px;
+  left:10px;
+  z-index:1101;
+  display:none;
+  font-size:14px;
+  padding:6px 14px;
+">
+  로그아웃
+</button>
+
+<button id="attendanceBtn" onclick="checkAttendance()">출석</button>
+
   
 <!-- 🔔 로그 -->
 <div id="toastLog"><div id="toastList"></div></div>
@@ -577,7 +592,46 @@ const HUNT_FIELDS = [
   { id:10,name:"차원의 틈새",         recLevel:27 }
 ];
 
+function logout() {
+  // 저장된 자동 로그인 정보 삭제
+  try {
+    localStorage.removeItem("swordGameLastUser");
+  } catch (e) {
+    console.warn("localStorage remove 실패", e);
+  }
 
+  // 상태 초기화
+  userId = "";
+  userPassword = "";
+  userRef = null;
+
+  sword = 0;
+  power = 10;
+  gold  = 100;
+
+  attendanceCount    = 0;
+  lastAttendanceDate = "";
+  currentField       = 1;
+  huntCountToday     = 0;
+  lastHuntDate       = "";
+  itemScroll15       = 0;
+  itemProtect        = 0;
+  itemSuper          = 0;
+  itemDownProtect    = 0;
+
+  // 화면 전환
+  document.getElementById("gameScreen").style.display   = "none";
+  document.getElementById("loginScreen").style.display  = "block";
+  document.getElementById("attendanceBtn").style.display = "none";
+  document.getElementById("inventoryBtn").style.display = "none";
+  document.getElementById("logToggle").style.display    = "none";
+  document.getElementById("logoutBtn").style.display    = "none";
+
+  // 프로필 영역도 초기 상태로 갱신
+  update();
+}
+
+  
 /* UI */
 function update(){
 
@@ -1526,10 +1580,10 @@ userRef.set({
   currentField: 1,
   huntCountToday: 0,
   lastHuntDate: "",
-  itemScroll15: 0,
-  itemProtect: 0,
-  itemSuper: 0,
-  itemDownProtect: 0
+  itemScroll15: Number(itemScroll15),
+  itemProtect: Number(itemProtect),
+  itemSuper: Number(itemSuper),
+  itemDownProtect: Number(itemDownProtect)
 });
 
 
@@ -1574,6 +1628,25 @@ document.getElementById("logToggle").style.display = "block";
 
 update();
 showTutorialIfFirstTime();
+
+    // 화면 전환 + 출석 / 로그 / 인벤토리 버튼 표시
+loginScreen.style.display  = "none";
+gameScreen.style.display   = "block";
+document.getElementById("attendanceBtn").style.display = "block";
+document.getElementById("inventoryBtn").style.display = "block";
+document.getElementById("logToggle").style.display = "block";
+document.getElementById("logoutBtn").style.display = "block";
+
+// 🧷 새로고침 유지용: 마지막 로그인 유저 저장
+try {
+  localStorage.setItem("swordGameLastUser", userId);
+} catch (e) {
+  console.warn("localStorage set 실패", e);
+}
+
+update();
+showTutorialIfFirstTime();
+
     
   });
 }
@@ -1728,6 +1801,58 @@ document.addEventListener("mousedown", function (e) {
   closeIfClickOutside(e, "logPanel", "logToggle");        // 로그
 });
 
+// 🧷 새로고침 시 자동 로그인
+function autoLoginFromStorage() {
+  let savedId = null;
+  try {
+    savedId = localStorage.getItem("swordGameLastUser");
+  } catch (e) {
+    console.warn("localStorage get 실패", e);
+  }
+
+  if (!savedId) return;  // 저장된 유저 없으면 패스
+
+  userId = savedId;
+  userRef = db.ref("users/" + userId);
+
+  userRef.once("value").then(s => {
+    if (!s.exists()) {
+      // 혹시 DB에서 사라진 계정이면 기록도 지움
+      try { localStorage.removeItem("swordGameLastUser"); } catch (e) {}
+      return;
+    }
+
+    const data = s.val();
+
+    sword = data.sword ?? 0;
+    gold  = data.gold  ?? 100;
+
+    attendanceCount    = data.attendanceCount    ?? 0;
+    lastAttendanceDate = data.lastAttendanceDate ?? "";
+    currentField       = data.currentField       ?? 1;
+    huntCountToday     = data.huntCountToday     ?? 0;
+    lastHuntDate       = data.lastHuntDate       ?? "";
+    itemScroll15       = data.itemScroll15 ?? 0;
+    itemProtect        = data.itemProtect  ?? 0;
+    itemSuper          = data.itemSuper    ?? 0;
+    itemDownProtect    = data.itemDownProtect ?? 0;
+
+    // 로그인 시 공격력 재계산
+    rollPowerForCurrentSword();
+
+    // 화면 전환
+    loginScreen.style.display  = "none";
+    gameScreen.style.display   = "block";
+    document.getElementById("attendanceBtn").style.display = "block";
+    document.getElementById("inventoryBtn").style.display = "block";
+    document.getElementById("logToggle").style.display = "block";
+    document.getElementById("logoutBtn").style.display = "block";
+
+    update();
+    showTutorialIfFirstTime();
+  });
+}
+
   
 /* 랭킹 */
 function loadRanking(){
@@ -1805,6 +1930,7 @@ myRank.innerHTML = `
     });
 }
 
+  
 // 오늘 날짜를 "YYYY-MM-DD" 형태로 반환 (출석 체크용)
 function getTodayDateString() {
   const d = new Date();
@@ -1886,6 +2012,7 @@ function renderInventory() {
 }
 
   loadRanking();
+  autoLoginFromStorage();
 </script>
 
 <!-- 📘 처음 접속 튜토리얼 (NPC 버전) -->
