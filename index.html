@@ -397,7 +397,12 @@ button {
         <span class="profile-label">골드</span>
         <span class="profile-value" id="profileGold">0</span>
       </div>
-
+      
+      <div class="profile-row">
+        <span class="profile-label">무기가치</span>
+        <span class="profile-value" id="profileWeaponValue">0</span>
+      </div>
+      
     </div>
   </div>
 </div>
@@ -573,6 +578,7 @@ function update(){
   const powerEl  = document.getElementById("profilePower");
   const goldEl   = document.getElementById("profileGold");
   const huntEl   = document.getElementById("profileHuntCount");
+  const weaponValueEl = document.getElementById("profileWeaponValue");
 
   if (nickEl) {
     nickEl.textContent  = userId || "-";
@@ -585,6 +591,10 @@ function update(){
   }
   if (goldEl) {
     goldEl.textContent  = formatGold(gold);
+  }
+  if (weaponValueEl) {
+    const avgValue = getSellRewardAverage(sword);     // 🆕 평균 판매가
+    weaponValueEl.textContent = formatGold(avgValue);
   }
   if (huntEl) {
     const today = getTodayDateString();
@@ -878,6 +888,22 @@ function getSellReward(level) {
 
   const reward = Math.floor(base * mul);
   return reward;
+}
+
+// L강 장비 판매 시 받을 골드 "평균" 값 (무기가치 표시용)
+function getSellRewardAverage(level) {
+  if (level <= 0) return 0;
+
+  const totalCost = getTotalCostToLevel(level);
+  const costNow   = getUpgradeCost(Math.min(level, 29));
+  const attemptFactor = getSellAttemptFactor(level);
+  const B = costNow * attemptFactor;
+
+  const base = totalCost + B;
+
+  // getSellReward 에서 1.15 ~ 1.20 랜덤이니까, 중간값 1.175를 평균으로 사용
+  const avgMultiplier = (1.15 + 1.20) / 2; // 1.175
+  return Math.floor(base * avgMultiplier);
 }
 
   
