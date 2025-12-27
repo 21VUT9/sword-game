@@ -856,10 +856,16 @@ function upgrade() {
 
     if (scroll15El) scroll15El.checked = false; // 한 번 쓰고 체크 해제
 
-    writeLog(
-      `${userId}님이 <span style="color:#6cf;">15강 강화 주문서</span>를 사용하여 무기가 ${coloredLevel(15)}이 되었습니다!`
-    );
-    alert("15강 강화 주문서를 사용했습니다! 무기가 15강이 되었습니다.");
+  writeLog(
+  `${userId}님이 <span style="color:#6cf;">15강 강화 주문서</span>를 사용하여 무기가 ${coloredLevel(15)}이 되었습니다!`
+);
+
+// 퍼그란트 대사 + 성공 이미지
+showNpcMessage(
+  "좋지! 15강, 단숨에 올려주지.",
+  "images/npc/blacksmith_success.png"   // ← 15강 성공 이미지 경로
+);
+
 
     update();
     save();
@@ -908,25 +914,35 @@ showNpcMessage(
     closeNpcPopup();
 
     // 🎲 성공 / 실패 판정
-    if (Math.random() < chance / 100) {
-      // ✅ 성공
-      let up = useSuper ? 2 : 1; // 슈퍼강화면 +2
+if (Math.random() < chance / 100) {
+  // ✅ 성공
+  let up = useSuper ? 2 : 1; // 슈퍼강화면 +2
 
-      while (up > 0 && sword < 30) {
-        sword++;
-        up--;
-      }
+  while (up > 0 && sword < 30) {
+    sword++;
+    up--;
+  }
 
-      rollPowerForCurrentSword();
+  rollPowerForCurrentSword();
 
-      alert(useSuper ? "강화 대성공! (+2강)" : "강화 성공!");
+  // 퍼그란트 성공 멘트
+  if (useSuper) {
+    showNpcMessage(
+      "두 단계나 올라갔다고!? 전설이 보이는군!",
+      "images/npc/blacksmith_success.png"
+    );
+  } else {
+    showNpcMessage(
+      "좋아! 제대로 붙었구만!",
+      "images/npc/blacksmith_success.png"
+    );
+  }
 
-      if (before >= 20) {
-        writeLog(
-          `${userId}이 ${coloredLevel(before)} 도전에 성공하여 ${coloredLevel(sword)}이 되었습니다!`
-        );
-      }
-
+  if (before >= 20) {
+    writeLog(
+      `${userId}이 ${coloredLevel(before)} 도전에 성공하여 ${coloredLevel(sword)}이 되었습니다!`
+    );
+  }
     } else {
       // ❌ 실패
       const isSafeLevel = (before % 5 === 0); // 5,10,15,20,25,30 세이프
