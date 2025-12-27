@@ -449,7 +449,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.290)
+    (v3.292)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -873,18 +873,19 @@ function update() {
 
   // 🗺 카드 위에 현재 사냥터 + 레벨 + 성공확률 표시
   if (field && fieldInfoEl) {
-    fieldInfoEl.innerHTML = `
-      <div>
-        🗺 현재 사냥터: <b>${field.name}</b>
-      </div>
-      <div class="current-field-info-sub">
-        추천 레벨: +${field.recLevel}강
-        &nbsp;/&nbsp;
-        내 레벨: +${sword}강
-        &nbsp;/&nbsp;
-        사냥 성공 확률: ${huntSuccess}%
-      </div>
-    `;
+fieldInfoEl.innerHTML = `
+  <div style="font-size: 21px; font-weight: bold;">
+    ${field.name}
+  </div>
+  <div class="current-field-info-sub">
+    추천 레벨: +${field.recLevel}강
+    &nbsp;/&nbsp;
+    내 레벨: +${sword}강
+    &nbsp;/&nbsp;
+    사냥 성공 확률: ${huntSuccess}%
+  </div>
+`;
+
   }
 
   // ⚔️ 사냥 버튼(남은 횟수)
@@ -1325,7 +1326,7 @@ showNpcMessage(
 
 
   // 🕒 1~2초 랜덤 딜레이 동안 "강화 중..." 팝업
-  const delayMs = 1000 + Math.random() * 1000; // 1000~2000ms
+const delayMs = 500 + Math.random() * 500; // 0.5 ~ 1.0초
 
 showNpcMessage(
   "강화 중입니다...",
