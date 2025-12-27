@@ -449,7 +449,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.296)
+    (v3.298)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -796,7 +796,7 @@ function update() {
   if (huntEl) {
     const today = getTodayDateString();
     if (lastHuntDate !== today) {
-      huntEl.textContent = `0 / 10`;
+      huntEl.textContent = `0 / 20`;
     } else {
       huntEl.textContent = `${huntCountToday} / 10`;
     }
@@ -1033,6 +1033,36 @@ function showMovePopup() {
   popup.style.display = "flex";
 }
 
+// ⚔️ 사냥 결과 팝업 (NPC 이미지/버튼 X)
+function showHuntPopup(text, color = "#FFFFFF") {
+  const popup = document.getElementById("npcPopup");
+  const msgEl = document.getElementById("npcPopupText");
+  const imgEl = document.getElementById("npcPopupImg");
+  const btnEl = document.querySelector(".npc-popup-btn");
+
+  if (!popup || !msgEl || !imgEl) return;
+
+  // 이미지 / 버튼 숨김
+  imgEl.style.display = "none";
+  if (btnEl) btnEl.style.display = "none";
+
+  msgEl.innerHTML = `
+    <div style="font-size:18px; font-weight:bold; color:${color};">
+      ${text}
+    </div>
+  `;
+
+  popup.style.display = "flex";
+
+  // 1.2초 후 자동 닫힘
+  setTimeout(() => {
+    popup.style.display = "none";
+    imgEl.style.display = "block";
+    if (btnEl) btnEl.style.display = "inline-block";
+  }, 1200);
+}
+
+  
 function closeMovePopup() {
   const popup = document.getElementById("npcPopup");
   const imgEl = document.getElementById("npcPopupImg");
@@ -1643,10 +1673,23 @@ function hunt(){
     huntCountToday = 0;
   }
 
-  if (huntCountToday >= 20) {
-    alert("오늘 사냥 가능 횟수를 모두 사용했습니다. (하루 20회)");
-    return;
-  }
+if (huntCountToday >= 20) {
+
+  showHuntPopup(
+    `
+    <div style="font-size:18px; font-weight:bold;">
+      오늘 사냥 종료
+    </div>
+    <div style="margin-top:6px; font-size:14px;">
+      하루 20회까지 도전할 수 있습니다.
+    </div>
+    `,
+    "#CCCCCC"
+  );
+
+  return;
+}
+
 
   const field = HUNT_FIELDS[currentField];
   if (!field) {
@@ -1665,52 +1708,73 @@ function hunt(){
 const atk = power; // 지금은 사용 X, 나중에 사냥 데미지/성공률에 반영 가능
 
 
-  // 성공 여부
-  const r = Math.random() * 100;
-  if (r < successChance) {
-    // ✅ 성공
-    const reward = getHuntReward(currentField);
-    gold += reward;
+// 성공 여부
+const r = Math.random() * 100;
+if (r < successChance) {
+  // ✅ 성공
+  const reward = getHuntReward(currentField);
+  gold += reward;
 
-    alert(`사냥 성공! 💰 ${formatGold(reward)} 골드를 획득했습니다.`);
+  // 🔔 기본 팝업 문구 (골드 보상)
+  let popupMsg = `사냥 성공!<br>💰 ${formatGold(reward)} 골드 획득`;
 
-    // 🎁 아이템 드랍 처리
-    // LV6 이상: 3% 확률로 15강 강화 주문서
-    if (currentField >= 6 && Math.random() < 0.03) {
-      itemScroll15 += 1;
-      writeLog(
-        `${userId}님이 사냥에서 <span style="color:#6cf;">15강 강화 주문서</span>를 획득했습니다!`
-      );
-    }
+  // 🎁 아이템 드랍 처리
 
-    // LV7 이상: 2% 확률로 파괴방지 주문서
-    if (currentField >= 7 && Math.random() < 0.02) {
-      itemProtect += 1;
-      writeLog(
-        `${userId}님이 사냥에서 <span style="color:#6cf;">파괴방지 주문서</span>를 획득했습니다!`
-      );
-    }
+  // LV6 이상: 3% 확률로 15강 강화 주문서
+  if (currentField >= 6 && Math.random() < 0.03) {
+    itemScroll15 += 1;
 
-    // LV8 이상: 1% 확률로 슈퍼강화 주문서
-    if (currentField >= 8 && Math.random() < 0.01) {
-      itemSuper += 1;
-      writeLog(
-        `${userId}님이 사냥에서 <span style="color:#6cf;">슈퍼강화 주문서</span>를 획득했습니다!`
-      );
-    }
-    // 🆕 LV4 이상: 10% 확률로 강등방지 주문서
-    if (currentField >= 4 && Math.random() < 0.10) {
-      itemDownProtect += 1;
-      writeLog(
-        `${userId}님이 사냥에서 <span style="color:#6cf;">강등방지 주문서</span>를 획득했습니다!`
-      );
-    }
+    popupMsg += `<br><br>📜 15강 강화 주문서를 획득했다!`;
 
-    
-  } else {
-    // ❌ 실패
-    alert("사냥에 실패했습니다...");
+    writeLog(
+      `${userId}님이 사냥에서 <span style="color:#6cf;">15강 강화 주문서</span>를 획득했습니다!`
+    );
   }
+
+  // LV7 이상: 2% 확률로 파괴방지 주문서
+  if (currentField >= 7 && Math.random() < 0.02) {
+    itemProtect += 1;
+
+    popupMsg += `<br>🛡 파괴방지 주문서를 획득했다!`;
+
+    writeLog(
+      `${userId}님이 사냥에서 <span style="color:#6cf;">파괴방지 주문서</span>를 획득했습니다!`
+    );
+  }
+
+  // LV8 이상: 1% 확률로 슈퍼강화 주문서
+  if (currentField >= 8 && Math.random() < 0.01) {
+    itemSuper += 1;
+
+    popupMsg += `<br>✨ 슈퍼강화 주문서를 획득했다!`;
+
+    writeLog(
+      `${userId}님이 사냥에서 <span style="color:#6cf;">슈퍼강화 주문서</span>를 획득했습니다!`
+    );
+  }
+
+  // LV4 이상: 10% 확률로 강등방지 주문서
+  if (currentField >= 4 && Math.random() < 0.10) {
+    itemDownProtect += 1;
+
+    popupMsg += `<br>🔒 강등방지 주문서를 획득했다!`;
+
+    writeLog(
+      `${userId}님이 사냥에서 <span style="color:#6cf;">강등방지 주문서</span>를 획득했습니다!`
+    );
+  }
+
+  // ✅ 최종 팝업 한 번만 호출 (골드 + 드랍 결과 모두 포함)
+  showHuntPopup(popupMsg, "#6CF");
+
+} else {
+  // ❌ 실패
+  showHuntPopup(
+    "사냥 실패...<br>다음 기회를 노리자.",
+    "#FF6666"
+  );
+}
+
 
 
   huntCountToday++;
