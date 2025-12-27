@@ -430,13 +430,25 @@ document.getElementById("status").innerHTML = `
   const huntBtnEl  = document.getElementById("huntBtn");
 
   if (field && huntInfoEl && huntBtnEl) {
-    huntInfoEl.innerHTML = `
-      🗺 현재 사냥터: <b>${field.name}</b><br>
-      추천 레벨: <b>+${field.recLevel}강</b> / 내 레벨: <b>+${sword}강</b><br>
-      예상 사냥 성공 확률: <b>${huntSuccess}%</b><br>
-      (하루 10회 제한)
-    `;
-huntBtnEl.textContent = `⚔️ 사냥 (${huntCountToday}/10)`;
+huntInfoEl.innerHTML = `
+  <div style="font-size:18px; color:#FFA500; font-weight:bold;">
+    🗺 현재 사냥터: ${field.name}
+  </div>
+
+  <div style="margin-top:4px;">
+    추천 레벨: <b>+${field.recLevel}강</b>
+    &nbsp;/&nbsp;
+    내 레벨: <b>+${sword}강</b>
+  </div>
+
+  <div style="margin-top:6px; font-size:18px; color:#FFA500; font-weight:bold;">
+    사냥 성공 확률: ${huntSuccess}%
+  </div>
+`;
+
+const remaining = 10 - huntCountToday;
+huntBtnEl.textContent = `⚔️ 사냥 (${remaining}/10)`;
+
 
   }
 }
