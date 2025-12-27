@@ -367,13 +367,6 @@ button {
 <!-- 🧾 유저 프로필 카드 -->
 <div id="userProfileArea">
 
-  <!-- ⬇️ 공유 버튼 -->
-  <button type="button"
-          class="profile-share-btn"
-          onclick="shareProfileToKakao()">
-    공유
-  </button>
-  
   <div class="profile-card-inner">
 
     <!-- 센터 무기 이미지 -->
@@ -1612,53 +1605,6 @@ function renderMap() {
     listEl.appendChild(div);
   }
 }
-
-// 📤 카카오톡으로 프로필 공유
-function shareProfileToKakao() {
-  if (!window.Kakao) {
-    alert("카카오 SDK를 불러오지 못했습니다.");
-    return;
-  }
-
-  // 최초 한 번만 초기화
-  if (!Kakao.isInitialized()) {
-    // ⚠️ 여기 YOUR_... 부분을 네 카카오 JavaScript 키로 바꿔야 실제로 동작함
-    Kakao.init("YOUR_KAKAO_JAVASCRIPT_KEY");
-  }
-
-  // 프로필에 보이는 정보들
-  const nickname = userId || "이름없는 모험가";
-  const levelText = `현재 강화: +${sword}강`;
-  const powerText = `공격력: ${formatGold(power)}`;
-  const goldText  = `골드: ${formatGold(gold)}`;
-
-  // 프로필 카드에 쓰는 무기 이미지 그대로 사용
-  const weaponImgEl = document.getElementById("weaponImage");
-  const weaponImgUrl = weaponImgEl ? weaponImgEl.src : location.origin + "/default_weapon.png";
-
-  Kakao.Link.sendDefault({
-    objectType: "feed",
-    content: {
-      title: `${nickname}의 검 키우기 프로필`,
-      description: `${levelText} / ${powerText} / ${goldText}`,
-      imageUrl: weaponImgUrl,          // 카카오에서 접근 가능한 이미지 URL이어야 함
-      link: {
-        mobileWebUrl: location.href,
-        webUrl: location.href
-      }
-    },
-    buttons: [
-      {
-        title: "내 프로필 보러가기",
-        link: {
-          mobileWebUrl: location.href,
-          webUrl: location.href
-        }
-      }
-    ]
-  });
-}
-
   
 /* 랭킹 */
 function loadRanking(){
