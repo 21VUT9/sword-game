@@ -435,7 +435,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.285)
+    (v3.290)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -443,13 +443,31 @@ button {
   <button onclick="login()">접속</button>
 </div>
 
+/* 🗺 프로필 카드 “밖” 상단 현재 사냥터 정보 */
+.current-field-info {
+  font-size: 14px;
+  color: #ffffff;        /* 기본 흰색 */
+  text-align: center;
+  margin-bottom: 8px;    /* 아래 카드랑 간격 */
+  line-height: 1.4;
+}
+
+.current-field-info-sub {
+  font-size: 14px;
+  color: #cccccc;        /* 추천레벨/성공확률 회색 */
+}
+
+  
 <!-- 🎮 게임 -->
 <div id="gameScreen" style="display:none;">
   <h1>⚔️ 검 키우기</h1>
 
   <!-- 🔥 사냥터 배경 박스 (프로필~랭킹 전체를 감쌈) -->
   <div id="fieldBg" class="field-bg">
-  
+
+  <!-- 🗺 현재 사냥터 정보 (프로필 카드 바깥 상단) -->
+  <div id="currentFieldInfo" class="current-field-info"></div>
+    
 <!-- 🧾 유저 프로필 카드 -->
 <div id="userProfileArea">
   <div class="profile-card-inner">
@@ -850,29 +868,39 @@ function update() {
     lastHuntDate = today;
   }
 
-  const huntInfoEl = document.getElementById("huntInfo");
-  const huntBtnEl  = document.getElementById("huntBtn");
+  const fieldInfoEl = document.getElementById("currentFieldInfo"); // 카드 위 텍스트
+  const huntInfoEl  = document.getElementById("huntInfo");         // 버튼 아래 간단 텍스트
+  const huntBtnEl   = document.getElementById("huntBtn");
 
-  if (field && huntInfoEl && huntBtnEl) {
-    huntInfoEl.innerHTML = `
-      <div style="font-size:18px; color:#FFA500; font-weight:bold;">
-        🗺 현재 사냥터: ${field.name}
+  // 🗺 카드 위에 현재 사냥터 + 레벨 + 성공확률 표시
+  if (field && fieldInfoEl) {
+    fieldInfoEl.innerHTML = `
+      <div>
+        🗺 현재 사냥터: <b>${field.name}</b>
       </div>
-
-      <div style="margin-top:4px;">
-        추천 레벨: <b>+${field.recLevel}강</b>
+      <div class="current-field-info-sub">
+        추천 레벨: +${field.recLevel}강
         &nbsp;/&nbsp;
-        내 레벨: <b>+${sword}강</b>
-      </div>
-
-      <div style="margin-top:6px; font-size:18px; color:#FFA500; font-weight:bold;">
+        내 레벨: +${sword}강
+        &nbsp;/&nbsp;
         사냥 성공 확률: ${huntSuccess}%
       </div>
     `;
+  }
 
-    const remaining = 10 - huntCountToday;
+  // ⚔️ 사냥 버튼(남은 횟수)
+  const remaining = 10 - huntCountToday;
+  if (huntBtnEl) {
     huntBtnEl.textContent = `⚔️ 사냥 (${remaining}/10)`;
   }
+
+  // 버튼 아래 텍스트는 심플하게 남은 횟수만 (원하면 삭제 가능)
+  if (huntInfoEl) {
+    huntInfoEl.style.fontSize = "13px";
+    huntInfoEl.style.color = "#ccc";
+    huntInfoEl.textContent = `오늘 사냥 가능 횟수: ${remaining} / 10`;
+  }
+
 
   // 🔥 현재 사냥터 배경 적용 (CSS ::before용 변수 세팅)
   applyFieldBackground();
