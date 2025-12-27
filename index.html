@@ -1699,6 +1699,35 @@ function renderMap() {
     listEl.appendChild(div);
   }
 }
+
+// 🧱 패널 바깥 클릭 시 닫기 (MAP / 인벤토리 / 로그 공통)
+function closeIfClickOutside(event, panelId, buttonId) {
+  const panel = document.getElementById(panelId);
+  const btn   = document.getElementById(buttonId);
+  if (!panel) return;
+
+  // 안 열려 있으면 무시
+  if (panel.style.display === "none" || panel.style.display === "") return;
+
+  const target = event.target;
+
+  // 패널 안을 클릭한 경우 → 유지
+  if (panel.contains(target)) return;
+
+  // 해당 패널의 토글 버튼을 클릭한 경우 → 토글 로직에 맡김
+  if (btn && btn.contains(target)) return;
+
+  // 그 외 영역 클릭 시 패널 닫기
+  panel.style.display = "none";
+}
+
+// 📌 전역 클릭 리스너 등록
+document.addEventListener("mousedown", function (e) {
+  closeIfClickOutside(e, "mapPanel", "mapBtn");           // MAP
+  closeIfClickOutside(e, "inventoryPanel", "inventoryBtn"); // 인벤토리
+  closeIfClickOutside(e, "logPanel", "logToggle");        // 로그
+});
+
   
 /* 랭킹 */
 function loadRanking(){
