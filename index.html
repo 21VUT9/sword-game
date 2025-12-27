@@ -551,12 +551,12 @@ huntBtnEl.textContent = `⚔️ 사냥 (${remaining}/10)`;
   }
 }
 
-function showNpcMessage(text, imgPath = "images/npc/blacksmith_idle.png") {
+function showNpcMessage(text, imgPath = "images/npc/blacksmith_idle.png", showButton = true) {
   const popup = document.getElementById("npcPopup");
   const msgEl = document.getElementById("npcPopupText");
   const imgEl = document.getElementById("npcPopupImg");
+  const btnEl = document.querySelector(".npc-popup-btn");
 
-  // 혹시 엘리먼트 못 찾으면 그냥 alert로 폴백
   if (!popup || !msgEl || !imgEl) {
     alert(text);
     return;
@@ -565,8 +565,14 @@ function showNpcMessage(text, imgPath = "images/npc/blacksmith_idle.png") {
   msgEl.textContent = text;
   imgEl.src = imgPath;
 
-  popup.style.display = "flex";   // 중앙 정렬로 표시
+  // 버튼 표시 여부 제어
+  if (btnEl) {
+    btnEl.style.display = showButton ? "inline-block" : "none";
+  }
+
+  popup.style.display = "flex";
 }
+
 
 function showTutorialIfFirstTime() {
 
@@ -890,10 +896,12 @@ function upgrade() {
   // 🕒 1~2초 랜덤 딜레이 동안 "강화 중..." 팝업
   const delayMs = 1000 + Math.random() * 1000; // 1000~2000ms
 
-  showNpcMessage(
-    "강화 중입니다...",
-    "images/npc/blacksmith_upgrade.png"   // ← 여기 새 이미지 경로
-  );
+showNpcMessage(
+  "강화 중입니다...",
+  "images/npc/blacksmith_upgrade.png",
+  false   // ⬅ 버튼 숨김
+);
+
 
   setTimeout(() => {
     // 준비 팝업 닫기
