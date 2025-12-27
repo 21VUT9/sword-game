@@ -1483,22 +1483,31 @@ function renderInventory() {
   loadRanking();
 </script>
 
-<!-- 📘 처음 접속 튜토리얼 -->
+<!-- 📘 처음 접속 튜토리얼 (NPC 버전) -->
 <div id="tutorialOverlay">
-  <div class="tutorial-box">
-    <h3>처음 오신걸 환영합니다!</h3>
-    <ul>
-      <li>상단 왼쪽 <b>[출석]</b> 버튼으로 매일 골드를 받으세요.</li>
-      <li>상단 오른쪽 <b>[MAP]</b> 버튼에서 사냥터를 선택할 수 있습니다.</li>
-      <li>화면 중앙의 <b>강화 / 사냥 / 판매</b> 버튼이 핵심 조작입니다.</li>
-      <li>오른쪽 아래 <b>인벤토리 / 로그</b> 버튼으로
-          아이템과 강화 기록을 확인할 수 있습니다.</li>
-    </ul>
+  <div class="tutorial-box" style="text-align:center;">
+    <img src="images/npc/blacksmith_idle.png"
+         alt="대장장이 퍼그란트"
+         class="npc-popup-img">
+
+    <p style="margin:6px 0 10px 0; font-weight:bold;">
+      어서오시게. 나는 전설의 대장장이 퍼그란트라고 하네.
+    </p>
+
+    <p style="margin:4px 0; text-align:left;">
+      • 상단 왼쪽 <b>[출석]</b> 버튼으로 매일 골드를 받을 수 있네.<br>
+      • 상단 오른쪽 <b>[MAP]</b> 버튼에서 사냥터를 선택할 수 있네.<br>
+      • 화면 중앙의 <b>강화 / 사냥 / 판매</b> 버튼이 핵심 조작이라네.<br>
+      • 오른쪽 아래 <b>인벤토리 / 로그</b> 버튼으로 아이템과 강화 기록을 확인할 수 있다네.<br>
+      • 게임은 <b>전체화면</b>으로 플레이하는 걸 추천한네.
+    </p>
+
     <button class="tutorial-close-btn" onclick="closeTutorial()">
-      알겠어요
+      알겠네
     </button>
   </div>
 </div>
+
   
   <!-- 🧔 대장장이 NPC 팝업 -->
 <div id="npcPopup">
