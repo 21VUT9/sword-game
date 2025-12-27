@@ -201,6 +201,56 @@ button {
   font-size:14px;
   cursor:pointer;
 }
+
+/* 📘 처음 접속 튜토리얼 오버레이 */
+#tutorialOverlay {
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.75);
+  display:none;               /* 기본 숨김 */
+  align-items:center;
+  justify-content:center;
+  z-index:1900;
+}
+
+.tutorial-box {
+  background:#222;
+  border:1px solid #555;
+  border-radius:10px;
+  padding:16px 20px;
+  max-width:360px;
+  width:90%;
+  color:#fff;
+  text-align:left;
+  font-size:14px;
+  box-shadow:0 0 15px rgba(0,0,0,0.8);
+}
+
+.tutorial-box h3 {
+  margin-top:0;
+  margin-bottom:8px;
+  text-align:center;
+}
+
+.tutorial-box ul {
+  padding-left:18px;
+  margin:8px 0 12px 0;
+}
+
+.tutorial-close-btn {
+  display:block;
+  width:100%;
+  padding:8px 0;
+  margin-top:4px;
+  text-align:center;
+  cursor:pointer;
+  border:none;
+  border-radius:6px;
+  background:#f0f0f0;
+  color:#222;
+  font-weight:bold;
+}
+
   
 </style>
 </head>
@@ -510,6 +560,32 @@ function showNpcMessage(text, imgPath = "images/npc/blacksmith_idle.png") {
   popup.style.display = "flex";   // 중앙 정렬로 표시
 }
 
+function showTutorialIfFirstTime() {
+  try {
+    // 이미 본 적 있으면 패스
+    if (localStorage.getItem("swordGameTutorialSeen") === "1") return;
+  } catch (e) {
+    // localStorage 막혀 있어도 게임은 돌아가게
+  }
+
+  const overlay = document.getElementById("tutorialOverlay");
+  if (overlay) {
+    overlay.style.display = "flex";   // 중앙 배치
+  }
+}
+
+function closeTutorial() {
+  const overlay = document.getElementById("tutorialOverlay");
+  if (overlay) {
+    overlay.style.display = "none";
+  }
+
+  try {
+    localStorage.setItem("swordGameTutorialSeen", "1");
+  } catch (e) {}
+}
+
+  
 function closeNpcPopup() {
   const popup = document.getElementById("npcPopup");
   if (popup) popup.style.display = "none";
@@ -1093,7 +1169,8 @@ document.getElementById("inventoryBtn").style.display = "block";
 document.getElementById("logToggle").style.display = "block";
 
 update();
-
+showTutorialIfFirstTime();
+    
   });
 }
 
@@ -1377,6 +1454,23 @@ function renderInventory() {
   loadRanking();
 </script>
 
+<!-- 📘 처음 접속 튜토리얼 -->
+<div id="tutorialOverlay">
+  <div class="tutorial-box">
+    <h3>처음 오신걸 환영합니다!</h3>
+    <ul>
+      <li>상단 왼쪽 <b>[출석]</b> 버튼으로 매일 골드를 받으세요.</li>
+      <li>상단 오른쪽 <b>[MAP]</b> 버튼에서 사냥터를 선택할 수 있습니다.</li>
+      <li>화면 중앙의 <b>강화 / 사냥 / 판매</b> 버튼이 핵심 조작입니다.</li>
+      <li>오른쪽 아래 <b>인벤토리 / 로그</b> 버튼으로
+          아이템과 강화 기록을 확인할 수 있습니다.</li>
+    </ul>
+    <button class="tutorial-close-btn" onclick="closeTutorial()">
+      알겠어요
+    </button>
+  </div>
+</div>
+  
   <!-- 🧔 대장장이 NPC 팝업 -->
 <div id="npcPopup">
   <div class="npc-popup-inner">
