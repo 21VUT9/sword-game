@@ -12,6 +12,18 @@ body {
   font-family:Arial;
 }
 
+/* 🎯 강화 아이템 체크박스 줄 정리 */
+#upgradeItems {
+  display: flex;
+  flex-wrap: wrap;           /* 화면 좁으면 라벨 단위로 다음 줄로 내려가게 */
+  justify-content: center;
+  gap: 4px 12px;             /* 라벨 사이 간격 */
+}
+
+#upgradeItems label {
+  white-space: nowrap;       /* 🔥 라벨 안에서 줄바꿈 금지 (항상 한 줄) */
+}
+  
 /* 🔨 강화 / 사냥 / 판매 버튼 묶음 */
 .action-buttons {
   display: flex;
@@ -501,19 +513,6 @@ button {
   <button id="huntBtn" onclick="hunt()">⚔️ 사냥</button>
   <button onclick="sell()">💰 판매</button>
 </div>
-
-/* 🎯 강화 아이템 체크박스 줄 정리 */
-#upgradeItems {
-  display: flex;
-  flex-wrap: wrap;           /* 화면 좁으면 라벨 단위로 다음 줄로 내려가게 */
-  justify-content: center;
-  gap: 4px 12px;             /* 라벨 사이 간격 */
-}
-
-#upgradeItems label {
-  white-space: nowrap;       /* 🔥 라벨 안에서 줄바꿈 금지 (항상 한 줄) */
-}
-
     
 <!-- 🎯 강화 아이템 사용 체크박스 -->
 <div id="upgradeItems" style="margin-top:8px; font-size:13px;">
