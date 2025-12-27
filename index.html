@@ -116,6 +116,95 @@ button {
   z-index:1002;
   display:none;
 }
+
+/* ================= 유저 프로필 영역 ================ */
+
+#userProfileArea {
+  max-width: 900px;
+  margin: 10px auto 20px auto;
+  padding: 10px 14px;
+  border-top: 2px solid #eee;
+  border-bottom: 2px solid #eee;
+}
+
+.profile-inner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: center;
+}
+
+/* 모바일에선 세로 배치 */
+@media (max-width: 600px) {
+  .profile-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* 무기 이미지 슬롯 (추후 실제 이미지 들어갈 자리) */
+.profile-weapon-slot {
+  min-width: 120px;
+  text-align: center;
+}
+
+.weapon-frame {
+  width: 110px;
+  height: 110px;
+  margin: 0 auto 6px auto;
+  border: 2px solid #fff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #111;
+}
+
+.weapon-placeholder {
+  font-size: 12px;
+  color: #777;
+}
+
+.weapon-name {
+  font-size: 13px;
+  color: #ddd;
+}
+
+/* 유저 정보 텍스트 */
+.profile-info {
+  flex: 1;
+  font-size: 14px;
+}
+
+.profile-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 3px 0;
+}
+
+.profile-top {
+  margin-bottom: 8px;
+}
+
+.nickname {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.label {
+  color: #bbb;
+}
+
+.value {
+  font-weight: bold;
+}
+
+#profileGold,
+#profileSword,
+#profilePower,
+#profileHuntCount {
+  color: #fff;
+}
   
   /* 🗺 MAP 버튼 */
 #mapBtn {
@@ -269,8 +358,47 @@ button {
 <!-- 🎮 게임 -->
 <div id="gameScreen" style="display:none;">
   <h1>⚔️ 검 키우기</h1>
-<p id="status"></p>
 
+  <!-- 🧾 유저 프로필 영역 -->
+  <div id="userProfileArea">
+    <div class="profile-inner">
+      <!-- 왼쪽 : 무기 이미지 슬롯 (추후 실제 이미지 들어갈 예정) -->
+      <div class="profile-weapon-slot">
+        <div class="weapon-frame">
+          <span class="weapon-placeholder">무기 이미지 예정</span>
+        </div>
+        <div class="weapon-name" id="weaponName">
+          무기 이름 (추후 업데이트)
+        </div>
+      </div>
+
+      <!-- 오른쪽 : 유저 정보 요약 -->
+      <div class="profile-info">
+        <div class="profile-row profile-top">
+          <span class="nickname" id="profileNickname">-</span>
+        </div>
+        <div class="profile-row">
+          <span class="label">현재 강화</span>
+          <span class="value" id="profileSword">+0강</span>
+        </div>
+        <div class="profile-row">
+          <span class="label">공격력</span>
+          <span class="value" id="profilePower">0</span>
+        </div>
+        <div class="profile-row">
+          <span class="label">골드</span>
+          <span class="value" id="profileGold">0</span>
+        </div>
+        <div class="profile-row">
+          <span class="label">오늘 사냥</span>
+          <span class="value" id="profileHuntCount">0 / 10</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 기존 상태 표시 -->
+  <p id="status"></p>
 <p id="upgradeInfo"
    style="font-size:14px; margin-top:4px; margin-bottom:8px; color:#ccc;">
 </p>
@@ -321,13 +449,16 @@ button {
 <!-- 🎒 인벤토리 버튼 (로그 버튼 위) -->
 <button id="inventoryBtn" onclick="toggleInventory()" style="
   position:fixed;
-  bottom:150px;
+  top:50px;
   right:10px;
-  z-index:1001;
+  z-index:1100;
   display:none;
+  font-size:14px;
+  padding:8px 16px;
 ">
   🎒 인벤토리
 </button>
+
 
 
 
@@ -346,7 +477,7 @@ button {
 <div id="inventoryPanel" style="
   position:fixed;
   right:10px;
-  bottom:120px;             
+  top:60px;
   width:260px;
   max-height:60%;
   background:rgba(0,0,0,0.95);
@@ -358,6 +489,7 @@ button {
   text-align:left;
   font-size:14px;
 ">
+
 
   <h3>🎒 인벤토리</h3>
   <div id="inventoryList"></div>
@@ -428,14 +560,43 @@ const HUNT_FIELDS = [
 /* UI */
 function update(){
 
-  // 상태 표시 (power는 이미 고정값으로 계산된 상태를 그대로 사용)
-document.getElementById("status").innerHTML = `
-  <div style="font-size:18px;">
-    🔰 현재 강화 : <b>+${sword}강</b><br>
-    ⚔️ 공격력 : <b>${formatGold(power)}</b><br>
-    💰 골드 : <b>${formatGold(gold)}</b>
-  </div>
-`;
+  /* 🧾 유저 프로필 영역 갱신 */
+  const nickEl   = document.getElementById("profileNickname");
+  const swordEl  = document.getElementById("profileSword");
+  const powerEl  = document.getElementById("profilePower");
+  const goldEl   = document.getElementById("profileGold");
+  const huntEl   = document.getElementById("profileHuntCount");
+
+  if (nickEl) {
+    nickEl.textContent  = userId || "-";
+  }
+  if (swordEl) {
+    swordEl.textContent = `+${sword}강`;
+  }
+  if (powerEl) {
+    powerEl.textContent = formatGold(power);
+  }
+  if (goldEl) {
+    goldEl.textContent  = formatGold(gold);
+  }
+  if (huntEl) {
+    const today = getTodayDateString();
+    if (lastHuntDate !== today) {
+      // 날짜 바뀌면 0/10 으로 보이도록
+      huntEl.textContent = `0 / 10`;
+    } else {
+      huntEl.textContent = `${huntCountToday} / 10`;
+    }
+  }
+
+  // 🔽 기존 status 영역은 그대로 유지
+  document.getElementById("status").innerHTML = `
+    <div style="font-size:18px;">
+      🔰 현재 강화 : <b>+${sword}강</b><br>
+      ⚔️ 공격력 : <b>${formatGold(power)}</b><br>
+      💰 골드 : <b>${formatGold(gold)}</b>
+    </div>
+  `;
 
 
   // 🔹 강화 성공/실패 정보
