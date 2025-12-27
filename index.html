@@ -11,6 +11,20 @@ body {
   text-align:center;
   font-family:Arial;
 }
+
+.action-buttons {
+  display: flex;
+  justify-content: center;  /* 가운데 정렬 */
+  gap: 10px;                /* 버튼 간 간격 */
+  flex-wrap: nowrap;        /* 줄바꿈 안되게 */
+  margin-top: 6px;
+}
+
+.action-buttons button {
+  flex: 1;                  /* 버튼을 균등 너비로 */
+  max-width: 110px;         /* 버튼 너무 길어지지 않게 제한 */
+}
+
   
   /* 🎫 출석 버튼 */
 #attendanceBtn {
@@ -401,7 +415,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.281)
+    (v3.283)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -467,9 +481,12 @@ button {
    style="font-size:14px; margin-top:4px; margin-bottom:8px; color:#ccc;">
 </p>
 
-<button onclick="upgrade()">🔨 강화</button>
-<button id="huntBtn" onclick="hunt()">⚔️ 사냥</button>
-<button onclick="sell()">💰 판매</button>
+<div class="action-buttons">
+  <button onclick="upgrade()">🔨 강화</button>
+  <button id="huntBtn" onclick="hunt()">⚔️ 사냥</button>
+  <button onclick="sell()">💰 판매</button>
+</div>
+
 
 <!-- 🎯 강화 아이템 사용 체크박스 -->
 <div id="upgradeItems" style="margin-top:8px; font-size:13px;">
