@@ -366,6 +366,33 @@ button {
   max-width: 360px;  /* 프로필 카드 폭이랑 비슷하게 */
 }
 
+/* 🎨 사냥터 배경 레이어 */
+#gameScreen {
+  position: relative;
+}
+
+/* fieldBg 안의 내용은 그대로, 배경만 ::before로 깔기 */
+.field-bg {
+  position: relative;
+  z-index: 1;        /* 내용이 배경보다 위에 오게 */
+}
+
+/* 진짜 배경은 가상 요소로: 가로는 화면 전체, 세로는 fieldBg 높이까지만 */
+.field-bg::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100vw;                 /* 👈 웹 화면 전체 가로 덮기 */
+  height: 100%;                 /* 👈 fieldBg 높이까지만 */
+  background-image: var(--field-bg-image, none);
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  filter: blur(3px) brightness(0.6);  /* 프로필 카드랑 구분되게 살짝 블러+어둡게 */
+  z-index: -1;
+}
   
 </style>
 </head>
@@ -477,15 +504,15 @@ button {
     <div id="mapList"></div>
   </div>
 
-  
+</div> <!-- 🔚 fieldBg : 배경은 여기까지만 -->
+
   <hr>
   <h2>🏆 랭킹 TOP 10</h2>
   <div id="ranking">불러오는 중...</div>
   <div id="myRank" style="margin-top:8px; font-size:14px; color:#ccc;"></div>
 
-     </div> <!-- 🔚 fieldBg -->
-  
-</div>
+</div> <!-- 🔚 gameScreen -->
+
 
 <button id="attendanceBtn" onclick="checkAttendance()">출석</button>
 
@@ -670,6 +697,30 @@ function logout() {
   update();
 }
 
+// 🖼 사냥터 배경 이미지 적용
+function applyFieldBackground() {
+  const bgEl = document.getElementById("fieldBg");
+  if (!bgEl) return;
+
+  const imgMap = {
+    1: "images/fields/field1_mushroom_village.png",   // 평화로운 버섯마을
+    2: "images/fields/field2_sewer_plague_rat.png",   // 시궁창
+    3: "images/fields/field3_outlaw_west.png",        // 무법자들의 황야
+    4: "images/fields/field4_swamp_elf.png",          // 늪엘프의 숲
+    5: "images/fields/field5_frost_queen_cave.png",   // 서리여왕의 동굴
+    6: "images/fields/field6_death_king.png",         // 망령왕의 죽음세계
+    7: "images/fields/field7_behemoth_hell.png",      // 베히모스의 불구덩이
+    8: "images/fields/field8_archangel_cradle.png",   // 대천사의 요람
+    9: "images/fields/field9_god_realm.png",          // 신의 처소
+    10:"images/fields/field10_dimension_rift.png"     // 차원의 틈새
+  };
+
+  const url = imgMap[currentField] || imgMap[1];
+
+  // CSS 커스텀 변수로 넘겨서 ::before가 사용
+  bgEl.style.setProperty("--field-bg-image", `url('${url}')`);
+}
+
   
 /* UI */
 
@@ -832,6 +883,17 @@ huntInfoEl.innerHTML = `
 
 const remaining = 10 - huntCountToday;
 huntBtnEl.textContent = `⚔️ 사냥 (${remaining}/10)`;
+
+      if (field && huntInfoEl && huntBtnEl) {
+    // ... (지금 있는 코드 그대로) ...
+
+    const remaining = 10 - huntCountToday;
+    huntBtnEl.textContent = `⚔️ 사냥 (${remaining}/10)`;
+  }
+
+  // 🔥 현재 사냥터에 맞는 배경 적용
+  applyFieldBackground();
+}
 
 
   }
@@ -1859,6 +1921,8 @@ function renderMap() {
         // 실제 사냥터 변경
         currentField = i;
 
+        applyFieldBackground();
+        
         // UI 갱신 + 저장
         update();
         save();
