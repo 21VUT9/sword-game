@@ -449,7 +449,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.331)
+    (v3.332)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -529,6 +529,8 @@ button {
   <button id="huntBtn" onclick="hunt()">⚔️ 사냥</button>
   <button onclick="sell()">💰 판매</button>
 </div>
+
+<p id="huntInfo" style="margin-top:4px; color:#ccc; font-size:13px;"></p>
     
 <!-- 🎯 강화 아이템 사용 체크박스 -->
 <div id="upgradeItems" style="margin-top:8px; font-size:13px;">
@@ -550,9 +552,6 @@ button {
   </label>
 </div>
 
-
-<p id="huntInfo"></p>
-
   <!-- 🗺 MAP -->
   <button id="mapBtn" onclick="toggleMap()">🗺 MAP</button>
   <div id="mapPanel">
@@ -568,7 +567,6 @@ button {
   <div id="myRank" style="margin-top:8px; font-size:14px; color:#ccc;"></div>
 
 </div> <!-- 🔚 gameScreen -->
-
 
 <button id="attendanceBtn" onclick="checkAttendance()">출석</button>
 
