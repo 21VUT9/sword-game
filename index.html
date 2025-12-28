@@ -449,7 +449,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.351)
+    (v3.361)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2465,7 +2465,6 @@ function getTodayDateString() {
   return `${y}-${m}-${day}`;
 }
 
-  
 function formatTime(ts) {
   const d = new Date(ts);
 
@@ -2478,29 +2477,147 @@ function formatTime(ts) {
   return `${MM}/${DD} ${hh}:${mm}:${ss}`;
 }
 
+// 파괴 묵념 댓글 랜덤
+function getRandomMournComment() {
+  const lines = [
+    "와~! 태초마을이야~!",
+    "이 맛에 강화하지 ㅋㅋ",
+    "깨끗하다, 0강…",
+    "저 강철 냄새 맡아봐… 새거야 새거.",
+    "강화는 원래 여기서부터 시작이죠?",
+    "아름다운 폭발이었습니다.",
+    "또 만나자, +0강 시절…",
+    "저게 바로 하드 리셋이라는 거야.",
+    "용기 있는 자의 결말이군.",
+    "관짝 열고 다시 고고씽~"
+  ];
+  const i = Math.floor(Math.random() * lines.length);
+  return lines[i];
+}
 
+// 특정 로그 밑에 댓글 한 줄 추가
+function appendMournCommentToLog(logId, commentData) {
+  const panelItem = document.getElementById("log-" + logId);
+  if (!panelItem) return;
+
+  const commentsBox = panelItem.querySelector(".log-comments");
+  if (!commentsBox) return;
+
+  const div = document.createElement("div");
+  div.style.fontSize = "12px";
+  div.style.color = "#ccc";
+  div.innerHTML = `↳ ${commentData.text} <span style="color:#888;">- ${commentData.userId}</span>`;
+  commentsBox.appendChild(div);
+}
+
+  // [묵념하기] 클릭 시 처리 (유저당 1회)
+function handleMournClick(e) {
+  if (!userId) {
+    alert("로그인 후 이용 가능합니다.");
+    return;
+  }
+
+  const logId = e.target.dataset.logId;
+  if (!logId) return;
+
+  const userMournRef = logRef.child(logId).child("mournedBy").child(userId);
+
+  // 이미 이 로그에 묵념했는지 체크
+  userMournRef.once("value").then(snap => {
+    if (snap.exists()) {
+      alert("이미 이 파괴에 묵념했습니다.");
+      return;
+    }
+
+    // 이 유저가 사용했다고 기록
+    userMournRef.set(true);
+
+    const comment = {
+      userId: userId,
+      text: getRandomMournComment(),
+      time: Date.now()
+    };
+
+    // DB에 댓글 남기기
+    const commentsRef = logRef.child(logId).child("comments");
+    const newRef = commentsRef.push(comment);
+
+    // 내 화면에는 바로 추가
+    appendMournCommentToLog(logId, comment);
+  });
+}
 
 /* 로그 */
 function writeLog(message,isDestroy=false){
   logRef.push({message,isDestroy,time:Date.now()});
 }
-logRef.limitToLast(50).on("child_added",s=>{
-  const d=s.val();
+logRef.limitToLast(50).on("child_added", s => {
+  const d = s.val();
+  const logId = s.key;          // 이 로그의 고유 ID
+  const ts = formatTime(d.time || Date.now());
 
-  const ts = formatTime(d.time); // ⏱ 타임스탬프 변환
+  /* 👇 하단 토스트(5개 제한) */
+  const toastEl = document.createElement("div");
+  toastEl.className = "toast-item" + (d.isDestroy ? " toast-destroy" : "");
+  toastEl.innerHTML = `<span style="color:#888;">[${ts}]</span> ${d.message}`;
 
-  const el=document.createElement("div");
-  el.className="toast-item"+(d.isDestroy?" toast-destroy":"");
+  // 파괴 로그라면 [묵념하기] 버튼 추가
+  if (d.isDestroy) {
+    const btn = document.createElement("span");
+    btn.textContent = " [묵념하기]";
+    btn.style.cursor = "pointer";
+    btn.style.color = "#ffffff";  // 흰색 강조
+    btn.dataset.logId = logId;
+    btn.onclick = handleMournClick;
+    toastEl.appendChild(btn);
+  }
 
-el.innerHTML = `<span style="color:#888;">[${ts}]</span> ${d.message}`;
+  toastList.prepend(toastEl);
+  while (toastList.children.length > 5) toastList.lastChild.remove();
 
+  /* 👇 상단 로그 패널용 항목 */
+  const panelItem = document.createElement("div");
+  panelItem.className = "toast-item" + (d.isDestroy ? " toast-destroy" : "");
+  panelItem.id = "log-" + logId;   // 댓글 붙일 때 찾기용
 
-  toastList.prepend(el);
-  while(toastList.children.length>5) toastList.lastChild.remove();
+  const mainLine = document.createElement("div");
+  mainLine.innerHTML = `<span style="color:#888;">[${ts}]</span> ${d.message}`;
 
-  const p=el.cloneNode(true);
-  logPanelList.prepend(p);
+  if (d.isDestroy) {
+    const btn2 = document.createElement("span");
+    btn2.textContent = " [묵념하기]";
+    btn2.style.cursor = "pointer";
+    btn2.style.color = "#ffffff";
+    btn2.dataset.logId = logId;
+    btn2.onclick = handleMournClick;
+    mainLine.appendChild(btn2);
+  }
+
+  panelItem.appendChild(mainLine);
+
+  // 댓글 박스
+  const commentsBox = document.createElement("div");
+  commentsBox.className = "log-comments";
+  commentsBox.style.marginLeft = "18px";
+  commentsBox.style.marginTop = "2px";
+  panelItem.appendChild(commentsBox);
+
+  logPanelList.prepend(panelItem);
+
+  // 이미 DB에 댓글이 있다면 렌더
+  if (d.comments) {
+    Object.values(d.comments).forEach(c => {
+      appendMournCommentToLog(logId, c);
+    });
+  }
+
+  // 이후에 달리는 댓글도 실시간으로 반영
+  logRef.child(logId).child("comments").on("child_added", snap => {
+    const c = snap.val();
+    appendMournCommentToLog(logId, c);
+  });
 });
+
 
 /* 로그 토글 */
 function toggleLog(){
