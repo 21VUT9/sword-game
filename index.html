@@ -449,7 +449,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.320)
+    (v3.331)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -678,7 +678,87 @@ let currentField = 1;          // 1~10 사냥터
 let huntCountToday = 0;        // 오늘 사냥 횟수
 let lastHuntDate = "";         // 마지막 사냥 날짜 (YYYY-MM-DD)
 
+// 🆕 사냥 스태미나
+let huntStamina = 20;          // 현재 사냥 가능 횟수 (0~20)
+let lastStaminaUpdate = 0;     // 마지막 스태미나 갱신 시각 (ms timestamp)
 
+// 🧮 사냥 스태미나 계산 (리셋 + 회복 처리)
+function recalcHuntStamina() {
+  const now = Date.now();
+  const today = getTodayDateString();
+
+  // 최초 호출 시 초기화
+  if (!lastStaminaUpdate) {
+    lastStaminaUpdate = now;
+  }
+
+  // 🔁 날짜가 바뀌었으면 00시에 풀 회복 (20개)
+  if (lastHuntDate !== today) {
+    lastHuntDate     = today;
+    huntStamina      = 20;
+    lastStaminaUpdate = now;
+    huntCountToday   = 0;
+    return;
+  }
+
+  // 이미 가득 차 있으면 더 회복 X
+  if (huntStamina >= 20) return;
+
+  const intervalMs = 20 * 60 * 1000; // 20분
+  const elapsed    = now - lastStaminaUpdate;
+  if (elapsed <= 0) return;
+
+  // 지난 시간 동안 회복 가능한 개수
+  const gained = Math.floor(elapsed / intervalMs);
+  if (gained <= 0) return;
+
+  huntStamina = Math.min(20, huntStamina + gained);
+  // 마지막 회복 기준 시각 앞으로 당겨주기
+  lastStaminaUpdate += gained * intervalMs;
+
+  // 참고용: 오늘 사용한 횟수 = 20 - 남은 스태미나
+  huntCountToday = Math.max(0, 20 - huntStamina);
+}
+
+// 🧭 사냥 UI만 갱신 (버튼 텍스트 + 남은 시간 표시)
+function updateHuntUI() {
+  const huntBtnEl  = document.getElementById("huntBtn");
+  const huntInfoEl = document.getElementById("huntInfo");
+  if (!huntBtnEl || !huntInfoEl) return;
+
+  // 매번 부를 때마다 스태미나 재계산
+  recalcHuntStamina();
+
+  const remaining = huntStamina;
+  huntBtnEl.textContent = `⚔️ 사냥 (${remaining}/20)`;
+
+  // 회복까지 남은 시간 계산
+  let infoText = "";
+  const intervalMs = 20 * 60 * 1000;
+
+ if (remaining >= 20) {
+  infoText = `[ 00:00 ]`;
+} else {
+  const now = Date.now();
+  const elapsed = now - lastStaminaUpdate;
+
+  const passed = Math.max(0, elapsed);
+  const remainMs = intervalMs - (passed % intervalMs);
+  const totalSec = Math.floor(remainMs / 1000);
+
+  const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
+  const ss = String(totalSec % 60).padStart(2, "0");
+
+  infoText = `[ ${mm}:${ss} ]`;
+}
+
+  huntInfoEl.style.fontSize   = "13px";
+  huntInfoEl.style.color      = "#ccc";
+  huntInfoEl.style.whiteSpace = "pre-line"; // \n 줄바꿈
+  huntInfoEl.textContent      = infoText;
+}
+
+  
 // 🎁 아이템 보유 수량
 let itemScroll15 = 0;   // 15강 강화 주문서
 let itemProtect  = 0;   // 파괴방지 주문서
@@ -913,51 +993,33 @@ if (descEl) {
   const field = HUNT_FIELDS[currentField];
   const huntSuccess = getHuntSuccessChance(sword, currentField);
 
-  const today = getTodayDateString();
-  if (lastHuntDate !== today) {
-    huntCountToday = 0;
-    lastHuntDate = today;
-  }
-
   const fieldInfoEl = document.getElementById("currentFieldInfo"); // 카드 위 텍스트
-  const huntInfoEl  = document.getElementById("huntInfo");         // 버튼 아래 간단 텍스트
   const huntBtnEl   = document.getElementById("huntBtn");
 
   // 🗺 카드 위에 현재 사냥터 + 레벨 + 성공확률 표시
   if (field && fieldInfoEl) {
-fieldInfoEl.innerHTML = `
-  <div style="font-size: 21px; font-weight: bold;">
-    ${field.name}
-  </div>
-  <div class="current-field-info-sub">
-    추천 레벨: +${field.recLevel}강
-    &nbsp;/&nbsp;
-    내 레벨: +${sword}강
-    &nbsp;/&nbsp;
-    사냥 성공 확률: ${huntSuccess}%
-  </div>
-`;
+    const huntSuccess = getHuntSuccessChance(sword, currentField);
 
+    fieldInfoEl.innerHTML = `
+      <div style="font-size: 21px; font-weight: bold;">
+        ${field.name}
+      </div>
+      <div class="current-field-info-sub">
+        추천 레벨: +${field.recLevel}강
+        &nbsp;/&nbsp;
+        내 레벨: +${sword}강
+        &nbsp;/&nbsp;
+        사냥 성공 확률: ${huntSuccess}%
+      </div>
+    `;
   }
 
-  // ⚔️ 사냥 버튼(남은 횟수)
-  const remaining = 20 - huntCountToday;
-  if (huntBtnEl) {
-    huntBtnEl.textContent = `⚔️ 사냥 (${remaining}/20)`;
-  }
-
-  // 버튼 아래 텍스트는 심플하게 남은 횟수만 (원하면 삭제 가능)
-  if (huntInfoEl) {
-    huntInfoEl.style.fontSize = "13px";
-    huntInfoEl.style.color = "#ccc";
-    huntInfoEl.textContent = `오늘 사냥 가능 횟수: ${remaining} / 20`;
-  }
-
+  // 🆕 사냥 스태미나 UI 갱신
+  updateHuntUI();
 
   // 🔥 현재 사냥터 배경 적용 (CSS ::before용 변수 세팅)
   applyFieldBackground();
 }
-
 
 function showNpcMessage(text, imgPath = "images/npc/blacksmith_idle.png", showButton = true) {
   setNpcName("대장장이 – 퍼그란트");   // 기본은 퍼그란트
@@ -1804,31 +1866,25 @@ function hunt(){
     return;
   }
 
-  const today = getTodayDateString();
+  // 사냥 전 스태미나 최신화
+  recalcHuntStamina();
 
-  // 날짜 바뀌면 카운트 리셋
-  if (lastHuntDate !== today) {
-    lastHuntDate = today;
-    huntCountToday = 0;
+  // 스태미나가 0이면 사냥 불가
+  if (huntStamina <= 0) {
+    showHuntPopup(
+      `
+      <div style="font-size:18px; font-weight:bold;">
+        사냥 불가
+      </div>
+      <div style="margin-top:6px; font-size:14px;">
+        사냥 가능 횟수가 모두 소진되었습니다.<br>
+        시간이 지나면 다시 회복됩니다.
+      </div>
+      `,
+      "#CCCCCC"
+    );
+    return;
   }
-
-if (huntCountToday >= 20) {
-
-  showHuntPopup(
-    `
-    <div style="font-size:18px; font-weight:bold;">
-      오늘 사냥 종료
-    </div>
-    <div style="margin-top:6px; font-size:14px;">
-      하루 20회까지 도전할 수 있습니다.
-    </div>
-    `,
-    "#CCCCCC"
-  );
-
-  return;
-}
-
 
   const field = HUNT_FIELDS[currentField];
   if (!field) {
@@ -1914,12 +1970,15 @@ if (r < successChance) {
   );
 }
 
+  // ✅ 사냥 1회당 스태미나 1 감소
+  huntStamina = Math.max(0, huntStamina - 1);
+  // 참고용 카운트 (오늘 사용한 횟수)
+  huntCountToday = Math.max(0, 20 - huntStamina);
 
-
-  huntCountToday++;
   update();
   save();
 }
+
 
 
 // 🎯 사냥 성공 확률 계산
@@ -1989,6 +2048,8 @@ userRef.set({
   itemProtect: Number(itemProtect),
   itemSuper: Number(itemSuper),
   itemDownProtect: Number(itemDownProtect)
+  huntStamina: 20,
+  lastStaminaUpdate: Date.now()
 });
 
 
@@ -2016,6 +2077,10 @@ userRef.set({
   itemProtect  = data.itemProtect  ?? 0;
   itemSuper    = data.itemSuper    ?? 0;
   itemDownProtect = data.itemDownProtect ?? 0;
+  huntStamina       = data.huntStamina       ?? 20;
+  lastStaminaUpdate = data.lastStaminaUpdate ?? Date.now();
+  huntStamina       = data.huntStamina       ?? 20;
+  lastStaminaUpdate = data.lastStaminaUpdate ?? Date.now();
 
   // ✅ 로그인 시 현재 강화 단계 기준으로 공격력 재설정
   rollPowerForCurrentSword();
@@ -2072,6 +2137,8 @@ function save() {
   itemProtect: Number(itemProtect),
   itemSuper: Number(itemSuper),
   itemDownProtect: Number(itemDownProtect)
+  huntStamina: Number(huntStamina),
+  lastStaminaUpdate: Number(lastStaminaUpdate)
 });
 
 
@@ -2281,7 +2348,7 @@ function autoLoginFromStorage() {
     showTutorialIfFirstTime();
   });
 }
-
+ 
   
 /* 랭킹 */
 function loadRanking(){
@@ -2442,6 +2509,8 @@ function renderInventory() {
 
   loadRanking();
   autoLoginFromStorage();
+    // ⏱ 사냥 회복 타이머 표시용
+  setInterval(updateHuntUI, 1000);
 </script>
 
 <!-- 📘 처음 접속 튜토리얼 (NPC 버전) -->
