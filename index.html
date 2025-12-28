@@ -2541,9 +2541,6 @@ function handleMournClick(e) {
     // DB에 댓글 남기기
     const commentsRef = logRef.child(logId).child("comments");
     const newRef = commentsRef.push(comment);
-
-    // 내 화면에는 바로 추가
-    appendMournCommentToLog(logId, comment);
   });
 }
 
