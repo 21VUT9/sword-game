@@ -449,7 +449,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.31)
+    (v3.320)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -804,7 +804,7 @@ function update() {
     if (lastHuntDate !== today) {
       huntEl.textContent = `0 / 20`;
     } else {
-      huntEl.textContent = `${huntCountToday} / 10`;
+      huntEl.textContent = `${huntCountToday} / 20`;
     }
   }
 
@@ -960,13 +960,15 @@ fieldInfoEl.innerHTML = `
 
 
 function showNpcMessage(text, imgPath = "images/npc/blacksmith_idle.png", showButton = true) {
-    setNpcName("대장장이 – 퍼그란트");   // 🟡 추가
-  const popup = document.getElementById("npcPopup");
-  const msgEl = document.getElementById("npcPopupText");
-  const imgEl = document.getElementById("npcPopupImg");
-  const btnEl = document.querySelector(".npc-popup-btn");
+  setNpcName("대장장이 – 퍼그란트");   // 기본은 퍼그란트
 
-  if (!popup || !msgEl || !imgEl) {
+  const popup     = document.getElementById("npcPopup");
+  const msgEl     = document.getElementById("npcPopupText");
+  const imgEl     = document.getElementById("npcPopupImg");
+  const okBtn     = document.getElementById("npcConfirmBtn");
+  const cancelBtn = document.getElementById("npcCancelBtn");
+
+  if (!popup || !msgEl || !imgEl || !okBtn || !cancelBtn) {
     alert(text);
     return;
   }
@@ -974,10 +976,18 @@ function showNpcMessage(text, imgPath = "images/npc/blacksmith_idle.png", showBu
   msgEl.innerHTML = text;
   imgEl.src = imgPath;
 
-  // 버튼 표시 여부 제어
-  if (btnEl) {
-    btnEl.style.display = showButton ? "inline-block" : "none";
+  // ✅ 기본 모드는 "확인" 1개만 사용
+  if (showButton) {
+    okBtn.style.display = "inline-block";
+    okBtn.textContent = "확인";
+    okBtn.onclick = closeNpcPopup;
+  } else {
+    okBtn.style.display = "none";
   }
+
+  // ✅ 기본 대사에서는 항상 취소 버튼 숨김
+  cancelBtn.style.display = "none";
+  cancelBtn.onclick = closeNpcPopup;   // 혹시 모를 상황 대비
 
   popup.style.display = "flex";
 }
@@ -1020,20 +1030,22 @@ function closeNpcPopup() {
 
 // 🧭 사냥터 이동 전용 팝업 (NPC 이미지/버튼 숨김)
 function showMovePopup() {
-  const popup = document.getElementById("npcPopup");
-  const msgEl = document.getElementById("npcPopupText");
-  const imgEl = document.getElementById("npcPopupImg");
-  const btnEl = document.querySelector(".npc-popup-btn");
-  const nameEl = document.getElementById("npcPopupName"); 
+  const popup     = document.getElementById("npcPopup");
+  const msgEl     = document.getElementById("npcPopupText");
+  const imgEl     = document.getElementById("npcPopupImg");
+  const okBtn     = document.getElementById("npcConfirmBtn");
+  const cancelBtn = document.getElementById("npcCancelBtn");
+  const nameEl    = document.getElementById("npcPopupName"); 
 
-  if (!popup || !msgEl || !imgEl) return;
+  if (!popup || !msgEl || !imgEl || !okBtn || !cancelBtn) return;
 
   // 🔹 NPC 이름 지우기
   if (nameEl) nameEl.textContent = "";
   
-  // 이미지 / 버튼 숨기고, 텍스트만 표시
+  // 이미지 / 버튼 전부 숨기고, 텍스트만 표시
   imgEl.style.display = "none";
-  if (btnEl) btnEl.style.display = "none";
+  okBtn.style.display = "none";
+  cancelBtn.style.display = "none";
 
   msgEl.innerHTML = `
     <div style="font-size:18px; font-weight:bold; color:#FFFFFF;">
@@ -1044,22 +1056,25 @@ function showMovePopup() {
   popup.style.display = "flex";
 }
 
+
 // ⚔️ 사냥 결과 팝업 (NPC 이미지/버튼 X)
 function showHuntPopup(text, color = "#FFFFFF") {
-  const popup = document.getElementById("npcPopup");
-  const msgEl = document.getElementById("npcPopupText");
-  const imgEl = document.getElementById("npcPopupImg");
-  const btnEl = document.querySelector(".npc-popup-btn");
-  const nameEl = document.getElementById("npcPopupName");
+  const popup     = document.getElementById("npcPopup");
+  const msgEl     = document.getElementById("npcPopupText");
+  const imgEl     = document.getElementById("npcPopupImg");
+  const okBtn     = document.getElementById("npcConfirmBtn");
+  const cancelBtn = document.getElementById("npcCancelBtn");
+  const nameEl    = document.getElementById("npcPopupName");
 
-  if (!popup || !msgEl || !imgEl) return;
+  if (!popup || !msgEl || !imgEl || !okBtn || !cancelBtn) return;
 
   // 🔹 이름 제거
   if (nameEl) nameEl.textContent = "";
   
   // 이미지 / 버튼 숨김
   imgEl.style.display = "none";
-  if (btnEl) btnEl.style.display = "none";
+  okBtn.style.display = "none";
+  cancelBtn.style.display = "none";
 
   msgEl.innerHTML = `
     <div style="font-size:18px; font-weight:bold; color:${color};">
@@ -1069,28 +1084,33 @@ function showHuntPopup(text, color = "#FFFFFF") {
 
   popup.style.display = "flex";
 
-  // 1.2초 후 자동 닫힘
+  // 1.2초 후 자동 닫힘 + 기본 상태 복원
   setTimeout(() => {
     popup.style.display = "none";
     imgEl.style.display = "block";
-    if (btnEl) btnEl.style.display = "inline-block";
+    okBtn.style.display = "inline-block";
+    cancelBtn.style.display = "none";
   }, 1200);
 }
 
+
   
 function closeMovePopup() {
-  const popup = document.getElementById("npcPopup");
-  const imgEl = document.getElementById("npcPopupImg");
-  const btnEl = document.querySelector(".npc-popup-btn");
+  const popup     = document.getElementById("npcPopup");
+  const imgEl     = document.getElementById("npcPopupImg");
+  const okBtn     = document.getElementById("npcConfirmBtn");
+  const cancelBtn = document.getElementById("npcCancelBtn");
 
-  if (!popup) return;
+  if (!popup || !imgEl || !okBtn || !cancelBtn) return;
 
-  // 다음에 NPC 대사 쓸 수 있도록 원상복구
-  if (imgEl) imgEl.style.display = "block";
-  if (btnEl) btnEl.style.display = "inline-block";
+  // 다음에 NPC 대사 쓸 수 있도록 대략 기본 형태로 복원
+  imgEl.style.display = "block";
+  okBtn.style.display = "inline-block";
+  cancelBtn.style.display = "none";
 
   popup.style.display = "none";
 }
+
   
   // 숫자 골드를 "12억 8,765만 4,252" 형태로 변환
 function formatGold(value) {
