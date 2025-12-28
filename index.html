@@ -449,7 +449,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.332)
+    (v3.333)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1914,7 +1914,7 @@ if (r < successChance) {
   // 🎁 아이템 드랍 처리
 
   // LV6 이상: 3% 확률로 15강 강화 주문서
-  if (currentField >= 6 && Math.random() < 0.03) {
+  if (currentField >= 6 && Math.random() < 0.015) {
     itemScroll15 += 1;
 
     popupMsg += `<br><br>📜 15강 강화 주문서를 획득했다!`;
@@ -1925,7 +1925,7 @@ if (r < successChance) {
   }
 
   // LV7 이상: 2% 확률로 파괴방지 주문서
-  if (currentField >= 7 && Math.random() < 0.02) {
+  if (currentField >= 7 && Math.random() < 0.01) {
     itemProtect += 1;
 
     popupMsg += `<br>🛡 파괴방지 주문서를 획득했다!`;
@@ -1936,7 +1936,7 @@ if (r < successChance) {
   }
 
   // LV8 이상: 1% 확률로 슈퍼강화 주문서
-  if (currentField >= 8 && Math.random() < 0.01) {
+  if (currentField >= 8 && Math.random() < 0.005) {
     itemSuper += 1;
 
     popupMsg += `<br>✨ 슈퍼강화 주문서를 획득했다!`;
@@ -1947,7 +1947,7 @@ if (r < successChance) {
   }
 
   // LV4 이상: 10% 확률로 강등방지 주문서
-  if (currentField >= 4 && Math.random() < 0.10) {
+  if (currentField >= 4 && Math.random() < 0.05) {
     itemDownProtect += 1;
 
     popupMsg += `<br>🔒 강등방지 주문서를 획득했다!`;
@@ -2008,7 +2008,7 @@ function getHuntReward(fieldId) {
   const baseCost = getUpgradeCost(refLevel); // 해당 강의 강화비용
 
   const mul = randRange(1.0, 1.5);   // 1.0 ~ 1.5 배
-  return Math.floor(baseCost * mul);
+  return Math.floor(baseCost * mul * 0.7);
 }
 
   
