@@ -936,11 +936,9 @@ function update() {
   const huntEl   = document.getElementById("profileHuntCount");
   const weaponValueEl = document.getElementById("profileWeaponValue");
   const recordEl = document.getElementById("profileRecord");
-  if (recordEl) {
-    const winStr = String(duelWin).padStart(2, "0");
-    const loseStr = String(duelLose).padStart(2, "0");
-    recordEl.textContent = `승${winStr} / 패${loseStr}`;
-  }
+if (recordEl) {
+  recordEl.textContent = `승 ${duelWin} / 패 ${duelLose}`;
+}
 
   if (nickEl) {
     nickEl.textContent  = userId || "-";
@@ -1210,8 +1208,11 @@ function performDuel(targetUserId, isRandomMatch) {
         "images/npc/blacksmith_success.png"
       );
 
-      writeLog(
-        `${userId}님이 ${targetUserId}님께 결투를 신청하여 승리하였습니다!`
+  const logMsg = isRandomMatch
+    ? `${userId}님이 랜덤결투를 신청하여 ${targetUserId}님과의 결투에서 승리하였습니다!`
+    : `${userId}님이 ${targetUserId}님께 결투를 신청하여 승리하였습니다!`;
+
+  writeLog(logMsg);
       );
 
     } else {
@@ -1229,9 +1230,11 @@ function performDuel(targetUserId, isRandomMatch) {
         "images/npc/blacksmith_fail.png"
       );
 
-      writeLog(
-        `${userId}님이 ${targetUserId}님께 결투를 신청하여 패배하였습니다...`
-      );
+  const logMsg = isRandomMatch
+    ? `${userId}님이 랜덤결투를 신청하여 ${targetUserId}님과의 결투에서 패배하였습니다...`
+    : `${userId}님이 ${targetUserId}님께 결투를 신청하여 패배하였습니다...`;
+
+  writeLog(logMsg);
     }
 
     update();
@@ -2677,12 +2680,14 @@ function loadRanking(){
       let arr=[];
       s.forEach(c=>{
         const d=c.val();
-        arr.push({
-          id: c.key,
-          sword: Number(d.sword || 0),
-          gold:  Number(d.gold  || 0),
-          updated: Number(d.updated || 0)
-        });
+arr.push({
+  id: c.key,
+  sword: Number(d.sword || 0),
+  gold:  Number(d.gold  || 0),
+  updated: Number(d.updated || 0),
+  duelWin: Number(d.duelWin || 0),
+  duelLose: Number(d.duelLose || 0)
+});
       });
 
       // sword -> updated 순으로 정렬
@@ -2693,9 +2698,12 @@ function loadRanking(){
 
 ranking.innerHTML = arr.map((u,i)=>`
   <div style="font-weight:bold;">
-    ${i+1}. ${u.id} | ${coloredLevel(u.sword)} | 💰 ${formatGold(u.gold)}
+    ${i+1}. ${u.id}
+    | ${coloredLevel(u.sword)}
+    | 전적: ${u.duelWin}승 ${u.duelLose}패
   </div>
 `).join("");
+
 
     });
 
@@ -2740,7 +2748,7 @@ ranking.innerHTML = arr.map((u,i)=>`
         const myInfo = arr[idx];
         myRank.innerHTML = `
           내 랭킹: <b>${idx + 1}위</b> 
-          (${coloredLevel(myInfo.sword)}, 💰 ${formatGold(myInfo.gold)})
+(${coloredLevel(myInfo.sword)}, 전적: ${duelWin}승 ${duelLose}패)
         `;
       }
     });
