@@ -447,7 +447,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.391)
+    (v3.392)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1133,31 +1133,45 @@ function performDuel(targetUserId, isRandomMatch) {
   ensureDuelDate();
 
   // ✅ 하루 총 10회 제한
-  if (duelCountToday >= 10) {
+ if (duelCountToday >= 10) {
+  showNpcMessage(
+    `
+    <div style="font-size:16px; font-weight:bold;">
+      이봐, 오늘은 여기까지다!
+    </div>
+    <div style="margin-top:4px; font-size:13px;">
+      승부는 쉬어야 더 뜨겁지.<br>
+      <span style="color:#ccc;">(하루 10회 결투 제한)</span>
+    </div>
+    `,
+    "images/npc/duel_carnia.png",
+    true,
+    "결투 심판관 – 카르니아 발크라이트"
+  );
+  return;
+}
+
+  // ✅ 같은 상대에게 하루 3회까지 (직접 도전만)
+if (!isRandomMatch) {
+  const cnt = duelTargetsToday[targetUserId] || 0;
+  if (cnt >= 3) {
     showNpcMessage(
       `
-      오늘은 더 이상 결투를 진행할 수 없습니다.<br>
-      <span style="font-size:13px; color:#ccc;">(하루 10회 제한)</span>
+      <div style="font-size:16px; font-weight:bold;">
+        그만해, 그 상대는 이미 충분히 두들겨 팼잖아?
+      </div>
+      <div style="margin-top:4px; font-size:13px;">
+        다른 전장도 한번 돌아보라고.<br>
+        <span style="color:#ccc;">(같은 상대 하루 3회 제한)</span>
+      </div>
       `,
-      "images/npc/blacksmith_idle.png"
+      "images/npc/duel_carnia.png",
+      true,
+      "결투 심판관 – 카르니아 발크라이트"
     );
     return;
   }
-
-  // ✅ 같은 상대에게 하루 3회까지 (직접 도전만)
-  if (!isRandomMatch) {
-    const cnt = duelTargetsToday[targetUserId] || 0;
-    if (cnt >= 3) {
-      showNpcMessage(
-        `
-        오늘은 이 상대에게 더 이상 도전할 수 없습니다.<br>
-        <span style="font-size:13px; color:#ccc;">(같은 상대 하루 3회 제한)</span>
-        `,
-        "images/npc/blacksmith_idle.png"
-      );
-      return;
-    }
-  }
+}
 
   // 🔍 상대 유저 데이터 가져오기
   const targetRef = db.ref("users/" + targetUserId);
@@ -1204,49 +1218,53 @@ function performDuel(targetUserId, isRandomMatch) {
       duelTargetsToday[targetUserId] = prev + 1;
     }
 
-    if (isWin) {
-      duelWin++;
-      gold += reward;
+if (isWin) {
+  duelWin++;
+  gold += reward;
 
-      showNpcMessage(
-        `
-        <div style="font-size:18px; font-weight:bold; color:#FFD700;">
-          결투에서 승리하였습니다!
-        </div>
-        <div style="margin-top:6px; font-size:14px;">
-          💰 ${formatGold(reward)} 골드를 획득했습니다.
-        </div>
-        `,
-        "images/npc/blacksmith_success.png"
-      );
+  showNpcMessage(
+    `
+    <div style="font-size:18px; font-weight:bold; color:#FFD700;">
+      멋진 승리였어!
+    </div>
+    <div style="margin-top:6px; font-size:14px;">
+      네 검이 경기장을 들썩이게 만들었군!<br>
+      💰 ${formatGold(reward)} 골드를 챙겨 가라!
+    </div>
+    `,
+    "images/npc/duel_carnia.png",
+    true,
+    "결투 심판관 – 카르니아 발크라이트"
+  );
 
   const logMsg = isRandomMatch
     ? `${userId}님이 랜덤결투를 신청하여 ${targetUserId}님과의 결투에서 승리하였습니다!`
     : `${userId}님이 ${targetUserId}님께 결투를 신청하여 승리하였습니다!`;
-
   writeLog(logMsg);
 
-    } else {
-      duelLose++;
+} else {
+  duelLose++;
 
-      showNpcMessage(
-        `
-        <div style="font-size:18px; font-weight:bold; color:#FF6666;">
-          결투에서 패배하였습니다..
-        </div>
-        <div style="margin-top:6px; font-size:14px;">
-          보상은 없습니다.
-        </div>
-        `,
-        "images/npc/blacksmith_fail.png"
-      );
+  showNpcMessage(
+    `
+    <div style="font-size:18px; font-weight:bold; color:#FF6666;">
+      쓰러졌지만, 꽤 근사했는걸?
+    </div>
+    <div style="margin-top:6px; font-size:14px;">
+      이번 판은 저쪽 손을 들어줘야겠네.<br>
+      보상은 없지만, 다음 라운드를 노려봐!
+    </div>
+    `,
+    "images/npc/duel_carnia.png",
+    true,
+    "결투 심판관 – 카르니아 발크라이트"
+  );
 
   const logMsg = isRandomMatch
     ? `${userId}님이 랜덤결투를 신청하여 ${targetUserId}님과의 결투에서 패배하였습니다...`
     : `${userId}님이 ${targetUserId}님께 결투를 신청하여 패배하였습니다...`;
-
   writeLog(logMsg);
-    }
+}
 
     update();
     save();
@@ -1265,8 +1283,8 @@ function showDuelConfirmPopup(targetUserId) {
 
   if (!popup || !msgEl || !imgEl || !okBtn || !cancelBtn) return;
 
-  setNpcName("결투 중재인");
-  imgEl.src = "images/npc/blacksmith_idle.png";
+setNpcName("결투 심판관 – 카르니아 발크라이트");
+imgEl.src = "images/npc/duel_carnia.png";
 
   msgEl.innerHTML = `
     <div style="font-size:16px; font-weight:bold; margin-bottom:6px;">
@@ -1292,8 +1310,13 @@ function showDuelConfirmPopup(targetUserId) {
   popup.style.display = "flex";
 }
   
-function showNpcMessage(text, imgPath = "images/npc/blacksmith_idle.png", showButton = true) {
-  setNpcName("대장장이 – 퍼그란트");   // 기본은 퍼그란트
+function showNpcMessage(
+  text,
+  imgPath = "images/npc/blacksmith_idle.png",
+  showButton = true,
+  npcName = "대장장이 – 퍼그란트"
+) {
+  setNpcName(npcName);   // 기본은 퍼그란트(매개변수 기본값)
 
   const popup     = document.getElementById("npcPopup");
   const msgEl     = document.getElementById("npcPopupText");
@@ -1309,7 +1332,6 @@ function showNpcMessage(text, imgPath = "images/npc/blacksmith_idle.png", showBu
   msgEl.innerHTML = text;
   imgEl.src = imgPath;
 
-  // ✅ 기본 모드는 "확인" 1개만 사용
   if (showButton) {
     okBtn.style.display = "inline-block";
     okBtn.textContent = "확인";
@@ -1318,13 +1340,11 @@ function showNpcMessage(text, imgPath = "images/npc/blacksmith_idle.png", showBu
     okBtn.style.display = "none";
   }
 
-  // ✅ 기본 대사에서는 항상 취소 버튼 숨김
   cancelBtn.style.display = "none";
-  cancelBtn.onclick = closeNpcPopup;   // 혹시 모를 상황 대비
+  cancelBtn.onclick = closeNpcPopup;
 
   popup.style.display = "flex";
 }
-
 
 function showTutorialIfFirstTime() {
 
