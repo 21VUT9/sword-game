@@ -449,7 +449,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.381)
+    (v3.383)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -592,8 +592,8 @@ button {
 <!-- 🔔 로그 -->
 <div id="toastLog"><div id="toastList"></div></div>
 
-<!-- 🎒 인벤토리 버튼 (로그 버튼 위) -->
-<button id="inventoryBtn" onclick="toggleInventory()" style="
+<!-- ⚔️ 결투 버튼 (MAP과 인벤토리 사이) -->
+<button id="duelBtn" onclick="toggleDuelPanel()" style="
   position:fixed;
   top:50px;
   right:10px;
@@ -602,11 +602,21 @@ button {
   font-size:14px;
   padding:8px 16px;
 ">
+  ⚔️ 결투
+</button>
+  
+<!-- 🎒 인벤토리 버튼 (로그 버튼 위) -->
+<button id="inventoryBtn" onclick="toggleInventory()" style="
+  position:fixed;
+  top:90px;
+  right:10px;
+  z-index:1100;
+  display:none;
+  font-size:14px;
+  padding:8px 16px;
+">
   🎒 인벤토리
 </button>
-
-
-
 
 <button id="logToggle" onclick="toggleLog()" style="
   position:fixed;
@@ -617,7 +627,6 @@ button {
 ">
   📜 로그
 </button>
-
 
 <!-- 🎒 인벤토리 패널 -->
 <div id="inventoryPanel" style="
@@ -635,12 +644,53 @@ button {
   text-align:left;
   font-size:14px;
 ">
-
-
   <h3>🎒 인벤토리</h3>
   <div id="inventoryList"></div>
 </div>
 
+  <!-- ⚔️ 결투 패널 -->
+<div id="duelPanel" style="
+  position:fixed;
+  right:10px;
+  top:60px;
+  width:280px;
+  max-height:70%;
+  background:rgba(0,0,0,0.95);
+  border:1px solid #555;
+  padding:10px;
+  overflow-y:auto;
+  z-index:1102;
+  display:none;
+  text-align:left;
+  font-size:14px;
+">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+    <div style="font-weight:bold; font-size:15px;">⚔️ 결투</div>
+    <!-- ⬅ 창 좌상단(에 가까운 쪽)에 X버튼 -->
+    <button onclick="toggleDuelPanel()" style="font-size:11px; padding:2px 6px;">X</button>
+  </div>
+
+  <div style="margin-bottom:6px;">
+    <input id="duelSearchInput"
+           type="text"
+           placeholder="닉네임 검색"
+           oninput="onDuelSearchChange(this.value)"
+           style="width:100%; box-sizing:border-box; padding:4px 6px; font-size:13px;">
+  </div>
+
+  <div id="duelHelpText" style="font-size:12px; color:#aaa; margin-bottom:4px;">
+    검색어가 없으면 상위 랭킹 순으로 표시됩니다.
+  </div>
+
+  <div id="duelList"></div>
+
+  <button id="randomMatchBtn"
+          onclick="handleRandomMatch()"
+          style="margin-top:8px; width:100%; padding:6px 0; font-size:14px;">
+    🎲 랜덤매칭
+  </button>
+</div>
+  
 <div id="logPanel">
   <h3>📢 강화 로그</h3>
   <div id="logPanelList"></div>
@@ -844,6 +894,7 @@ function logout() {
   document.getElementById("inventoryBtn").style.display = "none";
   document.getElementById("logToggle").style.display    = "none";
   document.getElementById("logoutBtn").style.display    = "none";
+  document.getElementById("duelBtn").style.display      = "none";
 
   // 프로필 영역도 초기 상태로 갱신
   update();
@@ -1044,6 +1095,57 @@ if (descEl) {
   applyFieldBackground();
 }
 
+// ⚔️ 실제 결투 처리 (다음 단계에서 구현 예정)
+function performDuel(targetUserId, isRandomMatch) {
+  alert(
+    "결투 시스템은 다음 단계에서 적용됩니다.\n\n" +
+    "상대: " + targetUserId + "\n" +
+    "랜덤매칭: " + (isRandomMatch ? "예" : "아니오")
+  );
+}
+  
+// ⚔️ 결투 신청 확인 팝업
+function showDuelConfirmPopup(targetUserId, isRandomMatch) {
+  const popup     = document.getElementById("npcPopup");
+  const msgEl     = document.getElementById("npcPopupText");
+  const imgEl     = document.getElementById("npcPopupImg");
+  const okBtn     = document.getElementById("npcConfirmBtn");
+  const cancelBtn = document.getElementById("npcCancelBtn");
+  const nameEl    = document.getElementById("npcPopupName");
+
+  if (!popup || !msgEl || !imgEl || !okBtn || !cancelBtn) return;
+
+  // 이름/이미지 세팅
+  setNpcName("결투 중재인");
+  imgEl.src = "images/npc/blacksmith_idle.png";
+
+  msgEl.innerHTML = `
+    <div style="font-size:16px; font-weight:bold; margin-bottom:6px;">
+      ${targetUserId}님과 정말 결투하시겠습니까?
+    </div>
+    <div style="font-size:13px; color:#ccc;">
+      (랜덤매칭: ${isRandomMatch ? "예" : "아니오"})
+    </div>
+  `;
+
+  okBtn.style.display = "inline-block";
+  cancelBtn.style.display = "inline-block";
+  okBtn.textContent = "예";
+  cancelBtn.textContent = "아니오";
+
+  okBtn.onclick = function () {
+    popup.style.display = "none";
+    // ✅ 다음 단계에서 실제 결투 로직 구현
+    performDuel(targetUserId, isRandomMatch);
+  };
+
+  cancelBtn.onclick = function () {
+    popup.style.display = "none";
+  };
+
+  popup.style.display = "flex";
+}
+  
 function showNpcMessage(text, imgPath = "images/npc/blacksmith_idle.png", showButton = true) {
   setNpcName("대장장이 – 퍼그란트");   // 기본은 퍼그란트
 
@@ -2154,6 +2256,7 @@ gameScreen.style.display   = "block";
 document.getElementById("attendanceBtn").style.display = "block";
 document.getElementById("inventoryBtn").style.display = "block";
 document.getElementById("logToggle").style.display = "block";
+document.getElementById("duelBtn").style.display = "block";
 
 update();
 showTutorialIfFirstTime();
@@ -2165,6 +2268,8 @@ document.getElementById("attendanceBtn").style.display = "block";
 document.getElementById("inventoryBtn").style.display = "block";
 document.getElementById("logToggle").style.display = "block";
 document.getElementById("logoutBtn").style.display = "block";
+document.getElementById("duelBtn").style.display = "block";
+
 
 // 🧷 새로고침 유지용: 마지막 로그인 유저 저장
 try {
@@ -2354,10 +2459,12 @@ function closeIfClickOutside(event, panelId, buttonId) {
 
 // 📌 전역 클릭 리스너 등록
 document.addEventListener("mousedown", function (e) {
-  closeIfClickOutside(e, "mapPanel", "mapBtn");           // MAP
+  closeIfClickOutside(e, "mapPanel", "mapBtn");             // MAP
   closeIfClickOutside(e, "inventoryPanel", "inventoryBtn"); // 인벤토리
-  closeIfClickOutside(e, "logPanel", "logToggle");        // 로그
+  closeIfClickOutside(e, "logPanel", "logToggle");          // 로그
+  closeIfClickOutside(e, "duelPanel", "duelBtn");           // 결투
 });
+
 
 // 🧷 새로고침 시 자동 로그인
 function autoLoginFromStorage() {
@@ -2418,6 +2525,7 @@ if (!power || power <= 20) {
     document.getElementById("inventoryBtn").style.display = "block";
     document.getElementById("logToggle").style.display = "block";
     document.getElementById("logoutBtn").style.display = "block";
+    document.getElementById("duelBtn").style.display = "block";
 
     update();
     showTutorialIfFirstTime();
@@ -2459,14 +2567,13 @@ ranking.innerHTML = arr.map((u,i)=>`
 
     });
 
-  // 👇 내 랭킹 계산
+  // 👇 내 랭킹 계산 + 결투용 전체 유저 캐시
   usersRef
     .orderByChild("sword")
     .on("value", s=>{
-      // 아직 로그인 안 했으면 표시 안 함
+      // 아직 로그인 안 했으면 표시 안 함 (랭킹만)
       if (!userId) {
         myRank.innerText = "";
-        return;
       }
 
       let arr = [];
@@ -2476,15 +2583,22 @@ ranking.innerHTML = arr.map((u,i)=>`
           id: c.key,
           sword: Number(d.sword || 0),
           gold:  Number(d.gold  || 0),
-          updated: Number(d.updated || 0)
+          updated: Number(d.updated || 0),
+          power: Number(d.power || 0)
         });
       });
 
-      // 전체 유저를 동일 기준으로 정렬
+      // 전체 유저를 동일 기준으로 정렬 (랭킹 기준)
       arr.sort((a, b) => {
         if (b.sword !== a.sword) return b.sword - a.sword;
         return a.updated - b.updated;
       });
+
+      // ⚔️ 결투용 전체 유저 캐시 갱신
+      allUsersCache = arr.slice();
+
+      // 로그인 안 되어 있으면 여기서 끝
+      if (!userId) return;
 
       const idx = arr.findIndex(u => u.id === userId);
 
@@ -2492,13 +2606,13 @@ ranking.innerHTML = arr.map((u,i)=>`
         myRank.innerText = "내 랭킹: 기록 없음";
       } else {
         const myInfo = arr[idx];
-myRank.innerHTML = `
-  내 랭킹: <b>${idx + 1}위</b> 
-  (${coloredLevel(myInfo.sword)}, 💰 ${formatGold(myInfo.gold)})
-`;
-
+        myRank.innerHTML = `
+          내 랭킹: <b>${idx + 1}위</b> 
+          (${coloredLevel(myInfo.sword)}, 💰 ${formatGold(myInfo.gold)})
+        `;
       }
     });
+
 }
 
   
@@ -2682,7 +2796,130 @@ logRef.limitToLast(50).on("child_added", s => {
   });
 });
 
+  // 검색창 변경 시 호출
+function onDuelSearchChange(value) {
+  renderDuelList(value);
+}
 
+  // ⚔️ 결투 대상 리스트 렌더링
+function renderDuelList(keyword) {
+  const listEl = document.getElementById("duelList");
+  const helpEl = document.getElementById("duelHelpText");
+  if (!listEl) return;
+
+  keyword = (keyword || "").trim();
+
+  // 유저 목록이 아직 안 왔으면
+  if (!allUsersCache || allUsersCache.length === 0) {
+    listEl.innerHTML = `<div style="font-size:13px; color:#aaa;">유저 목록을 불러오는 중입니다...</div>`;
+    if (helpEl) helpEl.style.display = "none";
+    return;
+  }
+
+  // 자기 자신은 제외
+  let base = allUsersCache.filter(u => u.id !== userId);
+
+  let filtered;
+  if (!keyword) {
+    // 검색어 없으면 그대로 (랭킹순 정렬된 상태)
+    filtered = base;
+    if (helpEl) {
+      helpEl.textContent = "검색어가 없으므로 랭킹 순으로 표시됩니다.";
+      helpEl.style.display = "block";
+    }
+  } else {
+    const lower = keyword.toLowerCase();
+    filtered = base.filter(u => u.id.toLowerCase().includes(lower));
+    if (helpEl) {
+      helpEl.textContent = filtered.length === 0
+        ? `"${keyword}" 와(과) 일치하는 유저가 없습니다.`
+        : `"${keyword}" 검색 결과입니다.`;
+      helpEl.style.display = "block";
+    }
+  }
+
+  if (filtered.length === 0) {
+    listEl.innerHTML = `<div style="font-size:13px; color:#aaa;">표시할 유저가 없습니다.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = "";
+
+  filtered.forEach(u => {
+    const row = document.createElement("div");
+    row.style.display = "flex";
+    row.style.alignItems = "center";
+    row.style.justifyContent = "space-between";
+    row.style.padding = "4px 0";
+    row.style.borderBottom = "1px solid #333";
+
+    const left = document.createElement("div");
+    left.innerHTML = `
+      <div style="font-weight:bold;">${u.id}</div>
+      <div style="font-size:12px; color:#ccc;">
+        ${coloredLevel(u.sword)} / 전투력: ${formatGold(u.power || 0)}
+      </div>
+    `;
+
+    const btn = document.createElement("span");
+    btn.textContent = "결투신청";
+    btn.style.cursor = "pointer";
+    btn.style.fontWeight = "bold";
+    btn.style.color = "#ffffff";
+    btn.dataset.targetId = u.id;
+    btn.onclick = function () {
+      showDuelConfirmPopup(u.id, false); // ← 직접 선택 결투
+    };
+
+    row.appendChild(left);
+    row.appendChild(btn);
+    listEl.appendChild(row);
+  });
+}
+
+  // 🎲 랜덤매칭
+function handleRandomMatch() {
+  if (!userId) {
+    alert("로그인 후 이용 가능합니다.");
+    return;
+  }
+
+  if (!allUsersCache || allUsersCache.length === 0) {
+    alert("아직 유저 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
+    return;
+  }
+
+  const candidates = allUsersCache.filter(u => u.id !== userId);
+  if (candidates.length === 0) {
+    alert("매칭 가능한 다른 유저가 없습니다.");
+    return;
+  }
+
+  const idx = Math.floor(Math.random() * candidates.length);
+  const target = candidates[idx];
+
+  showDuelConfirmPopup(target.id, true); // ← 랜덤매칭 플래그
+}
+
+// ⚔️ 결투 패널 토글
+function toggleDuelPanel() {
+  const panel = document.getElementById("duelPanel");
+  if (!panel) return;
+
+  if (panel.style.display === "none" || panel.style.display === "") {
+    renderDuelList("");  // 검색어 없이 → 랭킹 순
+    panel.style.display = "block";
+
+    const input = document.getElementById("duelSearchInput");
+    if (input) {
+      input.value = "";
+      input.focus();
+    }
+  } else {
+    panel.style.display = "none";
+  }
+}
+  
 /* 로그 토글 */
 function toggleLog(){
   logPanel.style.display = logPanel.style.display==="none"?"block":"none";
