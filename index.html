@@ -449,7 +449,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.372)
+    (v3.381)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -500,12 +500,19 @@ button {
         <span class="profile-value" id="profileGold">0</span>
       </div>
       
-      <div class="profile-row">
-        <span class="profile-label">무기가치</span>
-        <span class="profile-value" id="profileWeaponValue">0</span>
-      </div>
+<div class="profile-row">
+  <span class="profile-label">무기가치</span>
+  <span class="profile-value" id="profileWeaponValue">0</span>
+</div>
+
+<!-- ⚔️ 결투 전적 표시 -->
+<div class="profile-row">
+  <span class="profile-label">전적</span>
+  <span class="profile-value" id="profileRecord">승 0 / 패 0</span>
+</div>
       
-    </div>
+</div>
+
   </div>
 </div>
 
@@ -662,7 +669,7 @@ function getTutorialKeyForUser(id) {
 /* 상태 */
 let sword = 0, power = 10, gold = 100;
 let userId="", userPassword="", userRef=null;
-  let attendanceCount = 0;
+let attendanceCount = 0;
 let lastAttendanceDate = "";
 
 // 🆕 강화 진행 중인지 여부
@@ -670,6 +677,17 @@ let isUpgrading = false;
 
 // 🧭 사냥터 이동 중인지 여부
 let isMoving = false;
+
+// ⚔️ 결투 관련 상태
+let duelWin = 0;                  // 승 수
+let duelLose = 0;                 // 패 수
+let duelCountToday = 0;           // 오늘 결투한 총 횟수 (모든 상대 합산)
+let lastDuelDate = "";            // 마지막 결투 날짜 (YYYY-MM-DD)
+let duelTargetCounts = {};        // { 상대아이디: 오늘 그 상대와 싸운 횟수 }
+
+// 전체 유저 목록 캐시 (결투 검색/랜덤매칭용)
+let allUsersCache = [];
+
 
   // 🗺 사냥 관련 상태
 let currentField = 1;          // 1~10 사냥터
@@ -860,6 +878,8 @@ function update() {
   const goldEl   = document.getElementById("profileGold");
   const huntEl   = document.getElementById("profileHuntCount");
   const weaponValueEl = document.getElementById("profileWeaponValue");
+  const recordEl = document.getElementById("profileRecord");
+
 
   if (nickEl) {
     nickEl.textContent  = userId || "-";
@@ -885,7 +905,12 @@ function update() {
       huntEl.textContent = `${huntCountToday} / 20`;
     }
   }
-
+  
+  // ⚔️ 결투 전적 갱신
+  if (recordEl) {
+    recordEl.textContent = `승 ${duelWin} / 패 ${duelLose}`;
+  }
+  
   const statusEl = document.getElementById("status");
   if (statusEl) statusEl.innerHTML = "";
 
@@ -2071,10 +2096,14 @@ userRef.set({
   itemSuper: Number(itemSuper),
   itemDownProtect: Number(itemDownProtect),
   huntStamina: 20,
-  lastStaminaUpdate: Date.now()
+  lastStaminaUpdate: Date.now(),
+  // ⚔️ 결투 초기값
+  duelWin: 0,
+  duelLose: 0,
+  duelCountToday: 0,
+  lastDuelDate: "",
+  duelTargetCounts: {}
 });
-
-
 
     } 
     // ⭐ 기존 계정 로그인 시
@@ -2109,6 +2138,13 @@ if (!power || power <= 20) {
   itemDownProtect = data.itemDownProtect ?? 0;
   huntStamina       = data.huntStamina       ?? 20;
   lastStaminaUpdate = data.lastStaminaUpdate ?? Date.now();
+
+        // ⚔️ 결투 관련 값 불러오기 (없으면 기본값)
+  duelWin        = data.duelWin        ?? 0;
+  duelLose       = data.duelLose       ?? 0;
+  duelCountToday = data.duelCountToday ?? 0;
+  lastDuelDate   = data.lastDuelDate   ?? "";
+  duelTargetCounts = data.duelTargetCounts ?? {};
 
     }
 
@@ -2147,26 +2183,29 @@ showTutorialIfFirstTime();
 function save() {
   if (!userRef) return;
   userRef.update({
-  sword: Number(sword),
-  power: Number(power),
-  gold: Number(gold),
-  updated: Date.now(),
-  attendanceCount: attendanceCount,
-  lastAttendanceDate: lastAttendanceDate,
-  currentField: currentField,
-  huntCountToday: huntCountToday,
-  lastHuntDate: lastHuntDate,
-  itemScroll15: Number(itemScroll15),
-  itemProtect: Number(itemProtect),
-  itemSuper: Number(itemSuper),
-  itemDownProtect: Number(itemDownProtect),
-  huntStamina: Number(huntStamina),
-  lastStaminaUpdate: Number(lastStaminaUpdate)
-});
-
-
+    sword: Number(sword),
+    power: Number(power),
+    gold: Number(gold),
+    updated: Date.now(),
+    attendanceCount: attendanceCount,
+    lastAttendanceDate: lastAttendanceDate,
+    currentField: currentField,
+    huntCountToday: huntCountToday,
+    lastHuntDate: lastHuntDate,
+    itemScroll15: Number(itemScroll15),
+    itemProtect: Number(itemProtect),
+    itemSuper: Number(itemSuper),
+    itemDownProtect: Number(itemDownProtect),
+    huntStamina: Number(huntStamina),
+    lastStaminaUpdate: Number(lastStaminaUpdate),
+    // ⚔️ 결투 데이터
+    duelWin: Number(duelWin),
+    duelLose: Number(duelLose),
+    duelCountToday: Number(duelCountToday),
+    lastDuelDate: String(lastDuelDate),
+    duelTargetCounts: duelTargetCounts
+  });
 }
-
 
 /* 색상 */
 function getSwordColor(l){
@@ -2364,6 +2403,13 @@ if (!power || power <= 20) {
     itemDownProtect    = data.itemDownProtect ?? 0;
     huntStamina       = data.huntStamina       ?? 20;
     lastStaminaUpdate = data.lastStaminaUpdate ?? Date.now();
+        // ⚔️ 결투 관련 값 불러오기
+    duelWin        = data.duelWin        ?? 0;
+    duelLose       = data.duelLose       ?? 0;
+    duelCountToday = data.duelCountToday ?? 0;
+    lastDuelDate   = data.lastDuelDate   ?? "";
+    duelTargetCounts = data.duelTargetCounts ?? {};
+
 
     // 화면 전환
     loginScreen.style.display  = "none";
