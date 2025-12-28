@@ -449,7 +449,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.333)
+    (v3.341)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -491,7 +491,7 @@ button {
       </div>
 
       <div class="profile-row">
-        <span class="profile-label">공격력</span>
+        <span class="profile-label">전투력</span>
         <span class="profile-value" id="profilePower">0</span>
       </div>
 
@@ -2077,11 +2077,6 @@ userRef.set({
   itemDownProtect = data.itemDownProtect ?? 0;
   huntStamina       = data.huntStamina       ?? 20;
   lastStaminaUpdate = data.lastStaminaUpdate ?? Date.now();
-
-  // ✅ 로그인 시 현재 강화 단계 기준으로 공격력 재설정
-  rollPowerForCurrentSword();
-
-
 
     }
 
