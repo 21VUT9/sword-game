@@ -824,7 +824,18 @@ function updateHuntUI() {
   huntInfoEl.textContent      = infoText;
 }
 
-  
+// ⚔️ 결투 버튼 UI 갱신
+function updateDuelUI() {
+  const btn = document.getElementById("duelBtn");
+  if (!btn) return;
+
+  ensureDuelDate(); // 날짜 바뀌면 0으로 리셋
+
+  const remain = Math.max(0, 10 - duelCountToday);
+
+  btn.textContent = `⚔️ 결투 (${remain}/10)`;
+}
+
 // 🎁 아이템 보유 수량
 let itemScroll15 = 0;   // 15강 강화 주문서
 let itemProtect  = 0;   // 파괴방지 주문서
@@ -1093,7 +1104,10 @@ if (descEl) {
 
   // 🆕 사냥 스태미나 UI 갱신
   updateHuntUI();
-
+  
+// 🆕 결투 남은 횟수 UI 갱신
+updateDuelUI();
+  
   // 🔥 현재 사냥터 배경 적용 (CSS ::before용 변수 세팅)
   applyFieldBackground();
 }
@@ -1213,7 +1227,6 @@ function performDuel(targetUserId, isRandomMatch) {
     : `${userId}님이 ${targetUserId}님께 결투를 신청하여 승리하였습니다!`;
 
   writeLog(logMsg);
-      );
 
     } else {
       duelLose++;
