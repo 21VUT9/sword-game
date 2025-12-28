@@ -449,7 +449,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.341)
+    (v3.342)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2323,9 +2323,8 @@ function autoLoginFromStorage() {
     itemProtect        = data.itemProtect  ?? 0;
     itemSuper          = data.itemSuper    ?? 0;
     itemDownProtect    = data.itemDownProtect ?? 0;
-
-    // 로그인 시 공격력 재계산
-    rollPowerForCurrentSword();
+    huntStamina       = data.huntStamina       ?? 20;
+    lastStaminaUpdate = data.lastStaminaUpdate ?? Date.now();
 
     // 화면 전환
     loginScreen.style.display  = "none";
