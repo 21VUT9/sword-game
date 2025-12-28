@@ -40,7 +40,6 @@ body {
   margin: 0;             /* 공용 button 마진 제거 */
   white-space: nowrap;   /* 🔥 버튼 안에서 줄바꿈 금지 */
 }
-
   
   /* 🎫 출석 버튼 */
 #attendanceBtn {
@@ -447,7 +446,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.392)
+    (v3.398)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1185,6 +1184,8 @@ if (!isRandomMatch) {
 
     const targetSword = Number(t.sword ?? 0);
     let targetPower = Number(t.power ?? 0);
+    const attackerLvHtml = coloredLevel(sword);        // 내 +00강 (컬러 포함)
+const defenderLvHtml = coloredLevel(targetSword);  // 상대 +00강 (컬러 포함)
 
     // 상대 전투력이 0이거나 구버전이면 대략적인 공격력으로 대신 사용
     if (!targetPower || targetPower <= 0) {
@@ -1238,9 +1239,11 @@ if (isWin) {
   );
 
   const logMsg = isRandomMatch
-    ? `${userId}님이 랜덤결투를 신청하여 ${targetUserId}님과의 결투에서 승리하였습니다!`
-    : `${userId}님이 ${targetUserId}님께 결투를 신청하여 승리하였습니다!`;
+    ? `${userId}님(${attackerLvHtml})이 랜덤결투를 신청하여 ${targetUserId}님(${defenderLvHtml})과의 결투에서 승리하였습니다!`
+    : `${userId}님(${attackerLvHtml})이 ${targetUserId}님(${defenderLvHtml})께 결투를 신청하여 승리하였습니다!`;
+
   writeLog(logMsg);
+
 
 } else {
   duelLose++;
@@ -1261,8 +1264,9 @@ if (isWin) {
   );
 
   const logMsg = isRandomMatch
-    ? `${userId}님이 랜덤결투를 신청하여 ${targetUserId}님과의 결투에서 패배하였습니다...`
-    : `${userId}님이 ${targetUserId}님께 결투를 신청하여 패배하였습니다...`;
+    ? `${userId}님(${attackerLvHtml})이 랜덤결투를 신청하여 ${targetUserId}님(${defenderLvHtml})과의 결투에서 패배하였습니다...`
+    : `${userId}님(${attackerLvHtml})이 ${targetUserId}님(${defenderLvHtml})께 결투를 신청하여 패배하였습니다...`;
+
   writeLog(logMsg);
 }
 
