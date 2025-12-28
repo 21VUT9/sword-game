@@ -449,7 +449,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.383)
+    (v3.384)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1105,7 +1105,8 @@ function performDuel(targetUserId, isRandomMatch) {
 }
   
 // ⚔️ 결투 신청 확인 팝업
-function showDuelConfirmPopup(targetUserId, isRandomMatch) {
+// ⚔️ 결투 신청 확인 팝업 (직접 결투 신청 전용)
+function showDuelConfirmPopup(targetUserId) {
   const popup     = document.getElementById("npcPopup");
   const msgEl     = document.getElementById("npcPopupText");
   const imgEl     = document.getElementById("npcPopupImg");
@@ -1115,16 +1116,12 @@ function showDuelConfirmPopup(targetUserId, isRandomMatch) {
 
   if (!popup || !msgEl || !imgEl || !okBtn || !cancelBtn) return;
 
-  // 이름/이미지 세팅
   setNpcName("결투 중재인");
   imgEl.src = "images/npc/blacksmith_idle.png";
 
   msgEl.innerHTML = `
     <div style="font-size:16px; font-weight:bold; margin-bottom:6px;">
       ${targetUserId}님과 정말 결투하시겠습니까?
-    </div>
-    <div style="font-size:13px; color:#ccc;">
-      (랜덤매칭: ${isRandomMatch ? "예" : "아니오"})
     </div>
   `;
 
@@ -1135,8 +1132,8 @@ function showDuelConfirmPopup(targetUserId, isRandomMatch) {
 
   okBtn.onclick = function () {
     popup.style.display = "none";
-    // ✅ 다음 단계에서 실제 결투 로직 구현
-    performDuel(targetUserId, isRandomMatch);
+    // 직접 신청은 isRandomMatch = false
+    performDuel(targetUserId, false);
   };
 
   cancelBtn.onclick = function () {
@@ -2820,23 +2817,23 @@ function renderDuelList(keyword) {
   let base = allUsersCache.filter(u => u.id !== userId);
 
   let filtered;
-  if (!keyword) {
-    // 검색어 없으면 그대로 (랭킹순 정렬된 상태)
-    filtered = base;
-    if (helpEl) {
-      helpEl.textContent = "검색어가 없으므로 랭킹 순으로 표시됩니다.";
-      helpEl.style.display = "block";
-    }
-  } else {
-    const lower = keyword.toLowerCase();
-    filtered = base.filter(u => u.id.toLowerCase().includes(lower));
-    if (helpEl) {
-      helpEl.textContent = filtered.length === 0
-        ? `"${keyword}" 와(과) 일치하는 유저가 없습니다.`
-        : `"${keyword}" 검색 결과입니다.`;
-      helpEl.style.display = "block";
-    }
+if (!keyword) {
+  // 검색어 없으면 상위 5명만 표시
+  filtered = base.slice(0, 5);
+  if (helpEl) {
+    helpEl.textContent = "검색어가 없을 때는 상위 5명만 표시됩니다.";
+    helpEl.style.display = "block";
   }
+} else {
+  const lower = keyword.toLowerCase();
+  filtered = base.filter(u => u.id.toLowerCase().includes(lower));
+  if (helpEl) {
+    helpEl.textContent = filtered.length === 0
+      ? `"${keyword}" 와(과) 일치하는 유저가 없습니다.`
+      : `"${keyword}" 검색 결과입니다.`;
+    helpEl.style.display = "block";
+  }
+}
 
   if (filtered.length === 0) {
     listEl.innerHTML = `<div style="font-size:13px; color:#aaa;">표시할 유저가 없습니다.</div>`;
@@ -2867,9 +2864,10 @@ function renderDuelList(keyword) {
     btn.style.fontWeight = "bold";
     btn.style.color = "#ffffff";
     btn.dataset.targetId = u.id;
-    btn.onclick = function () {
-      showDuelConfirmPopup(u.id, false); // ← 직접 선택 결투
-    };
+    
+btn.onclick = function () {
+  showDuelConfirmPopup(u.id); // ← isRandomMatch 제거
+};
 
     row.appendChild(left);
     row.appendChild(btn);
@@ -2895,10 +2893,12 @@ function handleRandomMatch() {
     return;
   }
 
-  const idx = Math.floor(Math.random() * candidates.length);
-  const target = candidates[idx];
+const idx = Math.floor(Math.random() * candidates.length);
+const target = candidates[idx];
 
-  showDuelConfirmPopup(target.id, true); // ← 랜덤매칭 플래그
+// ✅ 랜덤매칭은 확인창 없이 바로 결투
+performDuel(target.id, true);
+
 }
 
 // ⚔️ 결투 패널 토글
