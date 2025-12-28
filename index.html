@@ -1172,16 +1172,10 @@ function closeMovePopup() {
 }
 
   
-  // 숫자 골드를 "12억 8,765만 4,252" 형태로 변환
+// 숫자 골드를 "12억 8,765만 4,252" 형태로 변환
 function formatGold(value) {
   const n = Number(value) || 0;
 
-// min ~ max 사이 랜덤 실수
-function randRange(min, max) {
-  return min + Math.random() * (max - min);
-}
-
-  
   // 100만 미만은 그냥 숫자+콤마로
   if (n < 1_000_000) {
     return n.toLocaleString();
@@ -1203,6 +1197,11 @@ function randRange(min, max) {
   if (parts.length === 0) return "0";
   return parts.join(" ");
 }
+  
+function randRange(min, max) {
+  return min + Math.random() * (max - min);
+}
+
 
   
 function getUpgradeCost(level) {
