@@ -1176,6 +1176,12 @@ function closeMovePopup() {
 function formatGold(value) {
   const n = Number(value) || 0;
 
+// min ~ max 사이 랜덤 실수
+function randRange(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+  
   // 100만 미만은 그냥 숫자+콤마로
   if (n < 1_000_000) {
     return n.toLocaleString();
