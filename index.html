@@ -449,7 +449,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.384)
+    (v3.385)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -733,11 +733,11 @@ let duelWin = 0;                  // 승 수
 let duelLose = 0;                 // 패 수
 let duelCountToday = 0;           // 오늘 결투한 총 횟수 (모든 상대 합산)
 let lastDuelDate = "";            // 마지막 결투 날짜 (YYYY-MM-DD)
-let duelTargetCounts = {};        // { 상대아이디: 오늘 그 상대와 싸운 횟수 }
-
+// 오늘 같은 상대에게 몇 번 도전했는지: { 상대아이디: 횟수 }
+let duelTargetsToday = {};
+  
 // 전체 유저 목록 캐시 (결투 검색/랜덤매칭용)
 let allUsersCache = [];
-
 
   // 🗺 사냥 관련 상태
 let currentField = 1;          // 1~10 사냥터
@@ -886,6 +886,12 @@ function logout() {
   itemProtect        = 0;
   itemSuper          = 0;
   itemDownProtect    = 0;
+  duelWin = 0;
+  duelLose = 0;
+  duelCountToday = 0;
+  lastDuelDate = "";
+  duelTargetsToday = {};
+
 
   // 화면 전환
   document.getElementById("gameScreen").style.display   = "none";
@@ -930,7 +936,11 @@ function update() {
   const huntEl   = document.getElementById("profileHuntCount");
   const weaponValueEl = document.getElementById("profileWeaponValue");
   const recordEl = document.getElementById("profileRecord");
-
+  if (recordEl) {
+    const winStr = String(duelWin).padStart(2, "0");
+    const loseStr = String(duelLose).padStart(2, "0");
+    recordEl.textContent = `승${winStr} / 패${loseStr}`;
+  }
 
   if (nickEl) {
     nickEl.textContent  = userId || "-";
@@ -956,12 +966,7 @@ function update() {
       huntEl.textContent = `${huntCountToday} / 20`;
     }
   }
-  
-  // ⚔️ 결투 전적 갱신
-  if (recordEl) {
-    recordEl.textContent = `승 ${duelWin} / 패 ${duelLose}`;
-  }
-  
+    
   const statusEl = document.getElementById("status");
   if (statusEl) statusEl.innerHTML = "";
 
@@ -1095,13 +1100,143 @@ if (descEl) {
   applyFieldBackground();
 }
 
-// ⚔️ 실제 결투 처리 (다음 단계에서 구현 예정)
+// ⚔️ 결투 일자/카운트 초기화
+function ensureDuelDate() {
+  const today = getTodayDateString();
+  if (lastDuelDate !== today) {
+    lastDuelDate = today;
+    duelCountToday = 0;
+    duelTargetsToday = {};
+  }
+}
+  
+// ⚔️ 실제 결투 처리
+// targetUserId : 도전 대상 유저 아이디
+// isRandomMatch: 랜덤매칭 여부 (true면 같은 상대 3회 제한 미적용)
 function performDuel(targetUserId, isRandomMatch) {
-  alert(
-    "결투 시스템은 다음 단계에서 적용됩니다.\n\n" +
-    "상대: " + targetUserId + "\n" +
-    "랜덤매칭: " + (isRandomMatch ? "예" : "아니오")
-  );
+  if (!userId || !userRef) {
+    alert("로그인 후 이용 가능합니다.");
+    return;
+  }
+
+  // 날짜 바뀌었으면 오늘 카운트 리셋
+  ensureDuelDate();
+
+  // ✅ 하루 총 10회 제한
+  if (duelCountToday >= 10) {
+    showNpcMessage(
+      `
+      오늘은 더 이상 결투를 진행할 수 없습니다.<br>
+      <span style="font-size:13px; color:#ccc;">(하루 10회 제한)</span>
+      `,
+      "images/npc/blacksmith_idle.png"
+    );
+    return;
+  }
+
+  // ✅ 같은 상대에게 하루 3회까지 (직접 도전만)
+  if (!isRandomMatch) {
+    const cnt = duelTargetsToday[targetUserId] || 0;
+    if (cnt >= 3) {
+      showNpcMessage(
+        `
+        오늘은 이 상대에게 더 이상 도전할 수 없습니다.<br>
+        <span style="font-size:13px; color:#ccc;">(같은 상대 하루 3회 제한)</span>
+        `,
+        "images/npc/blacksmith_idle.png"
+      );
+      return;
+    }
+  }
+
+  // 🔍 상대 유저 데이터 가져오기
+  const targetRef = db.ref("users/" + targetUserId);
+  targetRef.once("value").then(snap => {
+    if (!snap.exists()) {
+      alert("해당 유저 데이터가 존재하지 않습니다.");
+      return;
+    }
+
+    const t = snap.val();
+
+    const targetSword = Number(t.sword ?? 0);
+    let targetPower = Number(t.power ?? 0);
+
+    // 상대 전투력이 0이거나 구버전이면 대략적인 공격력으로 대신 사용
+    if (!targetPower || targetPower <= 0) {
+      targetPower = getBaseAttack(targetSword);
+    }
+
+    // 내 전투력도 안전하게 보정
+    if (!power || power <= 0) {
+      rollPowerForCurrentSword();
+    }
+
+    const A = Math.max(1, Number(power));
+    const B = Math.max(1, Number(targetPower));
+    const sum = A + B;
+
+    const winProb = sum > 0 ? (A / sum) : 0.5;
+    const isWin = Math.random() < winProb;
+
+    // 보상 골드: 상대 무기 강화비용의 2.5배 ~ 2.8배
+    const baseLevel = Math.min(targetSword, 29);
+    const baseCost = getUpgradeCost(baseLevel);
+    const reward = isWin
+      ? Math.floor(baseCost * randRange(2.5, 2.8))
+      : 0;
+
+    // 🔢 카운트/전적 갱신
+    duelCountToday++;
+
+    if (!isRandomMatch) {
+      const prev = duelTargetsToday[targetUserId] || 0;
+      duelTargetsToday[targetUserId] = prev + 1;
+    }
+
+    if (isWin) {
+      duelWin++;
+      gold += reward;
+
+      showNpcMessage(
+        `
+        <div style="font-size:18px; font-weight:bold; color:#FFD700;">
+          결투에서 승리하였습니다!
+        </div>
+        <div style="margin-top:6px; font-size:14px;">
+          💰 ${formatGold(reward)} 골드를 획득했습니다.
+        </div>
+        `,
+        "images/npc/blacksmith_success.png"
+      );
+
+      writeLog(
+        `${userId}님이 ${targetUserId}님께 결투를 신청하여 승리하였습니다!`
+      );
+
+    } else {
+      duelLose++;
+
+      showNpcMessage(
+        `
+        <div style="font-size:18px; font-weight:bold; color:#FF6666;">
+          결투에서 패배하였습니다..
+        </div>
+        <div style="margin-top:6px; font-size:14px;">
+          보상은 없습니다.
+        </div>
+        `,
+        "images/npc/blacksmith_fail.png"
+      );
+
+      writeLog(
+        `${userId}님이 ${targetUserId}님께 결투를 신청하여 패배하였습니다...`
+      );
+    }
+
+    update();
+    save();
+  });
 }
   
 // ⚔️ 결투 신청 확인 팝업
@@ -2201,7 +2336,7 @@ userRef.set({
   duelLose: 0,
   duelCountToday: 0,
   lastDuelDate: "",
-  duelTargetCounts: {}
+  duelTargetsToday: {}
 });
 
     } 
@@ -2243,7 +2378,7 @@ if (!power || power <= 20) {
   duelLose       = data.duelLose       ?? 0;
   duelCountToday = data.duelCountToday ?? 0;
   lastDuelDate   = data.lastDuelDate   ?? "";
-  duelTargetCounts = data.duelTargetCounts ?? {};
+duelTargetsToday = data.duelTargetsToday ?? {};
 
     }
 
@@ -2300,12 +2435,12 @@ function save() {
     itemDownProtect: Number(itemDownProtect),
     huntStamina: Number(huntStamina),
     lastStaminaUpdate: Number(lastStaminaUpdate),
-    // ⚔️ 결투 데이터
+    // ⚔️ 결투 정보
     duelWin: Number(duelWin),
     duelLose: Number(duelLose),
     duelCountToday: Number(duelCountToday),
-    lastDuelDate: String(lastDuelDate),
-    duelTargetCounts: duelTargetCounts
+    lastDuelDate: lastDuelDate,
+    duelTargetsToday: duelTargetsToday
   });
 }
 
@@ -2512,7 +2647,7 @@ if (!power || power <= 20) {
     duelLose       = data.duelLose       ?? 0;
     duelCountToday = data.duelCountToday ?? 0;
     lastDuelDate   = data.lastDuelDate   ?? "";
-    duelTargetCounts = data.duelTargetCounts ?? {};
+duelTargetsToday = data.duelTargetsToday ?? {};
 
 
     // 화면 전환
