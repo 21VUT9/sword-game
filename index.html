@@ -2047,7 +2047,7 @@ userRef.set({
   itemScroll15: Number(itemScroll15),
   itemProtect: Number(itemProtect),
   itemSuper: Number(itemSuper),
-  itemDownProtect: Number(itemDownProtect)
+  itemDownProtect: Number(itemDownProtect),
   huntStamina: 20,
   lastStaminaUpdate: Date.now()
 });
@@ -2077,8 +2077,6 @@ userRef.set({
   itemProtect  = data.itemProtect  ?? 0;
   itemSuper    = data.itemSuper    ?? 0;
   itemDownProtect = data.itemDownProtect ?? 0;
-  huntStamina       = data.huntStamina       ?? 20;
-  lastStaminaUpdate = data.lastStaminaUpdate ?? Date.now();
   huntStamina       = data.huntStamina       ?? 20;
   lastStaminaUpdate = data.lastStaminaUpdate ?? Date.now();
 
@@ -2136,7 +2134,7 @@ function save() {
   itemScroll15: Number(itemScroll15),
   itemProtect: Number(itemProtect),
   itemSuper: Number(itemSuper),
-  itemDownProtect: Number(itemDownProtect)
+  itemDownProtect: Number(itemDownProtect),
   huntStamina: Number(huntStamina),
   lastStaminaUpdate: Number(lastStaminaUpdate)
 });
@@ -2541,14 +2539,12 @@ function renderInventory() {
     세계를 넓게 볼수록, 검도 크게 성장하니까 말이야.
 </p>
 
-
     <button class="tutorial-close-btn" onclick="closeTutorial()">
       알겠네
     </button>
   </div>
 </div>
 
-  
 <!-- 🧔 대장장이 / 무기상인 공용 NPC 팝업 -->
 <div id="npcPopup">
   <div class="npc-popup-inner">
@@ -2571,11 +2567,8 @@ function renderInventory() {
   </div>
 </div>
 
-
-
 <!-- Kakao SDK -->
 <script src="https://developers.kakao.com/sdk/js/kakao.min.js"></script>
-
   
 </body>
 </html>
