@@ -449,7 +449,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.345)
+    (v3.351)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1989,15 +1989,19 @@ if (r < successChance) {
 }
 
   // ✅ 사냥 1회당 스태미나 1 감소
+  const beforeStamina = huntStamina;
   huntStamina = Math.max(0, huntStamina - 1);
   // 참고용 카운트 (오늘 사용한 횟수)
   huntCountToday = Math.max(0, 20 - huntStamina);
 
+  // 🔁 20/20 → 19/20으로 처음 줄어드는 순간부터 20분 카운트 시작
+  if (beforeStamina === 20 && huntStamina === 19) {
+    lastStaminaUpdate = Date.now();
+  }
+
   update();
   save();
 }
-
-
 
 // 🎯 사냥 성공 확률 계산
 function getHuntSuccessChance(myLevel, fieldId) {
