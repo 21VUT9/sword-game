@@ -1271,7 +1271,6 @@ if (isWin) {
   });
 }
   
-// ⚔️ 결투 신청 확인 팝업
 // ⚔️ 결투 신청 확인 팝업 (직접 결투 신청 전용)
 function showDuelConfirmPopup(targetUserId) {
   const popup     = document.getElementById("npcPopup");
@@ -1283,19 +1282,25 @@ function showDuelConfirmPopup(targetUserId) {
 
   if (!popup || !msgEl || !imgEl || !okBtn || !cancelBtn) return;
 
-setNpcName("결투 심판관 – 카르니아 발크라이트");
-imgEl.src = "images/npc/duel_carnia.png";
+  // 🧝‍♀️ 카르니아 세팅
+  setNpcName("결투 심판관 – 카르니아 발크라이트");
+  imgEl.src = "images/npc/duel_carnia.png";
 
+  // 🗨 카르니아 말투로 대사 교체
   msgEl.innerHTML = `
     <div style="font-size:16px; font-weight:bold; margin-bottom:6px;">
-      ${targetUserId}님과 정말 결투하시겠습니까?
+      좋아, 승부를 고하는군!
+    </div>
+    <div style="font-size:14px; line-height:1.5;">
+      정말로 <b>${targetUserId}</b>와(과) 정정당당히 맞서겠나?
     </div>
   `;
 
+  // 버튼 노출 + 텍스트 변경
   okBtn.style.display = "inline-block";
   cancelBtn.style.display = "inline-block";
-  okBtn.textContent = "예";
-  cancelBtn.textContent = "아니오";
+  okBtn.textContent = "결투한다!";
+  cancelBtn.textContent = "잠깐만…";
 
   okBtn.onclick = function () {
     popup.style.display = "none";
