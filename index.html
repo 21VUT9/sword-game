@@ -449,7 +449,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.343)
+    (v3.344)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2070,6 +2070,14 @@ userRef.set({
   sword = data.sword ?? 0;
   gold  = data.gold  ?? 100;
 
+      // 🟢 전투력 불러오기 (없거나 구버전이면 재계산)
+power = Number(data.power ?? 0);
+
+if (!power || power <= 20) {
+  // 새 규칙으로 1회 재계산
+  rollPowerForCurrentSword();
+}
+
   attendanceCount    = data.attendanceCount    ?? 0;
   lastAttendanceDate = data.lastAttendanceDate ?? "";
   currentField   = data.currentField   ?? 1;
@@ -2317,6 +2325,13 @@ function autoLoginFromStorage() {
 
     sword = data.sword ?? 0;
     gold  = data.gold  ?? 100;
+
+    // 🟢 자동로그인 시 전투력 보정 포함
+power = Number(data.power ?? 0);
+
+if (!power || power <= 20) {
+  rollPowerForCurrentSword();
+}
 
     attendanceCount    = data.attendanceCount    ?? 0;
     lastAttendanceDate = data.lastAttendanceDate ?? "";
