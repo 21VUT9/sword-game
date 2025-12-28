@@ -449,7 +449,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.342)
+    (v3.343)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1314,18 +1314,22 @@ function getBaseAttack(level) {
   return atk;
 }
 
-// ⚔️ 현재 강화 단계 기준으로 실제 공격력 랜덤 부여 (±5% 편차, 고정)
+// ⚔️ 현재 강화 단계 기준 전투력 산정 (최초 1회 결정, 고정)
 function rollPowerForCurrentSword() {
-  const base = getBaseAttack(sword);
-  power = Math.floor(randRange(base * 0.95, base * 1.05));
-}
 
-  
-// min ~ max 사이 랜덤 실수
-function randRange(min, max) {
-  return min + Math.random() * (max - min);
-}
+  // 1️⃣ 지금까지 강화에 들어간 총 비용 = 기본 전투력 지표
+  const totalCost = getTotalCostToLevel(sword);
 
+  // 2️⃣ 전투력 기본값 (스케일 조절용 계수)
+  const basePower = totalCost * 0.6;
+
+  // 3️⃣ ±5% 편차 적용 (1회만 굴림)
+  const variance = basePower * (Math.random() * 0.1 - 0.05);
+  const finalPower = basePower + variance;
+
+  // 4️⃣ 최소값 보정 + 정수화
+  power = Math.max(1, Math.floor(finalPower));
+}
   
 /* 확률 */
 function getUpgradeChance(level) {
