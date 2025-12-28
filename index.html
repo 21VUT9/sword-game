@@ -449,7 +449,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.344)
+    (v3.345)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1401,6 +1401,12 @@ function upgrade() {
   // 이미 강화 중이면 중복 클릭 방지
   if (isUpgrading) return;
 
+  // 🔒 강화 중 UI 잠금
+isUpgrading = true;
+
+const actionButtons = document.querySelectorAll(".action-buttons button");
+actionButtons.forEach(btn => btn.disabled = true);
+
   // 🔘 체크박스 상태 읽기
   const scroll15El = document.getElementById("useScroll15");
   const protectEl  = document.getElementById("useProtect");
@@ -1717,10 +1723,15 @@ if (Math.random() < chance / 100) {
       );
     }
 
-    // UI 갱신 + 저장 + 플래그 해제
-    update();
-    save();
-    isUpgrading = false;
+// UI 갱신 + 저장 + 플래그 해제
+update();
+save();
+
+isUpgrading = false;
+
+const actionButtons = document.querySelectorAll(".action-buttons button");
+actionButtons.forEach(btn => btn.disabled = false);
+
   }, delayMs);
 }
 
@@ -2520,6 +2531,17 @@ function renderInventory() {
   autoLoginFromStorage();
     // ⏱ 사냥 회복 타이머 표시용
   setInterval(updateHuntUI, 1000);
+
+  // ⛔ 강화 진행 중에는 Enter / Space 입력 차단
+document.addEventListener("keydown", (e) => {
+  if (!isUpgrading) return;
+
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+});
+
 </script>
 
 <!-- 📘 처음 접속 튜토리얼 (NPC 버전) -->
