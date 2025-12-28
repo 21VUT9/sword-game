@@ -449,7 +449,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.298)
+    (v3.31)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -764,6 +764,12 @@ function applyFieldBackground() {
   // CSS ::before가 쓸 커스텀 속성에 주입
   bgEl.style.setProperty("--field-bg-image", `url('${url}')`);
 }
+
+function setNpcName(name) {
+  const nameEl = document.getElementById("npcPopupName");
+  if (nameEl) nameEl.textContent = name;
+}
+
   
 /* UI */
 
@@ -954,6 +960,7 @@ fieldInfoEl.innerHTML = `
 
 
 function showNpcMessage(text, imgPath = "images/npc/blacksmith_idle.png", showButton = true) {
+    setNpcName("대장장이 – 퍼그란트");   // 🟡 추가
   const popup = document.getElementById("npcPopup");
   const msgEl = document.getElementById("npcPopupText");
   const imgEl = document.getElementById("npcPopupImg");
@@ -1017,9 +1024,13 @@ function showMovePopup() {
   const msgEl = document.getElementById("npcPopupText");
   const imgEl = document.getElementById("npcPopupImg");
   const btnEl = document.querySelector(".npc-popup-btn");
+  const nameEl = document.getElementById("npcPopupName"); 
 
   if (!popup || !msgEl || !imgEl) return;
 
+  // 🔹 NPC 이름 지우기
+  if (nameEl) nameEl.textContent = "";
+  
   // 이미지 / 버튼 숨기고, 텍스트만 표시
   imgEl.style.display = "none";
   if (btnEl) btnEl.style.display = "none";
@@ -1039,9 +1050,13 @@ function showHuntPopup(text, color = "#FFFFFF") {
   const msgEl = document.getElementById("npcPopupText");
   const imgEl = document.getElementById("npcPopupImg");
   const btnEl = document.querySelector(".npc-popup-btn");
+  const nameEl = document.getElementById("npcPopupName");
 
   if (!popup || !msgEl || !imgEl) return;
 
+  // 🔹 이름 제거
+  if (nameEl) nameEl.textContent = "";
+  
   // 이미지 / 버튼 숨김
   imgEl.style.display = "none";
   if (btnEl) btnEl.style.display = "none";
@@ -1625,6 +1640,125 @@ if (Math.random() < chance / 100) {
   }, delayMs);
 }
 
+// 🛒 실제 판매 처리 + "판매 완료" 멘트
+function completeSell(beforeLevel, rewardGold) {
+  setNpcName("무기상인 – 바르톨 로넨");
+
+  // 판매 처리
+  gold += rewardGold;
+  sword = 0;
+  rollPowerForCurrentSword();
+
+  // 20강 이상 전용 완료 멘트
+  if (beforeLevel >= 20) {
+    showNpcMessage(
+      `
+      <div style="font-size:16px; font-weight:bold;">
+        …알았다.
+      </div>
+      <div style="margin-top:4px;">
+        이 검은 내가 책임지고 보관하지.<br>
+        그대의 선택에 값하여
+        <b>${formatGold(rewardGold)} 골드</b>를 지급하겠네.
+      </div>
+      `,
+      "images/npc/merchant_bartol.png"
+    );
+  } else {
+    // 일반 장비 판매 완료 멘트
+    showNpcMessage(
+      `
+      <div style="font-size:16px; font-weight:bold;">
+        거래 성사됐군.
+      </div>
+      <div style="margin-top:4px;">
+        좋은 선택이었네, 모험가.<br>
+        <b>${formatGold(rewardGold)} 골드</b>를 지급했네.
+      </div>
+      `,
+      "images/npc/merchant_bartol.png"
+    );
+  }
+
+  update();
+  save();
+}
+
+  // 🛒 바르톨 로넨 판매 확인 팝업 (20강 이상 희귀 멘트 포함)
+function showMerchantSellPopup(beforeLevel, rewardGold) {
+  const popup     = document.getElementById("npcPopup");
+  const msgEl     = document.getElementById("npcPopupText");
+  const imgEl     = document.getElementById("npcPopupImg");
+  const okBtn     = document.getElementById("npcConfirmBtn");
+  const cancelBtn = document.getElementById("npcCancelBtn");
+
+  if (!popup || !msgEl || !imgEl || !okBtn || !cancelBtn) return;
+
+  // 🆕 이름 설정
+  setNpcName("무기상인 – 바르톨 로넨");
+  // 상인 이미지로 교체
+  imgEl.src = "images/npc/merchant_bartol.png";
+
+  let innerHtml = "";
+
+  if (beforeLevel >= 20) {
+    // 🧿 20강 이상 — 희귀 평가 멘트 랜덤
+    const rareLines = [
+      "이 검… 수많은 전장을 지나온 흔적이 보이는군.",
+      "이 무기… 주인을 잘 만났던 검이야.",
+      "전설급이라 부를 만하군. 쉽게 볼 물건이 아니야."
+    ];
+    const flavor =
+      rareLines[Math.floor(Math.random() * rareLines.length)];
+
+    innerHtml = `
+      <div style="font-size:16px; margin-bottom:6px;">
+        ${flavor}
+      </div>
+      <div>
+        가치를 존중해
+        <b>${formatGold(rewardGold)} 골드</b>에 매입하지.<br>
+        정말 떠나보내겠나?
+      </div>
+    `;
+  } else {
+    // 🟡 일반 장비 멘트
+    innerHtml = `
+      <div style="font-size:16px; margin-bottom:6px;">
+        흠… 좋은 장비를 갖고 있군 그래.
+      </div>
+      <div>
+        내 눈으로 보건대
+        <b>${formatGold(rewardGold)} 골드</b>에 매입해 주겠네.<br>
+        정말 판매하겠나?
+      </div>
+    `;
+  }
+
+  msgEl.innerHTML = innerHtml;
+
+  // 버튼 설정
+  okBtn.style.display = "inline-block";
+  cancelBtn.style.display = "inline-block";
+  okBtn.textContent = "판매한다";
+  cancelBtn.textContent = "그만둔다";
+
+  // 기존 onclick 제거 후 새로 등록
+  okBtn.onclick = function () {
+    popup.style.display = "none";
+    // 판매 확정
+    completeSell(beforeLevel, rewardGold);
+  };
+
+  cancelBtn.onclick = function () {
+    popup.style.display = "none";
+    // 취소 시 이미지 원복 (대장장이 기본으로)
+    imgEl.src = "images/npc/blacksmith_idle.png";
+  };
+
+  popup.style.display = "flex";
+}
+  
 function sell() {
   if (!userRef || !userId) {
     alert("로그인 후 이용 가능합니다.");
@@ -1639,25 +1773,10 @@ function sell() {
   const before = sword;
   const reward = getSellReward(before);
 
-  gold += reward;
-  sword = 0;
-  rollPowerForCurrentSword();
-
-  alert(`+${before}강 장비를 판매하여 ${formatGold(reward)} 골드를 획득했습니다!`);
-
-  // ✅ 20강 이상일 때만 로그 남기기
-  if (before >= 20) {
-    writeLog(
-      `${userId}님이 ${coloredLevel(before)} 장비를 판매하여 ${formatGold(reward)} 골드를 획득했습니다!`
-    );
-  }
-
-  update();
-  save();
+  // 🔁 바로 판매하지 않고, 바르톨 판매 확인 팝업 호출
+  showMerchantSellPopup(before, reward);
 }
 
-
-  
 /* 사냥 */
 function hunt(){
   if (!userRef || !userId) {
@@ -2341,17 +2460,29 @@ function renderInventory() {
 </div>
 
   
-  <!-- 🧔 대장장이 NPC 팝업 -->
+<!-- 🧔 대장장이 / 무기상인 공용 NPC 팝업 -->
 <div id="npcPopup">
   <div class="npc-popup-inner">
+
+    <!-- 🆕 NPC 이름표 -->
+    <div id="npcPopupName"
+         style="font-weight:bold; font-size:15px; margin-bottom:6px;">
+    </div>
+
     <img id="npcPopupImg"
          src="images/npc/blacksmith_idle.png"
-         alt="대장장이"
          class="npc-popup-img">
+
     <div class="npc-popup-text" id="npcPopupText"></div>
-    <button class="npc-popup-btn" onclick="closeNpcPopup()">확인</button>
+
+    <div style="margin-top:10px;">
+      <button class="npc-popup-btn" id="npcConfirmBtn">확인</button>
+      <button class="npc-popup-btn" id="npcCancelBtn" style="display:none;">취소</button>
+    </div>
   </div>
 </div>
+
+
 
 <!-- Kakao SDK -->
 <script src="https://developers.kakao.com/sdk/js/kakao.min.js"></script>
