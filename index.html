@@ -259,14 +259,15 @@ button {
 }
 
   
-  /* 🗺 MAP 버튼 */
+/* 🗺 MAP 버튼 */
 #mapBtn {
-  position:fixed;
-  top:10px;
-  right:10px;
-  z-index:1100;
-  font-size:14px;
-  padding:8px 16px;
+  position: fixed;   /* ✅ 화면 기준 고정 */
+  top: 10px;         /* ✅ 화면 맨 위에서 10px */
+  right: 10px;       /* ✅ 화면 오른쪽에서 10px */
+  z-index: 1100;
+  font-size: 14px;
+  padding: 8px 16px;
+  margin: 0;         /* 다른 button 공통 margin 무시 */
 }
 
 /* 🗺 MAP 패널 */
