@@ -531,7 +531,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.562)
+    (v3.563)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -583,6 +583,11 @@ button {
       <div class="profile-row">
         <span class="profile-label">현재 강화</span>
         <span class="profile-value" id="profileSword">+0강</span>
+      </div>
+
+      <div class="profile-row">
+        <span class="profile-label">파괴</span>
+        <span class="profile-value" id="profileDestroyCount">0회</span>
       </div>
 
       <div class="profile-row">
@@ -814,7 +819,8 @@ let attendanceCount = 0;
 let lastAttendanceDate = "";
 let attendanceStreak = 0;     // 연속 출석 수
 let lastAttendanceDay = "";   // 마지막 출석 날짜 (streak 전용)
-
+let maxSwordLevel = 0;   // 계정 전체 최고 강화 기록
+let destroyCount  = 0;   // 계정 전체 누적 파괴 횟수
 
 // 🆕 강화 진행 중인지 여부
 let isUpgrading = false;
@@ -1046,6 +1052,8 @@ function update() {
   const huntEl   = document.getElementById("profileHuntCount");
   const weaponValueEl = document.getElementById("profileWeaponValue");
   const recordEl = document.getElementById("profileRecord");
+  const destroyEl = document.getElementById("profileDestroyCount");
+
 if (recordEl) {
   recordEl.textContent = `승 ${duelWin} / 패 ${duelLose}`;
 }
@@ -1054,7 +1062,11 @@ if (recordEl) {
     nickEl.textContent  = userId || "-";
   }
   if (swordEl) {
-    swordEl.textContent = `+${sword}강`;
+    const maxPart = maxSwordLevel > 0 ? ` (최대 +${maxSwordLevel}강)` : "";
+    swordEl.textContent = `+${sword}강${maxPart}`;
+  }
+    if (destroyEl) {
+    destroyEl.textContent = `${destroyCount}회`;
   }
   if (powerEl) {
     powerEl.textContent = formatGold(power);
@@ -2114,6 +2126,11 @@ if (Math.random() < chance / 100) {
   }
 
   rollPowerForCurrentSword();
+  
+    // 최고 강화 기록 갱신
+  if (sword > maxSwordLevel) {
+    maxSwordLevel = sword;
+  }
 
   // 퍼그란트 성공 멘트
   if (useSuper) {
@@ -2277,6 +2294,9 @@ if (Math.random() < chance / 100) {
             // 파괴 (강등방지는 파괴엔 효과 없음)
             sword = 0;
             rollPowerForCurrentSword();
+
+            destroyCount++;  // 🧨 누적 파괴 횟수 증가
+
             writeLog(
               `${userId}이 ${coloredLevel(before)} 도전에 실패하여 ` +
               `<span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`,
@@ -2650,10 +2670,12 @@ function login() {
         power,
         gold,
         updated: Date.now(),
+        maxSwordLevel: 0,   
+        destroyCount: 0,    
         attendanceCount: 0,
         lastAttendanceDate: "",
-          attendanceStreak: 0,      
-  lastAttendanceDay: "",    
+        attendanceStreak: 0,      
+        lastAttendanceDay: "",    
         currentField: 1,
         huntCountToday: 0,
         lastHuntDate: "",
@@ -2683,6 +2705,10 @@ function login() {
       sword = data.sword ?? 0;
       gold  = data.gold  ?? 100;
 
+      // 최고 강화 / 파괴 기록 불러오기
+      maxSwordLevel = data.maxSwordLevel ?? sword; // 없으면 현재 강화로 초기화
+      destroyCount  = data.destroyCount  ?? 0;
+      
       // 🟢 전투력 불러오기 (없거나 구버전이면 재계산)
       power = Number(data.power ?? 0);
       if (!power || power <= 20) {
@@ -2747,6 +2773,8 @@ function save() {
     power: Number(power),
     gold: Number(gold),
     updated: Date.now(),
+    maxSwordLevel: Number(maxSwordLevel),
+    destroyCount: Number(destroyCount),
     attendanceCount: attendanceCount,
     lastAttendanceDate: lastAttendanceDate,
         attendanceStreak: Number(attendanceStreak),
@@ -2948,6 +2976,10 @@ function autoLoginFromStorage() {
 
     sword = data.sword ?? 0;
     gold  = data.gold  ?? 100;
+
+        // 최고 강화 / 파괴 기록 불러오기
+    maxSwordLevel = data.maxSwordLevel ?? sword;
+    destroyCount  = data.destroyCount  ?? 0;
 
     // 🟢 자동로그인 시 전투력 보정 포함
 power = Number(data.power ?? 0);
