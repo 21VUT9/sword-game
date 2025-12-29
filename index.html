@@ -498,7 +498,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.532)
+    (v3.541)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3340,6 +3340,35 @@ document.addEventListener("keydown", (e) => {
     e.stopPropagation();
   }
 });
+
+  // 🛠 운영자용 — 전투력 재계산 + DB 반영
+async function recalcUserPower(userIdToFix) {
+
+  const ref = db.ref("users/" + userIdToFix);
+
+  const snap = await ref.once("value");
+  if (!snap.exists()) {
+    console.warn("❌ 유저 데이터 없음:", userIdToFix);
+    return;
+  }
+
+  const d = snap.val();
+
+  // 해당 유저 기준 상태 로드
+  sword = Number(d.sword ?? 0);
+  gold  = Number(d.gold  ?? 0);
+
+  // 🧮 전투력 재산출
+  rollPowerForCurrentSword();
+
+  // DB 반영
+  await ref.update({
+    power: Number(power),
+    updated: Date.now()
+  });
+
+  console.log(`✅ 전투력 재계산 완료 → ${userIdToFix}:`, power);
+}
 
 </script>
 
