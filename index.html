@@ -446,7 +446,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.398)
+    (v3.510)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -745,6 +745,10 @@ let lastHuntDate = "";         // 마지막 사냥 날짜 (YYYY-MM-DD)
 let huntStamina = 20;          // 현재 사냥 가능 횟수 (0~20)
 let lastStaminaUpdate = 0;     // 마지막 스태미나 갱신 시각 (ms timestamp)
 
+// 🆕 25강 이상 강화 경고 안내 표시 여부 (세션 기준 1회)
+let hasSeen25Warning = false;
+let ignoreNextUpgradeWarning = false;
+  
 // 🧮 사냥 스태미나 계산 (리셋 + 회복 처리)
 function recalcHuntStamina() {
   const now = Date.now();
@@ -1059,7 +1063,8 @@ if (descEl) {
   const cost = getUpgradeCost(sword);
 
   let safeNote = "";
-  if (sword % 5 === 0 && sword !== 0) {
+  // ✅ 5, 10, 15, 20까지만 세이프 / 25는 제외
+  if (sword % 5 === 0 && sword !== 0 && sword <= 20) {
     safeNote = `<br><span style="color:#6cf;">
       ※ 세이프 구간: 실패해도 강등/파괴되지 않습니다.
     </span>`;
@@ -1351,6 +1356,54 @@ function showNpcMessage(
 
   cancelBtn.style.display = "none";
   cancelBtn.onclick = closeNpcPopup;
+
+  popup.style.display = "flex";
+}
+
+  // ⚠️ 25강 이상 세이프존 삭제 안내 팝업
+function showUpgradeWarning25() {
+  const popup     = document.getElementById("npcPopup");
+  const msgEl     = document.getElementById("npcPopupText");
+  const imgEl     = document.getElementById("npcPopupImg");
+  const okBtn     = document.getElementById("npcConfirmBtn");
+  const cancelBtn = document.getElementById("npcCancelBtn");
+  const nameEl    = document.getElementById("npcPopupName");
+
+  if (!popup || !msgEl || !imgEl || !okBtn || !cancelBtn) return;
+
+  // NPC 이름 / 이미지 세팅 (대장장이 퍼그란트)
+  setNpcName("대장장이 – 퍼그란트");
+  imgEl.src = "images/npc/blacksmith_idle.png";
+
+  msgEl.innerHTML = `
+    <div style="font-size:16px; font-weight:bold; margin-bottom:6px; color:#FFCC00;">
+      ⚠️ 25강 이상 구간 안내
+    </div>
+    <div style="font-size:14px; line-height:1.6;">
+      25강부터는 더 이상 <b>세이프존이 존재하지 않는다네.</b><br>
+      실패하면 <b>강등</b>이나 <span style="color:#FF5555;">파괴</span>가<br>
+      언제든 일어날 수 있지.
+      <br><br>
+      그래도… 계속 도전하겠나?
+    </div>
+  `;
+
+  okBtn.style.display = "inline-block";
+  cancelBtn.style.display = "inline-block";
+
+  okBtn.textContent = "그래도 도전한다";
+  cancelBtn.textContent = "생각해본다";
+
+  okBtn.onclick = function () {
+    popup.style.display = "none";
+    hasSeen25Warning = true;          // 이후론 경고 다시 안 뜸
+    ignoreNextUpgradeWarning = true;  // 이번에 한 번은 경고 스킵하고 upgrade 재호출
+    upgrade();                        // 실제 강화 로직 다시 진입
+  };
+
+  cancelBtn.onclick = function () {
+    popup.style.display = "none";
+  };
 
   popup.style.display = "flex";
 }
@@ -1696,7 +1749,6 @@ function checkAttendance() {
   update();
   save();
 }
-
   
 /* 강화 */
 function upgrade() {
@@ -1705,6 +1757,14 @@ function upgrade() {
     return;
   }
 
+  // 🛑 25강 이상 첫 도전 경고 안내 (세션 1회)
+  if (sword >= 25 && !hasSeen25Warning && !ignoreNextUpgradeWarning) {
+    showUpgradeWarning25();
+    return;
+  }
+  // 경고를 보고 다시 들어온 호출은 이 플래그로 한 번 스킵
+  ignoreNextUpgradeWarning = false;
+  
   // 이미 강화 중이면 중복 클릭 방지
   if (isUpgrading) return;
 
@@ -1875,7 +1935,8 @@ if (Math.random() < chance / 100) {
   }
   } else {
     // ❌ 실패
-    const isSafeLevel = (before % 5 === 0); // 5,10,15,20,25,30 세이프
+    // ✅ 5,10,15,20까지만 세이프 / 25부터는 세이프 없음
+    const isSafeLevel = (before % 5 === 0 && before <= 20);
 
     if (useProtect) {
       // 파괴방지 주문서 사용 시
