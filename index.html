@@ -1061,10 +1061,18 @@ if (recordEl) {
   if (nickEl) {
     nickEl.textContent  = userId || "-";
   }
-  if (swordEl) {
-    const maxPart = maxSwordLevel > 0 ? ` (최대 +${maxSwordLevel}강)` : "";
-    swordEl.textContent = `+${sword}강${maxPart}`;
-  }
+if (swordEl) {
+
+  // 최대 강화 기록 문자열
+  const maxPart =
+    maxSwordLevel > 0
+      ? ` <span style="font-size:12px; color:#bbbbbb;">(최대 +${maxSwordLevel}강)</span>`
+      : "";
+
+  // HTML 출력 (현재강화 + 최대강화)
+  swordEl.innerHTML = `+${sword}강${maxPart}`;
+}
+
     if (destroyEl) {
     destroyEl.textContent = `${destroyCount}회`;
   }
