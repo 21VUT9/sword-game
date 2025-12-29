@@ -3266,9 +3266,20 @@ function loadRanking(){
       });
 
 rankingEl.innerHTML = arr.map((u, i) => {
-  const info = getWeaponInfo(u.sword);   // 🔹 강화 수치 → 무기 정보
-  const name = info ? info.name : "-";   // 무기 이름
-  const levelText = coloredLevel(u.sword); // 색상/무지개 적용된 +강 텍스트
+  const wInfo = getWeaponInfo(u.sword);              // ⚔️ 강화단계별 검 이름/설명
+  const weaponNameStyled = coloredWeaponName(u.sword, wInfo.name);
+  const colorName = getSwordColorName(u.sword);
+  const colorLabel = colorName ? ` (${colorName})` : "";
+
+  return `
+    <div style="font-weight:bold;">
+      ${i+1}. ${u.id}
+      | ${weaponNameStyled} ${coloredLevel(u.sword)}${colorLabel}
+      | 전적: ${u.duelWin}승 ${u.duelLose}패
+    </div>
+  `;
+}).join("");
+
 
   return `
     <div style="font-weight:bold;">
