@@ -186,21 +186,33 @@ button {
   transition: opacity 0.2s;
 }
  
-/* 프로필 상단 오른쪽 공유 버튼 */
+/* 📥 프로필 저장 버튼 — 미니멀 아이콘형 */
 .profile-share-btn {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: none;
-  background: #FFE600;          /* 카카오 노란 느낌 */
-  color: #222;
+  top: 6px;
+  right: 6px;
+
+  background: transparent; /* 🔹 배경 제거 */
+  border: none;            /* 🔹 테두리 제거 */
+  padding: 2px 4px;
+
+  font-size: 18px;         /* 🔹 아이콘 크기 */
   cursor: pointer;
+
+  color: #ffffff;          /* 기본 흰색 */
+  opacity: 0.8;            /* 은은하게 */
+  transition: opacity 0.15s, transform 0.1s;
 }
+
+/* hover 시만 강조 */
 .profile-share-btn:hover {
-  filter: brightness(0.9);
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* 모바일에서도 눌리기 좋게 */
+.profile-share-btn:active {
+  transform: scale(0.95);
 }
   
 .profile-card-inner {
@@ -470,7 +482,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.529)
+    (v3.531)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -493,9 +505,9 @@ button {
   <div class="profile-card-inner">
 
   <!-- 📷 프로필 저장 버튼 -->
-  <button class="profile-share-btn" onclick="saveProfileCard()">
-    📷 저장
-  </button>
+<button class="profile-share-btn" onclick="saveProfileCard()" title="프로필 저장">
+  ⬇️
+</button>
 
   <!-- 🔔 저장 상태 텍스트 -->
   <div id="profileSaveStatus" class="profile-save-status"></div>
