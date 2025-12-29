@@ -544,7 +544,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.571)
+    (v3.572)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2156,9 +2156,10 @@ attendanceCount++;
 
   gold += rewardGold;
 
-  writeLog(
-    `${userId}님이 출석으로 ${formatGold(rewardGold)} 골드를 획득했습니다.`
-  );
+writeLog(
+  `${userId}님이 출석으로 ${formatGold(rewardGold)} 골드를 획득했습니다. `
+  + `(연속 ${attendanceStreak}회)`
+);
 
   // ==========================
   // 🎯 5회 / 10회 / 15회 / 20회 / 25회 보상
@@ -2176,9 +2177,11 @@ attendanceCount++;
     if (bonus.type === "downProtect") itemDownProtect++;
     if (bonus.type === "destroyProtect") itemProtect++;
 
-    writeLog(
-      `출석으로 얻는 아이템은 ${userId}님이 연속 ${attendanceStreak}회 출석으로 ${bonus.name}이 지급되었습니다.`
-    );
+writeLog(
+  `${userId}님이 연속 ${attendanceStreak}회 출석 달성! `
+  + `출석 보상으로 ${bonus.name}이 지급되었습니다.`
+);
+
 
     showNpcMessage(
       `
