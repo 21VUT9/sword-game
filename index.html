@@ -149,7 +149,33 @@ button {
   }
 }
 
+/* 🔤 검 이름 한 줄 표시 (줄바꿈 금지 + 말줄임) */
+.profile-weapon-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin: 4px 0 2px 0;
+  white-space: nowrap;       /* 한 줄 유지 */
+  overflow: hidden;
+  text-overflow: ellipsis;   /* 너무 길면 … 처리 */
+}
 
+/* 📝 검 설명 */
+.profile-weapon-desc {
+  font-size: 13px;
+  color: #cccccc;
+  line-height: 1.4;
+  white-space: pre-line;     /* 우리가 쓴 문장 구조 유지용 */
+  margin-bottom: 2px;
+}
+
+/* 프로필 카드 내부 구분선 */
+.profile-inner-divider {
+  border: 0;
+  height: 1px;
+  background: #444;
+  margin: 6px 0 8px 0;
+}
+  
 /* 🔔 토스트 */
 #toastLog {
   position:fixed;
@@ -194,19 +220,6 @@ button {
   z-index:1002;
   display:none;
 }
-
-  /* 🗺 사냥터별 배경 박스 */
-.field-bg {
-  max-width: 430px;
-  margin: 0 auto 20px auto;
-  /* padding: 10px 10px 20px 10px; */   /* ✅ 박스 두께 제거 (원하면 유지 가능) */
-  /* border-radius: 20px; */            /* ✅ 모서리 둥근 박스 제거 */
-  position: relative;
-
-  /* 배경 이미지는 ::before에서만 사용 */
-  background: transparent;              /* ✅ 까만 배경 제거 */
-}
-
   
 /* ================= 유저 프로필 카드 ================ */
 
@@ -531,7 +544,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.563)
+    (v3.571)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -551,45 +564,54 @@ button {
 
 <!-- 🧾 유저 프로필 카드 -->
 <div id="userProfileArea">
-  <div class="profile-card-inner">
-
   <!-- 📷 프로필 저장 버튼 -->
-<button class="profile-share-btn no-capture"
-        onclick="saveProfileCard()"
-        title="프로필 저장">
-  ⬇︎
-</button>
+  <button class="profile-share-btn no-capture"
+          onclick="saveProfileCard()"
+          title="프로필 저장">
+    ⬇︎
+  </button>
 
-<!-- 🔔 저장 상태 텍스트 (이거 하나만 남기기) -->
-<div id="profileSaveStatus"
-     class="profile-save-status no-capture"></div>
+  <!-- 🔔 저장 상태 텍스트 -->
+  <div id="profileSaveStatus"
+       class="profile-save-status no-capture"></div>
 
   <div class="profile-card-inner">
-    
-    <!-- 센터 무기 이미지 -->
-    <div class="profile-weapon-box">
-      <!-- 나중에 실제 무기 PNG로 교체 (배경 투명 권장) -->
-<img id="weaponImage"
-     src="images/weapons/sword_real_temp.png"
-     alt="내 무기">
+    <!-- 🔝 닉네임 (카드 최상단) -->
+    <div class="profile-nickname" id="profileNickname">-</div>
 
+    <!-- ⚔️ 검 이미지 -->
+    <div class="profile-weapon-box">
+      <img id="weaponImage"
+           src="images/weapons/sword_real_temp.png"
+           alt="내 무기">
     </div>
 
-    <!-- 하단 정보 -->
+    <!-- ⚔️ 검 이름 / 설명 / 스탯 -->
     <div class="profile-info-box">
 
-      <div class="profile-nickname" id="profileNickname">-</div>
-
-      <div class="profile-row">
-        <span class="profile-label">현재 강화</span>
-        <span class="profile-value" id="profileSword">+0강</span>
+      <!-- ✅ 검 이름 (+현재 강화) -->
+      <div class="profile-weapon-title" id="profileWeaponTitle">
+        - (+0강)
       </div>
 
-      <div class="profile-row">
-        <span class="profile-label">파괴</span>
-        <span class="profile-value" id="profileDestroyCount">0회</span>
+      <hr class="profile-inner-divider">
+
+      <!-- ✅ 검 설명 -->
+      <div class="profile-weapon-desc" id="profileWeaponDesc">
+        -
       </div>
 
+      <hr class="profile-inner-divider">
+
+      <!-- ✅ 최대 강화 + 파괴 회수 -->
+      <div class="profile-row">
+        <span class="profile-label">최대 강화</span>
+        <span class="profile-value" id="profileMaxInfo">
+          +0강 <span style="font-size:12px; color:#bbbbbb;">(파괴 0회)</span>
+        </span>
+      </div>
+
+      <!-- 기존 스탯들 유지 -->
       <div class="profile-row">
         <span class="profile-label">전투력</span>
         <span class="profile-value" id="profilePower">0</span>
@@ -599,22 +621,20 @@ button {
         <span class="profile-label">골드</span>
         <span class="profile-value" id="profileGold">0</span>
       </div>
-      
-<div class="profile-row">
-  <span class="profile-label">무기가치</span>
-  <span class="profile-value" id="profileWeaponValue">0</span>
-</div>
 
-     
-<!-- ⚔️ 결투 전적 표시 -->
-<div class="profile-row">
-  <span class="profile-label">전적</span>
-  <span class="profile-value" id="profileRecord">승 0 / 패 0</span>
-</div>
-</div>
+      <div class="profile-row">
+        <span class="profile-label">무기가치</span>
+        <span class="profile-value" id="profileWeaponValue">0</span>
+      </div>
 
+      <div class="profile-row">
+        <span class="profile-label">전적</span>
+        <span class="profile-value" id="profileRecord">승 0 / 패 0</span>
+      </div>
+    </div>
   </div>
 </div>
+
 </div> <!-- 🔚 fieldBg : 배경은 여기까지만 -->
   <hr class="section-divider">
 
@@ -810,6 +830,182 @@ const logRef = db.ref("logs");
 
 function getTutorialKeyForUser(id) {
   return `swordGameTutorialSeen_${id}`;
+}
+
+// 🔰 강화 단계별 검 이름 / 설명 / 이미지 경로
+const WEAPON_INFO = {
+  0: {
+    name: "제련되지 않은 금속괴",
+    desc: "아직 아무것도 되지 못했지만, 세상 어디에도 없는 가능성을 조용히 품고 있다.",
+    img: "images/weapons/sword_00.png"
+  },
+  1: {
+    name: "부러진 검",
+    desc: "영광의 기억만 남은 채, 더는 누구도 찾지 않는 슬픈 잔해다.",
+    img: "images/weapons/sword_01.png"
+  },
+  2: {
+    name: "금이 간 검",
+    desc: "조금만 힘을 주어도 산산히 흩어질 것처럼, 위태롭게 숨을 붙들고 있다.",
+    img: "images/weapons/sword_02.png"
+  },
+  3: {
+    name: "녹슨 검",
+    desc: "세월의 바람을 견디지 못해, 한때의 광채를 서서히 잃어버렸다.",
+    img: "images/weapons/sword_03.png"
+  },
+  4: {
+    name: "낡은 검",
+    desc: "수많은 싸움의 흔적만이 남아, 조용히 쉼을 기다리고 있다.",
+    img: "images/weapons/sword_04.png"
+  },
+  5: {
+    name: "흙먼지에 덮인 검",
+    desc: "긴 잠 속에서도, 언젠가 다시 불릴 이름을 꿈꾸고 있다.",
+    img: "images/weapons/sword_05.png"
+  },
+  6: {
+    name: "잘 벼려진 검",
+    desc: "장인의 숨결을 머금고, 이제야 비로소 한 자루의 검이 된다.",
+    img: "images/weapons/sword_06.png"
+  },
+  7: {
+    name: "단단히 연마된 전투검",
+    desc: "전장을 향한 두려움과 각오가, 날 위에 고요히 내려앉는다.",
+    img: "images/weapons/sword_07.png"
+  },
+  8: {
+    name: "결의의 장검",
+    desc: "한 번 뽑아 들었다면, 결코 물러서지 않겠다는 의지가 깃든다.",
+    img: "images/weapons/sword_08.png"
+  },
+  9: {
+    name: "고귀한 기사의 검",
+    desc: "명예와 책임을 함께 짊어진, 품위 있는 전장의 동반자다.",
+    img: "images/weapons/sword_09.png"  // 👉 지금 네가 확정한 9강 이미지
+  },
+  10: {
+    name: "서약을 지닌 성전의 검",
+    desc: "지켜야 할 이름이 생긴 순간, 이 검은 기도처럼 휘둘러진다.",
+    img: "images/weapons/sword_10.png"
+  },
+  11: {
+    name: "용맹의 서광검",
+    desc: "누구보다 먼저 앞으로 나아가는 이의, 뜨거운 용기를 비춘다.",
+    img: "images/weapons/sword_11.png"
+  },
+  12: {
+    name: "은빛 심판의 검",
+    desc: "차가운 칼날 위에서, 옳고 그름이 조용히 갈라진다.",
+    img: "images/weapons/sword_12.png"
+  },
+  13: {
+    name: "성벽을 수호하는 검",
+    desc: "침묵 속에서 흔들림 없이, 마지막 방어선에 서 있다.",
+    img: "images/weapons/sword_13.png"
+  },
+  14: {
+    name: "왕가의 의지검",
+    desc: "한 나라의 시간과 무게가, 묵직하게 손끝으로 전해진다.",
+    img: "images/weapons/sword_14.png"
+  },
+  15: {
+    name: "성역을 지키는 성검",
+    desc: "그 어떤 위협 앞에서도 물러서지 않는, 침묵의 수호자다.",
+    img: "images/weapons/sword_15.png"
+  },
+  16: {
+    name: "심연을 꿰뚫는 성검",
+    desc: "어둠의 가장 깊은 자리까지, 한 줄기 빛이 내려 꽂힌다.",
+    img: "images/weapons/sword_16.png"
+  },
+  17: {
+    name: "불길의 심판검",
+    desc: "타는 듯한 분노가 칼날을 감싸며, 악을 재로 남긴다.",
+    img: "images/weapons/sword_17.png"
+  },
+  18: {
+    name: "악마 살육자",
+    desc: "지옥에서 기어오른 것들조차, 이 이름 앞에서는 침묵한다.",
+    img: "images/weapons/sword_18.png"
+  },
+  19: {
+    name: "지옥문 봉쇄검",
+    desc: "이미 열린 재앙의 문을, 마지막 힘으로 다시 닫아버린다.",
+    img: "images/weapons/sword_19.png"
+  },
+  20: {
+    name: "낙인의 성화검",
+    desc: "거스를 수 없는 각오가, 불멸의 낙인처럼 새겨진다.",
+    img: "images/weapons/sword_20.png"
+  },
+  21: {
+    name: "역천의 횃불검",
+    desc: "정해진 길을 따르지 않고, 자기만의 하늘을 밝힌다.",
+    img: "images/weapons/sword_21.png"
+  },
+  22: {
+    name: "천상을 거스르는 성극검",
+    desc: "신성의 질서를 뒤흔들겠다는 위험한 선택이 깃들어 있다.",
+    img: "images/weapons/sword_22.png"
+  },
+  23: {
+    name: "신좌를 흔드는 서슬검",
+    desc: "높은 하늘 위의 왕좌마저, 이 칼끝 앞에서는 흔들린다.",
+    img: "images/weapons/sword_23.png"
+  },
+  24: {
+    name: "신살의 왕검",
+    desc: "신조차 피하지 못한 결말을, 침묵 속에 그어낸다.",
+    img: "images/weapons/sword_24.png"
+  },
+  25: {
+    name: "별을 가르는 성광검",
+    desc: "밤하늘을 올려다본 이라면, 누구나 그 자취를 목격하게 된다.",
+    img: "images/weapons/sword_25.png"
+  },
+  26: {
+    name: "창공을 초월한 초월검",
+    desc: "이제 하늘과 땅의 경계는, 더 이상 의미를 갖지 못한다.",
+    img: "images/weapons/sword_26.png"
+  },
+  27: {
+    name: "차원을 베어내는 절연검",
+    desc: "세계와 세계를 나누는 마지막 선이, 날 위에 그어진다.",
+    img: "images/weapons/sword_27.png"
+  },
+  28: {
+    name: "종언의 서약검",
+    desc: "한 번의 결단으로, 세계의 끝마저 약속된 결말처럼 다가온다.",
+    img: "images/weapons/sword_28.png"
+  },
+  29: {
+    name: "운명의 심판검",
+    desc: "별과 시간, 인과의 흐름이 모두 이 칼끝으로 모여든다.",
+    img: "images/weapons/sword_29.png"
+  },
+  30: {
+    name: "운명을 집행하는 「맹세의 계율」",
+    desc: "더 이상 검이 아니다 — 맹세가 반드시 실현되는, 우주의 질서가 되었다.",
+    img: "images/weapons/sword_30.png"
+  }
+};
+
+// 현재 강화 수치 기준으로 안전하게 정보 가져오기
+function getWeaponInfo(level) {
+  const lv = Math.max(0, Math.min(30, level | 0));
+  return WEAPON_INFO[lv] || WEAPON_INFO[0];
+}
+
+// 이미지 교체 함수
+function updateWeaponImage() {
+  const info = getWeaponInfo(sword);
+  const imgEl = document.getElementById("weaponImage");
+  if (!imgEl) return;
+
+  if (info && info.img) {
+    imgEl.src = info.img;
+  }
 }
   
 /* 상태 */
@@ -1046,36 +1242,46 @@ function update() {
 
   /* 🧾 유저 프로필 영역 갱신 */
   const nickEl   = document.getElementById("profileNickname");
-  const swordEl  = document.getElementById("profileSword");
+  const weaponTitleEl = document.getElementById("profileWeaponTitle");
+  const weaponDescEl  = document.getElementById("profileWeaponDesc");
+  const maxInfoEl     = document.getElementById("profileMaxInfo");
+
   const powerEl  = document.getElementById("profilePower");
   const goldEl   = document.getElementById("profileGold");
   const huntEl   = document.getElementById("profileHuntCount");
   const weaponValueEl = document.getElementById("profileWeaponValue");
   const recordEl = document.getElementById("profileRecord");
-  const destroyEl = document.getElementById("profileDestroyCount");
-
-if (recordEl) {
-  recordEl.textContent = `승 ${duelWin} / 패 ${duelLose}`;
-}
+  if (recordEl) {
+    recordEl.textContent = `승 ${duelWin} / 패 ${duelLose}`;
+  }
 
   if (nickEl) {
     nickEl.textContent  = userId || "-";
   }
-if (swordEl) {
 
-  // 최대 강화 기록 문자열
-  const maxPart =
-    maxSwordLevel > 0
-      ? ` <span style="font-size:12px; color:#bbbbbb;">(최대 +${maxSwordLevel}강)</span>`
-      : "";
+  // 🔰 현재 강화 단계에 따른 검 정보
+  const wInfo = getWeaponInfo(sword);
 
-  // HTML 출력 (현재강화 + 최대강화)
-  swordEl.innerHTML = `+${sword}강${maxPart}`;
-}
-
-    if (destroyEl) {
-    destroyEl.textContent = `${destroyCount}회`;
+  // 검 이름 (+현재강)
+  if (weaponTitleEl && wInfo) {
+    weaponTitleEl.textContent = `${wInfo.name} (+${sword}강)`;
   }
+
+  // 검 설명
+  if (weaponDescEl && wInfo) {
+    weaponDescEl.textContent = wInfo.desc;
+  }
+
+  // 최대 강화 + 파괴 n회
+  if (maxInfoEl) {
+    maxInfoEl.innerHTML =
+      `+${maxSwordLevel}강 ` +
+      `<span style="font-size:12px; color:#bbbbbb;">(파괴 ${destroyCount}회)</span>`;
+  }
+
+  // ⚔️ 강화 단계에 맞는 이미지로 교체
+  updateWeaponImage();
+
   if (powerEl) {
     powerEl.textContent = formatGold(power);
   }
