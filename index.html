@@ -531,7 +531,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.551)
+    (v3.561)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -814,6 +814,9 @@ let sword = 0, power = 10, gold = 100;
 let userId="", userPassword="", userRef=null;
 let attendanceCount = 0;
 let lastAttendanceDate = "";
+let attendanceStreak = 0;     // 연속 출석 수
+let lastAttendanceDay = "";   // 마지막 출석 날짜 (streak 전용)
+
 
 // 🆕 강화 진행 중인지 여부
 let isUpgrading = false;
@@ -1713,8 +1716,10 @@ function randRange(min, max) {
   return min + Math.random() * (max - min);
 }
 
+  function getCurrentUpgradeCost() {
+  return getUpgradeCost(Math.min(sword, 29));
+}
 
-  
 function getUpgradeCost(level) {
 
   const costTable = {
@@ -1874,8 +1879,15 @@ function getUpgradeChance(level) {
   return chance;
 }
 
-
-
+// 🎁 출석 연속 보상 (5회마다 반복)
+const attendanceBonusTable = {
+  5:  { type: "downProtect",   name: "강등방어 주문서" },
+  10: { type: "scroll15",      name: "15강 강화 주문서" },
+  15: { type: "destroyProtect",name: "파괴방어 주문서" },
+  20: { type: "superScroll",   name: "슈퍼강화 주문서" },
+  25: { type: "downProtect",   name: "강등방어 주문서" }
+};
+  
 function checkAttendance() {
   if (!userRef || !userId) {
     alert("로그인 후 이용 가능합니다.");
@@ -1884,23 +1896,78 @@ function checkAttendance() {
 
   const today = getTodayDateString();
 
-  // 이미 오늘 출석 했는지 체크
+  // 이미 오늘 출석함
   if (lastAttendanceDate === today) {
     alert("오늘은 이미 출석하셨습니다!");
     return;
   }
 
-  // 출석 처리
+  // 날짜 비교 (연속 출석 처리)
+  const yesterday = new Date(Date.now() - 86400000).toDateString();
+
+  if (lastAttendanceDay === yesterday) {
+    attendanceStreak++;
+  } else {
+    attendanceStreak = 1;
+  }
+
+  lastAttendanceDay = today;
   lastAttendanceDate = today;
-  attendanceCount = (attendanceCount || 0) + 1;
+  attendanceCount++;
 
-  const reward = 60000;
-  gold += reward;
+  // ==========================
+  // 🎁 골드 지급 방식 변경
+  // ==========================
 
-  alert(`출석 완료! 골드 +${formatGold(reward)}`);
+  let rewardGold = 0;
 
-  // 출석 로그 남기기
-  writeLog(`${userId}님이 출석했습니다. (${attendanceCount}회차)`);
+  if (sword < 15) {
+    // 15강 이전 → 기존 지급 유지
+    rewardGold = 60000;
+  } else {
+    // 15강 이후 → 강화 1번 가능한 금액 지급
+    rewardGold = getCurrentUpgradeCost();
+  }
+
+  gold += rewardGold;
+
+  writeLog(
+    `${userId}님이 출석으로 ${formatGold(rewardGold)} 골드를 획득했습니다.`
+  );
+
+  // ==========================
+  // 🎯 5회 / 10회 / 15회 / 20회 / 25회 보상
+  // ==========================
+
+  const key = (attendanceStreak % 25) || 25;
+
+  if (attendanceBonusTable[key]) {
+
+    const bonus = attendanceBonusTable[key];
+
+    // 아이템 지급
+    if (bonus.type === "scroll15") itemScroll15++;
+    if (bonus.type === "superScroll") itemSuper++;
+    if (bonus.type === "downProtect") itemDownProtect++;
+    if (bonus.type === "destroyProtect") itemProtect++;
+
+    writeLog(
+      `출석으로 얻는 아이템은 ${userId}님이 연속 ${attendanceStreak}회 출석으로 ${bonus.name}이 지급되었습니다.`
+    );
+
+    showNpcMessage(
+      `
+      <div style="font-size:16px; font-weight:bold;">
+        🎁 연속 ${attendanceStreak}회 출석 보상
+      </div>
+      <div style="margin-top:4px;">
+        <b>${bonus.name}</b>이 지급되었습니다.
+      </div>
+      `,
+      null,
+      true
+    );
+  }
 
   update();
   save();
