@@ -257,18 +257,31 @@ button {
 #profileHuntCount {
   color: #fff;
 }
-  
-/* 🗺 MAP 버튼 */
-#mapBtn {
-  position: fixed;   /* 화면 기준 고정 */
-  top: 10px;         /* 화면 맨 위에서 10px */
-  right: 10px;       /* 화면 오른쪽에서 10px */
+
+/* 🔘 우측 상단 메뉴 버튼 공통 스타일 (MAP / 결투 / 인벤토리) */
+.side-menu-btn {
+  position: fixed;
+  right: 10px;
   z-index: 1100;
   font-size: 14px;
   padding: 8px 16px;
   margin: 0;
+  display: none;   /* 로그인 후 JS에서 block으로 바꿈 */
 }
 
+/* 각 버튼의 세로 위치만 다르게 */
+#mapBtn {
+  top: 10px;
+}
+
+#duelBtn {
+  top: 50px;
+}
+
+#inventoryBtn {
+  top: 90px;
+}
+  
 /* 🗺 MAP 패널 */
 #mapPanel {
   position:fixed;
@@ -604,33 +617,23 @@ button {
 <!-- 🔔 로그 -->
 <div id="toastLog"><div id="toastList"></div></div>
 
-  <button id="mapBtn" onclick="toggleMap()" style="display:none;">
+<button id="mapBtn"
+        class="side-menu-btn"
+        onclick="toggleMap()">
   🗺 MAP
 </button>
-
+  
 <!-- ⚔️ 결투 버튼 (MAP과 인벤토리 사이) -->
-<button id="duelBtn" onclick="toggleDuelPanel()" style="
-  position:fixed;
-  top:50px;
-  right:10px;
-  z-index:1100;
-  display:none;
-  font-size:14px;
-  padding:8px 16px;
-">
+<button id="duelBtn"
+        class="side-menu-btn"
+        onclick="toggleDuelPanel()">
   ⚔️ 결투
 </button>
   
-<!-- 🎒 인벤토리 버튼 (로그 버튼 위) -->
-<button id="inventoryBtn" onclick="toggleInventory()" style="
-  position:fixed;
-  top:90px;
-  right:10px;
-  z-index:1100;
-  display:none;
-  font-size:14px;
-  padding:8px 16px;
-">
+  <!-- 🎒 인벤토리 버튼 (로그 버튼 위) -->
+<button id="inventoryBtn"
+        class="side-menu-btn"
+        onclick="toggleInventory()">
   🎒 인벤토리
 </button>
 
