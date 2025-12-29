@@ -52,7 +52,40 @@ body {
   visibility: visible !important;
 }
 
-/* ⛔ 캡쳐 중일 때만 숨김 */
+
+/* ===========================
+   📷 캡쳐 시 숨길 요소
+   =========================== */
+
+/* 🔻 추천레벨 / 성공확률 줄 숨기기 */
+.capture-mode .current-field-info-sub {
+  display: none !important;
+}
+
+/* 🔻 강화 정보 / 버튼 */
+.capture-mode #upgradeInfo,
+.capture-mode .action-buttons,
+.capture-mode #huntInfo,
+.capture-mode #upgradeItems {
+  display: none !important;
+}
+
+/* 🔻 출석 / 로그 / 맵 버튼 / 인벤토리 등 UI 버튼 */
+.capture-mode .side-menu-btn,
+.capture-mode #attendanceBtn,
+.capture-mode #logoutBtn,
+.capture-mode #logToggle {
+  display: none !important;
+}
+
+/* 🔻 저장버튼 / 저장중 표시 */
+.capture-mode .no-capture,
+.capture-mode .profile-share-btn,
+.capture-mode .profile-save-status {
+  display: none !important;
+}
+
+/* ⛔ (안전장치) no-capture는 항상 캡쳐 중 숨김 */
 .capture-mode .no-capture {
   display:none !important;
 }
@@ -498,7 +531,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.541)
+    (v3.551)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
