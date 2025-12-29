@@ -40,6 +40,22 @@ body {
   margin: 0;             /* 공용 button 마진 제거 */
   white-space: nowrap;   /* 🔥 버튼 안에서 줄바꿈 금지 */
 }
+
+/* 📷 프로필 저장 캡쳐 모드 */
+.capture-mode * {
+  visibility: hidden !important;
+}
+
+/* ⬜ fieldBg 영역만 보이게 */
+.capture-mode #fieldBg,
+.capture-mode #fieldBg * {
+  visibility: visible !important;
+}
+
+/* ⛔ 캡쳐에서 제외될 요소 */
+.no-capture {
+  display: none !important;
+}
   
   /* 🎫 출석 버튼 */
 #attendanceBtn {
@@ -482,7 +498,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.531)
+    (v3.532)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -505,9 +521,14 @@ button {
   <div class="profile-card-inner">
 
   <!-- 📷 프로필 저장 버튼 -->
-<button class="profile-share-btn" onclick="saveProfileCard()" title="프로필 저장">
+<button class="profile-share-btn no-capture"
+        onclick="saveProfileCard()"
+        title="프로필 저장">
   ⬇︎
 </button>
+
+<div id="profileSaveStatus"
+     class="profile-save-status no-capture"></div>
 
   <!-- 🔔 저장 상태 텍스트 -->
   <div id="profileSaveStatus" class="profile-save-status"></div>
@@ -1426,50 +1447,41 @@ function setProfileSaveStatus(message, durationMs) {
 }
   // 📷 프로필 카드 캡쳐 후 이미지 저장
 function saveProfileCard() {
-  // ✅ 프로필 카드 + 블러 배경까지 같이 캡쳐하고 싶으면 fieldBg를 대상로
-  const card = document.getElementById("fieldBg"); 
-  if (!card) {
-    alert("프로필 영역을 찾을 수 없습니다.");
-    return;
-  }
 
-  // 🔔 상단 상태 텍스트: 저장중 ...
-  setProfileSaveStatus("저장중 ...", 0);   // 0 = 자동으로 안 사라짐
+  const card = document.getElementById("fieldBg");
+
+  setProfileSaveStatus("저장중 ...", 0);
+
+  // ✅ 캡쳐 전용 모드 활성화
+  document.body.classList.add("capture-mode");
 
   html2canvas(card, {
     scale: 2,
     useCORS: true
   }).then(canvas => {
-    canvas.toBlob(function (blob) {
-      if (!blob) {
-        setProfileSaveStatus("저장 실패...", 2000);
-        alert("이미지 생성에 실패했습니다.");
-        return;
-      }
 
+    // ⬅ 저장 후 원래 화면 복구
+    document.body.classList.remove("capture-mode");
+
+    canvas.toBlob(function (blob) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-
-      const fileName = `${userId || "swordmaster"}_profile_${Date.now()}.png`;
-
       a.href = url;
-      a.download = fileName;
-
-      document.body.appendChild(a);
+      a.download = `${userId}_profile_${Date.now()}.png`;
       a.click();
-      document.body.removeChild(a);
-
       URL.revokeObjectURL(url);
 
-      // ✅ 저장 완료 표시
-      setProfileSaveStatus("저장완료 !", 1500); // 1.5초 후 사라짐
-    }, "image/png");
+      setProfileSaveStatus("저장완료 !", 1500);
+    });
+
   }).catch(err => {
-    console.error(err);
+
+    // ⛔ 오류 발생해도 화면 복구
+    document.body.classList.remove("capture-mode");
     setProfileSaveStatus("저장 실패...", 2000);
-    alert("이미지 저장 중 오류가 발생했습니다.");
   });
 }
+
 
   // ⚠️ 25강 이상 세이프존 삭제 안내 팝업
 function showUpgradeWarning25() {
