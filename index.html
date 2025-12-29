@@ -544,7 +544,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.576)
+    (v3.577)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3242,55 +3242,45 @@ function loadRanking(){
   usersRef
     .orderByChild("sword")
     .limitToLast(10)
-    .on("value", s=>{
+    .once("value", s => {
       const rankingEl = document.getElementById("ranking");
       if (!rankingEl) return;
 
-      let arr=[];
-      s.forEach(c=>{
-        const d=c.val();
+      const arr = [];
+      s.forEach(child => {
+        const d = child.val() || {};
         arr.push({
-          id: c.key,
+          id: child.key,
           sword: Number(d.sword || 0),
-          gold:  Number(d.gold  || 0),
           updated: Number(d.updated || 0),
           duelWin: Number(d.duelWin || 0),
           duelLose: Number(d.duelLose || 0)
         });
       });
 
-      // sword -> updated 순으로 정렬
+      // 🔢 정렬: 강화 높은 순 → 같은 강화면 더 예전에 만든 계정이 위
       arr.sort((a, b) => {
         if (b.sword !== a.sword) return b.sword - a.sword;
         return a.updated - b.updated;
       });
 
-rankingEl.innerHTML = arr.map((u, i) => {
-  const wInfo = getWeaponInfo(u.sword);              // ⚔️ 강화단계별 검 이름/설명
-  const weaponNameStyled = coloredWeaponName(u.sword, wInfo.name);
-  const colorName = getSwordColorName(u.sword);
-  const colorLabel = colorName ? ` (${colorName})` : "";
+      // 🏆 랭킹 HTML 생성
+      rankingEl.innerHTML = arr.map((u, i) => {
+        const wInfo = getWeaponInfo(u.sword);              // ⚔️ 강화단계별 검 이름
+        const weaponNameStyled = coloredWeaponName(u.sword, wInfo.name);
+        const colorName = getSwordColorName(u.sword);
+        const colorLabel = colorName ? ` (${colorName})` : "";
 
-  return `
-    <div style="font-weight:bold;">
-      ${i+1}. ${u.id}
-      | ${weaponNameStyled} ${coloredLevel(u.sword)}${colorLabel}
-      | 전적: ${u.duelWin}승 ${u.duelLose}패
-    </div>
-  `;
-}).join("");
-
-
-  return `
-    <div style="font-weight:bold;">
-      ${i + 1}. ${u.id}
-      | ${name} ${levelText}
-      | 전적: ${u.duelWin}승 ${u.duelLose}패
-    </div>
-  `;
-}).join("");
-
+        return `
+          <div style="font-weight:bold;">
+            ${i+1}. ${u.id}
+            | ${weaponNameStyled} ${coloredLevel(u.sword)}${colorLabel}
+            | 전적: ${u.duelWin}승 ${u.duelLose}패
+          </div>
+        `;
+      }).join("");
     });
+}
 
   // 👇 내 랭킹 계산 + 결투용 전체 유저 캐시
   usersRef
