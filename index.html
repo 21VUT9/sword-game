@@ -531,7 +531,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.561)
+    (v3.562)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -560,11 +560,9 @@ button {
   ⬇︎
 </button>
 
+<!-- 🔔 저장 상태 텍스트 (이거 하나만 남기기) -->
 <div id="profileSaveStatus"
      class="profile-save-status no-capture"></div>
-
-  <!-- 🔔 저장 상태 텍스트 -->
-  <div id="profileSaveStatus" class="profile-save-status"></div>
 
   <div class="profile-card-inner">
     
@@ -1903,17 +1901,18 @@ function checkAttendance() {
   }
 
   // 날짜 비교 (연속 출석 처리)
-  const yesterday = new Date(Date.now() - 86400000).toDateString();
+const yesterday = getYesterdayDateString();
 
-  if (lastAttendanceDay === yesterday) {
-    attendanceStreak++;
-  } else {
-    attendanceStreak = 1;
-  }
+// 어제도 찍었으면 연속 출석 +1, 아니면 1부터
+if (lastAttendanceDay === yesterday) {
+  attendanceStreak++;
+} else {
+  attendanceStreak = 1;
+}
 
-  lastAttendanceDay = today;
-  lastAttendanceDate = today;
-  attendanceCount++;
+lastAttendanceDay = today;
+lastAttendanceDate = today;
+attendanceCount++;
 
   // ==========================
   // 🎁 골드 지급 방식 변경
@@ -2653,6 +2652,8 @@ function login() {
         updated: Date.now(),
         attendanceCount: 0,
         lastAttendanceDate: "",
+          attendanceStreak: 0,      
+  lastAttendanceDay: "",    
         currentField: 1,
         huntCountToday: 0,
         lastHuntDate: "",
@@ -2690,6 +2691,8 @@ function login() {
 
       attendanceCount    = data.attendanceCount    ?? 0;
       lastAttendanceDate = data.lastAttendanceDate ?? "";
+      attendanceStreak   = data.attendanceStreak   ?? 0;  
+lastAttendanceDay  = data.lastAttendanceDay  ?? "";
       currentField       = data.currentField       ?? 1;
       huntCountToday     = data.huntCountToday     ?? 0;
       lastHuntDate       = data.lastHuntDate       ?? "";
@@ -2746,6 +2749,8 @@ function save() {
     updated: Date.now(),
     attendanceCount: attendanceCount,
     lastAttendanceDate: lastAttendanceDate,
+        attendanceStreak: Number(attendanceStreak),
+    lastAttendanceDay: lastAttendanceDay, 
     currentField: currentField,
     huntCountToday: huntCountToday,
     lastHuntDate: lastHuntDate,
@@ -2953,6 +2958,8 @@ if (!power || power <= 20) {
 
     attendanceCount    = data.attendanceCount    ?? 0;
     lastAttendanceDate = data.lastAttendanceDate ?? "";
+    attendanceStreak   = data.attendanceStreak   ?? 0;   
+lastAttendanceDay  = data.lastAttendanceDay  ?? "";  
     currentField       = data.currentField       ?? 1;
     huntCountToday     = data.huntCountToday     ?? 0;
     lastHuntDate       = data.lastHuntDate       ?? "";
@@ -3079,6 +3086,15 @@ function loadRanking(){
 // 오늘 날짜를 "YYYY-MM-DD" 형태로 반환 (출석 체크용)
 function getTodayDateString() {
   const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+  function getYesterdayDateString() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
