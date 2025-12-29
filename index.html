@@ -1414,13 +1414,14 @@ function setProfileSaveStatus(message, durationMs) {
 }
   // 📷 프로필 카드 캡쳐 후 이미지 저장
 function saveProfileCard() {
-  const card = document.getElementById("userProfileArea");
+  // ✅ 프로필 카드 + 블러 배경까지 같이 캡쳐하고 싶으면 fieldBg를 대상로
+  const card = document.getElementById("fieldBg"); 
   if (!card) {
-    alert("프로필 카드를 찾을 수 없습니다.");
+    alert("프로필 영역을 찾을 수 없습니다.");
     return;
   }
 
-  // 🔔 상단 상태 텍스트: 저장중...
+  // 🔔 상단 상태 텍스트: 저장중 ...
   setProfileSaveStatus("저장중 ...", 0);   // 0 = 자동으로 안 사라짐
 
   html2canvas(card, {
