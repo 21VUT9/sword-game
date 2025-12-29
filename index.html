@@ -544,7 +544,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.577)
+    (v3.578)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3235,10 +3235,11 @@ document.getElementById("mapBtn").style.display = "block";
 }
  
 /* 랭킹 */
-function loadRanking(){
+function loadRanking() {
+
   const usersRef = db.ref("users");
 
-  // 🔝 TOP 10 표시
+  // 🔝 TOP 10 (once)
   usersRef
     .orderByChild("sword")
     .limitToLast(10)
@@ -3258,15 +3259,13 @@ function loadRanking(){
         });
       });
 
-      // 🔢 정렬: 강화 높은 순 → 같은 강화면 더 예전에 만든 계정이 위
       arr.sort((a, b) => {
         if (b.sword !== a.sword) return b.sword - a.sword;
         return a.updated - b.updated;
       });
 
-      // 🏆 랭킹 HTML 생성
       rankingEl.innerHTML = arr.map((u, i) => {
-        const wInfo = getWeaponInfo(u.sword);              // ⚔️ 강화단계별 검 이름
+        const wInfo = getWeaponInfo(u.sword);
         const weaponNameStyled = coloredWeaponName(u.sword, wInfo.name);
         const colorName = getSwordColorName(u.sword);
         const colorLabel = colorName ? ` (${colorName})` : "";
@@ -3280,37 +3279,33 @@ function loadRanking(){
         `;
       }).join("");
     });
-}
 
-  // 👇 내 랭킹 계산 + 결투용 전체 유저 캐시
+  // 👇 내 랭킹 + 결투 매칭 캐시 (on)
   usersRef
     .orderByChild("sword")
-    .on("value", s=>{
+    .on("value", s => {
       const myRankEl = document.getElementById("myRank");
       if (!myRankEl) return;
 
-      let arr = [];
+      const arr = [];
       s.forEach(c => {
-        const d = c.val();
+        const d = c.val() || {};
         arr.push({
           id: c.key,
           sword: Number(d.sword || 0),
-          gold:  Number(d.gold  || 0),
           updated: Number(d.updated || 0),
           power: Number(d.power || 0)
         });
       });
 
-      // 전체 유저를 동일 기준으로 정렬 (랭킹 기준)
       arr.sort((a, b) => {
         if (b.sword !== a.sword) return b.sword - a.sword;
         return a.updated - b.updated;
       });
 
-      // ⚔️ 결투용 전체 유저 캐시 갱신
+      // ⚔️ 결투용 캐시
       allUsersCache = arr.slice();
 
-      // 아직 로그인 안 했으면 내 랭킹 영역만 비우고 종료
       if (!userId) {
         myRankEl.innerText = "";
         return;
@@ -3323,12 +3318,13 @@ function loadRanking(){
       } else {
         const myInfo = arr[idx];
         myRankEl.innerHTML = `
-          내 랭킹: <b>${idx + 1}위</b> 
-(${coloredLevel(myInfo.sword)}, 전적: ${duelWin}승 ${duelLose}패)
+          내 랭킹: <b>${idx + 1}위</b>
+          (${coloredLevel(myInfo.sword)}, 전적: ${duelWin}승 ${duelLose}패)
         `;
       }
     });
 }
+
   
 // 오늘 날짜를 "YYYY-MM-DD" 형태로 반환 (출석 체크용)
 function getTodayDateString() {
