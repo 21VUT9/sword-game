@@ -544,7 +544,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.580)
+    (v3.581)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3058,6 +3058,55 @@ function coloredLevel(l){
   // 👉 11~20은 색 없음 (기본 흰색)
   return `+${l}강`;
 }
+
+  // ⚔️ 강화 단계별 컬러 이름 (랭킹 표시용)
+function getSwordColorName(level) {
+  const colorNameMap = {
+    21: "빨강",
+    22: "노랑",
+    23: "초록",
+    24: "파랑",
+    25: "보라",
+    26: "갈색",
+    27: "핑크",
+    28: "실버",
+    29: "골드",
+    30: "무지개"
+  };
+  return colorNameMap[level] || "";
+}
+
+// ⚔️ 검 이름에 색 입히기 (랭킹용)
+function coloredWeaponName(level, baseName) {
+  // 20강 이하는 색 안 넣고 그냥 이름만
+  if (level <= 20) return baseName;
+
+  // 30, 29, 28강은 이미 만든 클래스 활용
+  if (level >= 30) {
+    return `<span class="rainbow">${baseName}</span>`;
+  }
+  if (level === 29) {
+    return `<span class="sparkle-gold">${baseName}</span>`;
+  }
+  if (level === 28) {
+    return `<span class="sparkle-silver">${baseName}</span>`;
+  }
+
+  // 21~27강은 coloredLevel에서 쓰는 색이랑 맞추기
+  const colorMap = {
+    21: "red",
+    22: "yellow",
+    23: "lime",
+    24: "cyan",
+    25: "violet",
+    26: "brown",
+    27: "pink"
+  };
+
+  const cssColor = colorMap[level] || "#ffffff";
+  return `<span style="color:${cssColor};font-weight:bold;">${baseName}</span>`;
+}
+
 
 // 🗺 MAP 토글
 function toggleMap() {
