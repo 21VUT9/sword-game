@@ -544,7 +544,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.579)
+    (v3.580)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2943,21 +2943,18 @@ lastAttendanceDay  = data.lastAttendanceDay  ?? "";
       lastDuelDate   = data.lastDuelDate   ?? "";
       duelTargetsToday = data.duelTargetsToday ?? {};
     }
-
-    // 4️⃣ 화면 전환 + 버튼 노출
+    // 화면 전환
     const loginScreen = document.getElementById("loginScreen");
     const gameScreen  = document.getElementById("gameScreen");
-
     loginScreen.style.display  = "none";
     gameScreen.style.display   = "block";
 
     document.getElementById("attendanceBtn").style.display = "block";
-    document.getElementById("inventoryBtn").style.display  = "block";
-    document.getElementById("logToggle").style.display     = "block";
-    document.getElementById("logoutBtn").style.display     = "block";
-    document.getElementById("duelBtn").style.display       = "block";
+    document.getElementById("inventoryBtn").style.display = "block";
+    document.getElementById("logToggle").style.display = "block";
+    document.getElementById("logoutBtn").style.display = "block";
+    document.getElementById("duelBtn").style.display = "block";
     document.getElementById("mapBtn").style.display = "block";
-
 
     // 🔐 마지막 로그인 유저 저장
     try {
@@ -2966,12 +2963,15 @@ lastAttendanceDay  = data.lastAttendanceDay  ?? "";
       console.warn("localStorage set 실패", e);
     }
 
+    // 🏆 로그인 직후 랭킹/내 랭킹 갱신
+    loadRanking();   // 👈 이 줄 추가!
+
     update();
     showTutorialIfFirstTime();
-    loadRanking();   
     save(); // 신규 생성 직후 값 저장
   });
 }
+
 
 
 function save() {
