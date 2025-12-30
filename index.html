@@ -3478,14 +3478,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const overlay  = document.getElementById("otherProfileOverlay");
   const closeBtn = document.getElementById("otherProfileCloseBtn");
 
-  // X 버튼 클릭 → 닫기
-  if (closeBtn) {
-    closeBtn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      closeOtherUserProfilePopup();
-    });
-  }
-
   // 어두운 배경 클릭 → 닫기
   if (overlay) {
     overlay.addEventListener("click", function (e) {
@@ -4133,7 +4125,13 @@ async function recalcUserPower(userIdToFix) {
   <div class="other-profile-card">
     <div class="other-profile-header">
       <div id="otherProfileNickname" class="profile-nickname">-</div>
-      <button id="otherProfileCloseBtn" class="other-profile-close-btn">&times;</button>
+      <button
+  id="otherProfileCloseBtn"
+  class="other-profile-close-btn"
+  onclick="event.stopPropagation(); closeOtherUserProfilePopup();"
+>
+  &times;
+</button>
     </div>
 
     <div class="profile-card-inner">
