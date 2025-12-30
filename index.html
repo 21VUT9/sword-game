@@ -545,7 +545,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.593)
+    (v3.594)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1690,6 +1690,32 @@ function showNpcMessage(
   popup.style.display = "flex";
 }
 
+// ⌨️ 엔터 키로 NPC 팝업 "확인" 누르기 (한 버튼 팝업 전용)
+window.addEventListener("keydown", function (e) {
+  if (e.key !== "Enter") return;
+
+  const popup = document.getElementById("npcPopup");
+  if (!popup) return;
+
+  // 팝업이 열려있지 않으면 무시
+  if (popup.style.display === "none" || popup.style.display === "") return;
+
+  const okBtn     = document.getElementById("npcConfirmBtn");
+  const cancelBtn = document.getElementById("npcCancelBtn");
+
+  if (!okBtn || !cancelBtn) return;
+
+  // ✅ "확인"만 있는 팝업일 때만 엔터로 작동하게 (판매확인 같은 건 보호)
+  const okVisible     = okBtn.style.display !== "none";
+  const cancelVisible = cancelBtn.style.display !== "none";
+
+  if (okVisible && !cancelVisible) {
+    e.preventDefault();   // 폼 제출 같은 기본 행동 막기
+    okBtn.click();        // 확인 버튼 클릭 처리
+  }
+});
+
+  
 // 프로필 저장 상태 텍스트 표시
 let profileSaveTimer = null;
 
