@@ -1095,22 +1095,7 @@ let destroyCount  = 0;   // 계정 전체 누적 파괴 횟수
 let currentSessionId = null;   // 🔐 이 브라우저 탭의 세션 ID
 
 // 🆕 강화 진행 중인지 여부
-let isUpgrading = false;
-
-  // 🔐 이 탭의 세션 시작 (로그인 성공 후 호출)
-function startSession() {
-  if (!userRef) return;
-
-  // 랜덤 세션ID 생성
-  currentSessionId = Date.now() + "_" + Math.random().toString(36).slice(2);
-
-  // 서버에 내 세션ID 기록
-  userRef.child("sessionId").set(currentSessionId);
-
-  // 이 탭이 끊기면 sessionId 자동 제거
-  userRef.child("sessionId").onDisconnect().remove();
-}
- 
+let isUpgrading = false; 
 
 // 🧭 사냥터 이동 중인지 여부
 let isMoving = false;
@@ -1337,6 +1322,19 @@ function setNpcName(name) {
   if (nameEl) nameEl.textContent = name;
 }
 
+// 🔐 이 탭의 세션 시작 (로그인 성공 후 호출)
+function startSession() {
+  if (!userRef) return;
+
+  // 랜덤 세션ID 생성
+  currentSessionId = Date.now() + "_" + Math.random().toString(36).slice(2);
+
+  // 서버에 내 세션ID 기록
+  userRef.child("sessionId").set(currentSessionId);
+
+  // 이 탭이 끊기면 sessionId 자동 제거
+  userRef.child("sessionId").onDisconnect().remove();
+}
   
 /* UI */
 
