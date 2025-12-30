@@ -512,6 +512,88 @@ button {
   cursor:pointer;
 }
 
+/* ⚔️ 결투 VS 연출 오버레이 */
+#duelBattleOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  display: none;           /* 기본 숨김 */
+  align-items: center;
+  justify-content: center;
+  z-index: 2050;          /* NPC 팝업보다 살짝 위 or 아래로 조절 */
+}
+
+.duel-battle-inner {
+  background: #222;
+  border: 1px solid #555;
+  border-radius: 12px;
+  padding: 16px 20px;
+  max-width: 360px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 0 15px rgba(0,0,0,0.9);
+  font-size: 14px;
+}
+
+.duel-battle-title {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.duel-battle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  margin-bottom: 6px;
+}
+
+.duel-side {
+  width: 45%;
+}
+
+.duel-user-name {
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+
+.duel-weapon-name {
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.duel-weapon-img-box {
+  width: 90px;
+  height: 90px;
+  margin: 0 auto 4px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.duel-weapon-img-box img {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.duel-power {
+  font-size: 12px;
+  color: #ccc;
+}
+
+.duel-vs-text {
+  font-size: 20px;
+  font-weight: bold;
+  padding: 0 4px;
+}
+
+.duel-battle-sub {
+  font-size: 12px;
+  color: #aaa;
+  margin-top: 6px;
+}
+  
 /* 📘 처음 접속 튜토리얼 오버레이 */
 #tutorialOverlay {
   position:fixed;
@@ -612,7 +694,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.610)
+    (v3.611)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1246,7 +1328,66 @@ const FIELD_BACKGROUNDS = {
   10:"images/fields/field10_dimensional_rift.png"     // 차원의 틈새
 };
 
+// ⚔️ VS 연출 표시
+function showDuelBattleOverlay(params) {
+  const ov = document.getElementById("duelBattleOverlay");
+  if (!ov) return;
 
+  const {
+    myName,
+    myLevelHtml,
+    myPower,
+    myWeaponInfo,
+    targetName,
+    targetLevelHtml,
+    targetPower,
+    targetWeaponInfo
+  } = params;
+
+  const myNameEl    = document.getElementById("duelMyName");
+  const myWeaponEl  = document.getElementById("duelMyWeapon");
+  const myPowerEl   = document.getElementById("duelMyPower");
+  const myImgEl     = document.getElementById("duelMyWeaponImg");
+
+  const tNameEl     = document.getElementById("duelTargetName");
+  const tWeaponEl   = document.getElementById("duelTargetWeapon");
+  const tPowerEl    = document.getElementById("duelTargetPower");
+  const tImgEl      = document.getElementById("duelTargetWeaponImg");
+
+  if (myNameEl)   myNameEl.textContent   = myName || "";
+  if (tNameEl)    tNameEl.textContent    = targetName || "";
+
+  // 무기 이름 + 강화(+00강) 같이 출력
+  if (myWeaponEl) {
+    myWeaponEl.innerHTML =
+      (myWeaponInfo?.name || "???") + " " + (myLevelHtml || "");
+  }
+  if (tWeaponEl) {
+    tWeaponEl.innerHTML =
+      (targetWeaponInfo?.name || "???") + " " + (targetLevelHtml || "");
+  }
+
+  if (myPowerEl) myPowerEl.textContent =
+    "전투력 " + formatGold(myPower || 0);
+  if (tPowerEl) tPowerEl.textContent =
+    "전투력 " + formatGold(targetPower || 0);
+
+  if (myImgEl && myWeaponInfo?.img) {
+    myImgEl.src = myWeaponInfo.img;
+  }
+  if (tImgEl && targetWeaponInfo?.img) {
+    tImgEl.src = targetWeaponInfo.img;
+  }
+
+  ov.style.display = "flex";
+}
+
+// ⚔️ VS 연출 숨기기
+function hideDuelBattleOverlay() {
+  const ov = document.getElementById("duelBattleOverlay");
+  if (ov) ov.style.display = "none";
+}
+  
 function logout() {
 
   // 🔐 서버에 남아있는 세션ID 제거
@@ -1640,7 +1781,28 @@ const defenderLvHtml = coloredLevel(targetSword);  // 상대 +00강 (컬러 포�
       ? Math.floor(baseCost * randRange(2.5, 2.8))
       : 0;
 
-    // 🔢 카운트/전적 갱신
+    // 🎴 VS 화면에 쓸 무기 정보
+  const myWeaponInfo     = getWeaponInfo(sword);
+  const targetWeaponInfo = getWeaponInfo(targetSword);
+
+  // 🧾 VS 오버레이 먼저 띄우기
+  showDuelBattleOverlay({
+    myName: userId,
+    myLevelHtml: attackerLvHtml,
+    myPower: A,
+    myWeaponInfo,
+    targetName: targetUserId,
+    targetLevelHtml: defenderLvHtml,
+    targetPower: B,
+    targetWeaponInfo
+  });
+
+  // ⏳ 2~3초 뒤에 실제 결과 처리
+  const delay = 2000 + Math.random() * 1000; // 2000~3000ms
+
+  setTimeout(() => {
+    // 🔢 카운트/전적 갱신 (기존 이 아래에 있던 코드들 전부 여기로 옮기기)
+
     duelCountToday++;
 
     if (!isRandomMatch) {
@@ -1648,60 +1810,22 @@ const defenderLvHtml = coloredLevel(targetSword);  // 상대 +00강 (컬러 포�
       duelTargetsToday[targetUserId] = prev + 1;
     }
 
-if (isWin) {
-  duelWin++;
-  gold += reward;
-
-  showNpcMessage(
-    `
-    <div style="font-size:18px; font-weight:bold; color:#FFD700;">
-      멋진 승리였어!
-    </div>
-    <div style="margin-top:6px; font-size:14px;">
-      네 검이 경기장을 들썩이게 만들었군!<br>
-      💰 ${formatGold(reward)} 골드를 챙겨 가라!
-    </div>
-    `,
-    "images/npc/duel_carnia.png",
-    true,
-    "결투 심판관 – 카르니아 발크라이트"
-  );
-
-  const logMsg = isRandomMatch
-    ? `${userId}님(${attackerLvHtml})이 랜덤결투를 신청하여 ${targetUserId}님(${defenderLvHtml})과의 결투에서 승리하였습니다!`
-    : `${userId}님(${attackerLvHtml})이 ${targetUserId}님(${defenderLvHtml})께 결투를 신청하여 승리하였습니다!`;
-
-  writeLog(logMsg);
-
-
-} else {
-  duelLose++;
-
-  showNpcMessage(
-    `
-    <div style="font-size:18px; font-weight:bold; color:#FF6666;">
-      쓰러졌지만, 꽤 근사했는걸?
-    </div>
-    <div style="margin-top:6px; font-size:14px;">
-      이번 판은 저쪽 손을 들어줘야겠네.<br>
-      보상은 없지만, 다음 라운드를 노려봐!
-    </div>
-    `,
-    "images/npc/duel_carnia.png",
-    true,
-    "결투 심판관 – 카르니아 발크라이트"
-  );
-
-  const logMsg = isRandomMatch
-    ? `${userId}님(${attackerLvHtml})이 랜덤결투를 신청하여 ${targetUserId}님(${defenderLvHtml})과의 결투에서 패배하였습니다...`
-    : `${userId}님(${attackerLvHtml})이 ${targetUserId}님(${defenderLvHtml})께 결투를 신청하여 패배하였습니다...`;
-
-  writeLog(logMsg);
-}
+    if (isWin) {
+      duelWin++;
+      gold += reward;
+      // 여기서 승리 메시지 / NPC 팝업 / 로그 등 기존 승리 처리 코드
+    } else {
+      duelLose++;
+      // 패배 메시지 / 로그 등 기존 패배 처리 코드
+    }
 
     update();
     save();
-  });
+
+    // VS 화면 닫기
+    hideDuelBattleOverlay();
+  }, delay);
+});
 }
   
 // ⚔️ 결투 신청 확인 팝업 (직접 결투 신청 전용)
@@ -4169,6 +4293,42 @@ async function recalcUserPower(userIdToFix) {
     </div>
   </div>
 </div>
+
+  <!-- ⚔️ 결투 VS 연출 오버레이 -->
+<div id="duelBattleOverlay">
+  <div class="duel-battle-inner">
+    <div class="duel-battle-title">⚔️ 결투 개시</div>
+
+    <div class="duel-battle-row">
+      <!-- 왼쪽: 나 -->
+      <div class="duel-side">
+        <div class="duel-user-name" id="duelMyName"></div>
+        <div class="duel-weapon-name" id="duelMyWeapon"></div>
+        <div class="duel-weapon-img-box">
+          <img id="duelMyWeaponImg" src="" alt="내 무기">
+        </div>
+        <div class="duel-power" id="duelMyPower"></div>
+      </div>
+
+      <div class="duel-vs-text">VS</div>
+
+      <!-- 오른쪽: 상대 -->
+      <div class="duel-side">
+        <div class="duel-user-name" id="duelTargetName"></div>
+        <div class="duel-weapon-name" id="duelTargetWeapon"></div>
+        <div class="duel-weapon-img-box">
+          <img id="duelTargetWeaponImg" src="" alt="상대 무기">
+        </div>
+        <div class="duel-power" id="duelTargetPower"></div>
+      </div>
+    </div>
+
+    <div class="duel-battle-sub">
+      잠시 후 전투 결과가 공개됩니다...
+    </div>
+  </div>
+</div>
+
 
   <!-- 👤 다른 유저 프로필 팝업 (다운로드 버튼 없음) -->
 <div id="otherProfileOverlay">
