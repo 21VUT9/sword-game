@@ -3473,8 +3473,8 @@ function closeOtherUserProfilePopup() {
   }
 }
 
-// 👉 팝업 관련 이벤트 한 번에 초기화
-(function initOtherProfilePopupEvents() {
+// 👉 팝업 관련 이벤트 한 번에 초기화 (DOM 다 만들어진 뒤에 연결)
+document.addEventListener("DOMContentLoaded", function initOtherProfilePopupEvents() {
   const overlay  = document.getElementById("otherProfileOverlay");
   const closeBtn = document.getElementById("otherProfileCloseBtn");
 
@@ -3502,7 +3502,7 @@ function closeOtherUserProfilePopup() {
       closeOtherUserProfilePopup();
     }
   });
-})();
+});
 
   // 🧷 랭킹 닉네임 → "프로필 보기" 메뉴 → 프로필 팝업
 let lastRankProfileUserId = null;
