@@ -3473,8 +3473,8 @@ function closeOtherUserProfilePopup() {
   }
 }
 
-// 👉 팝업 관련 이벤트 한 번에 초기화 (DOM 다 만들어진 뒤에 연결)
-document.addEventListener("DOMContentLoaded", function initOtherProfilePopupEvents() {
+// 👉 팝업 관련 이벤트 한 번에 초기화 (DOM 다 만들어진 뒤에 실행)
+document.addEventListener("DOMContentLoaded", function () {
   const overlay  = document.getElementById("otherProfileOverlay");
   const closeBtn = document.getElementById("otherProfileCloseBtn");
 
@@ -3489,7 +3489,7 @@ document.addEventListener("DOMContentLoaded", function initOtherProfilePopupEven
   // 어두운 배경 클릭 → 닫기
   if (overlay) {
     overlay.addEventListener("click", function (e) {
-      // 카드 바깥을 클릭했을 때만 닫기
+      // 카드 바깥(어두운 부분) 누르면 닫기
       if (!e.target.closest(".other-profile-card")) {
         closeOtherUserProfilePopup();
       }
