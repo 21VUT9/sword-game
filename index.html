@@ -605,7 +605,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.596)
+    (v3.597)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3462,31 +3462,41 @@ function openOtherUserProfilePopup(targetId) {
 // 👤 다른 유저 프로필 팝업 닫기 (통합)
 function closeOtherUserProfilePopup() {
   const overlay = document.getElementById("otherProfileOverlay");
-  if (overlay) overlay.style.display = "none";
+  if (overlay) {
+    overlay.style.display = "none";
+  }
 }
 
-// 닫기 버튼 이벤트 확정 연결
+// 🔧 DOM 준비 후, 이벤트 한 번에 연결
 document.addEventListener("DOMContentLoaded", () => {
+  const overlay  = document.getElementById("otherProfileOverlay");
   const closeBtn = document.getElementById("otherProfileCloseBtn");
+
+  // 1) 닫기 버튼 클릭 → 닫기
   if (closeBtn) {
-    closeBtn.onclick = e => {
-      e.stopPropagation();
+    closeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();          // 클릭이 바깥으로 튀지 않게
       closeOtherUserProfilePopup();
-    };
+    });
   }
-});
 
-  // 배경 터치 / 클릭 시 닫기
-const overlay = document.getElementById("otherProfileOverlay");
+  // 2) 검은 배경(카드 밖) 클릭 → 닫기
+  if (overlay) {
+    overlay.addEventListener("click", (e) => {
+      // 카드 영역 바깥을 눌렀을 때만 닫기
+      if (!e.target.closest(".other-profile-card")) {
+        closeOtherUserProfilePopup();
+      }
+    });
+  }
 
-if (overlay) {
-  overlay.addEventListener("click", e => {
-    // 카드 내부 클릭은 무시하고
-    if (!e.target.closest(".other-profile-card")) {
+  // 3) ESC 키로 닫기 (PC)
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" || e.key === "Esc") {
       closeOtherUserProfilePopup();
     }
   });
-}
+});
 
   // 🧷 랭킹 닉네임 → "프로필 보기" 메뉴 → 프로필 팝업
 let lastRankProfileUserId = null;
@@ -4117,7 +4127,7 @@ async function recalcUserPower(userIdToFix) {
   <div class="other-profile-card">
     <div class="other-profile-header">
       <div id="otherProfileNickname" class="profile-nickname">-</div>
-      <button id="otherProfileCloseBtn" class="other-profile-close-btn">닫기</button>
+      <button id="otherProfileCloseBtn" class="other-profile-close-btn">✕</button>
     </div>
 
     <div class="profile-card-inner">
