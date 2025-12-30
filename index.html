@@ -612,7 +612,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.599)
+    (v3.602)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3366,6 +3366,12 @@ function autoLoginFromStorage() {
 
     const data = s.val();
 
+        // 🔐 이미 다른 곳에서 로그인 중이면 자동로그인도 막기
+    if (data.sessionId) {
+      console.log("[autoLogin] 이미 다른 곳에서 접속 중, 자동로그인 취소");
+      return;
+    }
+
     sword = data.sword ?? 0;
     gold  = data.gold  ?? 100;
 
@@ -3413,6 +3419,9 @@ document.getElementById("logoutBtn").style.display = "block";
 document.getElementById("duelBtn").style.display = "block";
 document.getElementById("mapBtn").style.display = "block";
 
+    // 🔐 자동로그인으로 들어온 경우에도 이 탭이 세션을 가져가도록
+    startSession();
+    
     update();
     showTutorialIfFirstTime();
   });
