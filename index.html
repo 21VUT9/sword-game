@@ -917,6 +917,54 @@ button {
   <div id="inventoryList"></div>
 </div>
 
+/* 🎒 인벤토리 그리드 */
+.inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);  /* 5칸 */
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* 각 인벤토리 슬롯 */
+.inventory-slot {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid #555;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+/* 아이템 아이콘 */
+.inventory-slot img {
+  max-width: 80%;
+  max-height: 80%;
+  display: block;
+}
+
+/* 개수 배지 (오른쪽 아래) */
+.inventory-count {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  min-width: 14px;
+  padding: 0 3px;
+  background: rgba(0,0,0,0.8);
+  border-radius: 8px;
+  font-size: 11px;
+  text-align: center;
+}
+
+/* 인벤토리 제목 살짝 여백 */
+#inventoryPanel h3 {
+  margin-top: 0;
+  margin-bottom: 4px;
+}
+
   <!-- ⚔️ 결투 패널 -->
 <div id="duelPanel" style="
   position:fixed;
@@ -4203,20 +4251,100 @@ function toggleInventory() {
   }
 }
 
-// 🎒 인벤토리 내용 렌더링
+// 🎒 인벤토리 내용 렌더링 (격자 + 아이콘)
 function renderInventory() {
   const listEl = document.getElementById("inventoryList");
   if (!listEl) return;
 
-  listEl.innerHTML = `
-    <p>보유 아이템 현황</p>
-    <ul style="list-style:none; padding-left:0;">
-      <li>📜 15강 강화 주문서: <b>${itemScroll15}</b>개</li>
-      <li>🛡 파괴방지 주문서: <b>${itemProtect}</b>개</li>
-      <li>🔒 강등방지 주문서: <b>${itemDownProtect}</b>개</li>
-      <li>✨ 슈퍼강화 주문서: <b>${itemSuper}</b>개</li>
-    </ul>
-  `;
+  listEl.innerHTML = "";
+
+  // ✅ 보유 중인 아이템만 모으는 배열
+  // img 경로는 예시니까, 실제 저장한 파일명에 맞게 수정해줘
+  const items = [];
+
+  if (itemScroll15 > 0) {
+    items.push({
+      id: "scroll15",
+      name: "15강 강화 주문서",
+      count: itemScroll15,
+      img: "images/items/scroll15.png"
+    });
+  }
+
+  if (itemProtect > 0) {
+    items.push({
+      id: "protect",
+      name: "파괴방지 주문서",
+      count: itemProtect,
+      img: "images/items/protect.png"
+    });
+  }
+
+  if (itemDownProtect > 0) {
+    items.push({
+      id: "downProtect",
+      name: "강등방지 주문서",
+      count: itemDownProtect,
+      img: "images/items/down_protect.png"
+    });
+  }
+
+  if (itemSuper > 0) {
+    items.push({
+      id: "super",
+      name: "슈퍼강화 주문서",
+      count: itemSuper,
+      img: "images/items/super_scroll.png"
+    });
+  }
+
+  // 🔹 인벤토리 제목
+  const title = document.createElement("p");
+  title.textContent = "보유 아이템";
+  title.style.margin = "0 0 4px 0";
+  title.style.fontSize = "13px";
+  title.style.color = "#ccc";
+  listEl.appendChild(title);
+
+  // 🔹 그리드 컨테이너
+  const grid = document.createElement("div");
+  grid.className = "inventory-grid";
+
+  // ✅ 아이템이 하나도 없으면 안내 문구
+  if (items.length === 0) {
+    const emptyMsg = document.createElement("p");
+    emptyMsg.textContent = "보유 중인 아이템이 없습니다.";
+    emptyMsg.style.fontSize = "12px";
+    emptyMsg.style.color = "#888";
+    emptyMsg.style.marginTop = "6px";
+    listEl.appendChild(emptyMsg);
+    return;
+  }
+
+  // 🎨 각 아이템 슬롯 만들기
+  items.forEach(item => {
+    const slot = document.createElement("div");
+    slot.className = "inventory-slot";
+
+    const img = document.createElement("img");
+    img.src = item.img;
+    img.alt = item.name;
+    img.title = item.name; // 마우스 올리면 이름 표시
+
+    slot.appendChild(img);
+
+    // 🔢 개수가 2개 이상일 때만 숫자 표시
+    if (item.count > 1) {
+      const countBadge = document.createElement("div");
+      countBadge.className = "inventory-count";
+      countBadge.textContent = item.count;
+      slot.appendChild(countBadge);
+    }
+
+    grid.appendChild(slot);
+  });
+
+  listEl.appendChild(grid);
 }
 
   loadRanking();
