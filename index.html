@@ -3297,8 +3297,8 @@ function loadRanking() {
   // 🔝 TOP 10 (once)
   usersRef
     .orderByChild("sword")
-+   .limitToLast(10)
-+   .on("value", s => {
+    .limitToLast(10)
+    .on("value", s => {
       const rankingEl = document.getElementById("ranking");
       if (!rankingEl) return;
 
