@@ -683,6 +683,54 @@ button {
   filter: brightness(0.6);
   z-index: -1;                    /* 👈 내용 뒤로 확실하게 보내기 */
 }
+
+/* 🎒 인벤토리 그리드 */
+.inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);  /* 5칸 */
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* 각 인벤토리 슬롯 */
+.inventory-slot {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid #555;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+/* 아이템 아이콘 */
+.inventory-slot img {
+  max-width: 80%;
+  max-height: 80%;
+  display: block;
+}
+
+/* 개수 배지 (오른쪽 아래) */
+.inventory-count {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  min-width: 14px;
+  padding: 0 3px;
+  background: rgba(0,0,0,0.8);
+  border-radius: 8px;
+  font-size: 11px;
+  text-align: center;
+}
+
+/* 인벤토리 제목 살짝 여백 */
+#inventoryPanel h3 {
+  margin-top: 0;
+  margin-bottom: 4px;
+}
   
 </style>
 </head>
@@ -694,7 +742,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.611)
+    (v3.612)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -916,54 +964,6 @@ button {
   <h3>🎒 인벤토리</h3>
   <div id="inventoryList"></div>
 </div>
-
-/* 🎒 인벤토리 그리드 */
-.inventory-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);  /* 5칸 */
-  gap: 6px;
-  margin-top: 6px;
-}
-
-/* 각 인벤토리 슬롯 */
-.inventory-slot {
-  position: relative;
-  width: 44px;
-  height: 44px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid #555;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-}
-
-/* 아이템 아이콘 */
-.inventory-slot img {
-  max-width: 80%;
-  max-height: 80%;
-  display: block;
-}
-
-/* 개수 배지 (오른쪽 아래) */
-.inventory-count {
-  position: absolute;
-  right: 2px;
-  bottom: 2px;
-  min-width: 14px;
-  padding: 0 3px;
-  background: rgba(0,0,0,0.8);
-  border-radius: 8px;
-  font-size: 11px;
-  text-align: center;
-}
-
-/* 인벤토리 제목 살짝 여백 */
-#inventoryPanel h3 {
-  margin-top: 0;
-  margin-bottom: 4px;
-}
 
   <!-- ⚔️ 결투 패널 -->
 <div id="duelPanel" style="
