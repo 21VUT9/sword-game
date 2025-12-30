@@ -1174,6 +1174,10 @@ const FIELD_BACKGROUNDS = {
 
 
 function logout() {
+
+    // 🔌 랭킹/유저 실시간 구독 해제 (선택)
+  db.ref("users").off();
+  
   // 저장된 자동 로그인 정보 삭제
   try {
     localStorage.removeItem("swordGameLastUser");
