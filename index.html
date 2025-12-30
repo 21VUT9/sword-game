@@ -731,6 +731,48 @@ button {
   margin-top: 0;
   margin-bottom: 4px;
 }
+/* 🎒 인벤토리 아이템 상세 팝업 */
+#itemDetailOverlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  z-index: 3000;
+  background: rgba(0,0,0,0); /* 필요하면 0.4 정도로 어둡게 */
+}
+
+#itemDetailBox {
+  position: absolute;
+  min-width: 200px;
+  max-width: 260px;
+  background: #111;
+  border: 1px solid #666;
+  border-radius: 10px;
+  padding: 10px;
+  color: #fff;
+  box-shadow: 0 0 15px rgba(0,0,0,0.8);
+  font-size: 13px;
+}
+
+#itemDetailImg {
+  display: block;
+  margin: 0 auto 6px auto;
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+}
+
+#itemDetailName {
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+#itemDetailDesc {
+  font-size: 12px;
+  color: #ccc;
+  line-height: 1.4;
+  text-align: center;
+}
   
 </style>
 </head>
@@ -742,7 +784,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.612)
+    (v3.613)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -4251,15 +4293,13 @@ function toggleInventory() {
   }
 }
 
-// 🎒 인벤토리 내용 렌더링 (격자 + 아이콘)
+// 🎒 인벤토리 (격자 + 아이콘 + 클릭 상세 팝업)
 function renderInventory() {
   const listEl = document.getElementById("inventoryList");
   if (!listEl) return;
 
   listEl.innerHTML = "";
 
-  // ✅ 보유 중인 아이템만 모으는 배열
-  // img 경로는 예시니까, 실제 저장한 파일명에 맞게 수정해줘
   const items = [];
 
   if (itemScroll15 > 0) {
@@ -4267,7 +4307,8 @@ function renderInventory() {
       id: "scroll15",
       name: "15강 강화 주문서",
       count: itemScroll15,
-      img: "images/items/scroll15.png"
+      img: "images/items/scroll_15.png",
+      desc: "현재 무기를 15강까지 한 번에 강화할 수 있는 특수 주문서입니다."
     });
   }
 
@@ -4276,7 +4317,8 @@ function renderInventory() {
       id: "protect",
       name: "파괴방지 주문서",
       count: itemProtect,
-      img: "images/items/protect.png"
+      img: "images/items/scroll_protect.png",
+      desc: "강화 실패 시 무기가 파괴되는 것을 1회 막아줍니다."
     });
   }
 
@@ -4285,7 +4327,8 @@ function renderInventory() {
       id: "downProtect",
       name: "강등방지 주문서",
       count: itemDownProtect,
-      img: "images/items/down_protect.png"
+      img: "images/items/scroll_down_protect.png", // ⭐ 확정
+      desc: "강화 실패 시 강화 단계가 내려가는 것을 1회 막아줍니다."
     });
   }
 
@@ -4294,11 +4337,11 @@ function renderInventory() {
       id: "super",
       name: "슈퍼강화 주문서",
       count: itemSuper,
-      img: "images/items/super_scroll.png"
+      img: "images/items/scroll_super.png",
+      desc: "강화 성공 시 한 번에 +2강이 되는 특별한 주문서입니다."
     });
   }
 
-  // 🔹 인벤토리 제목
   const title = document.createElement("p");
   title.textContent = "보유 아이템";
   title.style.margin = "0 0 4px 0";
@@ -4306,11 +4349,6 @@ function renderInventory() {
   title.style.color = "#ccc";
   listEl.appendChild(title);
 
-  // 🔹 그리드 컨테이너
-  const grid = document.createElement("div");
-  grid.className = "inventory-grid";
-
-  // ✅ 아이템이 하나도 없으면 안내 문구
   if (items.length === 0) {
     const emptyMsg = document.createElement("p");
     emptyMsg.textContent = "보유 중인 아이템이 없습니다.";
@@ -4321,7 +4359,9 @@ function renderInventory() {
     return;
   }
 
-  // 🎨 각 아이템 슬롯 만들기
+  const grid = document.createElement("div");
+  grid.className = "inventory-grid";
+
   items.forEach(item => {
     const slot = document.createElement("div");
     slot.className = "inventory-slot";
@@ -4329,11 +4369,10 @@ function renderInventory() {
     const img = document.createElement("img");
     img.src = item.img;
     img.alt = item.name;
-    img.title = item.name; // 마우스 올리면 이름 표시
+    img.title = item.name;
 
     slot.appendChild(img);
 
-    // 🔢 개수가 2개 이상일 때만 숫자 표시
     if (item.count > 1) {
       const countBadge = document.createElement("div");
       countBadge.className = "inventory-count";
@@ -4341,11 +4380,75 @@ function renderInventory() {
       slot.appendChild(countBadge);
     }
 
+    // 🖱 클릭 → 상세 팝업
+    slot.addEventListener("click", (e) => {
+      showItemDetail(item, e.clientX, e.clientY);
+    });
+
     grid.appendChild(slot);
   });
 
   listEl.appendChild(grid);
 }
+
+  // 🎒 아이템 상세 표시
+function showItemDetail(item, clickX, clickY) {
+  const overlay = document.getElementById("itemDetailOverlay");
+  const box     = document.getElementById("itemDetailBox");
+  const img     = document.getElementById("itemDetailImg");
+  const nameEl  = document.getElementById("itemDetailName");
+  const descEl  = document.getElementById("itemDetailDesc");
+  if (!overlay || !box) return;
+
+  img.src = item.img;
+  img.alt = item.name;
+  nameEl.textContent = item.name;
+  descEl.textContent = item.desc || "";
+
+  overlay.style.display = "block";
+
+  // 클릭 위치 근처에 표시
+  let left = clickX + 12;
+  let top  = clickY + 12;
+
+  const boxRect = box.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  if (left + boxRect.width > vw - 10)
+    left = clickX - boxRect.width - 12;
+
+  if (top + boxRect.height > vh - 10)
+    top = clickY - boxRect.height - 12;
+
+  if (left < 10) left = 10;
+  if (top < 10) top = 10;
+
+  box.style.left = left + "px";
+  box.style.top  = top  + "px";
+}
+
+function hideItemDetail() {
+  const overlay = document.getElementById("itemDetailOverlay");
+  if (overlay) overlay.style.display = "none";
+}
+
+  // 바깥 클릭 시 닫기
+const itemDetailOverlayEl = document.getElementById("itemDetailOverlay");
+if (itemDetailOverlayEl) {
+  itemDetailOverlayEl.addEventListener("click", () => hideItemDetail());
+
+  const box = document.getElementById("itemDetailBox");
+  if (box) {
+    box.addEventListener("click", (e) => e.stopPropagation());
+  }
+}
+
+// ESC로 닫기
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") hideItemDetail();
+});
+
 
   loadRanking();
   autoLoginFromStorage();
@@ -4543,5 +4646,14 @@ async function recalcUserPower(userIdToFix) {
   </div>
 </div>
 
+<!-- 🎒 아이템 상세 표시 오버레이 -->
+<div id="itemDetailOverlay">
+  <div id="itemDetailBox">
+    <img id="itemDetailImg" src="" alt="">
+    <div id="itemDetailName"></div>
+    <div id="itemDetailDesc"></div>
+  </div>
+</div>
+  
 </body>
 </html>
