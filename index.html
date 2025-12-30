@@ -612,7 +612,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.602)
+    (v3.610)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1091,7 +1091,6 @@ let attendanceStreak = 0;     // 연속 출석 수
 let lastAttendanceDay = "";   // 마지막 출석 날짜 (streak 전용)
 let maxSwordLevel = 0;   // 계정 전체 최고 강화 기록
 let destroyCount  = 0;   // 계정 전체 누적 파괴 횟수
-
 let currentSessionId = null;   // 🔐 이 브라우저 탭의 세션 ID
 
 // 🆕 강화 진행 중인지 여부
@@ -1110,7 +1109,8 @@ let duelTargetsToday = {};
   
 // 전체 유저 목록 캐시 (결투 검색/랜덤매칭용)
 let allUsersCache = [];
-
+// ⭐ updated 갱신에 사용할 마지막 저장된 강화값
+let lastSavedSwordForUpdated = 0;
   // 🗺 사냥 관련 상태
 let currentField = 1;          // 1~10 사냥터
 let huntCountToday = 0;        // 오늘 사냥 횟수
@@ -3043,7 +3043,9 @@ function login() {
 
       sword = data.sword ?? 0;
       gold  = data.gold  ?? 100;
-
+      // ⭐ 이 시점의 강화값을 기준으로 기록
+      lastSavedSwordForUpdated = sword;
+      
       // 최고 강화 / 파괴 기록 불러오기
       maxSwordLevel = data.maxSwordLevel ?? sword; // 없으면 현재 강화로 초기화
       destroyCount  = data.destroyCount  ?? 0;
@@ -3108,20 +3110,19 @@ function login() {
   });
 }
 
-
 function save() {
   if (!userRef) return;
-  userRef.update({
+
+  const updateData = {
     sword: Number(sword),
     power: Number(power),
     gold: Number(gold),
-    updated: Date.now(),
     maxSwordLevel: Number(maxSwordLevel),
     destroyCount: Number(destroyCount),
     attendanceCount: attendanceCount,
     lastAttendanceDate: lastAttendanceDate,
-        attendanceStreak: Number(attendanceStreak),
-    lastAttendanceDay: lastAttendanceDay, 
+    attendanceStreak: Number(attendanceStreak),
+    lastAttendanceDay: lastAttendanceDay,
     currentField: currentField,
     huntCountToday: huntCountToday,
     lastHuntDate: lastHuntDate,
@@ -3131,13 +3132,21 @@ function save() {
     itemDownProtect: Number(itemDownProtect),
     huntStamina: Number(huntStamina),
     lastStaminaUpdate: Number(lastStaminaUpdate),
-    // ⚔️ 결투 정보
     duelWin: Number(duelWin),
     duelLose: Number(duelLose),
     duelCountToday: Number(duelCountToday),
     lastDuelDate: lastDuelDate,
     duelTargetsToday: duelTargetsToday
-  });
+  };
+
+  // ⭐ 같은 강화면 updated 유지
+  // ⭐ 강화 수치가 바뀌었을 때만 갱신
+  if (sword !== lastSavedSwordForUpdated) {
+    updateData.updated = Date.now();
+    lastSavedSwordForUpdated = sword;
+  }
+
+  userRef.update(updateData);
 }
 
 /* 색상 */
@@ -3374,6 +3383,8 @@ function autoLoginFromStorage() {
 
     sword = data.sword ?? 0;
     gold  = data.gold  ?? 100;
+    // ⭐ 자동로그인 시에도 초기화
+    lastSavedSwordForUpdated = sword;
 
         // 최고 강화 / 파괴 기록 불러오기
     maxSwordLevel = data.maxSwordLevel ?? sword;
@@ -4095,8 +4106,7 @@ async function recalcUserPower(userIdToFix) {
 
   // DB 반영
   await ref.update({
-    power: Number(power),
-    updated: Date.now()
+    power: Number(power)
   });
 
   console.log(`✅ 전투력 재계산 완료 → ${userIdToFix}:`, power);
