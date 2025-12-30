@@ -612,7 +612,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.597)
+    (v3.598)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1092,8 +1092,25 @@ let lastAttendanceDay = "";   // 마지막 출석 날짜 (streak 전용)
 let maxSwordLevel = 0;   // 계정 전체 최고 강화 기록
 let destroyCount  = 0;   // 계정 전체 누적 파괴 횟수
 
+let currentSessionId = null;   // 🔐 이 브라우저 탭의 세션 ID
+
 // 🆕 강화 진행 중인지 여부
 let isUpgrading = false;
+
+  // 🔐 이 탭의 세션 시작 (로그인 성공 후 호출)
+function startSession() {
+  if (!userRef) return;
+
+  // 랜덤 세션ID 생성
+  currentSessionId = Date.now() + "_" + Math.random().toString(36).slice(2);
+
+  // 서버에 내 세션ID 기록
+  userRef.child("sessionId").set(currentSessionId);
+
+  // 이 탭이 끊기면 sessionId 자동 제거
+  userRef.child("sessionId").onDisconnect().remove();
+}
+ 
 
 // 🧭 사냥터 이동 중인지 여부
 let isMoving = false;
@@ -1247,6 +1264,13 @@ const FIELD_BACKGROUNDS = {
 
 function logout() {
 
+  // 🔐 서버에 남아있는 세션ID 제거
+if (userRef) {
+  userRef.child("sessionId").remove();
+}
+
+currentSessionId = null;
+  
     // 🔌 랭킹/유저 실시간 구독 해제 (선택)
   db.ref("users").off();
   
@@ -3003,12 +3027,23 @@ function login() {
         duelTargetsToday: {}
       });
 
-    } else {
+  } else {
       // ⭐ 기존 계정 로그인 시
-      const data = s.val();
+      const data = s.val() || {};
 
+      // 🔑 비밀번호 체크
       if (data.password !== userPassword) {
         alert("비밀번호가 올바르지 않습니다.");
+        return;
+      }
+
+      // 🔐 이미 다른 곳에서 로그인 중인지 체크
+      if (data.sessionId) {
+        alert(
+          "이미 다른 곳에서 이 계정으로 접속 중입니다.\n\n" +
+          "동일 계정 동시 접속은 불가능합니다.\n" +
+          "다른 기기나 탭에서 로그아웃 후 다시 시도해 주세요."
+        );
         return;
       }
 
@@ -3046,6 +3081,10 @@ lastAttendanceDay  = data.lastAttendanceDay  ?? "";
       lastDuelDate   = data.lastDuelDate   ?? "";
       duelTargetsToday = data.duelTargetsToday ?? {};
     }
+
+     // 🔐 여기서 이 탭의 세션 시작 (신규/기존 공통)
+    startSession();
+
     // 화면 전환
     const loginScreen = document.getElementById("loginScreen");
     const gameScreen  = document.getElementById("gameScreen");
