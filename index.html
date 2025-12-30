@@ -784,7 +784,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.613)
+    (v3.614)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -4433,22 +4433,28 @@ function hideItemDetail() {
   if (overlay) overlay.style.display = "none";
 }
 
-  // 바깥 클릭 시 닫기
-const itemDetailOverlayEl = document.getElementById("itemDetailOverlay");
-if (itemDetailOverlayEl) {
-  itemDetailOverlayEl.addEventListener("click", () => hideItemDetail());
+// 🎒 아이템 상세 오버레이 이벤트는 DOM이 다 만들어진 뒤에 붙이기
+window.addEventListener("load", () => {
+  const overlay = document.getElementById("itemDetailOverlay");
+  const box     = document.getElementById("itemDetailBox");
+  if (!overlay || !box) return;
 
-  const box = document.getElementById("itemDetailBox");
-  if (box) {
-    box.addEventListener("click", (e) => e.stopPropagation());
-  }
-}
+  // 배경(어두운 영역) 아무데나 누르면 상세창만 닫기
+  overlay.addEventListener("mousedown", (e) => {
+    hideItemDetail();
+    e.stopPropagation(); // 👈 인벤토리 바깥 클릭 처리로 넘어가지 않게 막기
+  });
 
-// ESC로 닫기
+  // 상세 박스 안 클릭은 유지
+  box.addEventListener("mousedown", (e) => {
+    e.stopPropagation();
+  });
+});
+
+// ESC로 닫기 (그대로 유지)
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") hideItemDetail();
 });
-
 
   loadRanking();
   autoLoginFromStorage();
