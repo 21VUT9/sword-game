@@ -3644,11 +3644,12 @@ rankingEl.innerHTML = arr.map((u, i) => {
   return `
     <div class="ranking-row" style="font-weight:bold;">
       ${i+1}. <span class="rank-user" data-user-id="${u.id}">${u.id}</span>
-      | ${weaponNameStyled} (u.sword)}${colorLabel}
+      | ${weaponNameStyled} ${coloredLevel(u.sword)}
       | 전적: ${u.duelWin}승 ${u.duelLose}패
     </div>
   `;
 }).join("");
+
 
     });
 
