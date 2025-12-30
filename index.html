@@ -46,6 +46,66 @@ body {
   visibility: hidden !important;
 }
 
+/* 🔗 랭킹에서 닉네임 클릭 가능하게 */
+.rank-user {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+.rank-user:hover {
+  color: #ffd700;
+}
+
+/* 🧷 랭킹 닉네임 클릭 시 뜨는 작은 메뉴 */
+#rankProfileMenu {
+  position: absolute;
+  display: none;
+  background: rgba(0,0,0,0.95);
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 4px 6px;
+  z-index: 1500;
+}
+#rankProfileMenu button {
+  font-size: 13px;
+  padding: 4px 8px;
+}
+
+/* 👤 다른 유저 프로필 팝업 오버레이 */
+#otherProfileOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2100;
+}
+
+.other-profile-card {
+  background: #222;
+  border: 1px solid #555;
+  border-radius: 12px;
+  padding: 14px 12px 16px 12px;
+  max-width: 340px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 0 15px rgba(0,0,0,0.9);
+}
+
+.other-profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.other-profile-close-btn {
+  font-size: 12px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+  
 /* ⬜ fieldBg 영역만 보이게 */
 .capture-mode #fieldBg,
 .capture-mode #fieldBg * {
@@ -507,7 +567,7 @@ button {
 /* 🎨 사냥터 배경 레이어 */
 #gameScreen {
   position: relative;
-   padding-bottom: 240px;   /* 🔹 토스트 로그 높이만큼 아래 여백 추가 */
+   padding-bottom: 300px;   /* 🔹 토스트 로그 높이만큼 아래 여백 추가 */
 }
 
 /* fieldBg 안의 내용은 그대로, 배경만 ::before로 깔기 */
@@ -545,7 +605,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.594)
+    (v3.595)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -687,6 +747,11 @@ button {
   <h2>🏆 랭킹 TOP 10</h2>
   <div id="ranking">불러오는 중...</div>
   <div id="myRank" style="margin-top:8px; font-size:14px; color:#ccc;"></div>
+
+  <!-- 🧷 랭킹 닉네임 클릭 시 뜨는 작은 메뉴 -->
+<div id="rankProfileMenu">
+  <button id="rankProfileViewBtn">👁 프로필 보기</button>
+</div>
 
 </div> <!-- 🔚 gameScreen -->
 
@@ -3309,12 +3374,167 @@ document.getElementById("logoutBtn").style.display = "block";
 document.getElementById("duelBtn").style.display = "block";
 document.getElementById("mapBtn").style.display = "block";
 
-
     update();
     showTutorialIfFirstTime();
   });
 }
- 
+
+// 🧾 다른 유저 프로필 팝업 열기
+function openOtherUserProfilePopup(targetId) {
+  const overlay        = document.getElementById("otherProfileOverlay");
+  if (!overlay) return;
+
+  const nickEl         = document.getElementById("otherProfileNickname");
+  const weaponTitleEl  = document.getElementById("otherProfileWeaponTitle");
+  const weaponDescEl   = document.getElementById("otherProfileWeaponDesc");
+  const maxInfoEl      = document.getElementById("otherProfileMaxInfo");
+  const powerEl        = document.getElementById("otherProfilePower");
+  const goldEl         = document.getElementById("otherProfileGold");
+  const weaponValueEl  = document.getElementById("otherProfileWeaponValue");
+  const recordEl       = document.getElementById("otherProfileRecord");
+  const imgEl          = document.getElementById("otherWeaponImage");
+
+  // 기본 초기화
+  if (nickEl)        nickEl.textContent        = targetId;
+  if (weaponTitleEl) weaponTitleEl.textContent = "-";
+  if (weaponDescEl)  weaponDescEl.textContent  = "-";
+  if (maxInfoEl)     maxInfoEl.textContent     = "-";
+  if (powerEl)       powerEl.textContent       = "0";
+  if (goldEl)        goldEl.textContent        = "0";
+  if (weaponValueEl) weaponValueEl.textContent = "0";
+  if (recordEl)      recordEl.textContent      = "승 0 / 패 0";
+  if (imgEl)         imgEl.src                 = "images/weapons/sword_real_temp.png";
+
+  // DB에서 해당 유저 정보 읽기
+  db.ref("users/" + targetId).once("value").then(snap => {
+    if (!snap.exists()) {
+      alert("해당 유저 정보를 찾을 수 없습니다.");
+      return;
+    }
+
+    const d = snap.val() || {};
+
+    const swordLevel = Number(d.sword || 0);
+    const maxSword   = Number(d.maxSwordLevel ?? swordLevel);
+    const destroyCnt = Number(d.destroyCount || 0);
+    const powerVal   = Number(d.power || 0);
+    const goldVal    = Number(d.gold || 0);
+    const duelW      = Number(d.duelWin || 0);
+    const duelL      = Number(d.duelLose || 0);
+
+    const wInfo = getWeaponInfo(swordLevel);
+
+    if (weaponTitleEl && wInfo) {
+      weaponTitleEl.textContent = `${wInfo.name} (+${swordLevel}강)`;
+    }
+    if (weaponDescEl && wInfo) {
+      weaponDescEl.textContent = wInfo.desc;
+    }
+    if (maxInfoEl) {
+      maxInfoEl.innerHTML =
+        `+${maxSword}강 ` +
+        `<span style="font-size:12px; color:#bbbbbb;">(파괴 ${destroyCnt}회)</span>`;
+    }
+    if (powerEl) {
+      powerEl.textContent = formatGold(powerVal);
+    }
+    if (goldEl) {
+      goldEl.textContent  = formatGold(goldVal);
+    }
+    if (weaponValueEl) {
+      const avgValue = getSellRewardAverage(swordLevel);
+      weaponValueEl.textContent = formatGold(avgValue);
+    }
+    if (recordEl) {
+      recordEl.textContent = `승 ${duelW} / 패 ${duelL}`;
+    }
+    if (imgEl && wInfo && wInfo.img) {
+      imgEl.src = wInfo.img;
+    }
+
+    overlay.style.display = "flex";
+  }).catch(err => {
+    console.error("프로필 불러오기 실패:", err);
+    alert("프로필을 불러오지 못했습니다.");
+  });
+}
+
+// 👤 다른 유저 프로필 팝업 닫기
+function closeOtherUserProfilePopup() {
+  const overlay = document.getElementById("otherProfileOverlay");
+  if (overlay) overlay.style.display = "none";
+}
+
+  // 🧷 랭킹 닉네임 → "프로필 보기" 메뉴 → 프로필 팝업
+let lastRankProfileUserId = null;
+
+(function initRankingProfileMenu() {
+  const rankingEl = document.getElementById("ranking");
+  const menuEl    = document.getElementById("rankProfileMenu");
+  const viewBtn   = document.getElementById("rankProfileViewBtn");
+  const overlay   = document.getElementById("otherProfileOverlay");
+  const closeBtn  = document.getElementById("otherProfileCloseBtn");
+
+  // 1) 랭킹 영역에서 닉네임 클릭 시 작은 메뉴를 "터치한 자리"에 표시
+  if (rankingEl && menuEl) {
+    rankingEl.addEventListener("click", function(e) {
+      const userSpan = e.target.closest(".rank-user");
+      if (!userSpan) return;
+
+      const uid = userSpan.dataset.userId;
+      if (!uid) return;
+      lastRankProfileUserId = uid;
+
+      const x = e.pageX;
+      const y = e.pageY;
+
+      menuEl.style.left   = x + "px";
+      menuEl.style.top    = y + "px";
+      menuEl.style.display = "block";
+
+      e.stopPropagation();
+    });
+  }
+
+  // 2) "프로필 보기" 버튼 클릭 시 팝업 열기
+  if (viewBtn && menuEl) {
+    viewBtn.addEventListener("click", function(e) {
+      e.stopPropagation();
+      if (!lastRankProfileUserId) return;
+      menuEl.style.display = "none";
+      openOtherUserProfilePopup(lastRankProfileUserId);
+    });
+  }
+
+  // 3) 화면 다른 곳 클릭하면 작은 메뉴 닫기
+  document.addEventListener("click", function(e) {
+    if (!menuEl || menuEl.style.display !== "block") return;
+
+    // 메뉴 내부 or 닉네임 다시 클릭이면 유지
+    if (e.target.closest("#rankProfileMenu")) return;
+    if (e.target.closest(".rank-user")) return;
+
+    menuEl.style.display = "none";
+  });
+
+  // 4) 팝업 바깥(어두운 배경) 클릭하면 닫기
+  if (overlay) {
+    overlay.addEventListener("click", function(e) {
+      if (e.target === overlay) {
+        closeOtherUserProfilePopup();
+      }
+    });
+  }
+
+  // 5) 닫기 버튼
+  if (closeBtn) {
+    closeBtn.addEventListener("click", function(e) {
+      e.stopPropagation();
+      closeOtherUserProfilePopup();
+    });
+  }
+})();
+  
 /* 랭킹 */
 function loadRanking() {
 
@@ -3345,20 +3565,21 @@ function loadRanking() {
         return a.updated - b.updated;
       });
 
-      rankingEl.innerHTML = arr.map((u, i) => {
-        const wInfo = getWeaponInfo(u.sword);
-        const weaponNameStyled = coloredWeaponName(u.sword, wInfo.name);
-        const colorName = getSwordColorName(u.sword);
-        const colorLabel = colorName ? ` (${colorName})` : "";
+rankingEl.innerHTML = arr.map((u, i) => {
+  const wInfo = getWeaponInfo(u.sword);
+  const weaponNameStyled = coloredWeaponName(u.sword, wInfo.name);
+  const colorName = getSwordColorName(u.sword);
+  const colorLabel = colorName ? ` (${colorName})` : "";
 
-        return `
-          <div style="font-weight:bold;">
-            ${i+1}. ${u.id}
-            | ${weaponNameStyled} ${coloredLevel(u.sword)}${colorLabel}
-            | 전적: ${u.duelWin}승 ${u.duelLose}패
-          </div>
-        `;
-      }).join("");
+  return `
+    <div class="ranking-row" style="font-weight:bold;">
+      ${i+1}. <span class="rank-user" data-user-id="${u.id}">${u.id}</span>
+      | ${weaponNameStyled} ${coloredLevel(u.sword)}${colorLabel}
+      | 전적: ${u.duelWin}승 ${u.duelLose}패
+    </div>
+  `;
+}).join("");
+
     });
 
   // 👇 내 랭킹 + 결투 매칭 캐시 (on)
@@ -3864,6 +4085,59 @@ async function recalcUserPower(userIdToFix) {
     <div style="margin-top:10px;">
       <button class="npc-popup-btn" id="npcConfirmBtn">확인</button>
       <button class="npc-popup-btn" id="npcCancelBtn" style="display:none;">취소</button>
+    </div>
+  </div>
+</div>
+
+  <!-- 👤 다른 유저 프로필 팝업 (다운로드 버튼 없음) -->
+<div id="otherProfileOverlay">
+  <div class="other-profile-card">
+    <div class="other-profile-header">
+      <div id="otherProfileNickname" class="profile-nickname">-</div>
+      <button id="otherProfileCloseBtn" class="other-profile-close-btn">닫기</button>
+    </div>
+
+    <div class="profile-card-inner">
+      <div class="profile-weapon-box">
+        <img id="otherWeaponImage"
+             src="images/weapons/sword_real_temp.png"
+             alt="무기">
+      </div>
+
+      <div class="profile-info-box">
+        <div id="otherProfileWeaponTitle" class="profile-weapon-title">-</div>
+
+        <hr class="profile-inner-divider">
+
+        <div id="otherProfileWeaponDesc" class="profile-weapon-desc">-</div>
+
+        <hr class="profile-inner-divider">
+
+        <div class="profile-row">
+          <span class="profile-label">최대 강화</span>
+          <span class="profile-value" id="otherProfileMaxInfo">-</span>
+        </div>
+
+        <div class="profile-row">
+          <span class="profile-label">전투력</span>
+          <span class="profile-value" id="otherProfilePower">0</span>
+        </div>
+
+        <div class="profile-row">
+          <span class="profile-label">골드</span>
+          <span class="profile-value" id="otherProfileGold">0</span>
+        </div>
+
+        <div class="profile-row">
+          <span class="profile-label">무기가치</span>
+          <span class="profile-value" id="otherProfileWeaponValue">0</span>
+        </div>
+
+        <div class="profile-row">
+          <span class="profile-label">전적</span>
+          <span class="profile-value" id="otherProfileRecord">승 0 / 패 0</span>
+        </div>
+      </div>
     </div>
   </div>
 </div>
