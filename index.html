@@ -2544,7 +2544,7 @@ if (Math.random() < chance / 100) {
             destroyCount++;  // 🧨 누적 파괴 횟수 증가
 
             writeLog(
-              `${userId}이 ${coloredLevel(before)} 도전에 실패하여 ` +
+              `${userId}이 ${coloredLevel(before + 1)} 도전에 실패하여 ` +
               `<span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`,
               true
             );
