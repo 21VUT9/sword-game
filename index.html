@@ -3640,13 +3640,11 @@ function loadRanking() {
 rankingEl.innerHTML = arr.map((u, i) => {
   const wInfo = getWeaponInfo(u.sword);
   const weaponNameStyled = coloredWeaponName(u.sword, wInfo.name);
-  const colorName = getSwordColorName(u.sword);
-  const colorLabel = colorName ? ` (${colorName})` : "";
 
   return `
     <div class="ranking-row" style="font-weight:bold;">
       ${i+1}. <span class="rank-user" data-user-id="${u.id}">${u.id}</span>
-      | ${weaponNameStyled} ${coloredLevel(u.sword)}${colorLabel}
+      | ${weaponNameStyled} (u.sword)}${colorLabel}
       | 전적: ${u.duelWin}승 ${u.duelLose}패
     </div>
   `;
