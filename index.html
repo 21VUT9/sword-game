@@ -101,9 +101,16 @@ body {
 }
 
 .other-profile-close-btn {
-  font-size: 12px;
-  padding: 2px 8px;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 18px;
+  padding: 0 6px;
   cursor: pointer;
+}
+
+.other-profile-close-btn:hover {
+  color: #ff6666;
 }
   
 /* ⬜ fieldBg 영역만 보이게 */
@@ -3458,7 +3465,6 @@ function openOtherUserProfilePopup(targetId) {
     alert("프로필을 불러오지 못했습니다.");
   });
 }
-
 // 👤 다른 유저 프로필 팝업 닫기 (통합)
 function closeOtherUserProfilePopup() {
   const overlay = document.getElementById("otherProfileOverlay");
@@ -3467,36 +3473,36 @@ function closeOtherUserProfilePopup() {
   }
 }
 
-// 🔧 DOM 준비 후, 이벤트 한 번에 연결
-document.addEventListener("DOMContentLoaded", () => {
+// 👉 팝업 관련 이벤트 한 번에 초기화
+(function initOtherProfilePopupEvents() {
   const overlay  = document.getElementById("otherProfileOverlay");
   const closeBtn = document.getElementById("otherProfileCloseBtn");
 
-  // 1) 닫기 버튼 클릭 → 닫기
+  // X 버튼 클릭 → 닫기
   if (closeBtn) {
-    closeBtn.addEventListener("click", (e) => {
-      e.stopPropagation();          // 클릭이 바깥으로 튀지 않게
+    closeBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
       closeOtherUserProfilePopup();
     });
   }
 
-  // 2) 검은 배경(카드 밖) 클릭 → 닫기
+  // 어두운 배경 클릭 → 닫기
   if (overlay) {
-    overlay.addEventListener("click", (e) => {
-      // 카드 영역 바깥을 눌렀을 때만 닫기
+    overlay.addEventListener("click", function (e) {
+      // 카드 바깥을 클릭했을 때만 닫기
       if (!e.target.closest(".other-profile-card")) {
         closeOtherUserProfilePopup();
       }
     });
   }
 
-  // 3) ESC 키로 닫기 (PC)
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" || e.key === "Esc") {
+  // ESC 키 → 닫기
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") {
       closeOtherUserProfilePopup();
     }
   });
-});
+})();
 
   // 🧷 랭킹 닉네임 → "프로필 보기" 메뉴 → 프로필 팝업
 let lastRankProfileUserId = null;
@@ -4127,7 +4133,7 @@ async function recalcUserPower(userIdToFix) {
   <div class="other-profile-card">
     <div class="other-profile-header">
       <div id="otherProfileNickname" class="profile-nickname">-</div>
-      <button id="otherProfileCloseBtn" class="other-profile-close-btn">✕</button>
+      <button id="otherProfileCloseBtn" class="other-profile-close-btn">&times;</button>
     </div>
 
     <div class="profile-card-inner">
