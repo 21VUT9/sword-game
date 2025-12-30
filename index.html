@@ -1797,34 +1797,60 @@ const defenderLvHtml = coloredLevel(targetSword);  // 상대 +00강 (컬러 포�
     targetWeaponInfo
   });
 
-  // ⏳ 2~3초 뒤에 실제 결과 처리
-  const delay = 2000 + Math.random() * 1000; // 2000~3000ms
+// ⏳ 2~3초 뒤에 실제 결과 처리
+const delay = 2000 + Math.random() * 1000; // 2000~3000ms
 
-  setTimeout(() => {
-    // 🔢 카운트/전적 갱신 (기존 이 아래에 있던 코드들 전부 여기로 옮기기)
+setTimeout(() => {
+  // 🔢 카운트/전적 갱신
+  duelCountToday++;
 
-    duelCountToday++;
+  if (!isRandomMatch) {
+    const prev = duelTargetsToday[targetUserId] || 0;
+    duelTargetsToday[targetUserId] = prev + 1;
+  }
 
-    if (!isRandomMatch) {
-      const prev = duelTargetsToday[targetUserId] || 0;
-      duelTargetsToday[targetUserId] = prev + 1;
-    }
+  if (isWin) {
+    duelWin++;
+    gold += reward;
 
-    if (isWin) {
-      duelWin++;
-      gold += reward;
-      // 여기서 승리 메시지 / NPC 팝업 / 로그 등 기존 승리 처리 코드
-    } else {
-      duelLose++;
-      // 패배 메시지 / 로그 등 기존 패배 처리 코드
-    }
+    const logMsg = isRandomMatch
+      ? `${userId}님(${attackerLvHtml})이 랜덤결투를 신청하여 ${targetUserId}님(${defenderLvHtml})과의 결투에서 승리하였습니다!`
+      : `${userId}님(${attackerLvHtml})이 ${targetUserId}님(${defenderLvHtml})께 결투를 신청하여 승리하였습니다!`;
 
-    update();
-    save();
+    writeLog(logMsg);
 
-    // VS 화면 닫기
-    hideDuelBattleOverlay();
-  }, delay);
+  } else {
+    duelLose++;
+
+    showNpcMessage(
+      `
+      <div style="font-size:18px; font-weight:bold; color:#FF6666;">
+        쓰러졌지만, 꽤 근사했는걸?
+      </div>
+      <div style="margin-top:6px; font-size:14px;">
+        이번 판은 저쪽 손을 들어줘야겠네.<br>
+        보상은 없지만, 다음 라운드를 노려봐!
+      </div>
+      `,
+      "images/npc/duel_carnia.png",
+      true,
+      "결투 심판관 – 카르니아 발크라이트"
+    );
+
+    const logMsg = isRandomMatch
+      ? `${userId}님(${attackerLvHtml})이 랜덤결투를 신청하여 ${targetUserId}님(${defenderLvHtml})과의 결투에서 패배하였습니다...`
+      : `${userId}님(${attackerLvHtml})이 ${targetUserId}님(${defenderLvHtml})께 결투를 신청하여 패배하였습니다...`;
+
+    writeLog(logMsg);
+  }
+
+  update();
+  save();
+
+  // VS 화면 닫기
+  hideDuelBattleOverlay();
+}, delay);
+
 });
 }
   
