@@ -49,11 +49,11 @@ body {
 /* 🔗 랭킹에서 닉네임 클릭 가능하게 */
 .rank-user {
   cursor: pointer;
-  text-decoration: underline;
-  text-decoration-style: dotted;
+  text-decoration: none;   /* ← 밑줄 제거 */
 }
+
 .rank-user:hover {
-  color: #ffd700;
+  color: #ffd700;          /* 색상만 강조 */
 }
 
 /* 🧷 랭킹 닉네임 클릭 시 뜨는 작은 메뉴 */
@@ -605,7 +605,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.595)
+    (v3.596)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3459,10 +3459,33 @@ function openOtherUserProfilePopup(targetId) {
   });
 }
 
-// 👤 다른 유저 프로필 팝업 닫기
+// 👤 다른 유저 프로필 팝업 닫기 (통합)
 function closeOtherUserProfilePopup() {
   const overlay = document.getElementById("otherProfileOverlay");
   if (overlay) overlay.style.display = "none";
+}
+
+// 닫기 버튼 이벤트 확정 연결
+document.addEventListener("DOMContentLoaded", () => {
+  const closeBtn = document.getElementById("otherProfileCloseBtn");
+  if (closeBtn) {
+    closeBtn.onclick = e => {
+      e.stopPropagation();
+      closeOtherUserProfilePopup();
+    };
+  }
+});
+
+  // 배경 터치 / 클릭 시 닫기
+const overlay = document.getElementById("otherProfileOverlay");
+
+if (overlay) {
+  overlay.addEventListener("click", e => {
+    // 카드 내부 클릭은 무시하고
+    if (!e.target.closest(".other-profile-card")) {
+      closeOtherUserProfilePopup();
+    }
+  });
 }
 
   // 🧷 랭킹 닉네임 → "프로필 보기" 메뉴 → 프로필 팝업
