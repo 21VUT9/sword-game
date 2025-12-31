@@ -784,7 +784,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.634)
+    (v3.636)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3810,7 +3810,6 @@ lastAttendanceDay  = data.lastAttendanceDay  ?? "";
     itemProtect        = data.itemProtect  ?? 0;
     itemSuper          = data.itemSuper    ?? 0;
     itemDownProtect    = data.itemDownProtect ?? 0;
-    starShard          = data.starShard ?? 0;
     huntStamina       = data.huntStamina       ?? 20;
     lastStaminaUpdate = data.lastStaminaUpdate ?? Date.now();
         // ⚔️ 결투 관련 값 불러오기
@@ -3818,7 +3817,9 @@ lastAttendanceDay  = data.lastAttendanceDay  ?? "";
     duelLose       = data.duelLose       ?? 0;
     duelCountToday = data.duelCountToday ?? 0;
     lastDuelDate   = data.lastDuelDate   ?? "";
-duelTargetsToday = data.duelTargetsToday ?? {};
+    duelTargetsToday = data.duelTargetsToday ?? {};
+    itemHonorMedal = data.itemHonorMedal ?? 0;
+    itemStarShard = data.itemStarShard ?? 0;
 
 // 화면 전환
 const loginScreen = document.getElementById("loginScreen");
