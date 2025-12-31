@@ -784,7 +784,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.621)
+    (v3.631)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1278,6 +1278,9 @@ let duelCountToday = 0;           // 오늘 결투한 총 횟수 (모든 상대 
 let lastDuelDate = "";            // 마지막 결투 날짜 (YYYY-MM-DD)
 // 오늘 같은 상대에게 몇 번 도전했는지: { 상대아이디: 횟수 }
 let duelTargetsToday = {};
+
+// 🏅 명예의 훈장 (결투 보상 재화)
+let itemHonorMedal = 0;
   
 // 전체 유저 목록 캐시 (결투 검색/랜덤매칭용)
 let allUsersCache = [];
@@ -1818,36 +1821,15 @@ function performDuel(targetUserId, isRandomMatch) {
   ensureDuelDate();
 
   // ✅ 하루 총 10회 제한
- if (duelCountToday >= 10) {
-  showNpcMessage(
-    `
-    <div style="font-size:16px; font-weight:bold;">
-      이봐, 오늘은 여기까지다!
-    </div>
-    <div style="margin-top:4px; font-size:13px;">
-      승부는 쉬어야 더 뜨겁지.<br>
-      <span style="color:#ccc;">(하루 10회 결투 제한)</span>
-    </div>
-    `,
-    "images/npc/duel_carnia.png",
-    true,
-    "결투 심판관 – 카르니아 발크라이트"
-  );
-  return;
-}
-
-  // ✅ 같은 상대에게 하루 3회까지 (직접 도전만)
-if (!isRandomMatch) {
-  const cnt = duelTargetsToday[targetUserId] || 0;
-  if (cnt >= 3) {
+  if (duelCountToday >= 10) {
     showNpcMessage(
       `
       <div style="font-size:16px; font-weight:bold;">
-        그만해, 그 상대는 이미 충분히 두들겨 팼잖아?
+        이봐, 오늘은 여기까지다!
       </div>
       <div style="margin-top:4px; font-size:13px;">
-        다른 전장도 한번 돌아보라고.<br>
-        <span style="color:#ccc;">(같은 상대 하루 3회 제한)</span>
+        승부는 쉬어야 더 뜨겁지.<br>
+        <span style="color:#ccc;">(하루 10회 결투 제한)</span>
       </div>
       `,
       "images/npc/duel_carnia.png",
@@ -1856,7 +1838,28 @@ if (!isRandomMatch) {
     );
     return;
   }
-}
+
+  // ✅ 같은 상대에게 하루 3회까지 (직접 도전만)
+  if (!isRandomMatch) {
+    const cnt = duelTargetsToday[targetUserId] || 0;
+    if (cnt >= 3) {
+      showNpcMessage(
+        `
+        <div style="font-size:16px; font-weight:bold;">
+          그만해, 그 상대는 이미 충분히 두들겨 팼잖아?
+        </div>
+        <div style="margin-top:4px; font-size:13px;">
+          다른 전장도 한번 돌아보라고.<br>
+          <span style="color:#ccc;">(같은 상대 하루 3회 제한)</span>
+        </div>
+        `,
+        "images/npc/duel_carnia.png",
+        true,
+        "결투 심판관 – 카르니아 발크라이트"
+      );
+      return;
+    }
+  }
 
   // 🔍 상대 유저 데이터 가져오기
   const targetRef = db.ref("users/" + targetUserId);
@@ -1870,8 +1873,9 @@ if (!isRandomMatch) {
 
     const targetSword = Number(t.sword ?? 0);
     let targetPower = Number(t.power ?? 0);
+
     const attackerLvHtml = coloredLevel(sword);        // 내 +00강 (컬러 포함)
-const defenderLvHtml = coloredLevel(targetSword);  // 상대 +00강 (컬러 포함)
+    const defenderLvHtml = coloredLevel(targetSword);  // 상대 +00강 (컬러 포함)
 
     // 상대 전투력이 0이거나 구버전이면 대략적인 공격력으로 대신 사용
     if (!targetPower || targetPower <= 0) {
@@ -1890,84 +1894,178 @@ const defenderLvHtml = coloredLevel(targetSword);  // 상대 +00강 (컬러 포�
     const winProb = sum > 0 ? (A / sum) : 0.5;
     const isWin = Math.random() < winProb;
 
-    // 보상 골드: 상대 무기 강화비용의 2.5배 ~ 2.8배
+    // 💰 보상 골드: 상대 무기 강화비용의 2.5배 ~ 2.8배 → 1/3로 축소
     const baseLevel = Math.min(targetSword, 29);
     const baseCost = getUpgradeCost(baseLevel);
-    const reward = isWin
-      ? Math.floor(baseCost * randRange(2.5, 2.8))
+    const rewardGold = isWin
+      ? Math.floor((baseCost * randRange(2.5, 2.8)) / 3)
       : 0;
 
     // 🎴 VS 화면에 쓸 무기 정보
-  const myWeaponInfo     = getWeaponInfo(sword);
-  const targetWeaponInfo = getWeaponInfo(targetSword);
+    const myWeaponInfo     = getWeaponInfo(sword);
+    const targetWeaponInfo = getWeaponInfo(targetSword);
 
-  // 🧾 VS 오버레이 먼저 띄우기
-  showDuelBattleOverlay({
-    myName: userId,
-    myLevelHtml: attackerLvHtml,
-    myPower: A,
-    myWeaponInfo,
-    targetName: targetUserId,
-    targetLevelHtml: defenderLvHtml,
-    targetPower: B,
-    targetWeaponInfo
+    // 🧾 VS 오버레이 먼저 띄우기
+    showDuelBattleOverlay({
+      myName: userId,
+      myLevelHtml: attackerLvHtml,
+      myPower: A,
+      myWeaponInfo,
+      targetName: targetUserId,
+      targetLevelHtml: defenderLvHtml,
+      targetPower: B,
+      targetWeaponInfo
+    });
+
+    // ⏳ 2~3초 뒤에 실제 결과 처리
+    const delay = 2000 + Math.random() * 1000; // 2000~3000ms
+
+    setTimeout(() => {
+      // 🔢 카운트/전적 갱신
+      duelCountToday++;
+
+      if (!isRandomMatch) {
+        const prev = duelTargetsToday[targetUserId] || 0;
+        duelTargetsToday[targetUserId] = prev + 1;
+      }
+
+      if (isWin) {
+        duelWin++;
+
+        // 💰 골드 지급
+        if (rewardGold > 0) {
+          gold += rewardGold;
+        }
+
+        // 🏅 명예의 훈장 계산
+        let honorGain = 0;
+        const diff = targetSword - sword; // 상대 - 나
+
+        if (diff >= 5) {
+          honorGain = 40;
+        } else if (diff === 4) {
+          honorGain = 28;
+        } else if (diff === 3) {
+          honorGain = 18;
+        } else if (diff === 2) {
+          honorGain = 10;
+        } else if (diff === 1) {
+          honorGain = 5;
+        } else if (diff === 0) {
+          honorGain = 3;
+        } else if (diff === -1) {
+          honorGain = 1;
+        } else {
+          honorGain = 0; // diff <= -2
+        }
+
+        // 랜덤매칭 보너스 +1
+        if (isRandomMatch && honorGain > 0) {
+          honorGain += 1;
+        }
+
+        if (honorGain > 0) {
+          // 전역 변수: 명예의 훈장 보유 수
+          itemHonorMedal += honorGain;
+
+          // 🎤 카르니아 승리 대사 (상황별)
+          let npcHtml = "";
+
+          if (diff >= 2) {
+            // 나보다 훨씬 강한 상대
+            npcHtml = `
+              <div style="font-size:18px; font-weight:bold; color:#FFD700;">
+                불리한 싸움이었는데, 잘 버텼네.
+              </div>
+              <div style="margin-top:6px; font-size:14px;">
+                이 정도면 내가 봐도 인정이지.<br>
+                명예의 훈장 ${honorGain}개, 잊지 말고 챙겨둬.
+              </div>
+            `;
+          } else if (diff >= -1 && diff <= 1) {
+            // 라이벌 / 비슷한 구간
+            npcHtml = `
+              <div style="font-size:18px; font-weight:bold; color:#FFD700;">
+                꽤 근사한 승부였어.
+              </div>
+              <div style="margin-top:6px; font-size:14px;">
+                한 수 앞섰군, 이번 판은 네 손을 들어줘야겠네.<br>
+                명예의 훈장 ${honorGain}개, 오늘 전장에 남겨둘게.
+              </div>
+            `;
+          } else {
+            // 살짝 아래 상대 (diff <= -2인데 훈장을 주는 케이스는 거의 없음)
+            npcHtml = `
+              <div style="font-size:18px; font-weight:bold; color:#FFD700;">
+                몸 풀기엔 나쁘지 않은 상대로군.
+              </div>
+              <div style="margin-top:6px; font-size:14px;">
+                그래도 승부는 승부지.<br>
+                명예의 훈장 ${honorGain}개, 잊지 말고 챙겨둬.
+              </div>
+            `;
+          }
+
+          showNpcMessage(
+            npcHtml,
+            "images/npc/duel_carnia.png",
+            true,
+            "결투 심판관 – 카르니아 발크라이트"
+          );
+        }
+
+        // 🧾 로그
+        let logMsg = isRandomMatch
+          ? `${userId}님(${attackerLvHtml})이 랜덤결투를 신청하여 ${targetUserId}님(${defenderLvHtml})과의 결투에서 승리하였습니다!`
+          : `${userId}님(${attackerLvHtml})이 ${targetUserId}님(${defenderLvHtml})께 결투를 신청하여 승리하였습니다!`;
+
+        const rewardParts = [];
+        if (rewardGold > 0) {
+          rewardParts.push(`골드 ${formatGold(rewardGold)}`);
+        }
+        if (honorGain > 0) {
+          rewardParts.push(`명예의 훈장 ${honorGain}개`);
+        }
+        if (rewardParts.length > 0) {
+          logMsg += ` (${rewardParts.join(", ")} 획득)`;
+        }
+
+        writeLog(logMsg);
+
+      } else {
+        // ❌ 패배
+        duelLose++;
+
+        showNpcMessage(
+          `
+          <div style="font-size:18px; font-weight:bold; color:#FF6666;">
+            쓰러졌지만, 꽤 근사했는걸?
+          </div>
+          <div style="margin-top:6px; font-size:14px;">
+            이번 판은 저쪽 손을 들어줘야겠네.<br>
+            보상은 없지만, 다음 라운드를 노려봐!
+          </div>
+          `,
+          "images/npc/duel_carnia.png",
+          true,
+          "결투 심판관 – 카르니아 발크라이트"
+        );
+
+        const logMsg = isRandomMatch
+          ? `${userId}님(${attackerLvHtml})이 랜덤결투를 신청하여 ${targetUserId}님(${defenderLvHtml})과의 결투에서 패배하였습니다...`
+          : `${userId}님(${attackerLvHtml})이 ${targetUserId}님(${defenderLvHtml})께 결투를 신청하여 패배하였습니다...`;
+
+        writeLog(logMsg);
+      }
+
+      update();
+      save();
+
+      // VS 화면 닫기
+      hideDuelBattleOverlay();
+    }, delay);
+
   });
-
-// ⏳ 2~3초 뒤에 실제 결과 처리
-const delay = 2000 + Math.random() * 1000; // 2000~3000ms
-
-setTimeout(() => {
-  // 🔢 카운트/전적 갱신
-  duelCountToday++;
-
-  if (!isRandomMatch) {
-    const prev = duelTargetsToday[targetUserId] || 0;
-    duelTargetsToday[targetUserId] = prev + 1;
-  }
-
-  if (isWin) {
-    duelWin++;
-    gold += reward;
-
-    const logMsg = isRandomMatch
-      ? `${userId}님(${attackerLvHtml})이 랜덤결투를 신청하여 ${targetUserId}님(${defenderLvHtml})과의 결투에서 승리하였습니다!`
-      : `${userId}님(${attackerLvHtml})이 ${targetUserId}님(${defenderLvHtml})께 결투를 신청하여 승리하였습니다!`;
-
-    writeLog(logMsg);
-
-  } else {
-    duelLose++;
-
-    showNpcMessage(
-      `
-      <div style="font-size:18px; font-weight:bold; color:#FF6666;">
-        쓰러졌지만, 꽤 근사했는걸?
-      </div>
-      <div style="margin-top:6px; font-size:14px;">
-        이번 판은 저쪽 손을 들어줘야겠네.<br>
-        보상은 없지만, 다음 라운드를 노려봐!
-      </div>
-      `,
-      "images/npc/duel_carnia.png",
-      true,
-      "결투 심판관 – 카르니아 발크라이트"
-    );
-
-    const logMsg = isRandomMatch
-      ? `${userId}님(${attackerLvHtml})이 랜덤결투를 신청하여 ${targetUserId}님(${defenderLvHtml})과의 결투에서 패배하였습니다...`
-      : `${userId}님(${attackerLvHtml})이 ${targetUserId}님(${defenderLvHtml})께 결투를 신청하여 패배하였습니다...`;
-
-    writeLog(logMsg);
-  }
-
-  update();
-  save();
-
-  // VS 화면 닫기
-  hideDuelBattleOverlay();
-}, delay);
-
-});
 }
   
 // ⚔️ 결투 신청 확인 팝업 (직접 결투 신청 전용)
@@ -3363,6 +3461,7 @@ function login() {
       duelCountToday = data.duelCountToday ?? 0;
       lastDuelDate   = data.lastDuelDate   ?? "";
       duelTargetsToday = data.duelTargetsToday ?? {};
+      itemHonorMedal = data.itemHonorMedal ?? 0;
     }
 
     // 🟢 여기까지 왔다는 건 실제로 이 탭이 접속을 가져가는 것 → 세션 시작
@@ -3425,6 +3524,7 @@ function save() {
     duelCountToday: Number(duelCountToday),
     lastDuelDate: lastDuelDate,
     duelTargetsToday: duelTargetsToday
+    itemHonorMedal: Number(itemHonorMedal)
   };
 
   // ⭐ 같은 강화면 updated 유지
@@ -4274,6 +4374,50 @@ btn.onclick = function () {
   });
 }
 
+// 🎖 명예의 훈장 보상 계산
+// mySword : 내 강화 수치
+// enemySword : 상대 강화 수치
+// isRandomMatch : 랜덤매칭이면 true
+function getHonorMedalReward(mySword, enemySword, isRandomMatch) {
+  const diff = enemySword - mySword;  // 상대 - 나 (양수면 상위 상대)
+
+  let base = 0;
+
+  // 👉 너랑 같이 정리한 보정 테이블
+  // n+5 이상 : 40
+  // n+4     : 28
+  // n+3     : 18
+  // n+2     : 10
+  // n+1     : 5
+  // n       : 3
+  // n-1     : 1
+  // n-2 이하: 0
+  if (diff >= 5) {
+    base = 40;
+  } else if (diff === 4) {
+    base = 28;
+  } else if (diff === 3) {
+    base = 18;
+  } else if (diff === 2) {
+    base = 10;
+  } else if (diff === 1) {
+    base = 5;
+  } else if (diff === 0) {
+    base = 3;
+  } else if (diff === -1) {
+    base = 1;
+  } else {
+    base = 0;
+  }
+
+  // 랜덤매칭 보너스 +1
+  if (isRandomMatch && base > 0) {
+    base += 1;
+  }
+
+  return base;
+}
+  
   // 🎲 랜덤매칭
 function handleRandomMatch() {
   if (!userId) {
@@ -4360,6 +4504,16 @@ function renderInventory() {
       desc: "현재 무기를 15강까지 한 번에 강화할 수 있는 특수 주문서입니다."
     });
   }
+
+  if (itemHonorMedal > 0) {
+  items.push({
+    key: "honorMedal",
+    name: "명예의 훈장",
+    count: itemHonorMedal,
+    img: "images/items/medal_honor.png",
+    desc: "승리의 순간에만 새겨지는 조용한 증표.\n언젠가, 가치가 드러날 날을 기다리고 있습니다."
+  });
+}
 
   if (itemProtect > 0) {
     items.push({
