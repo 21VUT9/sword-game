@@ -4391,16 +4391,15 @@ function renderInventory() {
     });
   }
 
-    if (starShard > 0) {
-    items.push({
-      id: "starShard",
-      name: "빛나지 못한 별의 조각",
-      count: starShard,
-      img: "images/items/star_shard.png",  // ⭐ 이미지 파일은 이렇게 저장해줘
-      desc: "부서진 고강 무기에서 떨어져 나온 조각입니다. 10개를 모으면 21강 강화 주문서와 교환할 수 있습니다. (추후 업데이트 예정)"
-    });
-  }
-
+if (starShard > 0) {
+  items.push({
+    id: "starShard",
+    name: "빛나지 못한 별의 조각",
+    count: starShard,
+    img: "images/items/star_shard.png",
+    desc: "부서진 칼날 속에 남겨진 흔적입니다. 조각이 모이면, 특수한 아이템과 교환할 수 있습니다."
+  });
+}
   const title = document.createElement("p");
   title.textContent = "보유 아이템";
   title.style.margin = "0 0 4px 0";
