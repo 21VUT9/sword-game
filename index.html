@@ -2411,9 +2411,8 @@ function closeMovePopup() {
 
   popup.style.display = "none";
 }
-
   
-// 숫자 골드를 "12억 8,765만 4,252" 형태로 변환
+// 숫자 골드를 "1경 2,345조 6,789억 1,234만 5,678" 형태로 변환
 function formatGold(value) {
   const n = Number(value) || 0;
 
@@ -2422,18 +2421,32 @@ function formatGold(value) {
     return n.toLocaleString();
   }
 
-  const EOK = 100_000_000; // 억
-  const MAN = 10_000;      // 만
+  // 한국식 단위
+  const MAN    = 10_000;                  // 만
+  const EOK    = 1_0000_0000;             // 억
+  const JO     = 1_0000_0000_0000;        // 조
+  const GYEONG = 1_0000_0000_0000_0000;   // 경
 
-  const eok = Math.floor(n / EOK);
-  let rest = n % EOK;
+  let rest = n;
+
+  const gyeong = Math.floor(rest / GYEONG);
+  rest = rest % GYEONG;
+
+  const jo = Math.floor(rest / JO);
+  rest = rest % JO;
+
+  const eok = Math.floor(rest / EOK);
+  rest = rest % EOK;
+
   const man = Math.floor(rest / MAN);
   const won = rest % MAN;
 
   const parts = [];
-  if (eok > 0) parts.push(`${eok.toLocaleString()}억`);
-  if (man > 0) parts.push(`${man.toLocaleString()}만`);
-  if (won > 0) parts.push(won.toLocaleString());
+  if (gyeong > 0) parts.push(`${gyeong.toLocaleString()}경`);
+  if (jo > 0)     parts.push(`${jo.toLocaleString()}조`);
+  if (eok > 0)    parts.push(`${eok.toLocaleString()}억`);
+  if (man > 0)    parts.push(`${man.toLocaleString()}만`);
+  if (won > 0)    parts.push(won.toLocaleString());
 
   if (parts.length === 0) return "0";
   return parts.join(" ");
