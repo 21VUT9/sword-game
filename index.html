@@ -784,7 +784,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.633)
+    (v3.634)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2016,9 +2016,9 @@ if (isRandomMatch) {
         }
 
         // 🧾 로그
-        let logMsg = isRandomMatch
-          ? `${userId}님(${attackerLvHtml})이 랜덤결투를 신청하여 ${targetUserId}님(${defenderLvHtml})과의 결투에서 승리하였습니다!`
-          : `${userId}님(${attackerLvHtml})이 ${targetUserId}님(${defenderLvHtml})께 결투를 신청하여 승리하였습니다!`;
+let logMsg = isRandomMatch
+  ? `${userId}님(${attackerLvHtml})이 랜덤결투를 신청하여 ${targetUserId}님(${defenderLvHtml})과의 결투에서 승리하였습니다!`
+  : `${userId}님(${attackerLvHtml})이 ${targetUserId}님(${defenderLvHtml})께 결투를 신청하여 승리하였습니다!`;
 
         const rewardParts = [];
         if (rewardGold > 0) {
