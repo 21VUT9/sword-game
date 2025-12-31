@@ -784,7 +784,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.620)
+    (v3.621)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2909,29 +2909,23 @@ if (Math.random() < chance / 100) {
       `${userId}이 ${coloredLevel(targetLevel)} 도전에 실패하여 ` +
       `<span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`;
 
-    if (gainedShard > 0) {
-      logMsg += ` (빛나지 못한 별의 조각 ${gainedShard}개 획득, 총 ${starShard}개)`;
-    }
-
     writeLog(logMsg, true);
 
     // 🧑‍🏭 퍼그란트 특수 멘트
-    if (gainedShard > 0) {
-      // 22강 이상 파괴 전용 연출
-      showNpcMessage(
-        `
-        <div style="font-size:18px; font-weight:bold; color:#FF3333;">
-          장비 파괴!
-        </div>
-        <div style="margin-top:6px; font-size:13px;">
-          빛을 향해 뻗던 칼날은 부서졌지만…<br>
-          그 속에서 <b>빛나지 못한 별의 조각 ${gainedShard}개</b>를 건져냈다네.<br>
-          (보유: ${starShard}개)
-        </div>
-        `,
-        "images/npc/blacksmith_destroy.png"  // 퍼그란트 그대로 유지
-      );
-    } else {
+if (gainedShard > 0) {
+  showNpcMessage(
+    `
+    <div style="font-size:18px; font-weight:bold; color:#FF3333;">
+      장비 파괴!
+    </div>
+    <div style="margin-top:6px; font-size:13px;">
+      빛을 향해 뻗던 칼날은 부서졌지만…<br>
+      그 속에서 <b>빛나지 못한 별의 조각 ${gainedShard}개</b>를 건져냈다네.
+    </div>
+    `,
+    "images/npc/blacksmith_destroy.png"
+  );
+} else {
       // 21강 도전 같은 낮은 구간 / 조각 미지급 구간은 기존 멘트
       showNpcMessage(
         `
