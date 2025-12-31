@@ -784,7 +784,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.614)
+    (v3.615)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -903,19 +903,19 @@ button {
 <div id="upgradeItems" style="margin-top:8px; font-size:13px;">
   <label style="margin-right:8px;">
     <input type="checkbox" id="useScroll15">
-    15강 강화 주문서 사용
+    <span id="labelUseScroll15">15강 강화 주문서 (0)</span>
   </label>
   <label style="margin-right:8px;">
     <input type="checkbox" id="useProtect">
-    파괴방지 주문서 사용
+    <span id="labelUseProtect">파괴방지 주문서 (0)</span>
   </label>
   <label style="margin-right:8px;">
     <input type="checkbox" id="useDownProtect">
-    강등방지 주문서 사용
+    <span id="labelUseDownProtect">강등방지 주문서 (0)</span>
   </label>
   <label>
     <input type="checkbox" id="useSuper">
-    슈퍼강화 주문서 사용
+    <span id="labelUseSuper">슈퍼강화 주문서 (0)</span>
   </label>
 </div>
 
@@ -1566,6 +1566,27 @@ function startSession() {
   // 이 탭이 끊기면 sessionId 자동 제거
   userRef.child("sessionId").onDisconnect().remove();
 }
+
+// 🎯 강화 아이템 체크박스 라벨 수량 갱신
+function updateUpgradeItemLabels() {
+  const elScroll15 = document.getElementById("labelUseScroll15");
+  const elProtect  = document.getElementById("labelUseProtect");
+  const elDownProt = document.getElementById("labelUseDownProtect");
+  const elSuper    = document.getElementById("labelUseSuper");
+
+  if (elScroll15) {
+    elScroll15.textContent = `15강 강화 주문서 (${itemScroll15})`;
+  }
+  if (elProtect) {
+    elProtect.textContent = `파괴방지 주문서 (${itemProtect})`;
+  }
+  if (elDownProt) {
+    elDownProt.textContent = `강등방지 주문서 (${itemDownProtect})`;
+  }
+  if (elSuper) {
+    elSuper.textContent = `슈퍼강화 주문서 (${itemSuper})`;
+  }
+}
   
 /* UI */
 
@@ -1767,6 +1788,9 @@ updateDuelUI();
   
   // 🔥 현재 사냥터 배경 적용 (CSS ::before용 변수 세팅)
   applyFieldBackground();
+
+    // ✅ 강화 아이템 라벨 수량 갱신
+  updateUpgradeItemLabels();
 }
 
 // ⚔️ 결투 일자/카운트 초기화
@@ -2519,49 +2543,60 @@ attendanceCount++;
     // 15강 이후 → 강화 1번 가능한 금액 지급
     rewardGold = getCurrentUpgradeCost();
   }
-
+  // 골드 지급
   gold += rewardGold;
 
-writeLog(
-  `${userId}님이 출석으로 ${formatGold(rewardGold)} 골드를 획득했습니다. `
-  + `(연속 ${attendanceStreak}회)`
-);
+  writeLog(
+    `${userId}님이 출석으로 ${formatGold(rewardGold)} 골드를 획득했습니다. `
+    + `(연속 ${attendanceStreak}회)`
+  );
 
   // ==========================
   // 🎯 5회 / 10회 / 15회 / 20회 / 25회 보상
   // ==========================
 
   const key = (attendanceStreak % 25) || 25;
+  const bonus = attendanceBonusTable[key];
 
-  if (attendanceBonusTable[key]) {
+  // 🎁 먼저 "기본 출석 완료" 메시지 HTML을 만든다
+  let messageHtml = `
+    <div style="font-size:16px; font-weight:bold;">
+      ✅ 출석 완료!
+    </div>
+    <div style="margin-top:4px; font-size:13px;">
+      오늘 출석 보상으로 <b>${formatGold(rewardGold)} 골드</b>를 획득했습니다.<br>
+      (연속 ${attendanceStreak}회)
+    </div>
+  `;
 
-    const bonus = attendanceBonusTable[key];
-
+  // 🔁 만약 이번이 5/10/15/20/25회라 보너스가 있다면, 아래 내용을 추가
+  if (bonus) {
     // 아이템 지급
-    if (bonus.type === "scroll15") itemScroll15++;
+    if (bonus.type === "scroll15")   itemScroll15++;
     if (bonus.type === "superScroll") itemSuper++;
     if (bonus.type === "downProtect") itemDownProtect++;
     if (bonus.type === "destroyProtect") itemProtect++;
 
-writeLog(
-  `${userId}님이 연속 ${attendanceStreak}회 출석 달성! `
-  + `출석 보상으로 ${bonus.name}이 지급되었습니다.`
-);
-
-
-    showNpcMessage(
-      `
-      <div style="font-size:16px; font-weight:bold;">
-        🎁 연속 ${attendanceStreak}회 출석 보상
-      </div>
-      <div style="margin-top:4px;">
-        <b>${bonus.name}</b>이 지급되었습니다.
-      </div>
-      `,
-      null,
-      true
+    writeLog(
+      `${userId}님이 연속 ${attendanceStreak}회 출석 달성! `
+      + `출석 보상으로 ${bonus.name}이 지급되었습니다.`
     );
+
+    // 팝업 HTML에 보너스 안내 추가
+    messageHtml += `
+      <div style="margin-top:8px; font-size:13px;">
+        🎁 <b>연속 ${attendanceStreak}회 출석 보상</b><br>
+        추가로 <b>${bonus.name}</b>이 지급되었습니다!
+      </div>
+    `;
   }
+
+  // 📢 최종 팝업 한 번만 호출
+  showNpcMessage(
+    messageHtml,
+    null,   // NPC 이미지 없으면 null
+    true
+  );
 
   update();
   save();
