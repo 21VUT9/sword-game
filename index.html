@@ -784,7 +784,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.637)
+    (v3.638)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3538,11 +3538,10 @@ function save() {
     duelCountToday: Number(duelCountToday),
     lastDuelDate: lastDuelDate,
     duelTargetsToday: duelTargetsToday,
-    itemHonorMedal: Number(itemHonorMedal),
+    itemHonorMedal: Number(itemHonorMedal)
   };
 
-  // ⭐ 같은 강화면 updated 유지
-  // ⭐ 강화 수치가 바뀌었을 때만 갱신
+  // ⭐ 강화 수치가 바뀌었을 때만 updated 갱신
   if (sword !== lastSavedSwordForUpdated) {
     updateData.updated = Date.now();
     lastSavedSwordForUpdated = sword;
