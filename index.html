@@ -784,7 +784,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.632)
+    (v3.633)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1959,10 +1959,11 @@ function performDuel(targetUserId, isRandomMatch) {
           honorGain = 0; // diff <= -2
         }
 
-        // 랜덤매칭 보너스 +1
-        if (isRandomMatch && honorGain > 0) {
-          honorGain += 1;
-        }
+        // 🎲 랜덤매칭 보너스 +1
+// 기본 훈장이 0이어도 랜덤매칭이면 +1 지급
+if (isRandomMatch) {
+  honorGain += 1;
+}
 
         if (honorGain > 0) {
           // 전역 변수: 명예의 훈장 보유 수
