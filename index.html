@@ -1965,73 +1965,86 @@ if (isRandomMatch) {
   honorGain += 1;
 }
 
-        if (honorGain > 0) {
-          // 전역 변수: 명예의 훈장 보유 수
-          itemHonorMedal += honorGain;
+// 👇 항상 팝업을 띄운다
+const diff = targetSword - sword;
+let npcHtml = "";
 
-          // 🎤 카르니아 승리 대사 (상황별)
-          let npcHtml = "";
+// 🏅 훈장 지급 (0개일 수도 있음)
+itemHonorMedal += honorGain;
 
-          if (diff >= 2) {
-            // 나보다 훨씬 강한 상대
-            npcHtml = `
-              <div style="font-size:18px; font-weight:bold; color:#FFD700;">
-                불리한 싸움이었는데, 잘 버텼네.
-              </div>
-              <div style="margin-top:6px; font-size:14px;">
-                이 정도면 내가 봐도 인정이지.<br>
-                명예의 훈장 ${honorGain}개, 잊지 말고 챙겨둬.
-              </div>
-            `;
-          } else if (diff >= -1 && diff <= 1) {
-            // 라이벌 / 비슷한 구간
-            npcHtml = `
-              <div style="font-size:18px; font-weight:bold; color:#FFD700;">
-                꽤 근사한 승부였어.
-              </div>
-              <div style="margin-top:6px; font-size:14px;">
-                한 수 앞섰군, 이번 판은 네 손을 들어줘야겠네.<br>
-                명예의 훈장 ${honorGain}개, 오늘 전장에 남겨둘게.
-              </div>
-            `;
-          } else {
-            // 살짝 아래 상대 (diff <= -2인데 훈장을 주는 케이스는 거의 없음)
-            npcHtml = `
-              <div style="font-size:18px; font-weight:bold; color:#FFD700;">
-                몸 풀기엔 나쁘지 않은 상대로군.
-              </div>
-              <div style="margin-top:6px; font-size:14px;">
-                그래도 승부는 승부지.<br>
-                명예의 훈장 ${honorGain}개, 잊지 말고 챙겨둬.
-              </div>
-            `;
-          }
 
-          showNpcMessage(
-            npcHtml,
-            "images/npc/duel_carnia.png",
-            true,
-            "결투 심판관 – 카르니아 발크라이트"
-          );
-        }
+// 🎤 카르니아 대사 분기
 
-        // 🧾 로그
+if (honorGain > 0) {
+
+  // 상위 상대 격파
+  if (diff >= 2) {
+    npcHtml = `
+      <div style="font-size:18px; font-weight:bold; color:#FFD700;">
+        불리한 승부였는데도 잘 버텼네.
+      </div>
+      <div style="margin-top:6px; font-size:14px;">
+        이 정도면 인정이지.<br>
+        명예의 훈장 ${honorGain}개, 챙겨두도록 해.
+      </div>
+    `;
+  }
+
+  // 라이벌 / 비슷한 구간
+  else if (diff >= -1 && diff <= 1) {
+    npcHtml = `
+      <div style="font-size:18px; font-weight:bold; color:#FFD700;">
+        꽤 근사한 승부였어.
+      </div>
+      <div style="margin-top:6px; font-size:14px;">
+        이번 판은 네 손을 들어줘야겠네.<br>
+        명예의 훈장 ${honorGain}개, 기록에 남겨두지.
+      </div>
+    `;
+  }
+
+  // 살짝 아래 상대
+  else {
+    npcHtml = `
+      <div style="font-size:18px; font-weight:bold; color:#FFD700;">
+        몸 풀기엔 괜찮은 상대로군.
+      </div>
+      <div style="margin-top:6px; font-size:14px;">
+        승부는 승부지.<br>
+        명예의 훈장 ${honorGain}개 지급했다.
+      </div>
+    `;
+  }
+
+} else {
+
+  // ⭐ 훈장 0개 전용 대사 (새로 추가)
+
+  npcHtml = `
+    <div style="font-size:18px; font-weight:bold; color:#CCCCCC;">
+      힘의 차이가 좀 많이 났지.
+    </div>
+    <div style="margin-top:6px; font-size:14px;">
+      이번 판은 기록만 남겨두겠다.<br>
+      다음엔 네게 맞는 상대를 골라봐.
+    </div>
+  `;
+}
+
+// 🎯 항상 팝업 출력
+showNpcMessage(
+  npcHtml,
+  "images/npc/duel_carnia.png",
+  true,
+  "결투 심판관 – 카르니아 발크라이트"
+);
+
+// 🧾 로그 (결과만 남김)
 let logMsg = isRandomMatch
   ? `${userId}님(${attackerLvHtml})이 랜덤결투를 신청하여 ${targetUserId}님(${defenderLvHtml})과의 결투에서 승리하였습니다!`
   : `${userId}님(${attackerLvHtml})이 ${targetUserId}님(${defenderLvHtml})께 결투를 신청하여 승리하였습니다!`;
 
-        const rewardParts = [];
-        if (rewardGold > 0) {
-          rewardParts.push(`골드 ${formatGold(rewardGold)}`);
-        }
-        if (honorGain > 0) {
-          rewardParts.push(`명예의 훈장 ${honorGain}개`);
-        }
-        if (rewardParts.length > 0) {
-          logMsg += ` (${rewardParts.join(", ")} 획득)`;
-        }
-
-        writeLog(logMsg);
+writeLog(logMsg);
 
       } else {
         // ❌ 패배
