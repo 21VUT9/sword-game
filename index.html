@@ -5256,12 +5256,46 @@ function handleRandomMatchFromArena() {
 }
 
 // ❓ 결투장 규칙/보상 설명 (임시)
+// ⚔️ 결투장 규칙 / 보상 설명 팝업
 function openDuelHelpPopup() {
-  alert(
-    "결투장 개편 준비 중입니다.\n\n" +
-    "• 결투 포인트에 따라 주간 랭킹이 결정됩니다.\n" +
-    "• 랜덤매칭은 추가 보상이 주어집니다.\n" +
-    "(자세한 규칙은 다음 업데이트에서 안내 예정)"
+  const html = `
+    <div style="font-size:16px; font-weight:bold; margin-bottom:6px;">
+      결투장 규칙 & 보상 안내
+    </div>
+    <div style="font-size:13px; line-height:1.5;">
+      <div style="margin-bottom:6px;">
+        · 결투장에서 승리하면 <span style="color:#ffcc66;">골드(1/3)</span>와<br>
+          <span style="color:#66ccff;">명예의 훈장</span>, 
+          <span style="color:#ff8888;">결투 포인트</span>를 얻습니다.
+      </div>
+      <div style="margin-bottom:6px;">
+        · 결투 포인트는 주간 누적 점수로,<br>
+          매주 <span style="color:#ffcc66;">월요일 00:00</span>에 초기화됩니다.
+      </div>
+      <div style="margin-bottom:6px;">
+        · 주간 결투 포인트로 <span style="color:#ffcc66;">결투장 랭킹</span>이 결정되며,<br>
+          순위에 따라 매주 보상이 지급됩니다.
+      </div>
+      <div style="margin-bottom:6px;">
+        · <span style="color:#ffcc66;">랜덤 매칭</span>으로 이기면<br>
+          추가로 명예의 훈장 <span style="color:#ffcc66;">+1</span>을 더 받습니다.
+      </div>
+      <div style="margin-top:8px; border-top:1px solid #444; padding-top:6px;">
+        <div style="margin-bottom:4px;">[주간 보상 예시]</div>
+        <div>1위 : 파괴방지 주문서 2개</div>
+        <div>2~3위 : 파괴방지 주문서 1개</div>
+        <div>4~6위 : 강등방어 주문서 5개, 15강 주문서 3개</div>
+        <div>7~10위 : 강등방어 주문서 3개, 15강 주문서 1개</div>
+        <div>10위 밖 : 강등방어 주문서 1개</div>
+      </div>
+    </div>
+  `;
+
+  showNpcMessage(
+    html,
+    "images/npc/duel_carnia.png",
+    true,
+    "결투 심판관 – 카르니아 발크라이트"
   );
 }
 
