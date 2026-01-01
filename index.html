@@ -1157,10 +1157,12 @@ button {
     <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:10px;">
       <!-- 좌측: 결투 버튼들 -->
       <div>
-        <button onclick="openDuelTargetPanel()"
-                style="display:block; margin-bottom:6px; padding:6px 10px; font-size:14px; width:180px;">
-          🎯 결투하기 (지정매칭)
-        </button>
+<button onclick="openDuelTargetPanel()"
+        data-duel-target
+        style="display:block; margin-bottom:6px; padding:6px 10px; font-size:14px; width:180px;">
+  🎯 결투하기 (지정매칭)
+</button>
+
         <button onclick="handleRandomMatchFromArena()"
                 style="display:block; padding:6px 10px; font-size:14px; width:180px;">
           🎲 랜덤매칭
@@ -1189,20 +1191,16 @@ button {
   
   <!-- ⚔️ 결투 패널 -->
 <div id="duelPanel" style="
-  position:fixed;
-  right:10px;
-  top:60px;
-  width:280px;
-  max-height:70%;
+  position:absolute;
+  width:260px;
   background:rgba(0,0,0,0.95);
   border:1px solid #555;
+  border-radius:8px;
   padding:10px;
-  overflow-y:auto;
   z-index:1300;
   display:none;
-  text-align:left;
-  font-size:14px;
 ">
+
   <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
     <div style="font-weight:bold; font-size:15px;">⚔️ 결투</div>
     <!-- ⬅ 창 좌상단(에 가까운 쪽)에 X버튼 -->
@@ -4916,8 +4914,27 @@ function loadDuelArenaRanking() {
 
 // 🎯 결투하기(지정매칭) 버튼 → 기존 결투 패널 열기
 function openDuelTargetPanel() {
-  // 기존 결투 패널 열기
-  toggleDuelPanel();
+  const panel = document.getElementById("duelPanel");
+  const btn   = document.querySelector("#duelArenaPanel button[data-duel-target]");
+  if (!panel || !btn) return;
+
+  // 버튼 기준 좌표 구하기
+  const rect = btn.getBoundingClientRect();
+
+  // 결투장 패널 기준 좌표 변환
+  const arenaRect = document
+    .getElementById("duelArenaPanel")
+    .getBoundingClientRect();
+
+  // 🔹 버튼 오른쪽 위쪽에 뜨도록 위치 지정
+  const offsetX = 12;   // 버튼 오른쪽으로 12px
+  const offsetY = -6;   // 버튼 위쪽으로 6px
+
+  panel.style.left = (rect.left - arenaRect.left + offsetX) + "px";
+  panel.style.top  = (rect.top  - arenaRect.top  + offsetY) + "px";
+
+  // 패널 열기
+  panel.style.display = "block";
 }
 
 // 🎲 랜덤매칭 버튼 (결투장 안에서)
