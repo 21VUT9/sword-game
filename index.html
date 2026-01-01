@@ -833,7 +833,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.650)
+    (v3.651)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1554,6 +1554,9 @@ let currentNoticeIndex = 0;   // 팝업에서 현재 보고 있는 인덱스
   
 // 🏅 명예의 훈장 (결투 보상 재화)
 let itemHonorMedal = 0;
+
+// ⭐ 결투 포인트 (결투장 랭킹에 쓰일 값)
+let duelPoint = 0;
   
 // 전체 유저 목록 캐시 (결투 검색/랜덤매칭용)
 let allUsersCache = [];
@@ -2244,6 +2247,15 @@ let npcHtml = "";
 // 🏅 훈장 지급 (0개일 수도 있음)
 itemHonorMedal += honorGain;
 
+// 🔹 명예의 훈장 지급
+if (honorGain > 0) {
+  itemHonorMedal += honorGain;
+}
+
+// 🔹 결투 포인트는 "명예의 훈장과 동일한 양"으로 누적
+if (honorGain > 0) {
+  duelPoint += honorGain;
+}
 
 // 🎤 카르니아 대사 분기
 
@@ -3761,6 +3773,8 @@ function login() {
       lastDuelDate   = data.lastDuelDate   ?? "";
       duelTargetsToday = data.duelTargetsToday ?? {};
       itemHonorMedal = data.itemHonorMedal ?? 0;
+        // ⭐ 결투 포인트 로드 (없으면 0)
+  duelPoint       = data.duelPoint ?? 0;
     }
 
     // 🟢 여기까지 왔다는 건 실제로 이 탭이 접속을 가져가는 것 → 세션 시작
@@ -3828,6 +3842,7 @@ function save() {
     lastDuelDate: lastDuelDate,
     duelTargetsToday: duelTargetsToday,
     itemHonorMedal: Number(itemHonorMedal)
+    duelPoint: Number(duelPoint)
   };
 
   // ⭐ 강화 수치가 바뀌었을 때만 updated 갱신
@@ -4108,6 +4123,7 @@ lastAttendanceDay  = data.lastAttendanceDay  ?? "";
     duelTargetsToday = data.duelTargetsToday ?? {};
     itemHonorMedal = data.itemHonorMedal ?? 0;
     starShard = data.starShard ?? 0;
+    duelPoint      = data.duelPoint      ?? 0;
 
 // 화면 전환
 const loginScreen = document.getElementById("loginScreen");
@@ -4755,8 +4771,8 @@ function openDuelArena() {
 
   overlay.style.display = "block";
 
-  // 나중에 결투 포인트 랭킹 넣을 자리
-  renderDuelArenaRanking();
+  // ⚔️ 결투 포인트 기반 랭킹 불러오기
+  loadDuelArenaRanking();
 }
 
 // ⚔️ 결투장 닫기
@@ -4766,20 +4782,125 @@ function closeDuelArena() {
   overlay.style.display = "none";
 }
 
-// 🏆 결투장 랭킹 렌더링 (현재는 임시 문구만)
-function renderDuelArenaRanking() {
+  // ⚔️ 결투장 랭킹 불러오기 (duelPoint 기준)
+function loadDuelArenaRanking() {
   const listEl = document.getElementById("duelArenaRankList");
   const myEl   = document.getElementById("duelArenaMyRank");
   if (!listEl || !myEl) return;
 
-  // TODO: 나중에 결투 포인트 기반 랭킹으로 교체
   listEl.innerHTML = `
     <div style="padding:8px 0; text-align:center; color:#999; font-size:12px;">
-      결투장 랭킹 시스템 개편 준비 중입니다.<br>
-      (포인트 / 주간 보상은 다음 단계에서 적용)
+      결투장 랭킹을 불러오는 중입니다...
     </div>
   `;
   myEl.textContent = "";
+
+  const usersRef = db.ref("users");
+
+  // duelPoint 기준으로 모두 가져온 뒤, 메모리에서 필터 + 정렬
+  usersRef
+    .orderByChild("duelPoint")
+    .once("value")
+    .then((snap) => {
+      const arr = [];
+
+      snap.forEach((child) => {
+        const u = child.val() || {};
+        const uid = child.key;
+
+        const point = Number(u.duelPoint || 0);
+        if (!point || point <= 0) return; // 포인트 0 이하면 랭킹 제외
+
+        arr.push({
+          id: uid,
+          duelPoint: point,
+          sword: Number(u.sword || 0),
+          duelWin: Number(u.duelWin || 0),
+          duelLose: Number(u.duelLose || 0),
+          // updated가 있으면 같은 포인트일 때 선착순 정렬용 (선택)
+          updated: Number(u.duelUpdated || u.updated || 0)
+        });
+      });
+
+      if (arr.length === 0) {
+        listEl.innerHTML = `
+          <div style="padding:8px 0; text-align:center; color:#999; font-size:12px;">
+            아직 결투 포인트를 가진 모험가가 없습니다.<br>
+            가장 먼저 결투장을 정복해 보세요!
+          </div>
+        `;
+        myEl.textContent = "";
+        return;
+      }
+
+      // 🔽 duelPoint 내림차순 정렬 (같은 포인트면 updated 빠른 순서로)
+      arr.sort((a, b) => {
+        if (b.duelPoint !== a.duelPoint) {
+          return b.duelPoint - a.duelPoint;
+        }
+        return (a.updated || 0) - (b.updated || 0);
+      });
+
+      // 🔟 상위 10명만 표시
+      const top = arr.slice(0, 10);
+
+      // 🧾 랭킹 HTML 구성
+      const rows = top.map((u, idx) => {
+        const rank = idx + 1;
+
+        // 무기 이름 얻기 (이미 있는 getWeaponInfo 재사용)
+        let weaponText = `+${u.sword}강`;
+        try {
+          const info = getWeaponInfo(u.sword);
+          if (info && info.name) {
+            weaponText = `${info.name} +${u.sword}강`;
+          }
+        } catch (e) {
+          // 함수 없거나 오류 나면 그냥 +강만 표시
+        }
+
+        const recordText = `${u.duelWin}승 ${u.duelLose}패`;
+
+        return `
+          <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid #333; font-size:12px;">
+            <div>
+              <span style="font-weight:bold;">${rank}위</span>
+              &nbsp; ${u.id}
+            </div>
+            <div style="text-align:right;">
+              <div>결투포인트 <span style="color:#ffd54f;">${u.duelPoint}</span></div>
+              <div style="font-size:11px; color:#ccc;">${weaponText} · ${recordText}</div>
+            </div>
+          </div>
+        `;
+      });
+
+      listEl.innerHTML = rows.join("");
+
+      // 👤 내 랭킹 찾기
+      const myIndex = arr.findIndex(u => u.id === userId);
+
+      if (myIndex === -1) {
+        myEl.textContent = "내 결투 포인트: 0 (랭킹 미등록)";
+      } else {
+        const myRank = myIndex + 1;
+        const me = arr[myIndex];
+        myEl.innerHTML = `
+          내 랭킹: <span style="color:#ffd54f;">${myRank}위</span>
+          · 결투포인트 ${me.duelPoint}
+          · 전적 ${me.duelWin}승 ${me.duelLose}패
+        `;
+      }
+    })
+    .catch((err) => {
+      console.error("결투장 랭킹 로드 실패:", err);
+      listEl.innerHTML = `
+        <div style="padding:8px 0; text-align:center; color:#f88; font-size:12px;">
+          결투장 랭킹을 불러오지 못했습니다.<br>
+          잠시 후 다시 시도해 주세요.
+        </div>
+      `;
+    });
 }
 
 // 🎯 결투하기(지정매칭) 버튼 → 기존 결투 패널 열기
