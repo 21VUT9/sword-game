@@ -833,7 +833,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.654)
+    (v3.655)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1557,6 +1557,10 @@ let itemHonorMedal = 0;
 
 // ⭐ 결투 포인트 (결투장 랭킹에 쓰일 값)
 let duelPoint = 0;
+
+// ⭐ 주간 결투 포인트용 보조 필드
+let duelPointWeekKey = "";  // 이 포인트가 속한 주 (예: 2026-W05)
+let duelLastWeekPoint = 0;  // 지난 주 최종 포인트 (보상·표시용)
   
 // 전체 유저 목록 캐시 (결투 검색/랜덤매칭용)
 let allUsersCache = [];
@@ -2113,6 +2117,31 @@ function getKstWeekKey() {
 
   // 예: 2026-W03
   return `${year}-W${String(week).padStart(2, "0")}`;
+}
+
+// 🌙 주간 결투 포인트 정리
+function ensureDuelWeek() {
+  // 현재 한국시간 기준 주키 계산
+  const weekKey = getKstWeekKey();
+  currentWeekKey = weekKey;
+
+  // 처음 접속한 경우: 그냥 현재 주차로 세팅
+  if (!duelPointWeekKey) {
+    duelPointWeekKey = weekKey;
+    return;
+  }
+
+  // 주차가 바뀌었으면 지난 주 포인트 넘기고 이번 주 초기화
+  if (duelPointWeekKey !== weekKey) {
+    // 지난 주 포인트 백업 (나중에 보상 / 지난 랭킹용)
+    duelLastWeekPoint = duelPoint;
+
+    // 이번 주 포인트 리셋
+    duelPoint = 0;
+
+    // 이번 주로 키 갱신
+    duelPointWeekKey = weekKey;
+  }
 }
   
 // ⚔️ 실제 결투 처리
@@ -3749,6 +3778,9 @@ function login() {
         duelCountToday: 0,
         lastDuelDate: "",
         duelTargetsToday: {}
+        duelPoint: 0,
+        duelPointWeekKey: getKstWeekKey(),
+        duelLastWeekPoint: 0
       });
 
     } else {
@@ -3805,10 +3837,11 @@ function login() {
       duelTargetsToday = data.duelTargetsToday ?? {};
       itemHonorMedal = data.itemHonorMedal ?? 0;
         // ⭐ 결투 포인트 로드 (없으면 0)
-  duelPoint       = data.duelPoint ?? 0;
+      duelPoint       = data.duelPoint ?? 0;
+      duelPointWeekKey = data.duelPointWeekKey || "";
+      duelLastWeekPoint = data.duelLastWeekPoint ?? 0;
 
-      
-    }
+   }
 
     // 🟢 여기까지 왔다는 건 실제로 이 탭이 접속을 가져가는 것 → 세션 시작
     startSession();
@@ -3825,7 +3858,6 @@ function login() {
     document.getElementById("logoutBtn").style.display = "block";
     document.getElementById("duelBtn").style.display = "block";
     document.getElementById("mapBtn").style.display = "block";
-    currentWeekKey = getKstWeekKey();
 
     // 🔐 마지막 로그인 유저 저장
     try {
@@ -3835,8 +3867,9 @@ function login() {
     }
 
     update();
-showTutorialIfFirstTime();
-loadUpdateNotices();   // 🔔 로그인 후 공지 불러오기
+    showTutorialIfFirstTime();
+    loadUpdateNotices();   // 🔔 로그인 후 공지 불러오기
+    ensureDuelWeek();
 
     // 🏆 로그인 직후 랭킹/내 랭킹 갱신
     loadRanking();
@@ -3878,6 +3911,8 @@ function save() {
     duelTargetsToday: duelTargetsToday,
     itemHonorMedal: Number(itemHonorMedal),
     duelPoint: Number(duelPoint)
+    duelPointWeekKey: duelPointWeekKey,
+    duelLastWeekPoint: Number(duelLastWeekPoint)
   };
 
   // ⭐ 강화 수치가 바뀌었을 때만 updated 갱신
@@ -4159,7 +4194,8 @@ lastAttendanceDay  = data.lastAttendanceDay  ?? "";
     itemHonorMedal = data.itemHonorMedal ?? 0;
     starShard = data.starShard ?? 0;
     duelPoint      = data.duelPoint      ?? 0;
-    currentWeekKey = getKstWeekKey();
+    duelPointWeekKey = data.duelPointWeekKey || "";
+    duelLastWeekPoint = data.duelLastWeekPoint ?? 0;
     
 // 화면 전환
 const loginScreen = document.getElementById("loginScreen");
@@ -4180,6 +4216,7 @@ document.getElementById("mapBtn").style.display = "block";
     update();
     showTutorialIfFirstTime();
     loadUpdateNotices();
+    ensureDuelWeek();
   });
 }
 
