@@ -833,7 +833,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.641)
+    (v3.650)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1034,11 +1034,11 @@ button {
   🗺 MAP
 </button>
   
-<!-- ⚔️ 결투 버튼 (MAP과 인벤토리 사이) -->
+<!-- ⚔️ 결투장 버튼 (MAP과 인벤토리 사이) -->
 <button id="duelBtn"
         class="side-menu-btn"
-        onclick="toggleDuelPanel()">
-  ⚔️ 결투
+        onclick="openDuelArena()">
+  ⚔️ 결투장
 </button>
   
   <!-- 🎒 인벤토리 버튼 (로그 버튼 위) -->
@@ -1084,6 +1084,106 @@ button {
   <div id="inventoryList"></div>
 </div>
 
+<!-- ⚔️ 결투장 중앙 팝업 오버레이 -->
+<div id="duelArenaOverlay"
+     style="
+       position:fixed;
+       inset:0;
+       background:rgba(0,0,0,0.6);
+       display:none;
+       z-index:1200;
+     "
+     onclick="if (event.target === this) closeDuelArena();">
+  <!-- 실제 결투장 패널 -->
+  <div id="duelArenaPanel"
+       style="
+         position:absolute;
+         left:50%;
+         top:50%;
+         transform:translate(-50%, -50%);
+         width:520px;
+         max-width:calc(100% - 40px);
+         background:#111;
+         border:1px solid #666;
+         border-radius:10px;
+         padding:12px 14px;
+         color:#fff;
+         box-shadow:0 0 20px rgba(0,0,0,0.9);
+         font-size:14px;
+       "
+       onclick="event.stopPropagation();">
+    
+    <!-- 상단 헤더 -->
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+      <div style="font-size:16px; font-weight:bold;">⚔️ 결투장</div>
+      <div style="display:flex; gap:4px;">
+        <!-- 지난 랭킹 버튼 (나중에 구현) -->
+        <button style="font-size:11px; padding:2px 6px;"
+                onclick="openDuelHistoryPopup()">
+          지난 랭킹
+        </button>
+        <!-- 규칙 / 보상 설명 -->
+        <button style="font-size:11px; padding:2px 6px;"
+                onclick="openDuelHelpPopup()">
+          ?
+        </button>
+        <!-- 닫기 -->
+        <button style="font-size:11px; padding:2px 6px;"
+                onclick="closeDuelArena()">
+          나가기
+        </button>
+      </div>
+    </div>
+
+    <!-- 랭킹 박스 -->
+    <div style="border:1px solid #444; border-radius:6px; padding:8px; margin-bottom:8px;">
+      <div style="font-weight:bold; text-align:center; margin-bottom:4px;">
+        🏆 결투장 랭킹
+      </div>
+      <div id="duelArenaRankList"
+           style="max-height:260px; overflow-y:auto; font-size:13px;">
+        <!-- 나중에 결투 포인트 랭킹 렌더링 예정 -->
+      </div>
+      <div id="duelArenaMyRank"
+           style="margin-top:6px; font-size:12px; color:#aaa; text-align:right;">
+        <!-- 내 랭킹 정보 -->
+      </div>
+    </div>
+
+    <!-- 하단: 좌측 버튼들 / 우측 카르니아 -->
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:10px;">
+      <!-- 좌측: 결투 버튼들 -->
+      <div>
+        <button onclick="openDuelTargetPanel()"
+                style="display:block; margin-bottom:6px; padding:6px 10px; font-size:14px; width:180px;">
+          🎯 결투하기 (지정매칭)
+        </button>
+        <button onclick="handleRandomMatchFromArena()"
+                style="display:block; padding:6px 10px; font-size:14px; width:180px;">
+          🎲 랜덤매칭
+        </button>
+      </div>
+
+      <!-- 우측: 카르니아 -->
+      <div style="display:flex; align-items:flex-end; gap:8px;">
+        <img src="images/npc/duel_carnia.png"
+             alt="결투 심판관 카르니아"
+             style="width:78px; height:auto; border-radius:6px;">
+        <div style="font-size:12px; color:#ddd; max-width:220px; line-height:1.4;">
+          <div style="font-weight:bold; margin-bottom:2px;">
+            결투 심판관 – 카르니아 발크라이트
+          </div>
+          <div>
+            랜덤 매칭은 겁쟁이에게는 독,  
+            진짜 도전자에게는 <span style="color:#ffcc66;">추가 보상</span>이 되지.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+  
   <!-- ⚔️ 결투 패널 -->
 <div id="duelPanel" style="
   position:fixed;
@@ -4648,6 +4748,66 @@ performDuel(target.id, true);
 
 }
 
+// ⚔️ 결투장 열기
+function openDuelArena() {
+  const overlay = document.getElementById("duelArenaOverlay");
+  if (!overlay) return;
+
+  overlay.style.display = "block";
+
+  // 나중에 결투 포인트 랭킹 넣을 자리
+  renderDuelArenaRanking();
+}
+
+// ⚔️ 결투장 닫기
+function closeDuelArena() {
+  const overlay = document.getElementById("duelArenaOverlay");
+  if (!overlay) return;
+  overlay.style.display = "none";
+}
+
+// 🏆 결투장 랭킹 렌더링 (현재는 임시 문구만)
+function renderDuelArenaRanking() {
+  const listEl = document.getElementById("duelArenaRankList");
+  const myEl   = document.getElementById("duelArenaMyRank");
+  if (!listEl || !myEl) return;
+
+  // TODO: 나중에 결투 포인트 기반 랭킹으로 교체
+  listEl.innerHTML = `
+    <div style="padding:8px 0; text-align:center; color:#999; font-size:12px;">
+      결투장 랭킹 시스템 개편 준비 중입니다.<br>
+      (포인트 / 주간 보상은 다음 단계에서 적용)
+    </div>
+  `;
+  myEl.textContent = "";
+}
+
+// 🎯 결투하기(지정매칭) 버튼 → 기존 결투 패널 열기
+function openDuelTargetPanel() {
+  // 기존 패널 토글 함수 재사용
+  toggleDuelPanel();
+}
+
+// 🎲 랜덤매칭 버튼 (결투장 안에서)
+function handleRandomMatchFromArena() {
+  handleRandomMatch(); // 기존 랜덤매칭 로직 그대로 사용
+}
+
+// ❓ 결투장 규칙/보상 설명 (임시)
+function openDuelHelpPopup() {
+  alert(
+    "결투장 개편 준비 중입니다.\n\n" +
+    "• 결투 포인트에 따라 주간 랭킹이 결정됩니다.\n" +
+    "• 랜덤매칭은 추가 보상이 주어집니다.\n" +
+    "(자세한 규칙은 다음 업데이트에서 안내 예정)"
+  );
+}
+
+// 🕰 지난 랭킹 팝업 (임시)
+function openDuelHistoryPopup() {
+  alert("지난주 결투장 랭킹 조회 기능은 준비 중입니다.");
+}
+  
 // ⚔️ 결투 패널 토글
 function toggleDuelPanel() {
   const panel = document.getElementById("duelPanel");
