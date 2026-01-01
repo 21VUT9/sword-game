@@ -2153,6 +2153,9 @@ function performDuel(targetUserId, isRandomMatch) {
     return;
   }
 
+  // ✅ 주간 결투 포인트 주차 체크 (주 바뀌면 포인트 리셋)
+  ensureDuelWeek();
+  
   // 날짜 바뀌었으면 오늘 카운트 리셋
   ensureDuelDate();
 
@@ -3840,6 +3843,7 @@ function login() {
       duelPoint       = data.duelPoint ?? 0;
       duelPointWeekKey = data.duelPointWeekKey || "";
       duelLastWeekPoint = data.duelLastWeekPoint ?? 0;
+      ensureDuelWeek();
 
    }
 
@@ -4196,6 +4200,7 @@ lastAttendanceDay  = data.lastAttendanceDay  ?? "";
     duelPoint      = data.duelPoint      ?? 0;
     duelPointWeekKey = data.duelPointWeekKey || "";
     duelLastWeekPoint = data.duelLastWeekPoint ?? 0;
+    ensureDuelWeek();
     
 // 화면 전환
 const loginScreen = document.getElementById("loginScreen");
