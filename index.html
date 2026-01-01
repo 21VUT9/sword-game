@@ -833,7 +833,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.652)
+    (v3.653)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1114,26 +1114,29 @@ button {
        onclick="event.stopPropagation();">
     
     <!-- 상단 헤더 -->
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-      <div style="font-size:16px; font-weight:bold;">⚔️ 결투장</div>
-      <div style="display:flex; gap:4px;">
-        <!-- 지난 랭킹 버튼 (나중에 구현) -->
-        <button style="font-size:11px; padding:2px 6px;"
-                onclick="openDuelHistoryPopup()">
-          지난 랭킹
-        </button>
-        <!-- 규칙 / 보상 설명 -->
-        <button style="font-size:11px; padding:2px 6px;"
-                onclick="openDuelHelpPopup()">
-          ?
-        </button>
-        <!-- 닫기 -->
-        <button style="font-size:11px; padding:2px 6px;"
-                onclick="closeDuelArena()">
-          나가기
-        </button>
-      </div>
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+  <div>
+    <div style="font-size:16px; font-weight:bold;">⚔️ 결투장</div>
+    <div id="duelRemainText"
+         style="font-size:12px; color:#ccc; margin-top:2px;">
+      오늘 남은 결투: 10/10
     </div>
+  </div>
+  <div style="display:flex; gap:4px;">
+    <button style="font-size:11px; padding:2px 6px;"
+            onclick="openDuelHistoryPopup()">
+      지난 랭킹
+    </button>
+    <button style="font-size:11px; padding:2px 6px;"
+            onclick="openDuelHelpPopup()">
+      ?
+    </button>
+    <button style="font-size:11px; padding:2px 6px;"
+            onclick="closeDuelArena()">
+      나가기
+    </button>
+  </div>
+</div>
 
     <!-- 랭킹 박스 -->
     <div style="border:1px solid #444; border-radius:6px; padding:8px; margin-bottom:8px;">
@@ -1195,7 +1198,7 @@ button {
   border:1px solid #555;
   padding:10px;
   overflow-y:auto;
-  z-index:1102;
+  z-index:1300;
   display:none;
   text-align:left;
   font-size:14px;
@@ -1654,13 +1657,21 @@ function updateHuntUI() {
 // ⚔️ 결투 버튼 UI 갱신
 function updateDuelUI() {
   const btn = document.getElementById("duelBtn");
-  if (!btn) return;
+  const remainTextEl = document.getElementById("duelRemainText");
 
-  ensureDuelDate(); // 날짜 바뀌면 0으로 리셋
+  ensureDuelDate(); // 날짜 바뀌면 결투횟수 리셋
 
   const remain = Math.max(0, 10 - duelCountToday);
 
-  btn.textContent = `⚔️ 결투 (${remain}/10)`;
+  // 버튼 라벨은 항상 '결투장'
+  if (btn) {
+    btn.textContent = "⚔️ 결투장";
+  }
+
+  // 결투장 팝업 안 남은 횟수 표시
+  if (remainTextEl) {
+    remainTextEl.textContent = `오늘 남은 결투: ${remain}/10`;
+  }
 }
 
 // 🎁 아이템 보유 수량
@@ -4771,8 +4782,8 @@ function openDuelArena() {
 
   overlay.style.display = "block";
 
-  // ⚔️ 결투 포인트 기반 랭킹 불러오기
-  loadDuelArenaRanking();
+  updateDuelUI();        // 결투장 열릴 때 남은 횟수 한번 갱신
+  loadDuelArenaRanking();// 랭킹 로드
 }
 
 // ⚔️ 결투장 닫기
@@ -4905,7 +4916,7 @@ function loadDuelArenaRanking() {
 
 // 🎯 결투하기(지정매칭) 버튼 → 기존 결투 패널 열기
 function openDuelTargetPanel() {
-  // 기존 패널 토글 함수 재사용
+  // 기존 결투 패널 열기
   toggleDuelPanel();
 }
 
