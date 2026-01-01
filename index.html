@@ -4636,6 +4636,42 @@ function checkWeeklyDuelReward() {
       console.error("주간 결투 보상 계산 실패:", err);
     });
 }
+
+  // 🏆 주간 결투 보상 지급
+function grantWeeklyDuelReward(myRank) {
+  let rewardText = "";
+
+  if (myRank === 1) {
+    // 1위 - 파괴방지주문서 2개
+    itemProtect += 2;
+    rewardText = "파괴 방지 주문서 2개";
+  } else if (myRank === 2 || myRank === 3) {
+    // 2위, 3위 - 파괴방지주문서 1개
+    itemProtect += 1;
+    rewardText = "파괴 방지 주문서 1개";
+  } else if (myRank >= 4 && myRank <= 6) {
+    // 4~6위 - 강등방어 5개 + 15강 주문서 3개
+    itemDownProtect += 5;
+    itemScroll15 += 3;
+    rewardText = "강등 방어 주문서 5개, 15강 강화 주문서 3개";
+  } else if (myRank >= 7 && myRank <= 10) {
+    // 7~10위 - 강등방어 3개 + 15강 주문서 1개
+    itemDownProtect += 3;
+    itemScroll15 += 1;
+    rewardText = "강등 방어 주문서 3개, 15강 강화 주문서 1개";
+  } else {
+    // 10위 이하(포인트는 있는 사람) - 강등방어 1개
+    itemDownProtect += 1;
+    rewardText = "강등 방어 주문서 1개";
+  }
+
+  // ✅ 이번 주 보상 수령 플래그 세우고 저장
+  duelLastWeekRewardClaimed = true;
+  save();
+
+  return rewardText;
+}
+
   
 // ⏰ 결투장 집계 시간 여부 (월요일 00:00 ~ 00:10, KST 기준)
 function isDuelSettlementTimeKST() {
