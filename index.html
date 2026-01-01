@@ -1563,10 +1563,7 @@ let itemHonorMedal = 0;
 let duelPoint = 0;
 
 // ⭐ 주간 결투 포인트용 보조 필드
-let duelPointWeekKey = "";  // 이 포인트가 속한 주 (예: 2026-W05)
-let duelLastWeekPoint = 0;  // 지난 주 최종 포인트 (보상·표시용)
 let duelLastWeekRank = 0;              // 지난주 내 랭킹
-let duelLastWeekRewardClaimed = false; // 지난주 보상 이미 받았는지
   
 // 전체 유저 목록 캐시 (결투 검색/랜덤매칭용)
 let allUsersCache = [];
@@ -4644,38 +4641,45 @@ function checkWeeklyDuelReward() {
 }
   
 // ⏰ 결투장 집계 시간 여부 (월요일 00:00 ~ 00:10, KST 기준)
-function isInDuelSettlementTime() {
-  const now = getKstNow();
-  const day = now.getDay(); // 0=일, 1=월 ... 6=토
-// 📆 주간 결투 포인트 주기 체크
-function ensureDuelWeek() {
-  const nowKey = getKstWeekKey();
+function isDuelSettlementTimeKST() {
+  const now = getKstNow();          // 이미 위에서 정의한 KST용 시간 함수
+  const day = now.getDay();         // 0=일, 1=월 ... 6=토
 
-  // 아직 한 번도 설정된 적 없으면, 지금 주로 세팅만 한다
-  if (!duelPointWeekKey) {
-    duelPointWeekKey = nowKey;
-    return;
-  }
-
-  // 주 키가 다르면 → 새 주 시작
-  if (duelPointWeekKey !== nowKey) {
-    // 지난 주 포인트를 백업해 둔다 (나중에 보상 계산/팝업에서 사용)
-    duelLastWeekPoint = duelPoint;
-
-    // 새 주 시작 → 포인트는 0부터
-    duelPoint = 0;
-    duelPointWeekKey = nowKey;
-    duelLastWeekRewardClaimed = false;
-  }
-}
-  
   // 월요일이 아니면 집계 시간 아님
   if (day !== 1) return false;
 
   const totalMinutes = now.getHours() * 60 + now.getMinutes();
-  // 00:00 ~ 00:09 분까지를 집계 시간으로 본다
+  // 00:00 ~ 00:09 를 집계 시간으로 본다
   return totalMinutes >= 0 && totalMinutes < 10;
 }
+
+// 🌙 주간 결투 포인트 정리
+function ensureDuelWeek() {
+  const weekKey = getKstWeekKey();  // 한국시간 기준 주 키
+  currentWeekKey = weekKey;
+
+  // 처음 접속한 경우: 그냥 현재 주차로 세팅
+  if (!duelPointWeekKey) {
+    duelPointWeekKey = weekKey;
+    return;
+  }
+
+  // 주차가 바뀌었으면 지난 주 포인트 넘기고 이번 주 초기화
+  if (duelPointWeekKey !== weekKey) {
+    // 지난 주 포인트 백업 (나중에 보상 / 지난 랭킹용)
+    duelLastWeekPoint = duelPoint;
+
+    // 이번 주 포인트 리셋
+    duelPoint = 0;
+
+    // 이번 주로 키 갱신
+    duelPointWeekKey = weekKey;
+
+    // 새 주 시작 → 지난주 보상 아직 안 받음 상태로 초기화
+    duelLastWeekRewardClaimed = false;
+  }
+}
+
   function getYesterdayDateString() {
   const d = new Date();
   d.setDate(d.getDate() - 1);
