@@ -1237,6 +1237,7 @@ button {
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <script>
+  
 /* Firebase */
 firebase.initializeApp({
   apiKey:"AIzaSyC-KjkMnJzN-fOBgg4P4sUo4U_VyhJTOn0",
@@ -1536,6 +1537,9 @@ let isUpgrading = false;
 // 🧭 사냥터 이동 중인지 여부
 let isMoving = false;
 
+// ⭐ 주간 결투 시스템
+let currentWeekKey = "";
+  
 // ⚔️ 결투 관련 상태
 let duelWin = 0;                  // 승 수
 let duelLose = 0;                 // 패 수
@@ -2086,6 +2090,29 @@ function ensureDuelDate() {
     duelCountToday = 0;
     duelTargetsToday = {};
   }
+}
+
+  // 🇰🇷 한국시간(UTC+9) 기준 주 키 생성
+function getKstWeekKey() {
+
+  const now = new Date();
+
+  // 한국 시간 보정 (+9시간)
+  const kst = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+
+  const year = kst.getUTCFullYear();
+
+  // 해당 연도 1월 1일(KST 기준)
+  const start = new Date(Date.UTC(year, 0, 1));
+
+  // 경과 일수
+  const days = Math.floor((kst - start) / (24 * 60 * 60 * 1000));
+
+  // 1주 단위로 인덱싱
+  const week = Math.floor(days / 7) + 1;
+
+  // 예: 2026-W03
+  return `${year}-W${String(week).padStart(2, "0")}`;
 }
   
 // ⚔️ 실제 결투 처리
@@ -3779,6 +3806,8 @@ function login() {
       itemHonorMedal = data.itemHonorMedal ?? 0;
         // ⭐ 결투 포인트 로드 (없으면 0)
   duelPoint       = data.duelPoint ?? 0;
+
+      
     }
 
     // 🟢 여기까지 왔다는 건 실제로 이 탭이 접속을 가져가는 것 → 세션 시작
@@ -3796,6 +3825,7 @@ function login() {
     document.getElementById("logoutBtn").style.display = "block";
     document.getElementById("duelBtn").style.display = "block";
     document.getElementById("mapBtn").style.display = "block";
+    currentWeekKey = getKstWeekKey();
 
     // 🔐 마지막 로그인 유저 저장
     try {
@@ -3814,6 +3844,7 @@ loadUpdateNotices();   // 🔔 로그인 후 공지 불러오기
     update();
     showTutorialIfFirstTime();
     save(); // 신규 생성 직후 값 저장
+
   });
 }
 
@@ -4128,7 +4159,8 @@ lastAttendanceDay  = data.lastAttendanceDay  ?? "";
     itemHonorMedal = data.itemHonorMedal ?? 0;
     starShard = data.starShard ?? 0;
     duelPoint      = data.duelPoint      ?? 0;
-
+    currentWeekKey = getKstWeekKey();
+    
 // 화면 전환
 const loginScreen = document.getElementById("loginScreen");
 const gameScreen  = document.getElementById("gameScreen");
