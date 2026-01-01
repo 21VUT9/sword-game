@@ -833,7 +833,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.656)
+    (v3.657)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1530,6 +1530,10 @@ let lastAttendanceDay = "";   // 마지막 출석 날짜 (streak 전용)
 let maxSwordLevel = 0;   // 계정 전체 최고 강화 기록
 let destroyCount  = 0;   // 계정 전체 누적 파괴 횟수
 let currentSessionId = null;   // 🔐 이 브라우저 탭의 세션 ID
+let duelPointWeekKey = "";           // 현재 내가 플레이 중인 주(월요일 기준)
+let duelLastWeekPoint = 0;           // 지난주 내가 모았던 결투 포인트
+let duelLastWeekRank  = 0;           // 지난주 내 랭킹 (0이면 기록 없음)
+let duelLastWeekRewardClaimed = false; // 지난주 보상 이미 받았는지 여부
 
 // 🆕 강화 진행 중인지 여부
 let isUpgrading = false; 
@@ -1561,6 +1565,8 @@ let duelPoint = 0;
 // ⭐ 주간 결투 포인트용 보조 필드
 let duelPointWeekKey = "";  // 이 포인트가 속한 주 (예: 2026-W05)
 let duelLastWeekPoint = 0;  // 지난 주 최종 포인트 (보상·표시용)
+let duelLastWeekRank = 0;              // 지난주 내 랭킹
+let duelLastWeekRewardClaimed = false; // 지난주 보상 이미 받았는지
   
 // 전체 유저 목록 캐시 (결투 검색/랜덤매칭용)
 let allUsersCache = [];
@@ -2119,6 +2125,24 @@ function getKstWeekKey() {
   return `${year}-W${String(week).padStart(2, "0")}`;
 }
 
+  // 🇰🇷 한국시간 기준 월요일 00:00~00:10 결투장 집계 시간 여부
+function isDuelSettlementTimeKST() {
+  const now = new Date();
+
+  // KST = UTC+9 보정
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+
+  const day = kst.getUTCDay();    // 일:0, 월:1, ... 토:6
+  const hour = kst.getUTCHours(); // 0~23
+  const minute = kst.getUTCMinutes(); // 0~59
+
+  // 월요일이면서 00시 00분 ~ 00시 09분(00:10 직전)까지
+  if (day === 1 && hour === 0 && minute < 10) {
+    return true;
+  }
+  return false;
+}
+
 // 🌙 주간 결투 포인트 정리
 function ensureDuelWeek() {
   // 현재 한국시간 기준 주키 계산
@@ -2150,6 +2174,24 @@ function ensureDuelWeek() {
 function performDuel(targetUserId, isRandomMatch) {
   if (!userId || !userRef) {
     alert("로그인 후 이용 가능합니다.");
+    return;
+  }
+
+    // 🕒 집계 시간 결투 금지 (선택사항)
+  if (isDuelSettlementTimeKST()) {
+    showNpcMessage(
+      `
+      <div style="font-size:16px; font-weight:bold;">
+        잠깐 멈춰라, 지금은 결투를 기록하는 중이다.
+      </div>
+      <div style="margin-top:4px; font-size:13px;">
+        월요일 00:00~00:10에는 결투를 진행할 수 없어.
+      </div>
+      `,
+      "images/npc/duel_carnia.png",
+      true,
+      "결투 심판관 – 카르니아 발크라이트"
+    );
     return;
   }
 
@@ -3784,6 +3826,8 @@ function login() {
         duelPoint: 0,
         duelPointWeekKey: getKstWeekKey(),
         duelLastWeekPoint: 0
+        duelLastWeekRank: 0,
+        duelLastWeekRewardClaimed: false
       });
 
     } else {
@@ -3843,6 +3887,9 @@ function login() {
       duelPoint       = data.duelPoint ?? 0;
       duelPointWeekKey = data.duelPointWeekKey || "";
       duelLastWeekPoint = data.duelLastWeekPoint ?? 0;
+      duelLastWeekRank  = data.duelLastWeekRank ?? 0;
+      duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
+
       ensureDuelWeek();
 
    }
@@ -3916,7 +3963,9 @@ function save() {
     itemHonorMedal: Number(itemHonorMedal),
     duelPoint: Number(duelPoint),
     duelPointWeekKey: duelPointWeekKey,
-    duelLastWeekPoint: Number(duelLastWeekPoint)
+    duelLastWeekPoint: Number(duelLastWeekPoint),
+    duelLastWeekRank: Number(duelLastWeekRank),
+    duelLastWeekRewardClaimed: Boolean(duelLastWeekRewardClaimed)
   };
 
   // ⭐ 강화 수치가 바뀌었을 때만 updated 갱신
@@ -4200,6 +4249,9 @@ lastAttendanceDay  = data.lastAttendanceDay  ?? "";
     duelPoint      = data.duelPoint      ?? 0;
     duelPointWeekKey = data.duelPointWeekKey || "";
     duelLastWeekPoint = data.duelLastWeekPoint ?? 0;
+    duelLastWeekRank  = data.duelLastWeekRank ?? 0;
+    duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
+
     ensureDuelWeek();
     
 // 화면 전환
@@ -4495,7 +4547,6 @@ rankingEl.innerHTML = arr.map((u, i) => {
       }
     });
 }
-
   
 // 오늘 날짜를 "YYYY-MM-DD" 형태로 반환 (출석 체크용)
 function getTodayDateString() {
@@ -4506,6 +4557,125 @@ function getTodayDateString() {
   return `${y}-${m}-${day}`;
 }
 
+  // 🇰🇷 한국 시간(KST) 기준 날짜/시간 얻기
+function getKstNow() {
+  const now = new Date();
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  // KST = UTC+9
+  return new Date(utc + 9 * 60 * 60000);
+}
+
+// 🗓 한국 시간 기준 "이번 주 키" (월요일 날짜 기준)
+function getKstWeekKey() {
+  const now = getKstNow();
+  const day = now.getDay(); // 0=일, 1=월 ... 6=토
+
+  // 이번 주 월요일 날짜로 맞추기
+  const diffToMonday = (day + 6) % 7; // 월=0, 화=1 ... 일=6
+  const monday = new Date(now.getTime() - diffToMonday * 24 * 60 * 60 * 1000);
+
+  const y = monday.getFullYear();
+  const m = String(monday.getMonth() + 1).padStart(2, "0");
+  const d = String(monday.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;  // 예: "2026-01-05"
+}
+
+  // 🏆 지난주 결투 보상 체크 & 지급
+function checkWeeklyDuelReward() {
+  // 이미 받은 적 있으면 아무 것도 안 함
+  if (duelLastWeekRewardClaimed) return;
+  // 지난주 포인트가 0이면 보상 없음
+  if (!duelLastWeekPoint || duelLastWeekPoint <= 0) return;
+
+  // 전체 유저 중에서 내 지난 주 랭킹 계산
+  const usersRef = db.ref("users");
+  usersRef
+    .orderByChild("duelLastWeekPoint")
+    .once("value")
+    .then((snap) => {
+      const arr = [];
+      snap.forEach((child) => {
+        const val = child.val() || {};
+        const uid = child.key;
+        const p = Number(val.duelLastWeekPoint || 0);
+        if (p <= 0) return;
+        arr.push({ id: uid, point: p });
+      });
+
+      if (arr.length === 0) return;
+
+      // 포인트 기준 내림차순 정렬
+      arr.sort((a, b) => b.point - a.point);
+
+      const myIndex = arr.findIndex((u) => u.id === userId);
+      if (myIndex === -1) {
+        // 혹시나 리스트에 없으면 그냥 플래그만 막아둔다
+        duelLastWeekRewardClaimed = true;
+        save();
+        return;
+      }
+
+      const myRank = myIndex + 1;
+      duelLastWeekRank = myRank;
+
+      // 실제 보상 지급
+      const rewardText = grantWeeklyDuelReward(myRank);
+      if (!rewardText) return;
+
+      // 카르니아 팝업
+      showNpcMessage(
+        `
+        <div style="font-size:16px; font-weight:bold; margin-bottom:4px;">
+          지난주 네 결투장 랭킹은 <span style="color:#ffd54f;">${myRank}위</span>였어.
+        </div>
+        <div style="font-size:13px; line-height:1.6;">
+          그 노력에 대한 보상으로,<br>
+          <span style="color:#a5e1ff;">${rewardText}</span>를 지급해 둘게.
+        </div>
+        `,
+        "images/npc/duel_carnia.png",
+        true,
+        "결투 심판관 – 카르니아 발크라이트"
+      );
+    })
+    .catch((err) => {
+      console.error("주간 결투 보상 계산 실패:", err);
+    });
+}
+  
+// ⏰ 결투장 집계 시간 여부 (월요일 00:00 ~ 00:10, KST 기준)
+function isInDuelSettlementTime() {
+  const now = getKstNow();
+  const day = now.getDay(); // 0=일, 1=월 ... 6=토
+// 📆 주간 결투 포인트 주기 체크
+function ensureDuelWeek() {
+  const nowKey = getKstWeekKey();
+
+  // 아직 한 번도 설정된 적 없으면, 지금 주로 세팅만 한다
+  if (!duelPointWeekKey) {
+    duelPointWeekKey = nowKey;
+    return;
+  }
+
+  // 주 키가 다르면 → 새 주 시작
+  if (duelPointWeekKey !== nowKey) {
+    // 지난 주 포인트를 백업해 둔다 (나중에 보상 계산/팝업에서 사용)
+    duelLastWeekPoint = duelPoint;
+
+    // 새 주 시작 → 포인트는 0부터
+    duelPoint = 0;
+    duelPointWeekKey = nowKey;
+    duelLastWeekRewardClaimed = false;
+  }
+}
+  
+  // 월요일이 아니면 집계 시간 아님
+  if (day !== 1) return false;
+
+  const totalMinutes = now.getHours() * 60 + now.getMinutes();
+  // 00:00 ~ 00:09 분까지를 집계 시간으로 본다
+  return totalMinutes >= 0 && totalMinutes < 10;
+}
   function getYesterdayDateString() {
   const d = new Date();
   d.setDate(d.getDate() - 1);
@@ -4844,6 +5014,36 @@ performDuel(target.id, true);
 
 // ⚔️ 결투장 열기
 function openDuelArena() {
+
+  
+  // 집계 시간 잠금
+  if (isDuelSettlementTimeKST()) {
+    showNpcMessage(
+      `
+      <div style="font-size:16px; font-weight:bold;">
+        지금은 결투장 집계 중이야.
+      </div>
+      <div style="margin-top:4px; font-size:13px;">
+        매주 월요일 00:00 ~ 00:10 사이에는<br>
+        결투장에 입장할 수 없어.
+      </div>
+      `,
+      "images/npc/duel_carnia.png",
+      true,
+      "결투 심판관 – 카르니아 발크라이트"
+    );
+    return;
+  }
+
+  // 주간 포인트 정리
+  if (typeof ensureDuelWeek === "function") {
+    ensureDuelWeek();
+  }
+
+    // 지난주 보상 체크
+  checkWeeklyDuelReward();
+  
+ // 결투장 열기 로직
   const overlay = document.getElementById("duelArenaOverlay");
   if (!overlay) return;
 
