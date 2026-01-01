@@ -4912,30 +4912,70 @@ function loadDuelArenaRanking() {
     });
 }
 
-// 🎯 결투하기(지정매칭) 버튼 → 기존 결투 패널 열기
+// 🎯 결투하기(지정매칭) 버튼 → 결투 패널 열기 + 위치 조정
 function openDuelTargetPanel() {
   const panel = document.getElementById("duelPanel");
-  const btn   = document.querySelector("#duelArenaPanel button[data-duel-target]");
-  if (!panel || !btn) return;
+  if (!panel) return;
 
-  // 버튼 기준 좌표 구하기
-  const rect = btn.getBoundingClientRect();
+  // 이미 열려있으면 닫기
+  if (panel.style.display === "block") {
+    panel.style.display = "none";
+    return;
+  }
 
-  // 결투장 패널 기준 좌표 변환
-  const arenaRect = document
-    .getElementById("duelArenaPanel")
-    .getBoundingClientRect();
-
-  // 🔹 버튼 오른쪽 위쪽에 뜨도록 위치 지정
-  const offsetX = 12;   // 버튼 오른쪽으로 12px
-  const offsetY = -6;   // 버튼 위쪽으로 6px
-
-  panel.style.left = (rect.left - arenaRect.left + offsetX) + "px";
-  panel.style.top  = (rect.top  - arenaRect.top  + offsetY) + "px";
-
-  // 패널 열기
+  // ✅ 기존 토글 로직처럼 리스트/검색 세팅
+  renderDuelList("");
   panel.style.display = "block";
+  const input = document.getElementById("duelSearchInput");
+  if (input) {
+    input.value = "";
+    input.focus();
+  }
+
+  // 🎯 결투장 안의 "결투하기(지정매칭)" 버튼 기준으로 위치 계산
+  const btn = document.querySelector("#duelArenaPanel button[onclick='openDuelTargetPanel()']");
+  if (!btn) return;
+
+  const btnRect = btn.getBoundingClientRect();
+
+  // 패널 실제 크기 측정 (표시된 상태여야 함)
+  const panelRect = panel.getBoundingClientRect();
+  let panelWidth = panelRect.width || 260;
+  let panelHeight = panelRect.height || 260;
+
+  let left;
+  let top;
+
+  if (window.innerWidth <= 520) {
+    // 📱 모바일: 화면 아래쪽 중앙 쪽에 위치
+    left = (window.innerWidth - panelWidth) / 2;
+    top = btnRect.bottom + 8;
+
+    // 아래로 넘치면 위로 조금 올리기
+    if (top + panelHeight > window.innerHeight - 10) {
+      top = window.innerHeight - panelHeight - 10;
+    }
+  } else {
+    // 🖥 PC: 버튼 오른쪽에 붙이기
+    left = btnRect.right + 8;
+    top = btnRect.top;
+
+    // 오른쪽으로 넘치면 버튼 왼쪽으로
+    if (left + panelWidth > window.innerWidth - 10) {
+      left = btnRect.left - panelWidth - 8;
+    }
+    // 아래로 넘치면 화면 안으로 올리기
+    if (top + panelHeight > window.innerHeight - 10) {
+      top = window.innerHeight - panelHeight - 10;
+    }
+  }
+
+  panel.style.position = "fixed";      // 오버레이 위에 고정
+  panel.style.left = `${left}px`;
+  panel.style.top = `${top}px`;
+  panel.style.zIndex = 1300;           // 결투장 오버레이(1200)보다 위
 }
+
 
 // 🎲 랜덤매칭 버튼 (결투장 안에서)
 function handleRandomMatchFromArena() {
