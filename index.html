@@ -593,6 +593,55 @@ button {
   color: #aaa;
   margin-top: 6px;
 }
+
+/* 📢 업데이트 공지 팝업 */
+#updateNoticeOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1950;
+}
+
+.update-notice-box {
+  background: #222;
+  border: 1px solid #555;
+  border-radius: 10px;
+  padding: 14px 18px;
+  max-width: 360px;
+  width: 90%;
+  color: #fff;
+  font-size: 13px;
+  text-align: left;
+  box-shadow: 0 0 15px rgba(0,0,0,0.8);
+}
+
+.update-notice-title {
+  font-weight: bold;
+  margin-bottom: 8px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.update-notice-content {
+  white-space: pre-line;
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+
+.update-notice-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.update-notice-nav button {
+  font-size: 12px;
+  padding: 4px 8px;
+}
   
 /* 📘 처음 접속 튜토리얼 오버레이 */
 #tutorialOverlay {
@@ -784,7 +833,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.639)
+    (v3.640)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -796,6 +845,15 @@ button {
 <div id="gameScreen" style="display:none;">
   <h1>⚔️ 검 키우기</h1>
 
+<div id="updateNoticeBar"
+     style="font-size:13px; color:#aaa; margin-top:4px; cursor:pointer; display:none;"
+     onclick="openLatestNoticePopup()">
+  / <span style="color:#ff5555; font-weight:bold;">[공지]</span>
+    <span id="updateNoticeTitle" style="margin-left:4px;">신규 (v3.6) 업데이트 확인하기</span> /
+</div>
+
+    <hr class="section-divider">
+  
   <!-- 🔥 사냥터 배경 박스 (프로필~랭킹 전체를 감쌈) -->
   <div id="fieldBg" class="field-bg">
 
@@ -932,6 +990,25 @@ button {
   <button id="rankProfileViewBtn">👁 프로필 보기</button>
 </div>
 
+<!-- 📢 업데이트 공지 팝업 -->
+<div id="updateNoticeOverlay" onclick="closeUpdateNoticePopup()">
+  <div class="update-notice-box" onclick="event.stopPropagation()">
+    <div class="update-notice-title" id="updateNoticePopupTitle"></div>
+    <div class="update-notice-content" id="updateNoticePopupContent"></div>
+
+    <div class="update-notice-nav">
+      <button onclick="showPrevNotice()">◀ 이전</button>
+      <span id="updateNoticeIndexLabel"></span>
+      <button onclick="showNextNotice()">다음 ▶</button>
+    </div>
+
+    <button style="margin-top:8px; width:100%; padding:6px 0;"
+            onclick="closeUpdateNoticePopup()">
+      닫기
+    </button>
+  </div>
+</div>
+  
 </div> <!-- 🔚 gameScreen -->
 
 <button id="attendanceBtn" onclick="checkAttendance()">출석</button>
@@ -1076,6 +1153,98 @@ const logRef = db.ref("logs");
 
 function getTutorialKeyForUser(id) {
   return `swordGameTutorialSeen_${id}`;
+}
+
+  // 🔔 업데이트 공지 목록 불러오기
+function loadUpdateNotices() {
+  const ref = db.ref("updateNotices");
+
+  ref
+    .orderByChild("createdAt")
+    .limitToLast(20)        // 최근 20개까지만
+    .once("value")
+    .then((snap) => {
+      updateNotices = [];
+      snap.forEach((child) => {
+        const v = child.val() || {};
+        updateNotices.push({
+          id: child.key,
+          title: v.title || "",
+          content: v.content || "",
+          createdAt: v.createdAt || 0
+        });
+      });
+
+      if (!updateNotices.length) {
+        return;
+      }
+
+      // 최신 공지는 배열 마지막
+      currentNoticeIndex = updateNotices.length - 1;
+      const latest = updateNotices[currentNoticeIndex];
+
+      const bar = document.getElementById("updateNoticeBar");
+      const titleEl = document.getElementById("updateNoticeTitle");
+
+      if (bar && titleEl) {
+        titleEl.textContent = latest.title || "신규 업데이트 확인하기";
+        bar.style.display = "block";
+      }
+    })
+    .catch((err) => {
+      console.error("[updateNotices] load error", err);
+    });
+}
+
+  function openLatestNoticePopup() {
+  if (!updateNotices.length) return;
+
+  // 항상 최신 공지부터 열기
+  currentNoticeIndex = updateNotices.length - 1;
+  showNoticeAt(currentNoticeIndex);
+
+  const overlay = document.getElementById("updateNoticeOverlay");
+  if (overlay) {
+    overlay.style.display = "flex";
+  }
+}
+
+function closeUpdateNoticePopup() {
+  const overlay = document.getElementById("updateNoticeOverlay");
+  if (overlay) {
+    overlay.style.display = "none";
+  }
+}
+
+function showNoticeAt(idx) {
+  if (!updateNotices.length) return;
+  if (idx < 0 || idx >= updateNotices.length) return;
+
+  const n = updateNotices[idx];
+
+  const titleEl   = document.getElementById("updateNoticePopupTitle");
+  const contentEl = document.getElementById("updateNoticePopupContent");
+  const idxLabel  = document.getElementById("updateNoticeIndexLabel");
+
+  if (!titleEl || !contentEl || !idxLabel) return;
+
+  titleEl.textContent   = n.title || "(제목 없음)";
+  contentEl.textContent = n.content || "";
+  idxLabel.textContent  = `${idx + 1} / ${updateNotices.length}`;
+
+  currentNoticeIndex = idx;
+}
+
+function showPrevNotice() {
+  if (!updateNotices.length) return;
+  const next = Math.max(0, currentNoticeIndex - 1);
+  showNoticeAt(next);
+}
+
+function showNextNotice() {
+  if (!updateNotices.length) return;
+  const next = Math.min(updateNotices.length - 1, currentNoticeIndex + 1);
+  showNoticeAt(next);
 }
 
 // 🔰 강화 단계별 검 이름 / 설명 / 이미지 경로
@@ -1279,6 +1448,10 @@ let lastDuelDate = "";            // 마지막 결투 날짜 (YYYY-MM-DD)
 // 오늘 같은 상대에게 몇 번 도전했는지: { 상대아이디: 횟수 }
 let duelTargetsToday = {};
 
+// 🔔 업데이트 공지 상태
+let updateNotices = [];       // {id, title, content, createdAt} 배열
+let currentNoticeIndex = 0;   // 팝업에서 현재 보고 있는 인덱스
+  
 // 🏅 명예의 훈장 (결투 보상 재화)
 let itemHonorMedal = 0;
   
@@ -3512,6 +3685,10 @@ function login() {
     } catch (e) {
       console.warn("localStorage set 실패", e);
     }
+
+    update();
+showTutorialIfFirstTime();
+loadUpdateNotices();   // 🔔 로그인 후 공지 불러오기
 
     // 🏆 로그인 직후 랭킹/내 랭킹 갱신
     loadRanking();
