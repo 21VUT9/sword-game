@@ -833,7 +833,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.659)
+    (v3.661)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -5252,7 +5252,6 @@ function handleRandomMatchFromArena() {
   handleRandomMatch(); // 기존 랜덤매칭 로직 그대로 사용
 }
 
-// ❓ 결투장 규칙/보상 설명 (임시)
 // ⚔️ 결투장 규칙 / 보상 설명 팝업
 function openDuelHelpPopup() {
   const html = `
@@ -5296,10 +5295,132 @@ function openDuelHelpPopup() {
   );
 }
 
-// 🕰 지난 랭킹 팝업 (임시)
+// 🕰 지난 랭킹 팝업
 function openDuelHistoryPopup() {
-  alert("지난주 결투장 랭킹 조회 기능은 준비 중입니다.");
+  const usersRef = db.ref("users");
+
+  usersRef
+    .orderByChild("duelLastWeekPoint")
+    .once("value")
+    .then((snap) => {
+      const arr = [];
+
+      snap.forEach((child) => {
+        const val = child.val() || {};
+        const point = Number(val.duelLastWeekPoint || 0);
+        if (point <= 0) return;
+
+        arr.push({
+          id: child.key,
+          duelLastWeekPoint: point,
+          sword: Number(val.sword || 0),
+          duelWin: Number(val.duelWin || 0),
+          duelLose: Number(val.duelLose || 0),
+        });
+      });
+
+      if (arr.length === 0) {
+        showNpcMessage(
+          `
+          <div style="font-size:16px; font-weight:bold; margin-bottom:4px;">
+            지난주 결투장 랭킹
+          </div>
+          <div style="font-size:13px;">
+            지난주에는 결투장에 기록이 남은 검사가 없었어.<br>
+            이번 주엔 네 이름을 올려보는 건 어때?
+          </div>
+          `,
+          "images/npc/duel_carnia.png",
+          true,
+          "결투 심판관 – 카르니아 발크라이트"
+        );
+        return;
+      }
+
+      // 포인트 기준 내림차순
+      arr.sort((a, b) => b.duelLastWeekPoint - a.duelLastWeekPoint);
+
+      // TOP 10만 출력
+      const top10 = arr.slice(0, 10);
+
+      const rowsHtml = top10.map((u, i) => {
+        const wInfo = getWeaponInfo(u.sword);
+        const weaponNameStyled = coloredWeaponName(u.sword, wInfo.name);
+
+        return `
+          <tr>
+            <td style="padding:2px 4px; text-align:center;">${i + 1}</td>
+            <td style="padding:2px 4px;">${u.id}</td>
+            <td style="padding:2px 4px; text-align:right;">${u.duelLastWeekPoint}</td>
+            <td style="padding:2px 4px;">${weaponNameStyled} ${coloredLevel(u.sword)}</td>
+            <td style="padding:2px 4px; text-align:right;">
+              ${u.duelWin}승 ${u.duelLose}패
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      // 내 지난주 랭킹 문구
+      let myRankText = "지난주 네 결투장 기록은 남아있지 않네.";
+      const myIndex = arr.findIndex((u) => u.id === userId);
+
+      if (myIndex !== -1) {
+        const myRank = myIndex + 1;
+        const myPoint = arr[myIndex].duelLastWeekPoint;
+        myRankText =
+          `지난주 네 랭킹은 <span style="color:#ffd54f;">${myRank}위</span>, ` +
+          `결투포인트 <span style="color:#a5e1ff;">${myPoint}</span>점이었어.`;
+      }
+
+      const html = `
+        <div style="font-size:16px; font-weight:bold; margin-bottom:4px;">
+          지난주 결투장 랭킹
+        </div>
+        <div style="font-size:12px; margin-bottom:6px; color:#ccc;">
+          매주 월요일 00:00(KST) 기준으로 집계된 기록이야.
+        </div>
+        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+          <thead>
+            <tr style="border-bottom:1px solid #444;">
+              <th style="padding:2px 4px; text-align:center;">순위</th>
+              <th style="padding:2px 4px; text-align:left;">검사</th>
+              <th style="padding:2px 4px; text-align:right;">포인트</th>
+              <th style="padding:2px 4px; text-align:left;">무기</th>
+              <th style="padding:2px 4px; text-align:right;">전적</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+        <div style="margin-top:8px; font-size:12px;">
+          ${myRankText}
+        </div>
+      `;
+
+      showNpcMessage(
+        html,
+        "images/npc/duel_carnia.png",
+        true,
+        "결투 심판관 – 카르니아 발크라이트"
+      );
+    })
+    .catch((err) => {
+      console.error("지난주 결투장 랭킹 로드 실패:", err);
+      showNpcMessage(
+        `
+        <div style="font-size:14px;">
+          지난주 랭킹을 불러오는 데 실패했어.<br>
+          잠시 후에 다시 시도해 줘.
+        </div>
+        `,
+        "images/npc/duel_carnia.png",
+        true,
+        "결투 심판관 – 카르니아 발크라이트"
+      );
+    });
 }
+
   
 // ⚔️ 결투 패널 토글
 function toggleDuelPanel() {
