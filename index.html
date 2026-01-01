@@ -4924,8 +4924,8 @@ function openDuelTargetPanel() {
   const input = document.getElementById("duelSearchInput");
   if (input) {
     input.value = "";
-    input.focus();
-  }
+input.focus({ preventScroll: true });
+}
 
   // 🎯 결투장 안의 "결투하기(지정매칭)" 버튼 기준으로 위치 계산
   const btn = document.querySelector("#duelArenaPanel button[onclick='openDuelTargetPanel()']");
