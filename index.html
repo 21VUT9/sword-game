@@ -859,7 +859,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.713)
+    (v3.721)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1760,6 +1760,8 @@ let itemProtect  = 0;   // 파괴방지 주문서
 let itemSuper    = 0;   // 슈퍼강화 주문서
 let itemDownProtect = 0;  // 🆕 강등방지 주문서
 let starShard = 0;      // ⭐ 빛나지 못한 별의 조각
+let itemScroll21 = 0;     // 21강 강화 주문서
+let itemRatePlus5 = 0;    // 강화확률 +5% 주문서
   
 // 사냥터 정보 (추천 레벨 / 이름)
 const HUNT_FIELDS = [
@@ -3918,7 +3920,9 @@ function login() {
         itemProtect: Number(itemProtect),
         itemSuper: Number(itemSuper),
         itemDownProtect: Number(itemDownProtect),
-        starShard: Number(starShard),   // ⭐ 추가
+        starShard: Number(starShard),  
+        itemScroll21: 0,   //  21강 강화 주문서
+        itemRateUp5: 0,    //  강화 확률 +5% 주문서
         huntStamina: 20,
         lastStaminaUpdate: Date.now(),
         // ⚔️ 결투 초기값
@@ -3977,6 +3981,8 @@ function login() {
       itemSuper          = data.itemSuper    ?? 0;
       itemDownProtect    = data.itemDownProtect ?? 0;
       starShard          = data.starShard ?? 0;
+      itemScroll21    = Number(data.itemScroll21    ?? 0); 
+      itemRateUp5     = Number(data.itemRateUp5     ?? 0);
       huntStamina        = data.huntStamina       ?? 20;
       lastStaminaUpdate  = data.lastStaminaUpdate ?? Date.now();
 
@@ -4059,6 +4065,8 @@ function save() {
     lastHuntDate: lastHuntDate,
     itemScroll15: Number(itemScroll15),
     itemProtect: Number(itemProtect),
+    itemScroll21,  
+    itemRateUp5,   
     itemSuper: Number(itemSuper),
     itemDownProtect: Number(itemDownProtect),
     starShard: Number(starShard),
@@ -4347,6 +4355,8 @@ lastAttendanceDay  = data.lastAttendanceDay  ?? "";
     itemProtect        = data.itemProtect  ?? 0;
     itemSuper          = data.itemSuper    ?? 0;
     itemDownProtect    = data.itemDownProtect ?? 0;
+    itemScroll21,  
+    itemRateUp5,   
     huntStamina       = data.huntStamina       ?? 20;
     lastStaminaUpdate = data.lastStaminaUpdate ?? Date.now();
         // ⚔️ 결투 관련 값 불러오기
@@ -5684,6 +5694,16 @@ function renderInventory() {
     });
   }
 
+    // 1-2) 21강 강화 주문서 🆕
+  if (itemScroll21 > 0) {
+    items.push({
+      icon: "images/items/scroll_21.png",   // 네가 저장한 파일 경로에 맞게 수정
+      name: "21강 강화 주문서",
+      count: itemScroll21,
+      desc: "21강 도전에 사용할 수 있는 고급 강화 주문서입니다."
+    });
+  }
+
   if (itemHonorMedal > 0) {
   items.push({
     key: "honorMedal",
@@ -5733,6 +5753,15 @@ if (starShard > 0) {
     desc: "부서진 칼날 속에 남겨진 흔적입니다. 조각이 모이면, 특수한 아이템과 교환할 수 있습니다."
   });
 }
+  // 🆕 강화 확률 +5% 주문서
+  if (itemRateUp5 > 0) {
+    items.push({
+      icon: "images/items/scroll_rateup5.png",  // 네 파일명에 맞춰 수정
+      name: "강화 확률 +5% 주문서",
+      count: itemRateUp5,
+      desc: "다음 한 번의 강화 시 확률을 +5%p 올려주는 주문서입니다."
+    });
+  }
   const title = document.createElement("p");
   title.textContent = "보유 아이템";
   title.style.margin = "0 0 4px 0";
