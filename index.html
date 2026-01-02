@@ -4724,7 +4724,6 @@ function checkWeeklyDuelReward() {
 
   const usersRef = db.ref("users");
 
-  // 전체 유저 중에서 지난 주 랭킹 스냅샷 계산
   usersRef
     .orderByChild("duelLastWeekPoint")
     .once("value")
@@ -4735,28 +4734,27 @@ function checkWeeklyDuelReward() {
         const val = child.val() || {};
         const uid = child.key;
         const p = Number(val.duelLastWeekPoint || 0);
-        if (p <= 0) return; // 지난주 포인트 없는 유저는 제외
+        if (p <= 0) return;
 
         arr.push({
           id: uid,
           point: p,
-          updated: Number(val.duelLastWeekUpdated || 0), // 지난주 기준 마지막 갱신 시각
+          updated: Number(val.duelLastWeekUpdated || 0)
         });
       });
 
       if (arr.length === 0) return;
 
-      // 포인트 기준 내림차순 정렬 + 동점 시 더 먼저 도달한 사람 우선
+      // 포인트 기준 내림차순 정렬 + 동점 시 먼저 도달한 사람 우선
       arr.sort((a, b) => {
         if (b.point !== a.point) {
-          return b.point - a.point; // 포인트 높은 순
+          return b.point - a.point;
         }
         const aTime = Number(a.updated || 0);
         const bTime = Number(b.updated || 0);
-        return aTime - bTime; // 같은 포인트면 먼저 도달한 사람
+        return aTime - bTime;
       });
 
-      // 🎯 정렬 결과를 그대로 지난주 랭킹으로 스냅샷
       const updates = {};
       let myRank = 0;
 
@@ -4768,22 +4766,22 @@ function checkWeeklyDuelReward() {
         }
       });
 
-      // 이론상 여기 도달했는데 myRank가 0이면 뭔가 꼬인 상황 → 그냥 종료
+      // 내 계정이 배열 안에 없으면 그냥 종료
       if (myRank === 0) return;
 
-      // DB에 전 유저의 지난주 랭킹 스냅샷 저장
+      // 전 유저 지난주 랭킹을 스냅샷으로 저장
       usersRef.update(updates).catch((err) => {
         console.error("주간 결투 랭킹 스냅샷 저장 실패:", err);
       });
 
-      // 내 로컬에도 지난주 랭킹 반영
+      // 내 로컬에도 랭킹 반영
       duelLastWeekRank = myRank;
 
-      // 실제 보상 지급
+      // 보상 지급
       const rewardText = grantWeeklyDuelReward(myRank);
       if (!rewardText) return;
 
-      // 카르니아 팝업 (기존 사용하던 문구 그대로 써도 됨)
+      // 카르니아 안내 팝업
       showNpcMessage(
         `
         <div style="font-size:16px; font-weight:bold; margin-bottom:4px;">
