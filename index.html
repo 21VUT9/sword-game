@@ -467,6 +467,20 @@ button {
   line-height: 1.4;
 }
 
+  /* 🎨 게임 타이틀 로고 */
+.game-title {
+  margin: 16px 0 8px 0;
+  text-align: center;
+}
+
+.game-title-logo {
+  max-width: 360px;   /* PC에서 너무 커지지 않게 */
+  width: 80%;         /* 모바일에서는 화면 기준으로 줄어듦 */
+  height: auto;
+  image-rendering: auto;
+}
+
+
 .current-field-info-sub {
   font-size: 14px;
   color: #cccccc;        /* 추천레벨/성공확률 회색 */
@@ -843,7 +857,13 @@ button {
   
 <!-- 🎮 게임 -->
 <div id="gameScreen" style="display:none;">
-  <h1>🛠️ 퍼그란트의 대장간</h1>
+  <h1 class="game-title">
+    <img
+      src="images/ui/title_forge.png"
+      alt="퍼그란트의 대장간"
+      class="game-title-logo"
+    >
+  </h1>
 
 <div id="updateNoticeBar"
      style="font-size:13px; color:#aaa; margin-top:4px; cursor:pointer; display:none;"
