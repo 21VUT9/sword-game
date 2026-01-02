@@ -859,7 +859,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.711)
+    (v3.712)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -4480,6 +4480,25 @@ function closeOtherUserProfilePopup() {
 document.addEventListener("DOMContentLoaded", function () {
   const overlay  = document.getElementById("otherProfileOverlay");
   const closeBtn = document.getElementById("otherProfileCloseBtn");
+
+  // ⌨ ESC 로 공지 닫기
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+
+  // 공지 팝업 요소
+  const popup = document.getElementById("noticePopup");
+  const overlay = document.getElementById("noticeOverlay");
+
+  // 팝업이 열려 있으면 닫기
+  if (popup && popup.style.display !== "none") {
+    if (typeof closeNoticePopup === "function") {
+      closeNoticePopup();
+    } else {
+      popup.style.display = "none";
+      if (overlay) overlay.style.display = "none";
+    }
+  }
+});
 
   // 어두운 배경 클릭 → 닫기
   if (overlay) {
