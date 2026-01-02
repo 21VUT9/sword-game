@@ -859,7 +859,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.712)
+    (v3.713)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2237,20 +2237,24 @@ function ensureDuelWeek() {
     return;
   }
 
-  // 🗓 주차가 바뀌었으면 지난 주 포인트 백업 + 이번 주 초기화
-  if (duelPointWeekKey !== weekKey) {
-    // 지난 주 포인트 백업 (보상/지난 랭킹용)
-    duelLastWeekPoint = duelPoint;
+// 🗓 주차가 바뀌었으면 지난 주 포인트 + 갱신 시각 스냅샷 저장 후, 이번 주 초기화
+if (duelPointWeekKey !== weekKey) {
+  // 지난 주 포인트 & 마지막 갱신 시각 스냅샷
+  duelLastWeekPoint   = duelPoint;
+  duelLastWeekUpdated = duelUpdated || 0;
 
-    // 이번 주 포인트 리셋
-    duelPoint = 0;
+  // 지난 주 랭킹은 새로 집계할 예정이므로 초기화
+  duelLastWeekRank = 0;
 
-    // 이번 주로 키 갱신
-    duelPointWeekKey = weekKey;
+  // "새 주가 시작됐다 → 지난주 보상은 아직 안 받은 상태"로 표시
+  duelLastWeekRewardClaimed = false;
 
-    // "새 주 시작 → 지난주 보상은 아직 안 받은 상태"
-    duelLastWeekRewardClaimed = false;
-  }
+  // 이번 주 포인트/갱신 시각 리셋
+  duelPoint   = 0;
+  duelUpdated = 0;
+
+  // 이번 주 주차 키 갱신
+  duelPointWeekKey = weekKey;
 }
   
 // ⚔️ 실제 결투 처리
@@ -4711,52 +4715,75 @@ function getKstWeekKey() {
   return `${y}-${m}-${d}`;  // 예: "2026-01-05"
 }
 
-  // 🏆 지난주 결투 보상 체크 & 지급
+// 🏆 지난주 결투 보상 체크 & 지급
 function checkWeeklyDuelReward() {
   // 이미 받은 적 있으면 아무 것도 안 함
   if (duelLastWeekRewardClaimed) return;
   // 지난주 포인트가 0이면 보상 없음
   if (!duelLastWeekPoint || duelLastWeekPoint <= 0) return;
 
-  // 전체 유저 중에서 내 지난 주 랭킹 계산
   const usersRef = db.ref("users");
+
+  // 전체 유저 중에서 지난 주 랭킹 스냅샷 계산
   usersRef
     .orderByChild("duelLastWeekPoint")
     .once("value")
     .then((snap) => {
       const arr = [];
+
       snap.forEach((child) => {
         const val = child.val() || {};
         const uid = child.key;
         const p = Number(val.duelLastWeekPoint || 0);
-        if (p <= 0) return;
+        if (p <= 0) return; // 지난주 포인트 없는 유저는 제외
+
         arr.push({
-  id: uid,
-  point: p,
-  updated: Number(val.duelLastWeekUpdated || 0)   // 🔹 지난주 기준 시각
-});
-}); 
+          id: uid,
+          point: p,
+          updated: Number(val.duelLastWeekUpdated || 0), // 지난주 기준 마지막 갱신 시각
+        });
+      });
 
       if (arr.length === 0) return;
 
-      // 포인트 기준 내림차순 정렬
+      // 포인트 기준 내림차순 정렬 + 동점 시 더 먼저 도달한 사람 우선
       arr.sort((a, b) => {
-  if (b.point !== a.point) {
-    return b.point - a.point;  // 포인트 높은 순
-  }
-  const aTime = Number(a.updated || 0);
-  const bTime = Number(b.updated || 0);
-  return aTime - bTime;        // 같은 포인트면 더 먼저 도달한 사람(시간이 작은 쪽)
-});
+        if (b.point !== a.point) {
+          return b.point - a.point; // 포인트 높은 순
+        }
+        const aTime = Number(a.updated || 0);
+        const bTime = Number(b.updated || 0);
+        return aTime - bTime; // 같은 포인트면 먼저 도달한 사람
+      });
 
-      const myRank = myIndex + 1;
+      // 🎯 정렬 결과를 그대로 지난주 랭킹으로 스냅샷
+      const updates = {};
+      let myRank = 0;
+
+      arr.forEach((u, idx) => {
+        const rank = idx + 1;
+        updates[`${u.id}/duelLastWeekRank`] = rank;
+        if (u.id === userId) {
+          myRank = rank;
+        }
+      });
+
+      // 이론상 여기 도달했는데 myRank가 0이면 뭔가 꼬인 상황 → 그냥 종료
+      if (myRank === 0) return;
+
+      // DB에 전 유저의 지난주 랭킹 스냅샷 저장
+      usersRef.update(updates).catch((err) => {
+        console.error("주간 결투 랭킹 스냅샷 저장 실패:", err);
+      });
+
+      // 내 로컬에도 지난주 랭킹 반영
       duelLastWeekRank = myRank;
 
       // 실제 보상 지급
       const rewardText = grantWeeklyDuelReward(myRank);
       if (!rewardText) return;
 
-      // 카르니아 팝업
+      // 카르니아 팝업 (기존 사용하던 문구 그대로 써도 됨)
       showNpcMessage(
         `
         <div style="font-size:16px; font-weight:bold; margin-bottom:4px;">
