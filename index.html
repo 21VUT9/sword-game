@@ -847,7 +847,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.704)
+    (v3.705)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2187,20 +2187,26 @@ function isDuelSettlementTimeKST() {
 }
 
 // 🌙 주간 결투 포인트 정리
+// 🌙 주간 결투 포인트 정리
 function ensureDuelWeek() {
-  // 현재 한국시간 기준 주키 계산
-  const weekKey = getKstWeekKey();
+  const weekKey = getKstWeekKey();   // 한국시간 기준 주 키
   currentWeekKey = weekKey;
 
-  // 처음 접속한 경우: 그냥 현재 주차로 세팅
+  // 🔰 처음 접속한 경우 (결투 시스템 최초 적용 / 신규 계정)
   if (!duelPointWeekKey) {
     duelPointWeekKey = weekKey;
+
+    // "지난 주"라는 개념 자체가 없으므로, 보상도 없는 상태로 초기화
+    duelLastWeekPoint = 0;
+    duelLastWeekRank = 0;
+    duelLastWeekRewardClaimed = true;   // 지난주 보상은 없다고 간주
+
     return;
   }
 
-  // 주차가 바뀌었으면 지난 주 포인트 넘기고 이번 주 초기화
+  // 🗓 주차가 바뀌었으면 지난 주 포인트 백업 + 이번 주 초기화
   if (duelPointWeekKey !== weekKey) {
-    // 지난 주 포인트 백업 (나중에 보상 / 지난 랭킹용)
+    // 지난 주 포인트 백업 (보상/지난 랭킹용)
     duelLastWeekPoint = duelPoint;
 
     // 이번 주 포인트 리셋
@@ -2208,6 +2214,9 @@ function ensureDuelWeek() {
 
     // 이번 주로 키 갱신
     duelPointWeekKey = weekKey;
+
+    // "새 주 시작 → 지난주 보상은 아직 안 받은 상태"
+    duelLastWeekRewardClaimed = false;
   }
 }
   
@@ -5442,19 +5451,16 @@ function openDuelHistoryPopup() {
         return;
       }
 
+// 🔁 지난주 포인트 기준 내림차순 정렬
 arr.sort((a, b) => {
-
-  // 1️⃣ 결투 포인트가 다르면 높은 사람이 먼저
-  if (b.duelPoint !== a.duelPoint) {
-    return b.duelPoint - a.duelPoint;
+  if (b.duelLastWeekPoint !== a.duelLastWeekPoint) {
+    return b.duelLastWeekPoint - a.duelLastWeekPoint; // 포인트 높은 순
   }
 
-  // 2️⃣ 포인트가 같으면
-  //    updated(마지막 기록 시각)가 더 오래된 사람이 먼저 (먼저 도달)
-  const aTime = Number(a.updated || 0);
-  const bTime = Number(b.updated || 0);
-
-  return aTime - bTime;
+  // 포인트가 같으면 아이디 알파벳순 (안정적인 순서 유지용)
+  if (a.id < b.id) return -1;
+  if (a.id > b.id) return 1;
+  return 0;
 });
 
       // TOP 10만 출력
