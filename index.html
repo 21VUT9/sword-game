@@ -847,7 +847,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.705)
+    (v3.706)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1580,6 +1580,8 @@ let duelPointWeekKey = "";           // 현재 내가 플레이 중인 주(월�
 let duelLastWeekPoint = 0;           // 지난주 내가 모았던 결투 포인트
 let duelLastWeekRank  = 0;           // 지난주 내 랭킹 (0이면 기록 없음)
 let duelLastWeekRewardClaimed = false; // 지난주 보상 이미 받았는지 여부
+let duelUpdated = 0;          // 이번 주 결투 포인트가 마지막으로 바뀐 시각
+let duelLastWeekUpdated = 0;  // 지난주 결투 포인트 최종 기록 시각  
 
 // 🆕 강화 진행 중인지 여부
 let isUpgrading = false; 
@@ -2412,6 +2414,7 @@ if (honorGain > 0) {
 // 🔹 결투 포인트는 "명예의 훈장과 동일한 양"으로 누적
 if (honorGain > 0) {
   duelPoint += honorGain;
+  duelUpdated = Date.now();
 }
 
 // 🎤 카르니아 대사 분기
@@ -3955,7 +3958,9 @@ function login() {
       duelLastWeekPoint = data.duelLastWeekPoint ?? 0;
       duelLastWeekRank  = data.duelLastWeekRank ?? 0;
       duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
-
+      duelUpdated         = data.duelUpdated ?? 0;
+      duelLastWeekUpdated = data.duelLastWeekUpdated ?? 0;
+      
       ensureDuelWeek();
 
    }
@@ -4035,6 +4040,8 @@ function save() {
     duelLastWeekPoint: Number(duelLastWeekPoint),
     duelLastWeekRank: Number(duelLastWeekRank),
     duelLastWeekRewardClaimed: Boolean(duelLastWeekRewardClaimed)
+    duelUpdated: Number(duelUpdated || 0),
+    duelLastWeekUpdated: Number(duelLastWeekUpdated || 0),
   };
 
   // ⭐ 강화 수치가 바뀌었을 때만 updated 갱신
@@ -4320,6 +4327,8 @@ lastAttendanceDay  = data.lastAttendanceDay  ?? "";
     duelLastWeekPoint = data.duelLastWeekPoint ?? 0;
     duelLastWeekRank  = data.duelLastWeekRank ?? 0;
     duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
+    duelUpdated         = data.duelUpdated ?? 0;
+    duelLastWeekUpdated = data.duelLastWeekUpdated ?? 0;
 
     ensureDuelWeek();
     
@@ -4671,21 +4680,24 @@ function checkWeeklyDuelReward() {
         const uid = child.key;
         const p = Number(val.duelLastWeekPoint || 0);
         if (p <= 0) return;
-        arr.push({ id: uid, point: p });
-      });
+        arr.push({
+  id: uid,
+  point: p,
+  updated: Number(val.duelLastWeekUpdated || 0)   // 🔹 지난주 기준 시각
+});
+
 
       if (arr.length === 0) return;
 
       // 포인트 기준 내림차순 정렬
-      arr.sort((a, b) => b.point - a.point);
-
-      const myIndex = arr.findIndex((u) => u.id === userId);
-      if (myIndex === -1) {
-        // 혹시나 리스트에 없으면 그냥 플래그만 막아둔다
-        duelLastWeekRewardClaimed = true;
-        save();
-        return;
-      }
+      arr.sort((a, b) => {
+  if (b.point !== a.point) {
+    return b.point - a.point;  // 포인트 높은 순
+  }
+  const aTime = Number(a.updated || 0);
+  const bTime = Number(b.updated || 0);
+  return aTime - bTime;        // 같은 포인트면 더 먼저 도달한 사람(시간이 작은 쪽)
+});
 
       const myRank = myIndex + 1;
       duelLastWeekRank = myRank;
@@ -4776,19 +4788,21 @@ function ensureDuelWeek() {
   }
 
   // 주차가 바뀌었으면 지난 주 포인트 넘기고 이번 주 초기화
-  if (duelPointWeekKey !== weekKey) {
-    // 지난 주 포인트 백업 (나중에 보상 / 지난 랭킹용)
-    duelLastWeekPoint = duelPoint;
+if (duelPointWeekKey !== weekKey) {
+  // 지난 주 포인트 + 갱신 시각 백업
+  duelLastWeekPoint   = duelPoint;
+  duelLastWeekUpdated = duelUpdated || 0;
 
-    // 이번 주 포인트 리셋
-    duelPoint = 0;
+  // 이번 주 초기화
+  duelPoint   = 0;
+  duelUpdated = 0;
 
-    // 이번 주로 키 갱신
-    duelPointWeekKey = weekKey;
+  // 이번 주로 키 갱신
+  duelPointWeekKey = weekKey;
 
-    // 새 주 시작 → 지난주 보상 아직 안 받음 상태로 초기화
-    duelLastWeekRewardClaimed = false;
-  }
+  // 새 주 시작 → 지난주 보상 아직 안 받음
+  duelLastWeekRewardClaimed = false;
+}
 }
 
   function getYesterdayDateString() {
@@ -5430,6 +5444,7 @@ function openDuelHistoryPopup() {
           sword: Number(val.sword || 0),
           duelWin: Number(val.duelWin || 0),
           duelLose: Number(val.duelLose || 0),
+          updated: Number(val.duelLastWeekUpdated || 0)
         });
       });
 
@@ -5454,13 +5469,12 @@ function openDuelHistoryPopup() {
 // 🔁 지난주 포인트 기준 내림차순 정렬
 arr.sort((a, b) => {
   if (b.duelLastWeekPoint !== a.duelLastWeekPoint) {
-    return b.duelLastWeekPoint - a.duelLastWeekPoint; // 포인트 높은 순
+    return b.duelLastWeekPoint - a.duelLastWeekPoint;  // 포인트 높은 순
   }
 
-  // 포인트가 같으면 아이디 알파벳순 (안정적인 순서 유지용)
-  if (a.id < b.id) return -1;
-  if (a.id > b.id) return 1;
-  return 0;
+  const aTime = Number(a.updated || 0);
+  const bTime = Number(b.updated || 0);
+  return aTime - bTime;   // 같은 포인트면 먼저 도달한 사람
 });
 
       // TOP 10만 출력
