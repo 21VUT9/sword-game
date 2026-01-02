@@ -3342,7 +3342,7 @@ showNpcMessage(
 // 🎯 21강 강화 주문서 전용 처리 (즉시 처리, 딜레이 X)
 if (wantScroll21) {
   if (sword >= 21) {
-    showNpcMessage("이미 21강 이상이라 21강 강화 주문서를 사용할 수 없습니다.");
+    showNpcMessage("벌써 21강은 넘겼잖나. 이 주문서는 아까우니까 아껴두자고.");
     return;
   }
 
@@ -3374,7 +3374,7 @@ if (wantScroll21) {
 
 // 🔍 5% 강화 주문서 체크했는데 재고가 없으면 막기
 if (wantRate5 && itemRateUp5 <= 0) {
-  showNpcMessage("강화 확률 +5% 주문서가 부족합니다.");
+  showNpcMessage("강화 확률 +5% 주문서가 없구만. 그걸로 불길을 좀 더 살려야 해.");
   const rate5El = document.getElementById("checkRate5");
   if (rate5El) rate5El.checked = false;  // 체크도 풀어주기
   updateUpgradeItemLabels();
