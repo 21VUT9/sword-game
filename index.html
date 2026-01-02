@@ -861,7 +861,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.724)
+    (v3.725)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3663,7 +3663,7 @@ if (gainedShard > 0) {
   }
 
       // 🆕 🔥 5% 주문서 특수 실패 멘트 (기존 실패 멘트를 덮어씀)
-  if (useRate5) {
+  if (useRate5 && sword <= before) {
     let detailText = "";
 
     if (sword === 0 && before > 0) {
