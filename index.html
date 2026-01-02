@@ -833,7 +833,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.661)
+    (v3.662)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -5373,8 +5373,20 @@ function openDuelHistoryPopup() {
         return;
       }
 
-      // 포인트 기준 내림차순
-      arr.sort((a, b) => b.duelLastWeekPoint - a.duelLastWeekPoint);
+arr.sort((a, b) => {
+
+  // 1️⃣ 결투 포인트가 다르면 높은 사람이 먼저
+  if (b.duelPoint !== a.duelPoint) {
+    return b.duelPoint - a.duelPoint;
+  }
+
+  // 2️⃣ 포인트가 같으면
+  //    updated(마지막 기록 시각)가 더 오래된 사람이 먼저 (먼저 도달)
+  const aTime = Number(a.updated || 0);
+  const bTime = Number(b.updated || 0);
+
+  return aTime - bTime;
+});
 
       // TOP 10만 출력
       const top10 = arr.slice(0, 10);
