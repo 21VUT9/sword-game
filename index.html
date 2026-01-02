@@ -833,7 +833,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.662)
+    (v3.701)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2515,7 +2515,11 @@ function showNpcMessage(
   showButton = true,
   npcName = "대장장이 – 퍼그란트"
 ) {
-  setNpcName(npcName);   // 기본은 퍼그란트(매개변수 기본값)
+  // 🔹 imgPath가 null이면 NPC 없이 쓰는 '시스템 팝업' 모드
+  const noNpc = (imgPath === null);
+
+  // 출석 같은 시스템 팝업이면 이름 비우기, 아니면 기본/지정된 NPC 이름 사용
+  setNpcName(noNpc ? "" : npcName);
 
   const popup     = document.getElementById("npcPopup");
   const msgEl     = document.getElementById("npcPopupText");
@@ -2528,9 +2532,19 @@ function showNpcMessage(
     return;
   }
 
+  // 안내 문구 세팅
   msgEl.innerHTML = text;
-  imgEl.src = imgPath;
 
+  // 🔹 NPC 이미지 처리
+  if (noNpc) {
+    // 출석 등: NPC 연출 없이 텍스트만
+    imgEl.style.display = "none";
+  } else {
+    imgEl.style.display = "block";
+    imgEl.src = imgPath;
+  }
+
+  // 버튼 처리 (기존과 동일)
   if (showButton) {
     okBtn.style.display = "inline-block";
     okBtn.textContent = "확인";
