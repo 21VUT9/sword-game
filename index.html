@@ -20,6 +20,8 @@ body {
   gap: 4px 12px;             /* 라벨 사이 간격 */
 }
 
+
+  
 #upgradeItems label {
   white-space: nowrap;       /* 🔥 라벨 안에서 줄바꿈 금지 (항상 한 줄) */
 }
@@ -859,7 +861,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.722)
+    (v3.723)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -996,6 +998,10 @@ button {
     <span id="labelUseScroll15">15강 강화 주문서 (0)</span>
   </label>
   <label style="margin-right:8px;">
+    <input type="checkbox" id="useScroll21">
+    <span id="labelUseScroll21">21강 강화 주문서 (0)</span>
+  </label>
+  <label style="margin-right:8px;">
     <input type="checkbox" id="useProtect">
     <span id="labelUseProtect">파괴방지 주문서 (0)</span>
   </label>
@@ -1006,6 +1012,10 @@ button {
   <label>
     <input type="checkbox" id="useSuper">
     <span id="labelUseSuper">슈퍼강화 주문서 (0)</span>
+  </label>
+  <label>
+    <input type="checkbox" id="useRateUp5">
+    <span id="labelUseRateUp5">강화 확률 +5% 주문서 (0)</span>
   </label>
 </div>
 
@@ -1950,6 +1960,9 @@ function updateUpgradeItemLabels() {
   const elProtect  = document.getElementById("labelUseProtect");
   const elDownProt = document.getElementById("labelUseDownProtect");
   const elSuper    = document.getElementById("labelUseSuper");
+  const elScroll21 = document.getElementById("labelUseScroll21");   // 🆕
+  const elRate5    = document.getElementById("labelUseRateUp5");    // 🆕
+
 
   if (elScroll15) {
     elScroll15.textContent = `15강 강화 주문서 (${itemScroll15})`;
@@ -1962,6 +1975,12 @@ function updateUpgradeItemLabels() {
   }
   if (elSuper) {
     elSuper.textContent = `슈퍼강화 주문서 (${itemSuper})`;
+  }
+  if (elScroll21) {
+    elScroll21.textContent = `21강 강화 주문서 (${itemScroll21})`;
+  }
+  if (elRate5) {
+    elRate5.textContent = `강화 확률 +5% 주문서 (${itemRateUp5})`;
   }
 }
 
@@ -3247,11 +3266,15 @@ function upgrade() {
   const protectEl  = document.getElementById("useProtect");
   const downProtEl = document.getElementById("useDownProtect");
   const superEl    = document.getElementById("useSuper");
+  const scroll21El = document.getElementById("useScroll21");   // 🆕
+  const rate5El    = document.getElementById("useRateUp5");    // 🆕  
 
   const wantScroll15 = !!(scroll15El && scroll15El.checked);
   const wantProtect  = !!(protectEl  && protectEl.checked);
   const wantDownProt = !!(downProtEl && downProtEl.checked);
   const wantSuper    = !!(superEl    && superEl.checked);
+  const wantScroll21 = !!(scroll21El && scroll21El.checked);    // 🆕
+  const wantRate5    = !!(rate5El    && rate5El.checked);       // 🆕
 
   // ⚠️ 아이템 없는 상태에서 체크한 경우 → 강화 진행 금지
   if (wantScroll15 && itemScroll15 <= 0) {
@@ -3269,6 +3292,14 @@ function upgrade() {
   if (wantSuper && itemSuper <= 0) {
     showNpcMessage("슈퍼강화 주문서가 필요해.");
     return;
+  }
+  if (wantScroll21 && itemScroll21 <= 0) {
+  showNpcMessage("21강 강화 주문서가 필요해.");
+  return;
+  }
+  if (wantRate5 && itemRateUp5 <= 0) {
+  showNpcMessage("강화 확률 +5% 주문서가 필요해.");
+  return;
   }
 
 
@@ -3308,6 +3339,39 @@ showNpcMessage(
     return;
   }
 
+// 🎯 21강 강화 주문서 전용 처리 (즉시 처리, 딜레이 X)
+if (wantScroll21) {
+  if (sword >= 21) {
+    showNpcMessage("이미 21강 이상이라 21강 강화 주문서를 사용할 수 없습니다.");
+    return;
+  }
+
+  itemScroll21 -= 1;
+  sword = 21;
+  rollPowerForCurrentSword();
+
+  if (sword > maxSwordLevel) {
+    maxSwordLevel = sword;
+  }
+
+  showNpcMessage(
+    `
+    <div style="font-size:18px; font-weight:bold; color:#FFFFFF;">
+      강화성공!
+    </div>
+    <div style="margin-top:6px;">
+      21강까지 한 번에 끌어올렸어. 대단한 선택이군.
+    </div>
+    `,
+    "images/npc/blacksmith_success.png"
+  );
+
+  update();
+  save();
+  updateUpgradeItemLabels();
+  return;
+}
+  
    // 🪙 일반 강화 (파괴방지 / 슈퍼강화만 영향)
   const cost = getUpgradeCost(sword);
 
@@ -3334,11 +3398,17 @@ showNpcMessage(
 const useProtect  = wantProtect  && itemProtect > 0;
 const useSuper    = wantSuper    && itemSuper   > 0;
 const useDownProt = wantDownProt && itemDownProtect > 0;
+const useRate5    = wantRate5    && itemRateUp5 > 0;   // 🆕
 
 // ✅ 모든 주문서는 강화 버튼 누른 시점에 즉시 소모
 if (useProtect)  itemProtect     -= 1;
 if (useSuper)    itemSuper       -= 1;
 if (useDownProt) itemDownProtect -= 1;
+if (useRate5) {
+  itemRateUp5 -= 1;
+  chance += 5;
+  if (chance > 95) chance = 95;  // 상한 (원하면 조절 가능)
+}
 
   // 🕒 1~2초 랜덤 딜레이 동안 "강화 중..." 팝업
 const delayMs = 500 + Math.random() * 500; // 0.5 ~ 1.0초
