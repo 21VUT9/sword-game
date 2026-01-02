@@ -847,7 +847,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.703)
+    (v3.704)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1311,6 +1311,32 @@ function loadUpdateNotices() {
     .catch((err) => {
       console.error("[updateNotices] load error", err);
     });
+}
+
+  // ⏱ 1시간 자동 새로고침 (ms 단위)
+const AUTO_REFRESH_MS = 60 * 60 * 1000; // 1시간
+let autoRefreshTimer = null;
+
+// 로그인 후 자동 새로고침 타이머 시작
+function startAutoRefreshTimer() {
+  // 혹시 기존 타이머 있으면 정리
+  if (autoRefreshTimer) {
+    clearTimeout(autoRefreshTimer);
+  }
+
+  autoRefreshTimer = setTimeout(() => {
+    // 필요하면 여기서 저장 안내 문구를 먼저 띄워도 됨
+    // alert("안정적인 업데이트 적용을 위해 게임이 새로고침 됩니다.");
+    location.reload(); // 최신 버전으로 새로고침
+  }, AUTO_REFRESH_MS);
+}
+
+// 로그아웃 시 타이머 정리 (옵션이지만 깔끔하게)
+function stopAutoRefreshTimer() {
+  if (autoRefreshTimer) {
+    clearTimeout(autoRefreshTimer);
+    autoRefreshTimer = null;
+  }
 }
 
   function openLatestNoticePopup() {
@@ -1845,6 +1871,9 @@ currentSessionId = null;
   document.getElementById("duelBtn").style.display      = "none";
   document.getElementById("mapBtn").style.display       = "none";
 
+    // ✅ 자동 새로고침 타이머 해제
+  stopAutoRefreshTimer();
+
   // 프로필 영역도 초기 상태로 갱신
   update();
 }
@@ -1900,7 +1929,7 @@ function updateUpgradeItemLabels() {
     elSuper.textContent = `슈퍼강화 주문서 (${itemSuper})`;
   }
 }
-  
+
 /* UI */
 
 function update() {
@@ -3938,6 +3967,9 @@ function login() {
     document.getElementById("duelBtn").style.display = "block";
     document.getElementById("mapBtn").style.display = "block";
 
+        // ✅ 여기에서 자동 새로고침 타이머 시작
+    startAutoRefreshTimer();
+    
     // 🔐 마지막 로그인 유저 저장
     try {
       localStorage.setItem("swordGameLastUser", userId);
@@ -4294,6 +4326,9 @@ document.getElementById("logToggle").style.display = "block";
 document.getElementById("logoutBtn").style.display = "block";
 document.getElementById("duelBtn").style.display = "block";
 document.getElementById("mapBtn").style.display = "block";
+
+        // ✅ 여기에서 자동 새로고침 타이머 시작
+    startAutoRefreshTimer();
 
     // 🔐 자동로그인으로 들어온 경우에도 이 탭이 세션을 가져가도록
     startSession();
