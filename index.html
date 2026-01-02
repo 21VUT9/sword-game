@@ -71,6 +71,18 @@ body {
   padding: 4px 8px;
 }
 
+  /* 📌 공지 NEW 뱃지 */
+.badge-new {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: bold;
+  color: #fff;
+  background: #ff4d4d;
+  border-radius: 10px;
+}
+  
 /* 👤 다른 유저 프로필 팝업 오버레이 */
 #otherProfileOverlay {
   position: fixed;
@@ -847,7 +859,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.706)
+    (v3.711)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1272,6 +1284,13 @@ function getTutorialKeyForUser(id) {
   return `swordGameTutorialSeen_${id}`;
 }
 
+// 🕒 NEW 표시 기준 (24시간)
+function isNoticeNew(createdAt) {
+  if (!createdAt) return false;
+  const DAY_24H = 24 * 60 * 60 * 1000;
+  return (Date.now() - Number(createdAt)) < DAY_24H;
+}
+  
   // 🔔 업데이트 공지 목록 불러오기
 function loadUpdateNotices() {
   const ref = db.ref("updateNotices");
@@ -1304,8 +1323,14 @@ function loadUpdateNotices() {
       const titleEl = document.getElementById("updateNoticeTitle");
 
       if (bar && titleEl) {
-        titleEl.textContent = latest.title || "신규 업데이트 확인하기";
-        bar.style.display = "block";
+const isNew = isNoticeNew(latest.createdAt);
+
+titleEl.innerHTML = `
+  ${latest.title || "신규 업데이트 확인하기"}
+  ${isNew ? '<span class="badge-new">NEW</span>' : ''}
+`;
+
+bar.style.display = "block";
       }
     })
     .catch((err) => {
@@ -1371,7 +1396,13 @@ function showNoticeAt(idx) {
 
   if (!titleEl || !contentEl || !idxLabel) return;
 
-  titleEl.textContent   = n.title || "(제목 없음)";
+const isNew = isNoticeNew(n.createdAt);
+
+titleEl.innerHTML = `
+  ${n.title || "(제목 없음)"}
+  ${isNew ? '<span class="badge-new">NEW</span>' : ''}
+`;
+
   contentEl.textContent = n.content || "";
   idxLabel.textContent  = `${idx + 1} / ${updateNotices.length}`;
 
