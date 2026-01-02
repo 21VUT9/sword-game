@@ -3371,6 +3371,15 @@ if (wantScroll21) {
   updateUpgradeItemLabels();
   return;
 }
+
+// 🔍 5% 강화 주문서 체크했는데 재고가 없으면 막기
+if (wantRate5 && itemRateUp5 <= 0) {
+  showNpcMessage("강화 확률 +5% 주문서가 부족합니다.");
+  const rate5El = document.getElementById("checkRate5");
+  if (rate5El) rate5El.checked = false;  // 체크도 풀어주기
+  updateUpgradeItemLabels();
+  return;
+}
   
    // 🪙 일반 강화 (파괴방지 / 슈퍼강화만 영향)
   const cost = getUpgradeCost(sword);
@@ -3392,7 +3401,7 @@ if (wantScroll21) {
   // 골드 차감 및 아이템 소비는 여기서 미리 처리
   gold -= cost;
 
-  const chance = getUpgradeChance(sword);
+  let chance = getUpgradeChance(sword);
   const before = sword;
 
 const useProtect  = wantProtect  && itemProtect > 0;
@@ -4135,8 +4144,8 @@ function save() {
     lastHuntDate: lastHuntDate,
     itemScroll15: Number(itemScroll15),
     itemProtect: Number(itemProtect),
-    itemScroll21,  
-    itemRateUp5,   
+    itemScroll21: Number(itemScroll21 ?? 0),
+    itemRateUp5: Number(itemRateUp5 ?? 0),
     itemSuper: Number(itemSuper),
     itemDownProtect: Number(itemDownProtect),
     starShard: Number(starShard),
