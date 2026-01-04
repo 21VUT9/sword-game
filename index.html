@@ -865,7 +865,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.765)
+    (v3.766)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1351,8 +1351,9 @@ button {
 
       <!-- 우측: 마법스크롤 상인 -->
       <div style="display:flex; align-items:flex-end; gap:8px;">
-        <img id="scrollShopNpcImg"
-             src="images/npc/scroll_idle.png"
+      <img id="scrollShopNpcImg"
+      src="images/npc/npc_scrollshop_idle.png"
+
              alt="마법스크롤 상인"
              style="width:78px; height:auto; border-radius:6px;">
         <div style="font-size:12px; line-height:1.4; max-width:260px;">
@@ -1973,7 +1974,7 @@ function showScrollShopConfirmPopup(item) {
   // 상점 NPC 세팅
   setNpcName("마법스크롤 상인");
   imgEl.style.display = "block";
-  imgEl.src = "images/npc/blacksmith_idle.png";   // 나중에 전용 이미지로 바꿔도 됨
+  imgEl.src = "images/npc/npc_scrollshop_talk.png";
 
   const currencyLabel =
     item.priceType === "starShard"
@@ -2020,7 +2021,7 @@ function setScrollShopNpcIdle() {
     textEl.innerHTML = scrollShopNpcIdleLines[idx];
   }
 
-  imgEl.src = "images/npc/scroll_idle.png";
+  imgEl.src = "images/npc/npc_scrollshop_idle.png";
 
   const btnBox = document.getElementById("scrollShopNpcButtons");
   if (btnBox) btnBox.style.display = "none";
@@ -2134,7 +2135,7 @@ function proceedScrollShopPurchase(item) {
         조금만 더 모아서 오자.
       </div>
       `,
-      "images/npc/blacksmith_idle.png",
+      "images/npc/npc_scrollshop_calm.png",
       true,
       "마법스크롤 상인"
     );
@@ -2163,7 +2164,7 @@ function proceedScrollShopPurchase(item) {
           조금만 더 모아서 오자.
         </div>
         `,
-        "images/npc/blacksmith_idle.png",
+        "images/npc/npc_scrollshop_calm.png",
         true,
         "마법스크롤 상인"
       );
@@ -2193,7 +2194,7 @@ function proceedScrollShopPurchase(item) {
         이번엔… 느낌 오지?
       </div>
       `,
-      "images/npc/blacksmith_idle.png",
+      "images/npc/npc_scrollshop_happy.png",
       true,
       "마법스크롤 상인"
     );
