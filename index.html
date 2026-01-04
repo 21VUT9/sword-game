@@ -429,6 +429,10 @@ button {
   top: 10px;
 }
 
+#scrollShopBtn {
+  top: 30px;   /* 🆕 MAP 밑, 결투장 위 */
+}
+  
 #duelBtn {
   top: 50px;
 }
@@ -861,7 +865,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.763)
+    (v3.764)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2318,6 +2322,7 @@ currentSessionId = null;
   document.getElementById("logToggle").style.display    = "none";
   document.getElementById("logoutBtn").style.display    = "none";
   document.getElementById("duelBtn").style.display      = "none";
+  document.getElementById("scrollShopBtn").style.display = "none";
   document.getElementById("mapBtn").style.display       = "none";
 
     // ✅ 자동 새로고침 타이머 해제
@@ -4552,6 +4557,7 @@ function login() {
     document.getElementById("logToggle").style.display = "block";
     document.getElementById("logoutBtn").style.display = "block";
     document.getElementById("duelBtn").style.display = "block";
+    document.getElementById("scrollShopBtn").style.display = "block";
     document.getElementById("mapBtn").style.display = "block";
 
         // ✅ 여기에서 자동 새로고침 타이머 시작
@@ -4920,6 +4926,7 @@ document.getElementById("inventoryBtn").style.display = "block";
 document.getElementById("logToggle").style.display = "block";
 document.getElementById("logoutBtn").style.display = "block";
 document.getElementById("duelBtn").style.display = "block";
+document.getElementById("scrollShopBtn").style.display = "block";
 document.getElementById("mapBtn").style.display = "block";
 
         // ✅ 여기에서 자동 새로고침 타이머 시작
