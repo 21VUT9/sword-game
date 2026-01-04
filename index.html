@@ -865,7 +865,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.766)
+    (v3.771)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -4652,11 +4652,14 @@ function login() {
       duelPointWeekKey = data.duelPointWeekKey || "";
       duelLastWeekPoint = data.duelLastWeekPoint ?? 0;
       duelLastWeekRank  = data.duelLastWeekRank ?? 0;
-      duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
+            duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
       duelUpdated         = data.duelUpdated ?? 0;
       duelLastWeekUpdated = data.duelLastWeekUpdated ?? 0;
       
+      // 🟢 주차 정리 (지난주 포인트 스냅샷 + 이번 주 초기화)
       ensureDuelWeek();
+      // 🏆 지난주 보상 체크 & 지급
+      checkWeeklyDuelReward();
 
    }
 
@@ -5026,11 +5029,14 @@ lastAttendanceDay  = data.lastAttendanceDay  ?? "";
     duelPointWeekKey = data.duelPointWeekKey || "";
     duelLastWeekPoint = data.duelLastWeekPoint ?? 0;
     duelLastWeekRank  = data.duelLastWeekRank ?? 0;
-    duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
+        duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
     duelUpdated         = data.duelUpdated ?? 0;
     duelLastWeekUpdated = data.duelLastWeekUpdated ?? 0;
 
+    // 🟢 주차 정리 (지난주 포인트 스냅샷 + 이번 주 초기화)
     ensureDuelWeek();
+    // 🏆 지난주 보상 체크 & 지급
+    checkWeeklyDuelReward();
     
 // 화면 전환
 const loginScreen = document.getElementById("loginScreen");
@@ -5933,6 +5939,7 @@ function loadDuelArenaRanking() {
   myEl.textContent = "";
 
   const usersRef = db.ref("users");
+  const thisWeekKey = getKstWeekKey();   // 🆕 이번 주 월요일 기준 주키
 
   // duelPoint 기준으로 모두 가져온 뒤, 메모리에서 필터 + 정렬
   usersRef
@@ -5945,6 +5952,10 @@ function loadDuelArenaRanking() {
         const u = child.val() || {};
         const uid = child.key;
 
+        // 🆕 이번 주가 아닌 계정은 랭킹에서 제외
+        const userWeekKey = u.duelPointWeekKey || "";
+        if (userWeekKey !== thisWeekKey) return;
+
         const point = Number(u.duelPoint || 0);
         if (!point || point <= 0) return; // 포인트 0 이하면 랭킹 제외
 
@@ -5954,7 +5965,6 @@ function loadDuelArenaRanking() {
           sword: Number(u.sword || 0),
           duelWin: Number(u.duelWin || 0),
           duelLose: Number(u.duelLose || 0),
-          // updated가 있으면 같은 포인트일 때 선착순 정렬용 (선택)
           updated: Number(u.duelUpdated || u.updated || 0)
         });
       });
