@@ -865,7 +865,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.764)
+    (v3.765)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1344,10 +1344,13 @@ button {
       <!-- JS로 한 줄씩 채울 예정 -->
     </div>
 
-    <!-- 하단 NPC 영역 -->
-    <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:8px; margin-top:4px;">
-      <!-- NPC 초상 + 대사 -->
-      <div style="display:flex; gap:8px; align-items:flex-start;">
+    <!-- 하단: 좌측 여유 / 우측 마법스크롤 상인 (결투장 레이아웃 느낌) -->
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:10px; margin-top:4px;">
+      <!-- 좌측은 여유 영역 (나중에 안내문 넣고 싶으면 여기에) -->
+      <div style="flex:1;"></div>
+
+      <!-- 우측: 마법스크롤 상인 -->
+      <div style="display:flex; align-items:flex-end; gap:8px;">
         <img id="scrollShopNpcImg"
              src="images/npc/scroll_idle.png"
              alt="마법스크롤 상인"
@@ -1359,21 +1362,7 @@ button {
           <div id="scrollShopNpcText"></div>
         </div>
       </div>
-
-      <!-- 예 / 아니요 버튼 -->
-      <div id="scrollShopNpcButtons"
-           style="display:none; align-self:center;">
-        <button id="scrollShopYesBtn"
-                style="margin-right:4px; padding:4px 10px; font-size:12px;">
-          예
-        </button>
-        <button id="scrollShopNoBtn"
-                style="padding:4px 10px; font-size:12px;">
-          아니요
-        </button>
-      </div>
     </div>
-
   </div>
 </div>
 
@@ -1966,6 +1955,58 @@ function updateScrollShopCurrency() {
   if (honorEl) honorEl.textContent = itemHonorMedal;
 }
 
+// 📜 상점 전용 NPC 확인 팝업 (예 / 아니요)
+function showScrollShopConfirmPopup(item) {
+  const popup     = document.getElementById("npcPopup");
+  const msgEl     = document.getElementById("npcPopupText");
+  const imgEl     = document.getElementById("npcPopupImg");
+  const okBtn     = document.getElementById("npcConfirmBtn");
+  const cancelBtn = document.getElementById("npcCancelBtn");
+  const nameEl    = document.getElementById("npcPopupName");
+
+  if (!popup || !msgEl || !imgEl || !okBtn || !cancelBtn) {
+    // 혹시라도 엘리먼트를 못 찾으면 그냥 alert로 대체
+    alert(`이건 '${item.name}'이야. 구매할래?`);
+    return;
+  }
+
+  // 상점 NPC 세팅
+  setNpcName("마법스크롤 상인");
+  imgEl.style.display = "block";
+  imgEl.src = "images/npc/blacksmith_idle.png";   // 나중에 전용 이미지로 바꿔도 됨
+
+  const currencyLabel =
+    item.priceType === "starShard"
+      ? "빛나지 못한 별의 조각"
+      : "명예의 훈장";
+
+  msgEl.innerHTML = `
+    <div style="font-size:16px; font-weight:bold; margin-bottom:6px;">
+      이건 '<b>${item.name}</b>'이야.
+    </div>
+    <div style="font-size:13px; line-height:1.5;">
+      <span style="color:#ffd27f;">${currencyLabel} ${item.price}개</span>로 살래?
+    </div>
+  `;
+
+  okBtn.style.display = "inline-block";
+  cancelBtn.style.display = "inline-block";
+  okBtn.textContent = "산다";
+  cancelBtn.textContent = "그만둘래";
+
+  okBtn.onclick = function () {
+    popup.style.display = "none";
+    proceedScrollShopPurchase(item);
+  };
+
+  cancelBtn.onclick = function () {
+    popup.style.display = "none";
+    // 취소하면 그냥 상점 NPC는 기존 랜덤 멘트 유지
+  };
+
+  popup.style.display = "flex";
+}
+  
 // 1. 랜덤 출력 : 기본 NPC 멘트
 function setScrollShopNpcIdle() {
   const textEl = document.getElementById("scrollShopNpcText");
@@ -2044,29 +2085,16 @@ function onClickScrollShopIcon(itemId, ev) {
   showItemDetail(item, ev.clientX, ev.clientY);
 }
 
-  // 줄 전체 클릭 → 2. 구매 의사 묻기
+// 줄 전체 클릭 → 상점용 NPC 팝업으로 구매 의사 묻기
 function onClickScrollShopItem(itemId) {
   const item = scrollShopItems.find(i => i.id === itemId);
   if (!item) return;
 
   scrollShopSelectedItem = item;
 
-  const textEl = document.getElementById("scrollShopNpcText");
-  const imgEl  = document.getElementById("scrollShopNpcImg");
-  const btnBox = document.getElementById("scrollShopNpcButtons");
-
-  if (textEl) {
-    // 2. “이건 ‘[아이템명]’이야.”
-    textEl.innerHTML =
-      `이건 '<b>${item.name}</b>'이야.<br>` +
-      `필요하면 지금 사볼래?`;
-  }
-  if (imgEl) {
-    imgEl.src = "images/npc/scroll_talk.png";   // 말하는 표정
-  }
-  if (btnBox) {
-    btnBox.style.display = "block";
-  }
+  // 하단 NPC는 그냥 기본 대사 유지하고,
+  // 실제 구매 확정은 팝업에서 처리
+  showScrollShopConfirmPopup(item);
 }
 
   // "아니요" 클릭 → 취소 후 다시 랜덤 멘트
@@ -2078,6 +2106,8 @@ function onClickScrollShopNo() {
   setScrollShopNpcIdle();
 }
 
+  
+
   // 재화 충분한지 체크
 function checkScrollShopCurrency(item) {
   if (item.priceType === "starShard") {
@@ -2087,6 +2117,93 @@ function checkScrollShopCurrency(item) {
     return itemHonorMedal >= item.price;
   }
   return false;
+}
+
+  // 📜 상점 구매 진행 (재화 부족 / 구매중 / 성공 모두 팝업 처리)
+function proceedScrollShopPurchase(item) {
+  if (scrollShopIsProcessing) return;
+
+  // 먼저 재화 부족 체크
+  if (!checkScrollShopCurrency(item)) {
+    showNpcMessage(
+      `
+      <div style="font-size:15px; margin-bottom:4px;">
+        조급하게 굴다간 더 힘들어질 수도 있어.
+      </div>
+      <div style="font-size:13px;">
+        조금만 더 모아서 오자.
+      </div>
+      `,
+      "images/npc/blacksmith_idle.png",
+      true,
+      "마법스크롤 상인"
+    );
+    return;
+  }
+
+  scrollShopIsProcessing = true;
+
+  // 4. “잠깐만, 확인하고 있어.” – 시스템 팝업 (NPC 없이)
+  showNpcMessage(
+    `<div style="font-size:14px;">잠깐만, 확인하고 있어.</div>`,
+    null,   // imgPath = null → NPC 없이 사용
+    false,  // showButton = false → 버튼 숨김
+    ""
+  );
+
+  setTimeout(() => {
+    // 다시 한 번 재화 체크 (중간에 값 바뀌었을 수도 있으니)
+    if (!checkScrollShopCurrency(item)) {
+      showNpcMessage(
+        `
+        <div style="font-size:15px; margin-bottom:4px;">
+          조급하게 굴다간 더 힘들어질 수도 있어.
+        </div>
+        <div style="font-size:13px;">
+          조금만 더 모아서 오자.
+        </div>
+        `,
+        "images/npc/blacksmith_idle.png",
+        true,
+        "마법스크롤 상인"
+      );
+      scrollShopIsProcessing = false;
+      return;
+    }
+
+    // 실제 재화 차감
+    if (item.priceType === "starShard") {
+      starShard -= item.price;
+      if (starShard < 0) starShard = 0;
+    } else if (item.priceType === "honor") {
+      itemHonorMedal -= item.price;
+      if (itemHonorMedal < 0) itemHonorMedal = 0;
+    }
+
+    // 아이템 지급 + 로그/저장/인벤토리 갱신
+    grantScrollShopItem(item);
+
+    // 5. 구매 성공 멘트
+    showNpcMessage(
+      `
+      <div style="font-size:15px; margin-bottom:4px;">
+        좋아, 잘 샀다.
+      </div>
+      <div style="font-size:13px;">
+        이번엔… 느낌 오지?
+      </div>
+      `,
+      "images/npc/blacksmith_idle.png",
+      true,
+      "마법스크롤 상인"
+    );
+
+    // 하단 NPC 대사도 다시 랜덤으로 되돌려주면 자연스러움
+    setScrollShopNpcIdle();
+
+    scrollShopIsProcessing = false;
+    scrollShopSelectedItem = null;
+  }, 1000);  // 1초 딜레이
 }
 
 // 실제 아이템 지급 처리
