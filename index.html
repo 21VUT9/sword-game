@@ -861,7 +861,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.761)
+    (v3.762)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1882,28 +1882,32 @@ const scrollShopItems = [
     name: "21강 강화 주문서",
     priceType: "starShard",   // 빛나지 못한 별의 조각
     price: 10,
-    img: "images/items/scroll_21.png"
+    img: "images/items/scroll_21.png",
+    desc: "한 번에 무기를 21강으로 만들어 주는 주문서입니다."
   },
   {
     id: "protect",
     name: "파괴방지 주문서",
     priceType: "starShard",
     price: 30,
-    img: "images/items/scroll_destroy_protect.png"
+    img: "images/items/scroll_protect.png",
+    desc: "강화 실패 시 무기가 파괴되는 것을 1회 막아줍니다."
   },
   {
     id: "super",
     name: "슈퍼강화 주문서",
     priceType: "starShard",
     price: 50,
-    img: "images/items/scroll_super.png"
+    img: "images/items/scroll_super.png",
+    desc: "강화 성공 시 한 번에 +2강이 되는 특별한 주문서입니다."
   },
   {
     id: "rateUp5",
     name: "강화 확률 +5% 주문서",
     priceType: "honor",       // 명예의 훈장
     price: 50,
-    img: "images/items/scroll_rateup_5.png"
+    img: "images/items/scroll_rateup_5.png",
+    desc: "이번 강화 시 성공 확률이 5%p 증가합니다."
   }
 ];
 
@@ -1999,9 +2003,9 @@ function renderScrollShopItems() {
       >
         <!-- 아이콘 (클릭시 설명) -->
         <div
-          style="width:36px; height:36px; margin-right:8px; flex-shrink:0;"
-          onclick="event.stopPropagation(); onClickScrollShopIcon('${item.id}')"
-        >
+  style="width:36px; height:36px; margin-right:8px; flex-shrink:0;"
+  onclick="event.stopPropagation(); onClickScrollShopIcon('${item.id}', event)"
+>
           <img
             src="${item.img}"
             alt="${item.name}"
@@ -2026,12 +2030,14 @@ function renderScrollShopItems() {
   listEl.innerHTML = html;
 }
 
-// 아이콘 클릭 → 아이템 설명 (임시 alert 버전)
-function onClickScrollShopIcon(itemId) {
+// 아이콘 클릭 → 인벤토리와 같은 아이템 상세 팝업 사용
+function onClickScrollShopIcon(itemId, ev) {
   const item = scrollShopItems.find(i => i.id === itemId);
   if (!item) return;
 
-  alert(`이건 '${item.name}'이야.\n상세 설명은 나중에 인벤토리 팝업이랑 묶어도 돼.`);
+  // 기존 인벤토리용 상세 팝업 재사용
+  // showItemDetail(item, 클릭X, 클릭Y)
+  showItemDetail(item, ev.clientX, ev.clientY);
 }
 
   // 줄 전체 클릭 → 2. 구매 의사 묻기
