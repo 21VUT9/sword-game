@@ -1350,19 +1350,21 @@ button {
       <div style="flex:1;"></div>
 
       <!-- 우측: 마법스크롤 상인 -->
-      <div style="display:flex; align-items:flex-end; gap:8px;">
-      <img id="scrollShopNpcImg"
-      src="images/npc/npc_scrollshop_idle.png"
+      <div style="display:flex; align-items:flex-end; gap:12px;">
 
-             alt="마법스크롤 상인"
-             style="width:78px; height:auto; border-radius:6px;">
-        <div style="font-size:12px; line-height:1.4; max-width:260px;">
-          <div style="font-weight:bold; margin-bottom:2px;">
-            마법스크롤 상인
-          </div>
-          <div id="scrollShopNpcText"></div>
-        </div>
-      </div>
+  <!-- 🗨 대사(왼쪽) -->
+  <div style="font-size:12px; line-height:1.5; max-width:300px; text-align:right;">
+    <div style="font-weight:bold; margin-bottom:4px;">
+      마법스크롤 상인
+    </div>
+    <div id="scrollShopNpcText"></div>
+  </div>
+
+  <!-- 🧙‍♂️ NPC (오른쪽 / 2배 확대) -->
+  <img id="scrollShopNpcImg"
+       src="images/npc/npc_scrollshop_idle.png"
+       style="width:156px; height:auto; border-radius:10px;">
+</div>
     </div>
   </div>
 </div>
