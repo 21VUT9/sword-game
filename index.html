@@ -861,7 +861,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.725)
+    (v3.761)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1075,6 +1075,13 @@ button {
         onclick="toggleMap()">
   🗺 MAP
 </button>
+
+<!-- 📜 스크롤 상점 버튼 (MAP과 결투장 사이) -->
+<button id="scrollShopBtn"
+        class="side-menu-btn"
+        onclick="openScrollShop()">
+  📜 스크롤 상점
+</button>
   
 <!-- ⚔️ 결투장 버튼 (MAP과 인벤토리 사이) -->
 <button id="duelBtn"
@@ -1270,6 +1277,101 @@ button {
   <div id="logPanelList"></div>
 </div>
 
+  <!-- 📜 마법스크롤 상점 오버레이 -->
+<div id="scrollShopOverlay"
+     style="
+       position:fixed;
+       inset:0;
+       background:rgba(0,0,0,0.6);
+       display:none;
+       z-index:1200;
+     "
+     onclick="if (event.target === this) closeScrollShop();">
+
+  <!-- 실제 상점 패널 -->
+  <div id="scrollShopPanel"
+       style="
+         position:absolute;
+         left:50%;
+         top:50%;
+         transform:translate(-50%, -50%);
+         width:520px;
+         max-width:calc(100% - 40px);
+         background:#111;
+         border:1px solid #666;
+         border-radius:10px;
+         padding:12px 14px;
+         color:#fff;
+         box-shadow:0 0 20px rgba(0,0,0,0.9);
+         font-size:14px;
+       "
+       onclick="event.stopPropagation();">
+
+    <!-- 상단 헤더 -->
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+      <div style="font-weight:bold; font-size:16px;">
+        📜 마법스크롤 상점
+      </div>
+      <button onclick="closeScrollShop()"
+              style="background:#333; border:1px solid #555; color:#fff;
+                     font-size:12px; padding:4px 8px; border-radius:4px; cursor:pointer;">
+        닫기 ✕
+      </button>
+    </div>
+
+    <!-- 상단 재화 표시 -->
+    <div style="display:flex; gap:12px; margin-bottom:8px; font-size:12px;">
+      <div style="display:flex; align-items:center; gap:4px;">
+        <img src="images/items/star_shard.png" style="width:18px; height:18px;" alt="">
+        <span>빛나지 못한 별의 조각 :</span>
+        <span id="scrollShopStarShard">0</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:4px;">
+        <img src="images/items/honor_medal.png" style="width:18px; height:18px;" alt="">
+        <span>명예의 훈장 :</span>
+        <span id="scrollShopHonorMedal">0</span>
+      </div>
+    </div>
+
+    <!-- 아이템 리스트 영역 -->
+    <div id="scrollShopItemList"
+         style="border:1px solid #444; border-radius:6px; padding:4px;
+                max-height:220px; overflow-y:auto; margin-bottom:8px;">
+      <!-- JS로 한 줄씩 채울 예정 -->
+    </div>
+
+    <!-- 하단 NPC 영역 -->
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:8px; margin-top:4px;">
+      <!-- NPC 초상 + 대사 -->
+      <div style="display:flex; gap:8px; align-items:flex-start;">
+        <img id="scrollShopNpcImg"
+             src="images/npc/scroll_idle.png"
+             alt="마법스크롤 상인"
+             style="width:78px; height:auto; border-radius:6px;">
+        <div style="font-size:12px; line-height:1.4; max-width:260px;">
+          <div style="font-weight:bold; margin-bottom:2px;">
+            마법스크롤 상인
+          </div>
+          <div id="scrollShopNpcText"></div>
+        </div>
+      </div>
+
+      <!-- 예 / 아니요 버튼 -->
+      <div id="scrollShopNpcButtons"
+           style="display:none; align-self:center;">
+        <button id="scrollShopYesBtn"
+                style="margin-right:4px; padding:4px 10px; font-size:12px;">
+          예
+        </button>
+        <button id="scrollShopNoBtn"
+                style="padding:4px 10px; font-size:12px;">
+          아니요
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -1772,6 +1874,302 @@ let itemDownProtect = 0;  // 🆕 강등방지 주문서
 let starShard = 0;      // ⭐ 빛나지 못한 별의 조각
 let itemScroll21 = 0;     // 21강 강화 주문서
 let itemRateUp5  = 0;   // 강화 확률 +5% 주문서
+
+// 📜 마법 스크롤 상점 판매 아이템
+const scrollShopItems = [
+  {
+    id: "scroll21",
+    name: "21강 강화 주문서",
+    priceType: "starShard",   // 빛나지 못한 별의 조각
+    price: 10,
+    img: "images/items/scroll_21.png"
+  },
+  {
+    id: "protect",
+    name: "파괴방지 주문서",
+    priceType: "starShard",
+    price: 30,
+    img: "images/items/scroll_destroy_protect.png"
+  },
+  {
+    id: "super",
+    name: "슈퍼강화 주문서",
+    priceType: "starShard",
+    price: 50,
+    img: "images/items/scroll_super.png"
+  },
+  {
+    id: "rateUp5",
+    name: "강화 확률 +5% 주문서",
+    priceType: "honor",       // 명예의 훈장
+    price: 50,
+    img: "images/items/scroll_rateup_5.png"
+  }
+];
+
+// 1. 랜덤 출력용 상점 입장 기본 멘트들
+const scrollShopNpcIdleLines = [
+  "왔네? 오늘도 주문서 좀 보러 온 거지?",
+  "파괴해서 모은 조각들, 여기서 제대로 써보자고.",
+  "주차충이든 도박충이든, 여기선 다 친구야. 필요한 거 있으면 골라봐.",
+  "조금 천천히 가도 괜찮아. 안전장치 챙기는 것도 실력이야."
+];
+
+// 선택된 아이템 / 처리 중 여부
+let scrollShopSelectedItem = null;
+let scrollShopIsProcessing = false;
+
+  // 📜 상점 열기
+function openScrollShop() {
+  if (!userRef || !userId) {
+    alert("로그인 후 이용 가능합니다.");
+    return;
+  }
+
+  const overlay = document.getElementById("scrollShopOverlay");
+  if (!overlay) return;
+
+  renderScrollShopItems();     // 아이템 리스트 그리기
+  updateScrollShopCurrency();  // 재화 표시
+  setScrollShopNpcIdle();      // 랜덤 멘트
+
+  overlay.style.display = "block";
+}
+
+// 📜 상점 닫기
+function closeScrollShop() {
+  const overlay = document.getElementById("scrollShopOverlay");
+  if (!overlay) return;
+
+  overlay.style.display = "none";
+  scrollShopSelectedItem = null;
+  scrollShopIsProcessing = false;
+
+  const btnBox = document.getElementById("scrollShopNpcButtons");
+  if (btnBox) btnBox.style.display = "none";
+}
+
+// 상단 재화 표시 갱신
+function updateScrollShopCurrency() {
+  const starEl  = document.getElementById("scrollShopStarShard");
+  const honorEl = document.getElementById("scrollShopHonorMedal");
+
+  if (starEl)  starEl.textContent  = starShard;
+  if (honorEl) honorEl.textContent = itemHonorMedal;
+}
+
+// 1. 랜덤 출력 : 기본 NPC 멘트
+function setScrollShopNpcIdle() {
+  const textEl = document.getElementById("scrollShopNpcText");
+  const imgEl  = document.getElementById("scrollShopNpcImg");
+  if (!textEl || !imgEl) return;
+
+  if (scrollShopNpcIdleLines.length === 0) {
+    textEl.innerHTML = "";
+  } else {
+    const idx = Math.floor(Math.random() * scrollShopNpcIdleLines.length);
+    textEl.innerHTML = scrollShopNpcIdleLines[idx];
+  }
+
+  imgEl.src = "images/npc/scroll_idle.png";
+
+  const btnBox = document.getElementById("scrollShopNpcButtons");
+  if (btnBox) btnBox.style.display = "none";
+}
+
+  // 상점 아이템 리스트 렌더링
+function renderScrollShopItems() {
+  const listEl = document.getElementById("scrollShopItemList");
+  if (!listEl) return;
+
+  let html = "";
+
+  scrollShopItems.forEach((item) => {
+    const priceIcon =
+      item.priceType === "starShard"
+        ? "images/items/star_shard.png"
+        : "images/items/honor_medal.png";
+
+    html += `
+      <div
+        class="scroll-shop-row"
+        style="display:flex; align-items:center; padding:4px 6px;
+               border-bottom:1px solid #333; cursor:pointer;"
+        onclick="onClickScrollShopItem('${item.id}')"
+      >
+        <!-- 아이콘 (클릭시 설명) -->
+        <div
+          style="width:36px; height:36px; margin-right:8px; flex-shrink:0;"
+          onclick="event.stopPropagation(); onClickScrollShopIcon('${item.id}')"
+        >
+          <img
+            src="${item.img}"
+            alt="${item.name}"
+            style="max-width:100%; max-height:100%;"
+          >
+        </div>
+
+        <!-- 아이템명 -->
+        <div style="flex:1; text-align:left;">
+          ${item.name}
+        </div>
+
+        <!-- 오른쪽 가격 -->
+        <div style="display:flex; align-items:center; gap:4px;">
+          <img src="${priceIcon}" alt="" style="width:20px; height:20px;">
+          <span>x ${item.price}</span>
+        </div>
+      </div>
+    `;
+  });
+
+  listEl.innerHTML = html;
+}
+
+// 아이콘 클릭 → 아이템 설명 (임시 alert 버전)
+function onClickScrollShopIcon(itemId) {
+  const item = scrollShopItems.find(i => i.id === itemId);
+  if (!item) return;
+
+  alert(`이건 '${item.name}'이야.\n상세 설명은 나중에 인벤토리 팝업이랑 묶어도 돼.`);
+}
+
+  // 줄 전체 클릭 → 2. 구매 의사 묻기
+function onClickScrollShopItem(itemId) {
+  const item = scrollShopItems.find(i => i.id === itemId);
+  if (!item) return;
+
+  scrollShopSelectedItem = item;
+
+  const textEl = document.getElementById("scrollShopNpcText");
+  const imgEl  = document.getElementById("scrollShopNpcImg");
+  const btnBox = document.getElementById("scrollShopNpcButtons");
+
+  if (textEl) {
+    // 2. “이건 ‘[아이템명]’이야.”
+    textEl.innerHTML =
+      `이건 '<b>${item.name}</b>'이야.<br>` +
+      `필요하면 지금 사볼래?`;
+  }
+  if (imgEl) {
+    imgEl.src = "images/npc/scroll_talk.png";   // 말하는 표정
+  }
+  if (btnBox) {
+    btnBox.style.display = "block";
+  }
+}
+
+  // "아니요" 클릭 → 취소 후 다시 랜덤 멘트
+function onClickScrollShopNo() {
+  scrollShopSelectedItem = null;
+  const btnBox = document.getElementById("scrollShopNpcButtons");
+  if (btnBox) btnBox.style.display = "none";
+
+  setScrollShopNpcIdle();
+}
+
+  // 재화 충분한지 체크
+function checkScrollShopCurrency(item) {
+  if (item.priceType === "starShard") {
+    return starShard >= item.price;
+  }
+  if (item.priceType === "honor") {
+    return itemHonorMedal >= item.price;
+  }
+  return false;
+}
+
+// 실제 아이템 지급 처리
+function grantScrollShopItem(item) {
+  if (item.id === "scroll21")   itemScroll21++;
+  if (item.id === "protect")    itemProtect++;
+  if (item.id === "super")      itemSuper++;
+  if (item.id === "rateUp5")    itemRateUp5++;
+
+  updateScrollShopCurrency();   // 재화 표시 갱신
+  updateUpgradeItemLabels();    // 기존 함수 (아이템 수량 라벨 갱신)
+  renderInventory();            // 인벤토리 갱신
+  update();                     // 메인 UI 갱신
+  save();                       // Firebase 저장
+}
+
+// "예" 클릭
+function onClickScrollShopYes() {
+  if (!scrollShopSelectedItem || scrollShopIsProcessing) return;
+  const item = scrollShopSelectedItem;
+
+  const textEl = document.getElementById("scrollShopNpcText");
+  const imgEl  = document.getElementById("scrollShopNpcImg");
+  const btnBox = document.getElementById("scrollShopNpcButtons");
+
+  // 먼저 재화 부족 체크
+  if (!checkScrollShopCurrency(item)) {
+    // 3. 재화 부족 멘트
+    if (textEl) {
+      textEl.innerHTML =
+        "조급하게 굴다간 더 힘들어질 수도 있어.<br>" +
+        "조금만 더 모아서 오자.";
+    }
+    if (imgEl) {
+      imgEl.src = "images/npc/scroll_sad.png";
+    }
+    if (btnBox) {
+      btnBox.style.display = "none";
+    }
+    scrollShopSelectedItem = null;
+    return;
+  }
+
+  // 여기부터는 구매 진행 중
+  scrollShopIsProcessing = true;
+  if (btnBox) btnBox.style.display = "none";
+
+  // 4. “잠깐만, 확인하고 있어.”
+  if (textEl) {
+    textEl.innerHTML = "잠깐만, 확인하고 있어.";
+  }
+  if (imgEl) {
+    imgEl.src = "images/npc/scroll_talk.png";
+  }
+
+  setTimeout(() => {
+    // 안전하게 한 번 더 체크
+    if (!checkScrollShopCurrency(item)) {
+      if (textEl) {
+        textEl.innerHTML =
+          "조급하게 굴다간 더 힘들어질 수도 있어.<br>" +
+          "조금만 더 모아서 오자.";
+      }
+      if (imgEl) imgEl.src = "images/npc/scroll_sad.png";
+      scrollShopIsProcessing = false;
+      scrollShopSelectedItem = null;
+      return;
+    }
+
+    // 실제 재화 차감
+    if (item.priceType === "starShard") {
+      starShard -= item.price;
+      if (starShard < 0) starShard = 0;
+    } else if (item.priceType === "honor") {
+      itemHonorMedal -= item.price;
+      if (itemHonorMedal < 0) itemHonorMedal = 0;
+    }
+
+    // 아이템 지급
+    grantScrollShopItem(item);
+
+    // 5. 구매 성공 멘트
+    if (textEl) {
+      textEl.innerHTML = "좋아, 잘 샀다.<br>이번엔… 느낌 오지?";
+    }
+    if (imgEl) {
+      imgEl.src = "images/npc/scroll_happy.png";
+    }
+
+    scrollShopIsProcessing = false;
+    scrollShopSelectedItem = null;
+  }, 1000);   // 1초 딜레이
+}
   
 // 사냥터 정보 (추천 레벨 / 이름)
 const HUNT_FIELDS = [
@@ -6007,10 +6405,22 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") hideItemDetail();
 });
 
+  // 상점 Yes/No 버튼 초기화
+function initScrollShopButtons() {
+  const yesBtn = document.getElementById("scrollShopYesBtn");
+  const noBtn  = document.getElementById("scrollShopNoBtn");
+
+  if (yesBtn) yesBtn.onclick = onClickScrollShopYes;
+  if (noBtn)  noBtn.onclick  = onClickScrollShopNo;
+}
+
   loadRanking();
   autoLoginFromStorage();
     // ⏱ 사냥 회복 타이머 표시용
   setInterval(updateHuntUI, 1000);
+
+    // 📜 스크롤 상점 버튼/이벤트 연결
+  initScrollShopButtons();
 
   // ⛔ 강화 진행 중에는 Enter / Space 입력 차단
 document.addEventListener("keydown", (e) => {
