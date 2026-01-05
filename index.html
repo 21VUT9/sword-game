@@ -865,7 +865,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.773)
+    (v3.774)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1511,7 +1511,16 @@ titleEl.innerHTML = `
   ${isNew ? '<span class="badge-new">NEW</span>' : ''}
 `;
 
-  contentEl.textContent = n.content || "";
+  let content = n.content || "";
+
+  // 1) "...\n..." 처럼 저장된 경우 → 실제 개행으로 변환
+  if (content.indexOf("\\n") >= 0) {
+    content = content.replace(/\\n/g, "\n");
+  }
+
+  // 2) 실제 줄바꿈이 들어있으면 그대로 사용 (pre-line이 처리)
+  contentEl.textContent = content;
+  
   idxLabel.textContent  = `${idx + 1} / ${updateNotices.length}`;
 
   currentNoticeIndex = idx;
