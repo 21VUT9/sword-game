@@ -880,7 +880,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.801)
+    (v3.802)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2766,7 +2766,7 @@ function update() {
   }
 
   // 🔰 현재 강화 단계에 따른 검 정보
-  const wInfo = getWeaponInfo(sword);
+  const wInfo = getWeaponInfo(sword, weaponType || "sword");
 
   // 검 이름 (+현재강)
   if (weaponTitleEl && wInfo) {
@@ -5710,7 +5710,8 @@ function loadRanking() {
           sword: Number(d.sword || 0),
           updated: Number(d.updated || 0),
           duelWin: Number(d.duelWin || 0),
-          duelLose: Number(d.duelLose || 0)
+          duelLose: Number(d.duelLose || 0),
+          weaponType: d.weaponType || "sword"
         });
       });
 
@@ -5720,7 +5721,7 @@ function loadRanking() {
       });
 
 rankingEl.innerHTML = arr.map((u, i) => {
-  const wInfo = getWeaponInfo(u.sword);
+  const wInfo = getWeaponInfo(u.sword, u.weaponType || "sword");
   const weaponNameStyled = coloredWeaponName(u.sword, wInfo.name);
 
   return `
@@ -5749,7 +5750,8 @@ rankingEl.innerHTML = arr.map((u, i) => {
           id: c.key,
           sword: Number(d.sword || 0),
           updated: Number(d.updated || 0),
-          power: Number(d.power || 0)
+          power: Number(d.power || 0),
+          weaponType: d.weaponType || "sword"
         });
       });
 
@@ -6396,7 +6398,8 @@ function loadDuelArenaRanking() {
           sword: Number(u.sword || 0),
           duelWin: Number(u.duelWin || 0),
           duelLose: Number(u.duelLose || 0),
-          updated: Number(u.duelUpdated || u.updated || 0)
+          updated: Number(u.duelUpdated || u.updated || 0),
+          weaponType: d.weaponType || "sword"
         });
       });
 
@@ -6426,16 +6429,16 @@ function loadDuelArenaRanking() {
       const rows = top.map((u, idx) => {
         const rank = idx + 1;
 
-        // 무기 이름 얻기 (이미 있는 getWeaponInfo 재사용)
-        let weaponText = `+${u.sword}강`;
-        try {
-          const info = getWeaponInfo(u.sword);
-          if (info && info.name) {
-            weaponText = `${info.name} +${u.sword}강`;
-          }
-        } catch (e) {
-          // 함수 없거나 오류 나면 그냥 +강만 표시
-        }
+          // 무기 이름 얻기 (이미 있는 getWeaponInfo 재사용)
+  let weaponText = `+${u.sword}강`;
+  try {
+    const info = getWeaponInfo(u.sword, u.weaponType || "sword");   // 🆕 type 넘겨주기
+    if (info && info.name) {
+      weaponText = `${info.name} +${u.sword}강`;
+    }
+  } catch (e) {
+    // 함수 없거나 오류 나면 그냥 +강만 표시
+  }
 
         const recordText = `${u.duelWin}승 ${u.duelLose}패`;
 
@@ -6625,7 +6628,8 @@ function openDuelHistoryPopup() {
           sword: Number(val.sword || 0),
           duelWin: Number(val.duelWin || 0),
           duelLose: Number(val.duelLose || 0),
-          updated: t
+          updated: t,
+          weaponType: val.weaponType || "sword"
         });
       });
 
@@ -6662,8 +6666,8 @@ arr.sort((a, b) => {
       const top10 = arr.slice(0, 10);
 
       const rowsHtml = top10.map((u, i) => {
-        const wInfo = getWeaponInfo(u.sword);
-        const weaponNameStyled = coloredWeaponName(u.sword, wInfo.name);
+        const wInfo = getWeaponInfo(u.sword, u.weaponType || "sword");
+const weaponNameStyled = coloredWeaponName(u.sword, wInfo.name);
 
         return `
           <tr>
