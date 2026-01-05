@@ -880,7 +880,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.802)
+    (v3.803)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -6666,8 +6666,8 @@ arr.sort((a, b) => {
       const top10 = arr.slice(0, 10);
 
       const rowsHtml = top10.map((u, i) => {
-        const wInfo = getWeaponInfo(u.sword, u.weaponType || "sword");
-const weaponNameStyled = coloredWeaponName(u.sword, wInfo.name);
+      const wInfo = getWeaponInfo(u.sword, u.weaponType);
+      const weaponNameStyled = coloredWeaponName(u.sword, wInfo.name);
 
         return `
           <tr>
