@@ -880,7 +880,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.803)
+    (v3.804)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3138,6 +3138,7 @@ function performDuel(targetUserId, isRandomMatch) {
 
     const t = snap.val();
 
+    const targetWeaponType = t.weaponType || "sword";
     const targetSword = Number(t.sword ?? 0);
     let targetPower = Number(t.power ?? 0);
 
@@ -3168,9 +3169,10 @@ function performDuel(targetUserId, isRandomMatch) {
       ? Math.floor((baseCost * randRange(2.5, 2.8)) / 3)
       : 0;
 
-    // 🎴 VS 화면에 쓸 무기 정보
-    const myWeaponInfo     = getWeaponInfo(sword);
-    const targetWeaponInfo = getWeaponInfo(targetSword);
+        // 🎴 VS 화면에 쓸 무기 정보
+    const myWeaponInfo     = getWeaponInfo(sword, weaponType || "sword");           // 내 타입
+    const targetWeaponInfo = getWeaponInfo(targetSword, targetWeaponType || "sword"); // 상대 타입
+
 
     // 🧾 VS 오버레이 먼저 띄우기
     showDuelBattleOverlay({
