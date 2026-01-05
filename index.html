@@ -182,6 +182,21 @@ body {
   padding:8px 16px;
 }
 
+  /* 🎟 쿠폰 버튼 (출석 버튼 아래) */
+#couponBtn {
+  position:fixed;
+  top:80px;       /* 출석(40px) 아래 */
+  left:10px;
+  z-index:1100;
+  display:none;
+  font-size:14px;
+  padding:8px 16px;
+}
+
+/* 캡처 모드에서 숨기기 */
+.capture-mode #couponBtn {
+  display: none !important;
+}
 
 /* 버튼 */
 button {
@@ -865,7 +880,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.774)
+    (v3.775)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1058,6 +1073,9 @@ button {
 </div> <!-- 🔚 gameScreen -->
 
 <button id="attendanceBtn" onclick="checkAttendance()">출석</button>
+
+  <button id="couponBtn" onclick="openCouponPopup()">쿠폰</button>
+
 
   <button id="logoutBtn" onclick="logout()" style="
   position:fixed;
@@ -1747,6 +1765,7 @@ let duelCountToday = 0;           // 오늘 결투한 총 횟수 (모든 상대 
 let lastDuelDate = "";            // 마지막 결투 날짜 (YYYY-MM-DD)
 // 오늘 같은 상대에게 몇 번 도전했는지: { 상대아이디: 횟수 }
 let duelTargetsToday = {};
+let couponUsedMap = {};   // 사용 완료한 쿠폰코드 기록 { CODE: true }
 
 // 🔔 업데이트 공지 상태
 let updateNotices = [];       // {id, title, content, createdAt} 배열
@@ -1916,6 +1935,26 @@ const scrollShopItems = [
   }
 ];
 
+// 📦 쿠폰 코드 보상 목록 (원하는 대로 코드/보상 수정)
+const couponRewards = {
+  // 예시 1) 21강 강화 주문서 1개
+  "WELCOME21": {
+    type: "itemScroll21",
+    count: 1,
+    desc: "21강 강화 주문서 1개를 획득했습니다."
+  },
+
+  // 예시 2) 파괴방지 주문서 1개
+  "PROTECTME": {
+    type: "itemProtect",
+    count: 1,
+    desc: "파괴방지 주문서 1개를 획득했습니다."
+  }
+
+  // 👇 원하는 만큼 더 추가 가능
+  // "CODE123": { type: "itemSuper", count: 1, desc: "슈퍼강화 주문서 1개를 획득했습니다." }
+};
+  
 // 1. 랜덤 출력용 상점 입장 기본 멘트들
 const scrollShopNpcIdleLines = [
   "왔네? 오늘도 주문서 좀 보러 온 거지?",
@@ -2452,6 +2491,7 @@ currentSessionId = null;
   document.getElementById("duelBtn").style.display      = "none";
   document.getElementById("scrollShopBtn").style.display = "none";
   document.getElementById("mapBtn").style.display       = "none";
+  document.getElementById("couponBtn").style.display    = "none";
 
     // ✅ 자동 새로고침 타이머 해제
   stopAutoRefreshTimer();
@@ -3464,7 +3504,126 @@ function showHuntPopup(text, color = "#FFFFFF") {
   }, 1200);
 }
 
+// 🎟 쿠폰 입력 팝업 열기
+function openCouponPopup() {
+  const popup     = document.getElementById("npcPopup");
+  const msgEl     = document.getElementById("npcPopupText");
+  const imgEl     = document.getElementById("npcPopupImg");
+  const okBtn     = document.getElementById("npcConfirmBtn");
+  const cancelBtn = document.getElementById("npcCancelBtn");
+  const nameEl    = document.getElementById("npcPopupName");
 
+  if (!popup || !msgEl || !imgEl || !okBtn || !cancelBtn) return;
+
+  // NPC 이름/이미지 숨김 (시스템 팝업 모드)
+  if (nameEl) nameEl.textContent = "";
+  imgEl.style.display = "none";
+
+  // 입력 UI 구성
+  msgEl.innerHTML = `
+    <div style="font-size:18px; font-weight:bold; margin-bottom:8px;">
+      쿠폰
+    </div>
+    <div style="font-size:13px; margin-bottom:6px;">
+      쿠폰코드를 입력하세요.
+    </div>
+    <input id="couponInput"
+           type="text"
+           maxlength="32"
+           style="width:100%; padding:6px 8px; font-size:13px;
+                  box-sizing:border-box; text-align:center;"/>
+  `;
+
+  // 버튼 설정
+  okBtn.style.display = "inline-block";
+  okBtn.textContent   = "확인";
+  okBtn.onclick       = submitCouponCode;
+
+  cancelBtn.style.display = "inline-block";
+  cancelBtn.textContent   = "취소";
+  cancelBtn.onclick       = closeNpcPopup;
+
+  popup.style.display = "flex";
+
+  // 포커스 주기
+  setTimeout(() => {
+    const input = document.getElementById("couponInput");
+    if (input) input.focus();
+  }, 0);
+}
+
+// 🎟 쿠폰 코드 확인 처리
+function submitCouponCode() {
+  const input = document.getElementById("couponInput");
+  if (!input) {
+    closeNpcPopup();
+    return;
+  }
+
+  const rawCode = input.value.trim();
+  if (!rawCode) {
+    // 빈 입력
+    showNpcMessage("쿠폰코드를 입력해주세요.", null, true, "");
+    return;
+  }
+
+  const code = rawCode.toUpperCase();
+  const reward = couponRewards[code];
+
+  // 1) 등록되지 않은 코드
+  if (!reward) {
+    closeNpcPopup();
+    showNpcMessage("사용이 불가능한 코드입니다.", null, true, "");
+    return;
+  }
+
+  // 2) 이미 사용한 코드
+  if (couponUsedMap && couponUsedMap[code]) {
+    closeNpcPopup();
+    showNpcMessage("이미 사용한 코드입니다.", null, true, "");
+    return;
+  }
+
+  // 3) 최초 사용 → 보상 지급
+  // 아이템 지급
+  switch (reward.type) {
+    case "itemScroll21":
+      itemScroll21 = Number(itemScroll21 || 0) + reward.count;
+      break;
+    case "itemProtect":
+      itemProtect = Number(itemProtect || 0) + reward.count;
+      break;
+    case "itemSuper":
+      itemSuper = Number(itemSuper || 0) + reward.count;
+      break;
+    case "itemDownProtect":
+      itemDownProtect = Number(itemDownProtect || 0) + reward.count;
+      break;
+    case "itemRateUp5":
+      itemRateUp5 = Number(itemRateUp5 || 0) + reward.count;
+      break;
+    case "starShard":
+      starShard = Number(starShard || 0) + reward.count;
+      break;
+    case "honorMedal":
+      itemHonorMedal = Number(itemHonorMedal || 0) + reward.count;
+      break;
+    // 필요하면 타입 더 추가 가능
+    default:
+      break;
+  }
+
+  // 사용 기록
+  if (!couponUsedMap) couponUsedMap = {};
+  couponUsedMap[code] = true;
+
+  // 저장 & UI 갱신
+  save();
+  update();
+
+  closeNpcPopup();
+  showNpcMessage(reward.desc || "쿠폰이 정상적으로 등록되었습니다.", null, true, "");
+}
   
 function closeMovePopup() {
   const popup     = document.getElementById("npcPopup");
@@ -4664,6 +4823,7 @@ function login() {
       itemSuper          = data.itemSuper    ?? 0;
       itemDownProtect    = data.itemDownProtect ?? 0;
       starShard          = data.starShard ?? 0;
+      couponUsedMap = data.couponUsed || {};
       itemScroll21    = Number(data.itemScroll21    ?? 0); 
       itemRateUp5     = Number(data.itemRateUp5     ?? 0);
       huntStamina        = data.huntStamina       ?? 20;
@@ -4708,6 +4868,7 @@ function login() {
     document.getElementById("duelBtn").style.display = "block";
     document.getElementById("scrollShopBtn").style.display = "block";
     document.getElementById("mapBtn").style.display = "block";
+    document.getElementById("couponBtn").style.display = "block";
 
         // ✅ 여기에서 자동 새로고침 타이머 시작
     startAutoRefreshTimer();
@@ -4772,6 +4933,7 @@ function save() {
     duelLastWeekRewardClaimed: Boolean(duelLastWeekRewardClaimed),
     duelUpdated: Number(duelUpdated || 0),
     duelLastWeekUpdated: Number(duelLastWeekUpdated || 0)
+    couponUsed: couponUsedMap   // 🆕 사용 완료 쿠폰 기록
   };
 
   // ⭐ 강화 수치가 바뀌었을 때만 updated 갱신
@@ -5054,6 +5216,7 @@ lastAttendanceDay  = data.lastAttendanceDay  ?? "";
     duelTargetsToday = data.duelTargetsToday ?? {};
     itemHonorMedal = data.itemHonorMedal ?? 0;
     starShard = data.starShard ?? 0;
+    couponUsedMap = data.couponUsed || {};
     duelPoint      = data.duelPoint      ?? 0;
     duelPointWeekKey = data.duelPointWeekKey || "";
     duelLastWeekPoint = data.duelLastWeekPoint ?? 0;
@@ -5080,6 +5243,7 @@ document.getElementById("logoutBtn").style.display = "block";
 document.getElementById("duelBtn").style.display = "block";
 document.getElementById("scrollShopBtn").style.display = "block";
 document.getElementById("mapBtn").style.display = "block";
+document.getElementById("couponBtn").style.display = "block";
 
         // ✅ 여기에서 자동 새로고침 타이머 시작
     startAutoRefreshTimer();
