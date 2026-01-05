@@ -880,7 +880,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.804)
+    (v3.805)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -6401,7 +6401,7 @@ function loadDuelArenaRanking() {
           duelWin: Number(u.duelWin || 0),
           duelLose: Number(u.duelLose || 0),
           updated: Number(u.duelUpdated || u.updated || 0),
-          weaponType: d.weaponType || "sword"
+          weaponType: u.weaponType || "sword"
         });
       });
 
