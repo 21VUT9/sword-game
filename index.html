@@ -865,7 +865,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.772)
+    (v3.773)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2750,6 +2750,24 @@ function getKstWeekKey() {
   return `${year}-W${String(week).padStart(2, "0")}`;
 }
 
+// 🗓 지난주(월요일 00:00 ~ 이번 주 월요일 00:00) KST 범위(ms) 구하기
+function getLastWeekRangeKst() {
+  const now = getKstNow();
+  const day = now.getDay();                 // 0=일, 1=월, ... 6=토
+  const diffToMonday = (day + 6) % 7;       // 이번 주 월요일까지 며칠 되돌릴지
+  const thisMonday = new Date(
+    now.getTime() - diffToMonday * 24 * 60 * 60 * 1000
+  );
+  const lastMonday = new Date(
+    thisMonday.getTime() - 7 * 24 * 60 * 60 * 1000
+  );
+
+  return {
+    start: lastMonday.getTime(),   // 지난주 월요일 00:00
+    end: thisMonday.getTime()      // 이번 주 월요일 00:00 (직전까지가 지난주)
+  };
+}
+  
   // 🇰🇷 한국시간 기준 월요일 00:00~00:10 결투장 집계 시간 여부
 function isDuelSettlementTimeKST() {
   const now = new Date();
@@ -5391,12 +5409,14 @@ function getKstWeekKey() {
 
 // 🏆 지난주 결투 보상 체크 & 지급
 function checkWeeklyDuelReward() {
-  // 이미 받은 적 있으면 아무 것도 안 함
   if (duelLastWeekRewardClaimed) return;
-  // 지난주 포인트가 0이면 보상 없음
   if (!duelLastWeekPoint || duelLastWeekPoint <= 0) return;
 
-  // 전체 유저 중에서 내 지난 주 랭킹 계산
+  // 🆕 이번 기준에서 "진짜 지난주" 범위 계산
+  const range = getLastWeekRangeKst();
+  const startTs = range.start;
+  const endTs   = range.end;
+
   const usersRef = db.ref("users");
   usersRef
     .orderByChild("duelLastWeekPoint")
@@ -5406,28 +5426,32 @@ function checkWeeklyDuelReward() {
       snap.forEach((child) => {
         const val = child.val() || {};
         const uid = child.key;
-        const p = Number(val.duelLastWeekPoint || 0);
+        const p   = Number(val.duelLastWeekPoint || 0);
+        const t   = Number(val.duelLastWeekUpdated || 0);
+
+        // 🔍 1) 포인트 0 이하는 제외
         if (p <= 0) return;
+
+        // 🔍 2) 지난주 기간 밖(너무 옛날 기록)은 제외
+        if (!t || t < startTs || t >= endTs) return;
+
         arr.push({
           id: uid,
           point: p,
-          updated: Number(val.duelLastWeekUpdated || 0)   // 🔹 지난주 기준 시각
+          updated: t
         });
       });
 
       if (arr.length === 0) return;
 
-      // 포인트 기준 내림차순 + 동점 시 먼저 도달한 사람 우선
+      // 이하 정렬/랭크 계산 로직은 그대로 유지
       arr.sort((a, b) => {
-        if (b.point !== a.point) {
-          return b.point - a.point;  // 포인트 높은 순
-        }
+        if (b.point !== a.point) return b.point - a.point;
         const aTime = Number(a.updated || 0);
         const bTime = Number(b.updated || 0);
-        return aTime - bTime;        // 같은 포인트면 더 먼저 도달한 사람
+        return aTime - bTime;
       });
 
-      // 내 랭킹 찾기
       const myIndex = arr.findIndex((u) => u.id === userId);
       if (myIndex === -1) {
         // 혹시나 리스트에 없으면 그냥 플래그만 막아둔다
@@ -6169,6 +6193,11 @@ function openDuelHelpPopup() {
 function openDuelHistoryPopup() {
   const usersRef = db.ref("users");
 
+  // 🆕 지난주 기간 범위 계산
+  const range = getLastWeekRangeKst();
+  const startTs = range.start;
+  const endTs   = range.end;
+
   usersRef
     .orderByChild("duelLastWeekPoint")
     .once("value")
@@ -6176,9 +6205,14 @@ function openDuelHistoryPopup() {
       const arr = [];
 
       snap.forEach((child) => {
-        const val = child.val() || {};
+        const val   = child.val() || {};
         const point = Number(val.duelLastWeekPoint || 0);
+        const t     = Number(val.duelLastWeekUpdated || 0);
+
         if (point <= 0) return;
+
+        // 🧹 지난주 기간 안에 기록된 것만 사용
+        if (!t || t < startTs || t >= endTs) return;
 
         arr.push({
           id: child.key,
@@ -6186,7 +6220,7 @@ function openDuelHistoryPopup() {
           sword: Number(val.sword || 0),
           duelWin: Number(val.duelWin || 0),
           duelLose: Number(val.duelLose || 0),
-          updated: Number(val.duelLastWeekUpdated || 0)
+          updated: t
         });
       });
 
