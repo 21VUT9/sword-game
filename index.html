@@ -880,7 +880,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.776)
+    (v3.801)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1715,21 +1715,202 @@ const WEAPON_INFO = {
   }
 };
 
-// 현재 강화 수치 기준으로 안전하게 정보 가져오기
-function getWeaponInfo(level) {
+  // 🌌 창 전용 무기 정보 테이블
+// 0강은 검과 공용으로 같은 객체를 쓴다.
+const WEAPON_INFO_SPEAR = {
+  0: WEAPON_INFO[0],  // "제련되지 않은 금속괴" 공용
+
+  1: {
+    name: "부러진 창끝",
+    desc: "더 이상 누구를 겨눌 수도 없는 채, 전장의 끝에 버려져 있다.",
+    img: "images/weapons/spear_01.png"
+  },
+  2: {
+    name: "금이 간 창",
+    desc: "한 번만 더 힘을 주면, 그대로 산산이 부서져 버릴 것 같다.",
+    img: "images/weapons/spear_02.png"
+  },
+  3: {
+    name: "피가 굳은 창",
+    desc: "오래전에 멈춘 싸움의 흔적만이, 차갑게 남아 있다.",
+    img: "images/weapons/spear_03.png"
+  },
+  4: {
+    name: "버려진 창대",
+    desc: "손에서 놓인 순간, 이 무기는 사냥꾼의 이름을 잃었다.",
+    img: "images/weapons/spear_04.png"
+  },
+  5: {
+    name: "닿지 못한 창",
+    desc: "단 한 번도 급소를 찌르지 못한 채, 시간을 견디고 있다.",
+    img: "images/weapons/spear_05.png"
+  },
+
+  6: {
+    name: "쇳결 창날",
+    desc: "다시 벼려진 날 위에, 잠든 결심이 깨어난다.",
+    img: "images/weapons/spear_06.png"
+  },
+  7: {
+    name: "거친 연마창",
+    desc: "불안정했던 무게가 점차 전투를 향해 정렬된다.",
+    img: "images/weapons/spear_07.png"
+  },
+  8: {
+    name: "야전 전투창",
+    desc: "낯선 땅과 바람이, 이 무기의 첫 전장을 만들어 준다.",
+    img: "images/weapons/spear_08.png"
+  },
+  9: {
+    name: "사냥꾼 추적창",
+    desc: "도망친 적을 허락하지 않겠다는 무언의 의지가 깃든다.",
+    img: "images/weapons/spear_09.png"
+  },
+  10: {
+    name: "장거리 원정창",
+    desc: "전사는 기다리지 않는다 — 강자를 찾아 스스로 길 위에 선다.",
+    img: "images/weapons/spear_10.png"
+  },
+
+  11: {
+    name: "影[영]",
+    desc: "약자는 지나친다 — 이 창은 강자의 냄새만을 좇는다.",
+    img: "images/weapons/spear_11.png"
+  },
+  12: {
+    name: "스칼드 게이르",
+    desc: "전사의 노래에 남을 싸움만을, 의도적으로 선택한다.",
+    img: "images/weapons/spear_12.png"
+  },
+  13: {
+    name: "알마 게이르",
+    desc: "물러날 길을 허락하지 않는다 — 이 창이 선택한 이는 반드시 맞서야 한다.",
+    img: "images/weapons/spear_13.png"
+  },
+  14: {
+    name: "베어울프 팔라딘",
+    desc: "전설이라 불린 괴수조차, 결전의 요청을 피하지 못한다.",
+    img: "images/weapons/spear_14.png"
+  },
+  15: {
+    name: "울프가르",
+    desc: "사냥꾼들 위에서, 승자만이 바라볼 수 있는 세계가 열린다.",
+    img: "images/weapons/spear_15.png"
+  },
+
+  16: {
+    name: "프로미넌스 베르크",
+    desc: "불의 심연을 향해, 이 창은 한 치의 망설임도 남기지 않는다.",
+    img: "images/weapons/spear_16.png"
+  },
+  17: {
+    name: "포효하는 불꽃",
+    desc: "포효와 화염을 가르며, 도전은 오직 전면에서 이루어진다.",
+    img: "images/weapons/spear_17.png"
+  },
+  18: {
+    name: "용 사냥꾼",
+    desc: "거대한 심장이 마지막으로 떨린다 — 여기서 사냥의 여정은 끝난다.",
+    img: "images/weapons/spear_18.png"
+  },
+
+  19: {
+    name: "알티스 엘리온",
+    desc: "정복할 괴수가 사라진 자리에서, 전사는 하늘을 바라본다.",
+    img: "images/weapons/spear_19.png"
+  },
+  20: {
+    name: "레지스 이그니스",
+    desc: "권위 위에 불꽃이 꽂히는 순간, 도전은 반역이 된다.",
+    img: "images/weapons/spear_20.png"
+  },
+  21: {
+    name: "오르도 네가티오",
+    desc: "이 창은 존재의 질서 그 자체를 향해 던져진다.",
+    img: "images/weapons/spear_21.png"
+  },
+
+  22: {
+    name: "聖戟[성극]",
+    desc: "성역의 심장마저, 더 이상 안전하지 않다.",
+    img: "images/weapons/spear_22.png"
+  },
+  23: {
+    name: "쓰론브레허",
+    desc: "높이 앉은 자를 끌어내린다 — 왕좌 위에서도 예외는 없다.",
+    img: "images/weapons/spear_23.png"
+  },
+  24: {
+    name: "롱기누스 엑스 마키나",
+    desc: "신의 몸을 관통한 창. 이것은 존재를 뚫는다는 정의가 된다.",
+    img: "images/weapons/spear_24.png"
+  },
+
+  25: {
+    name: "아스트라 루프투라",
+    desc: "별의 중추가 흔들리며, 우주의 울림이 따라 진동한다.",
+    img: "images/weapons/spear_25.png"
+  },
+  26: {
+    name: "超滅槍[초멸창]",
+    desc: "하늘의 골격이 부서지고, 경계가 자신의 의미를 잃는다.",
+    img: "images/weapons/spear_26.png"
+  },
+  27: {
+    name: "디멘프랙트",
+    desc: "차원을 나누던 마지막 선이, 조용히 찢겨 나간다.",
+    img: "images/weapons/spear_27.png"
+  },
+
+  28: {
+    name: "터미너스 스피어",
+    desc: "종언은 이제 사건이 아니라 — 반드시 도달할 지점이 된다.",
+    img: "images/weapons/spear_28.png"
+  },
+  29: {
+    name: "「切斷」[절단]",
+    desc: "절단이라는 규칙만 남았다. 이것의 형태는 이제 중요하지 않다.",
+    img: "images/weapons/spear_29.png"
+  },
+  30: {
+    name: "파괴의 계율 「디에스 이라에」",
+    desc: "더 이상 무기가 아니다 — 파괴라는 법칙으로 존재한다.",
+    img: "images/weapons/spear_30.png"
+  }
+};
+
+// 현재 강화 수치 & 타입 기준으로 안전하게 정보 가져오기
+function getWeaponInfo(level, type) {
   const lv = Math.max(0, Math.min(30, level | 0));
+
+  // 우선순위: 전달된 type > 전역 weaponType > 기본 "sword"
+  const t = type || weaponType || "sword";
+
+  if (t === "spear") {
+    return WEAPON_INFO_SPEAR[lv] || WEAPON_INFO_SPEAR[0];
+  }
+
+  // 기본: 검
   return WEAPON_INFO[lv] || WEAPON_INFO[0];
+}
+
+  // 0강에서 처음 무기가 생길 때, 타입(검/창) 랜덤 확정
+function ensureWeaponTypeAfterUpgrade(beforeLevel, afterLevel) {
+  if (beforeLevel <= 0 && afterLevel >= 1) {
+    if (!weaponType) {
+      weaponType = Math.random() < 0.5 ? "sword" : "spear";
+    }
+  }
 }
 
 // 이미지 교체 함수
 function updateWeaponImage() {
-  const info = getWeaponInfo(sword);
+  const info = getWeaponInfo(sword, weaponType);
   const imgEl = document.getElementById("weaponImage");
   if (!imgEl) return;
 
-  if (info && info.img) {
-    imgEl.src = info.img;
-  }
+  imgEl.src = info.img;
+  imgEl.alt = info.name;
 }
   
 /* 상태 */
@@ -1748,8 +1929,8 @@ let duelLastWeekRank  = 0;           // 지난주 내 랭킹 (0이면 기록 없
 let duelLastWeekRewardClaimed = false; // 지난주 보상 이미 받았는지 여부
 let duelUpdated = 0;          // 이번 주 결투 포인트가 마지막으로 바뀐 시각
 let duelLastWeekUpdated = 0;  // 지난주 결투 포인트 최종 기록 시각  
-
-// 🆕 강화 진행 중인지 여부
+let weaponType = null; 
+// null: 아직 미배정(0강) / "sword": 검 / "spear": 창
 let isUpgrading = false; 
 
 // 🧭 사냥터 이동 중인지 여부
@@ -4025,8 +4206,14 @@ function upgrade() {
       return;
     }
 
+    const before = sword;          // 🔹 추가: 주문서 사용 전 레벨 기억
+
     itemScroll15 -= 1;
     sword = 15;
+
+      // 🔹 0강 → 15강으로 점프했다면 여기서 검/창 랜덤 확정
+  ensureWeaponTypeAfterUpgrade(before, sword);
+    
     rollPowerForCurrentSword();
 
     if (scroll15El) scroll15El.checked = false; // 한 번 쓰고 체크 해제
@@ -4060,8 +4247,14 @@ if (wantScroll21) {
     return;
   }
 
+    const before = sword;        // 🔹 추가
+  
   itemScroll21 -= 1;
   sword = 21;
+
+    // 🔹 0강 → 21강으로 점프했다면 여기서 검/창 랜덤 확정
+  ensureWeaponTypeAfterUpgrade(before, sword);
+  
   rollPowerForCurrentSword();
 
   if (sword > maxSwordLevel) {
@@ -4156,6 +4349,9 @@ if (Math.random() < chance / 100) {
     sword++;
     up--;
   }
+  
+  // 🔹 0강 → 1강 이상으로 처음 올라갔으면 여기서 타입 확정
+      ensureWeaponTypeAfterUpgrade(before, sword);
 
   rollPowerForCurrentSword();
   
@@ -4332,6 +4528,8 @@ if (useRate5) {
 
     // 실제 파괴 처리
     sword = 0;
+    weaponType = null;       // 🔹 파괴되면 무기 타입도 초기화 (다음에 다시 랜덤)
+
     rollPowerForCurrentSword();
 
     destroyCount++;  // 🧨 누적 파괴 횟수 증가
@@ -4746,6 +4944,7 @@ function login() {
       userRef.set({
         password: userPassword,
         sword,
+        weaponType: null,   // 🔹 처음 계정은 아직 무기 타입 미정
         power,
         gold,
         updated: Date.now(),
@@ -4798,6 +4997,22 @@ function login() {
 
       sword = data.sword ?? 0;
       gold  = data.gold  ?? 100;
+
+      // 🗡 무기 타입 로드 (v3.8 이전 계정 호환용)
+if (data.weaponType !== undefined && data.weaponType !== null) {
+  // v3.8 이후에 저장된 계정
+  weaponType = data.weaponType;
+} else {
+  // 구버전 계정 (weaponType 없음)
+  if (sword > 0) {
+    // 이미 무기가 1강 이상인 유저는 일단 '검' 루트로 간주
+    weaponType = "sword";
+  } else {
+    // 0강이면 아직 미배정 → 다음에 처음 강화할 때 랜덤
+    weaponType = null;
+  }
+}
+      
       // ⭐ 이 시점의 강화값을 기준으로 기록
       lastSavedSwordForUpdated = sword;
       
@@ -4900,6 +5115,7 @@ function save() {
 
   const updateData = {
     sword: Number(sword),
+    weaponType: weaponType,
     power: Number(power),
     gold: Number(gold),
     maxSwordLevel: Number(maxSwordLevel),
@@ -5179,6 +5395,22 @@ function autoLoginFromStorage() {
 
     sword = data.sword ?? 0;
     gold  = data.gold  ?? 100;
+
+      // 🗡 무기 타입 로드 (v3.8 이전 계정 호환 포함)
+  if (data.weaponType !== undefined && data.weaponType !== null) {
+    // v3.8 이후 저장된 계정 → 그대로 사용
+    weaponType = data.weaponType;   // "sword" 또는 "spear"
+  } else {
+    // 구버전 계정 (weaponType 필드가 없던 시절)
+    if (sword > 0) {
+      // 이미 1강 이상 무기를 가진 유저는 '검' 루트로 판정
+      weaponType = "sword";
+    } else {
+      // 0강이면 아직 무기 미정 → 다음에 1/15/21강 찍을 때 랜덤 배정
+      weaponType = null;
+    }
+  }
+    
     // ⭐ 자동로그인 시에도 초기화
     lastSavedSwordForUpdated = sword;
 
