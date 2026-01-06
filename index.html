@@ -4198,7 +4198,16 @@ function upgrade() {
   showNpcMessage("강화 확률 +5% 주문서가 필요해.");
   return;
   }
-
+  
+  // 🛑 28강 이상에서는 슈퍼강화 주문서 사용 불가
+  if (sword >= 28 && wantSuper) {
+    showNpcMessage(
+      "28강 이상 무기에는 슈퍼강화 주문서를 쓸 수 없다네.",
+      "images/npc/blacksmith_idle.png"
+    );
+    if (superEl) superEl.checked = false;  // 체크도 풀어주기
+    return;
+  }
 
   // 🎯 15강 강화 주문서 전용 처리 (즉시 처리, 딜레이 X)
   if (wantScroll15) {
