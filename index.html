@@ -880,7 +880,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.807)
+    (v3.811)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1879,6 +1879,170 @@ const WEAPON_INFO_SPEAR = {
   }
 };
 
+  // 🔰 강화 단계별 도끼 이름 / 설명 / 이미지 경로
+const WEAPON_INFO_AXE = {
+  0: WEAPON_INFO[0],  // "제련되지 않은 금속괴" 공용
+
+  1: {
+    name: "금이 간 도끼날",
+    desc: "금이 간 낡은 도끼.",
+    img: "images/weapons/axe_01.png"
+  },
+  2: {
+    name: "녹슨 도끼",
+    desc: "전장을 떠난 도끼.",
+    img: "images/weapons/axe_02.png"
+  },
+  3: {
+    name: "무너진 손잡이",
+    desc: "주인을 잃고 방치된 채, 더 이상 휘두를 수 없는 도끼.",
+    img: "images/weapons/axe_03.png"
+  },
+  4: {
+    name: "버려진 약탈도끼",
+    desc: "약탈의 흔적만을 남기고, 전장에 버려진 도끼.",
+    img: "images/weapons/axe_04.png"
+  },
+  5: {
+    name: "잠들지 못한 도끼",
+    desc: "여전히 전장을 꿈꾸며, 깨어날 순간을 기다린다.",
+    img: "images/weapons/axe_05.png"
+  },
+
+  6: {
+    name: "야전 전투도끼",
+    desc: "다시 전장으로 돌아온, 실전의 무게를 지닌 도끼.",
+    img: "images/weapons/axe_06.png"
+  },
+  7: {
+    name: "피투성이 돌격도끼",
+    desc: "돌격 속에서 피와 흙을 함께 뒤집어쓴 도끼.",
+    img: "images/weapons/axe_07.png"
+  },
+  8: {
+    name: "약탈의 도끼",
+    desc: "승리보다 약탈을 위해 휘둘러지는, 잔혹한 도끼.",
+    img: "images/weapons/axe_08.png"
+  },
+  9: {
+    name: "전장의 광전사 도끼",
+    desc: "이성보다 분노가 먼저 휘두르는 광전사의 무기.",
+    img: "images/weapons/axe_09.png"
+  },
+  10: {
+    name: "피의 맹약도끼",
+    desc: "물러섬을 허락하지 않는, 피로 맺은 전투의 맹약.",
+    img: "images/weapons/axe_10.png"
+  },
+
+  11: {
+    name: "라우드",
+    desc: "전장을 울리는 광기의 포효가, 도끼를 뒤흔든다.",
+    img: "images/weapons/axe_11.png"
+  },
+  12: {
+    name: "베르세르크 로어",
+    desc: "광전사의 전투 본능이, 도끼와 함께 울려 퍼진다.",
+    img: "images/weapons/axe_12.png"
+  },
+  13: {
+    name: "블러드 하울",
+    desc: "피를 부르는 울음이, 적의 의지를 꺾는다.",
+    img: "images/weapons/axe_13.png"
+  },
+  14: {
+    name: "카오스 오스",
+    desc: "무질서와 파괴를 향한 맹세가 도끼에 각인된다.",
+    img: "images/weapons/axe_14.png"
+  },
+  15: {
+    name: "레드 라그나",
+    desc: "붉은 종말을 예고하는, 전장의 피빛 도끼.",
+    img: "images/weapons/axe_15.png"
+  },
+
+  16: {
+    name: "딥스트라이드",
+    desc: "거대한 심연으로, 스스로 걸어 들어간 전사의 도끼.",
+    img: "images/weapons/axe_16.png"
+  },
+  17: {
+    name: "자이언트 슬레이어",
+    desc: "거인을 학살한 도끼, 두려움을 잊은 존재에게 다시 두려움을 각인시킨다.",
+    img: "images/weapons/axe_17.png"
+  },
+  18: {
+    name: "요툰 브레이커",
+    desc: "지옥 자체를 붕괴해버린 전설적인 도끼.",
+    img: "images/weapons/axe_18.png"
+  },
+
+  19: {
+    name: "어센더 오브 더 홀",
+    desc: "선택받은 전사들의 하늘을 향해, 금기를 넘어선다.",
+    img: "images/weapons/axe_19.png"
+  },
+  20: {
+    name: "크라운폴 엣지",
+    desc: "광기에 젖은 전사들의 분노는 멈추지 않고 그들의 주군을 향한다.",
+    img: "images/weapons/axe_20.png"
+  },
+  21: {
+    name: "발할라 세버러",
+    desc: "하늘의 전당을 가르며 — 신좌를 부정한 도끼.",
+    img: "images/weapons/axe_21.png"
+  },
+
+  22: {
+    name: "오스브레이커스 운드",
+    desc: "신성한 약속이 피처럼 흘러내린 자리.",
+    img: "images/weapons/axe_22.png"
+  },
+  23: {
+    name: "쓰론 어서퍼",
+    desc: "왕좌는 지켜지는 것이 아니라 — 빼앗기는 것이다.",
+    img: "images/weapons/axe_23.png"
+  },
+  24: {
+    name: "브레이커 오브 아스가르드",
+    desc: "자신마저 집어삼킨 분노는 끝내 그들의 신격마저 말살한다.",
+    img: "images/weapons/axe_24.png"
+  },
+
+  25: {
+    name: "루트 프랙처",
+    desc: "한번의 휘두름에 보이지 않는 세계의 뿌리에, 첫 금이 간다.",
+    img: "images/weapons/axe_25.png"
+  },
+  26: {
+    name: "액시스 브레이크",
+    desc: "세계를 잇던 축이, 점점 기울어지기 시작한다.",
+    img: "images/weapons/axe_26.png"
+  },
+  27: {
+    name: "Yggdrasil Shear (이그드라실 시어)",
+    desc: "거대한 분노가 만들어낸 붕괴는 차원마저 절단 시킨다.",
+    img: "images/weapons/axe_27.png"
+  },
+
+  28: {
+    name: "싱귤러 루인",
+    desc: "파괴는 더 이상 사건이 아니다 — 존재의 상태다.",
+    img: "images/weapons/axe_28.png"
+  },
+  29: {
+    name: "로 오브 콜랩스",
+    desc: "무너짐은 선택이 아니라 — 필연이 된다.",
+    img: "images/weapons/axe_29.png"
+  },
+
+  30: {
+    name: "혼돈의 서막 「에스카톤」",
+    desc: "더 이상 무기가 아니다 — 혼돈의 형태일 뿐.",
+    img: "images/weapons/axe_30.png"
+  }
+};
+
 // 현재 강화 수치 & 타입 기준으로 안전하게 정보 가져오기
 function getWeaponInfo(level, type) {
   const lv = Math.max(0, Math.min(30, level | 0));
@@ -1889,16 +2053,22 @@ function getWeaponInfo(level, type) {
   if (t === "spear") {
     return WEAPON_INFO_SPEAR[lv] || WEAPON_INFO_SPEAR[0];
   }
+  
+    if (t === "axe") {
+    return WEAPON_INFO_AXE[lv] || WEAPON_INFO_AXE[0];
+  }
 
   // 기본: 검
   return WEAPON_INFO[lv] || WEAPON_INFO[0];
 }
 
-  // 0강에서 처음 무기가 생길 때, 타입(검/창) 랜덤 확정
+// 0강에서 처음 무기가 생길 때, 타입(검/창/도끼) 랜덤 확정
 function ensureWeaponTypeAfterUpgrade(beforeLevel, afterLevel) {
   if (beforeLevel <= 0 && afterLevel >= 1) {
     if (!weaponType) {
-      weaponType = Math.random() < 0.5 ? "sword" : "spear";
+      const types = ["sword", "spear", "axe"];
+      const idx = Math.floor(Math.random() * types.length);
+      weaponType = types[idx];
     }
   }
 }
