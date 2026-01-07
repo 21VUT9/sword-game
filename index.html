@@ -455,6 +455,10 @@ button {
 #inventoryBtn {
   top: 130px;
 }
+
+#userListBtn {
+  top: 170px;
+}
   
 /* 🗺 MAP 패널 */
 #mapPanel {
@@ -880,7 +884,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.811)
+    (v3.820)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1119,6 +1123,12 @@ button {
   🎒 인벤토리
 </button>
 
+  <button id="userListBtn"
+        class="side-menu-btn"
+        onclick="openUserListOverlay()">
+  👥 전체 유저
+</button>
+  
 <button id="logToggle" onclick="toggleLog()" style="
   position:fixed;
   bottom:80px;
@@ -1155,6 +1165,93 @@ button {
   <div id="inventoryList"></div>
 </div>
 
+<!-- 👥 전체 유저 목록 오버레이 -->
+<div id="userListOverlay"
+     style="
+       position:fixed;
+       inset:0;
+       background:rgba(0,0,0,0.6);
+       display:none;
+       z-index:1190;
+     "
+     onclick="if (event.target === this) closeUserListOverlay();">
+
+  <div id="userListPanel"
+       style="
+         position:absolute;
+         left:50%;
+         top:50%;
+         transform:translate(-50%, -50%);
+         width:640px;
+         max-width:calc(100% - 40px);
+         max-height:80%;
+         background:#111;
+         border:1px solid #666;
+         border-radius:10px;
+         padding:12px 14px;
+         color:#fff;
+         box-shadow:0 0 20px rgba(0,0,0,0.9);
+         display:flex;
+         flex-direction:column;
+       "
+       onclick="event.stopPropagation();">
+
+    <!-- 상단 헤더 -->
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+      <div>
+        <div style="font-size:16px; font-weight:bold;">👥 전체 유저 목록</div>
+        <div id="userListCount"
+             style="font-size:12px; color:#ccc; margin-top:2px;">
+          모험가 정보를 불러오는 중입니다...
+        </div>
+      </div>
+      <button style="font-size:12px; padding:4px 8px;"
+              onclick="closeUserListOverlay()">
+        닫기
+      </button>
+    </div>
+
+    <!-- 검색 영역 -->
+    <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
+      <input id="userListSearch"
+             type="text"
+             placeholder="아이디 검색"
+             style="
+               flex:1;
+               padding:4px 8px;
+               background:#000;
+               border:1px solid #444;
+               border-radius:4px;
+               color:#fff;
+               font-size:13px;
+             "
+             oninput="applyUserListSearch()"
+      />
+      <button style="font-size:12px; padding:4px 8px;"
+              onclick="document.getElementById('userListSearch').value=''; applyUserListSearch();">
+        초기화
+      </button>
+    </div>
+
+    <!-- 리스트 본문 -->
+    <div id="userListBody"
+         style="
+           flex:1;
+           border:1px solid #333;
+           border-radius:6px;
+           padding:6px;
+           overflow-y:auto;
+           font-size:13px;
+         ">
+      <!-- JS로 채워짐 -->
+      <div style="padding:8px 0; text-align:center; color:#999; font-size:12px;">
+        잠시만 기다려 주세요...
+      </div>
+    </div>
+
+  </div>
+</div>
+  
 <!-- ⚔️ 결투장 중앙 팝업 오버레이 -->
 <div id="duelArenaOverlay"
      style="
@@ -2843,6 +2940,8 @@ currentSessionId = null;
   document.getElementById("scrollShopBtn").style.display = "none";
   document.getElementById("mapBtn").style.display       = "none";
   document.getElementById("couponBtn").style.display    = "none";
+  document.getElementById("userListBtn").style.display  = "none";
+
 
     // ✅ 자동 새로고침 타이머 해제
   stopAutoRefreshTimer();
@@ -5266,7 +5365,8 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
     document.getElementById("scrollShopBtn").style.display = "block";
     document.getElementById("mapBtn").style.display = "block";
     document.getElementById("couponBtn").style.display = "block";
-
+    document.getElementById("userListBtn").style.display = "block";
+    
         // ✅ 여기에서 자동 새로고침 타이머 시작
     startAutoRefreshTimer();
     
@@ -5658,6 +5758,8 @@ document.getElementById("duelBtn").style.display = "block";
 document.getElementById("scrollShopBtn").style.display = "block";
 document.getElementById("mapBtn").style.display = "block";
 document.getElementById("couponBtn").style.display = "block";
+document.getElementById("userListBtn").style.display = "block";
+
 
         // ✅ 여기에서 자동 새로고침 타이머 시작
     startAutoRefreshTimer();
@@ -5945,6 +6047,7 @@ rankingEl.innerHTML = arr.map((u, i) => {
 
       // ⚔️ 결투용 캐시
       allUsersCache = arr.slice();
+      refreshUserListOverlayIfOpen();
 
       if (!userId) {
         myRankEl.innerText = "";
@@ -5972,6 +6075,91 @@ function getTodayDateString() {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+  // 👥 전체 유저 목록 렌더링
+function renderUserList(list) {
+  const body = document.getElementById("userListBody");
+  const countEl = document.getElementById("userListCount");
+  const searchInput = document.getElementById("userListSearch");
+  if (!body || !countEl) return;
+
+  if (!list || list.length === 0) {
+    body.innerHTML = `
+      <div style="padding:8px 0; text-align:center; color:#999; font-size:12px;">
+        등록된 모험가가 없습니다.
+      </div>
+    `;
+    countEl.textContent = "총 0명";
+    return;
+  }
+
+  const total = list.length;
+  const keyword = (searchInput?.value || "").trim();
+
+  if (!keyword) {
+    countEl.textContent = `총 ${total}명 (강화 순 전체)`;
+  } else {
+    countEl.textContent = `총 ${total}명 중 검색 결과`;
+  }
+
+  const rows = list.map((u, idx) => {
+    let weaponText = `+${u.sword}강`;
+    try {
+      const info = getWeaponInfo(u.sword, u.weaponType || "sword");
+      if (info && info.name) {
+        weaponText = `${info.name} +${u.sword}강`;
+      }
+    } catch (e) {
+      // 함수 없으면 무시
+    }
+
+    const powerText = (u.power != null)
+      ? Number(u.power).toLocaleString("ko-KR")
+      : "-";
+
+    return `
+      <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #333; font-size:12px;">
+        <div>
+          <span style="font-weight:bold;">${idx + 1}위</span>
+          &nbsp; ${u.id}
+        </div>
+        <div style="text-align:right;">
+          <div>${weaponText}</div>
+          <div style="font-size:11px; color:#ccc;">
+            전투력 ${powerText}
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  body.innerHTML = rows.join("");
+}
+
+// 🔍 전체 유저 목록 검색 적용
+function applyUserListSearch() {
+  const searchInput = document.getElementById("userListSearch");
+  if (!searchInput) return;
+
+  const q = searchInput.value.trim().toLowerCase();
+  let filtered = allUsersCache.slice();
+
+  if (q) {
+    filtered = filtered.filter(u =>
+      String(u.id || "").toLowerCase().includes(q)
+    );
+  }
+
+  renderUserList(filtered);
+}
+
+// 🆕 allUsersCache 갱신될 때, 오버레이가 열려 있으면 자동 새로고침
+function refreshUserListOverlayIfOpen() {
+  const overlay = document.getElementById("userListOverlay");
+  if (!overlay || overlay.style.display === "none") return;
+
+  applyUserListSearch();  // 검색어 유지한 채로 갱신
 }
 
   // 🇰🇷 한국 시간(KST) 기준 날짜/시간 얻기
@@ -6541,6 +6729,39 @@ function closeDuelArena() {
   overlay.style.display = "none";
 }
 
+// 👥 전체 유저 목록 오버레이 열기
+function openUserListOverlay() {
+  const overlay = document.getElementById("userListOverlay");
+  if (!overlay) return;
+
+  // 캐시에 아무것도 없으면 로딩 문구 표시
+  if (!allUsersCache || allUsersCache.length === 0) {
+    const body = document.getElementById("userListBody");
+    const countEl = document.getElementById("userListCount");
+    if (body) {
+      body.innerHTML = `
+        <div style="padding:8px 0; text-align:center; color:#999; font-size:12px;">
+          유저 목록을 불러오는 중입니다...
+        </div>
+      `;
+    }
+    if (countEl) {
+      countEl.textContent = "모험가 정보를 불러오는 중입니다...";
+    }
+  } else {
+    renderUserList(allUsersCache);
+  }
+
+  overlay.style.display = "block";
+}
+
+// 👥 전체 유저 목록 오버레이 닫기
+function closeUserListOverlay() {
+  const overlay = document.getElementById("userListOverlay");
+  if (!overlay) return;
+  overlay.style.display = "none";
+}
+  
   // ⚔️ 결투장 랭킹 불러오기 (duelPoint 기준)
 function loadDuelArenaRanking() {
   const listEl = document.getElementById("duelArenaRankList");
