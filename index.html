@@ -881,6 +881,46 @@ button {
   line-height: 1.4;
   text-align: center;
 }
+
+/* 🔥 강화 연출 플래시 오버레이 */
+#upgradeFlashOverlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2200;           /* NPC 팝업보다 위로 */
+}
+
+/* 기본은 투명 */
+#upgradeFlashOverlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+/* 💥 파괴(실패)용 붉은 플래시 */
+#upgradeFlashOverlay.flash-red::before {
+  background: radial-gradient(circle at center, rgba(255,0,0,0.65), rgba(0,0,0,0.9));
+  animation: upgradeFlashRed 0.6s ease-out;
+}
+
+/* ✨ 대성공(25강 이상 성공)용 황금 플래시 */
+#upgradeFlashOverlay.flash-gold::before {
+  background: radial-gradient(circle at center, rgba(255,215,0,0.7), rgba(0,0,0,0.9));
+  animation: upgradeFlashGold 0.7s ease-out;
+}
+
+@keyframes upgradeFlashRed {
+  0%   { opacity: 0;   }
+  30%  { opacity: 1;   }
+  100% { opacity: 0;   }
+}
+
+@keyframes upgradeFlashGold {
+  0%   { opacity: 0;   }
+  40%  { opacity: 1;   }
+  100% { opacity: 0;   }
+}
   
 </style>
 </head>
@@ -892,7 +932,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.840)
+    (v3.841)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3899,6 +3939,24 @@ function closeNpcPopup() {
   if (popup) popup.style.display = "none";
 }
 
+  // 🔥 강화 결과 연출 (붉은 / 황금 플래시)
+function playUpgradeFlash(mode) {
+  const overlay = document.getElementById("upgradeFlashOverlay");
+  if (!overlay) return;
+
+  // 이전 애니메이션 초기화
+  overlay.classList.remove("flash-red", "flash-gold");
+
+  // 같은 클래스를 다시 줄 때 애니메이션 재생 강제
+  void overlay.offsetWidth; 
+
+  if (mode === "red") {
+    overlay.classList.add("flash-red");
+  } else if (mode === "gold") {
+    overlay.classList.add("flash-gold");
+  }
+}
+
 // 🧭 사냥터 이동 전용 팝업 (NPC 이미지/버튼 숨김)
 function showMovePopup() {
   const popup     = document.getElementById("npcPopup");
@@ -4696,11 +4754,25 @@ if (useRate5) {
   );
 }
 
-  if (before >= 20) {
+  if (before >= 24) {
+    // 🌟 25강 이상 도전 성공 로그 (도전 찬양 버전)
+    writeLog(
+      `${userId}이 ${coloredLevel(before + 1)}의 벽을 돌파하여 ` +
+      `${coloredLevel(sword)}에 도달했습니다!<br>` +
+      `<span style="color:#ffd54f;">그 용기에 퍼그란트의 대장간이 박수를 보냅니다.</span>`
+    );
+  } else if (before >= 20) {
+    // 기존 20강 이상 성공 로그
     writeLog(
       `${userId}이 ${coloredLevel(before + 1)} 도전에 성공하여 ${coloredLevel(sword)}이 되었습니다!`
     );
   }
+  
+    // ✨ 25강 이상 도전 성공 시 황금 플래시
+  if (before >= 24) {  // before+1 이 25강 이상
+    playUpgradeFlash("gold");
+  }
+
   } else {
     // ❌ 실패
     // ✅ 5,10,15,20까지만 세이프 / 25부터는 세이프 없음
@@ -4823,40 +4895,73 @@ if (useRate5) {
     destroyCount++;  // 🧨 누적 파괴 횟수 증가
 
     // 🔔 로그 메시지
-    let logMsg =
-      `${userId}이 ${coloredLevel(targetLevel)} 도전에 실패하여 ` +
-      `<span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`;
+  let logMsg =
+    `${userId}이 ${coloredLevel(targetLevel)} 도전에 실패하여 ` +
+    `<span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`;
 
-    writeLog(logMsg, true);
+  // 🕯 25강 이상 도전은 별도 찬양 버전 메시지
+  if (targetLevel >= 25) {
+    logMsg =
+      `${userId}이 ${coloredLevel(targetLevel)}에 도전하다가 ` +
+      `<span style="color:red;font-weight:bold;">파괴</span>되었습니다!<br>` +
+      `<span style="color:#ffb74d;">위대한 도전에 모두 묵념...</span>`;
+  }
 
-    // 🧑‍🏭 퍼그란트 특수 멘트
-if (gainedShard > 0) {
-  showNpcMessage(
-    `
-    <div style="font-size:18px; font-weight:bold; color:#FF3333;">
-      장비 파괴!
-    </div>
-    <div style="margin-top:6px; font-size:13px;">
-      빛을 향해 뻗던 칼날은 부서졌지만…<br>
-      그 속에서 <b>빛나지 못한 별의 조각 ${gainedShard}개</b>를 건져냈다네.
-    </div>
-    `,
-    "images/npc/blacksmith_destroy.png"
-  );
-} else {
-      // 21강 도전 같은 낮은 구간 / 조각 미지급 구간은 기존 멘트
-      showNpcMessage(
-        `
-        <div style="font-size:18px; font-weight:bold; color:#FF3333;">
-          장비 파괴!
-        </div>
-        <div style="margin-top:6px;">
-          맙소사… 산산이 부서져 버렸군…
-        </div>
-        `,
-        "images/npc/blacksmith_destroy.png"
-      );
-    }
+  writeLog(logMsg, true);
+
+      // 💥 25강 이상 파괴 시 붉은 플래시 + 전체 연출
+  if (targetLevel >= 25) {
+    playUpgradeFlash("red");
+  }
+
+  if (targetLevel >= 25) {
+    // 🕯 25강 이상 파괴 시 퍼그란트 특수 멘트
+    const shardLine =
+      gainedShard > 0
+        ? `<br><span style="color:#b0e0ff;">빛나지 못한 별의 조각 ${gainedShard}개</span>가 남았다...`
+        : "";
+
+    showNpcMessage(
+      `
+      <div style="font-size:18px; font-weight:bold; color:#FF4444;">
+        장비가 산산이 부서져 버렸군...
+      </div>
+      <div style="margin-top:6px; font-size:13px; line-height:1.5;">
+        ${coloredLevel(targetLevel)}를 향한 도전은 실패로 끝났지만,<br>
+        이런 발걸음이 진짜 장인을 만든다네.${shardLine}
+      </div>
+      `,
+      "images/npc/blacksmith_fail.png"
+    );
+  } else if (gainedShard > 0) {
+    // 기존: 별 조각 설명 멘트
+    showNpcMessage(
+      `
+      <div style="font-size:16px; font-weight:bold; color:#FFDD88;">
+        안타깝게도 파괴되었지만...
+      </div>
+      <div style="margin-top:6px; font-size:13px; line-height:1.5;">
+        칼날이 부서진 자리에서<br>
+        <span style="color:#b0e0ff;">빛나지 못한 별의 조각 ${gainedShard}개</span>가 남았네.
+      </div>
+      `,
+      "images/npc/blacksmith_fail.png"
+    );
+  } else {
+    // 기존 기본 실패 멘트
+    showNpcMessage(
+      `
+      <div style="font-size:18px; font-weight:bold; color:#FF4444;">
+        장비가 산산조각 나 버렸군...
+      </div>
+      <div style="margin-top:6px;">
+        다음 칼날은 오늘의 실패를 기억할 거야.
+      </div>
+      `,
+      "images/npc/blacksmith_fail.png"
+    );
+  }
+
   }
       }
     }
@@ -7630,6 +7735,8 @@ async function recalcUserPower(userIdToFix) {
     <div id="itemDetailDesc"></div>
   </div>
 </div>
+
+<div id="upgradeFlashOverlay"></div>
   
 </body>
 </html>
