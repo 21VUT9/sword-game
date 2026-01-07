@@ -892,7 +892,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.823)
+    (v3.824)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -5870,6 +5870,36 @@ function closeOtherUserProfilePopup() {
   }
 }
 
+// 👤 다른 유저 프로필 팝업 관련 이벤트 초기화
+document.addEventListener("DOMContentLoaded", function () {
+  const overlay  = document.getElementById("otherProfileOverlay");
+  const closeBtn = document.getElementById("otherProfileCloseBtn");
+
+  // 1) 어두운 배경 클릭 → 카드 바깥 클릭일 때만 닫기
+  if (overlay) {
+    overlay.addEventListener("click", function (e) {
+      if (!e.target.closest(".other-profile-card")) {
+        closeOtherUserProfilePopup();
+      }
+    });
+  }
+
+  // 2) X 버튼 클릭 → 닫기
+  if (closeBtn) {
+    closeBtn.addEventListener("click", function (e) {
+      e.stopPropagation();            // 배경으로 클릭 전파 막기
+      closeOtherUserProfilePopup();
+    });
+  }
+
+  // 3) ESC 키 → 닫기
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") {
+      closeOtherUserProfilePopup();
+    }
+  });
+});
+  
 // 👉 팝업 관련 이벤트 한 번에 초기화 (DOM 다 만들어진 뒤에 실행)
 document.addEventListener("DOMContentLoaded", function () {
   const overlay  = document.getElementById("otherProfileOverlay");
@@ -7567,11 +7597,12 @@ async function recalcUserPower(userIdToFix) {
   <div class="other-profile-card">
     <div class="other-profile-header">
       <div id="otherProfileNickname" class="profile-nickname">-</div>
-      <button
+<button
   id="otherProfileCloseBtn"
-  class="other-profile-close-btn"
-  onclick="event.stopPropagation(); closeOtherUserProfilePopup();"
->
+  class="other-profile-close-btn">
+  &times;
+</button>
+
   &times;
 </button>
     </div>
