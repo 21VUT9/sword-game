@@ -19,8 +19,6 @@ body {
   justify-content: center;
   gap: 4px 12px;             /* 라벨 사이 간격 */
 }
-
-
   
 #upgradeItems label {
   white-space: nowrap;       /* 🔥 라벨 안에서 줄바꿈 금지 (항상 한 줄) */
@@ -315,6 +313,16 @@ button {
   overflow-y:auto;
   z-index:1002;
   display:none;
+}
+
+.userListName {
+  color:#fff;             /* 기본 흰색 유지 */
+  cursor:pointer;         /* 손가락 모양 커서 */
+  text-decoration:none;   /* 밑줄 제거 */
+}
+
+.userListName:hover {
+  color:#6cf;             /* 마우스 올리면 살짝 하이라이트 */
 }
   
 /* ================= 유저 프로필 카드 ================ */
@@ -884,7 +892,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.822)
+    (v3.823)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -6103,53 +6111,40 @@ function renderUserList(list) {
     countEl.textContent = `총 ${total}명 중 검색 결과`;
   }
 
-  const rows = list.map((u, idx) => {
-    const powerText = (u.power != null)
-      ? Number(u.power).toLocaleString("ko-KR")
-      : "-";
+const rows = list.map((u, idx) => {
+  const powerText = (u.power != null)
+    ? Number(u.power).toLocaleString("ko-KR")
+    : "-";
 
-    return `
-      <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #333; font-size:12px;">
-        <div>
-          <span style="font-weight:bold;">${idx + 1}위</span>
+  return `
+    <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #333; font-size:12px;">
+      <div>
+        <span style="font-weight:bold;">${idx + 1}위</span>
 
-          <!-- 👇 여기 버튼 클릭 시 프로필 카드 팝업 -->
-          <button
-            onclick="openUserProfileFromUserList('${u.id}')"
-            style="
-              background:none;
-              border:none;
-              color:#6cf;
-              cursor:pointer;
-              font-size:12px;
-              margin-left:4px;
-              text-decoration:underline;
-            "
+        <!-- 👇 하얀 글자, 밑줄 없음, 클릭 가능 -->
+        <span
+          class="userListName"
+          onclick="openUserProfileFromUserList('${u.id}')"
           >
-            ${u.id}
-          </button>
-        </div>
+          ${u.id}
+        </span>
+      </div>
 
-        <div style="text-align:right;">
-          <div>+${u.sword}강</div>
-          <div style="font-size:11px; color:#ccc;">
-            전투력 ${powerText}
-          </div>
+      <div style="text-align:right;">
+        <div>+${u.sword}강</div>
+        <div style="font-size:11px; color:#ccc;">
+          전투력 ${powerText}
         </div>
       </div>
-    `;
-  });
+    </div>
+  `;
+});
 
   body.innerHTML = rows.join("");
 }
 
   // 👥 전체 유저 목록에서 프로필 카드 열기
 function openUserProfileFromUserList(userId) {
-
-  // 1) 목록 오버레이는 닫고
-  if (typeof closeUserListOverlay === "function") {
-    closeUserListOverlay();
-  }
 
   // 2) 기존에 있던 프로필 팝업 함수 호출
   //    (랭킹에서 쓰는 그 함수 그대로 재사용)
