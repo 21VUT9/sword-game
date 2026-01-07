@@ -884,7 +884,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.820)
+    (v3.822)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -6104,16 +6104,6 @@ function renderUserList(list) {
   }
 
   const rows = list.map((u, idx) => {
-    let weaponText = `+${u.sword}강`;
-    try {
-      const info = getWeaponInfo(u.sword, u.weaponType || "sword");
-      if (info && info.name) {
-        weaponText = `${info.name} +${u.sword}강`;
-      }
-    } catch (e) {
-      // 함수 없으면 무시
-    }
-
     const powerText = (u.power != null)
       ? Number(u.power).toLocaleString("ko-KR")
       : "-";
@@ -6122,10 +6112,26 @@ function renderUserList(list) {
       <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #333; font-size:12px;">
         <div>
           <span style="font-weight:bold;">${idx + 1}위</span>
-          &nbsp; ${u.id}
+
+          <!-- 👇 여기 버튼 클릭 시 프로필 카드 팝업 -->
+          <button
+            onclick="openUserProfileFromUserList('${u.id}')"
+            style="
+              background:none;
+              border:none;
+              color:#6cf;
+              cursor:pointer;
+              font-size:12px;
+              margin-left:4px;
+              text-decoration:underline;
+            "
+          >
+            ${u.id}
+          </button>
         </div>
+
         <div style="text-align:right;">
-          <div>${weaponText}</div>
+          <div>+${u.sword}강</div>
           <div style="font-size:11px; color:#ccc;">
             전투력 ${powerText}
           </div>
@@ -6137,7 +6143,25 @@ function renderUserList(list) {
   body.innerHTML = rows.join("");
 }
 
-// 🔍 전체 유저 목록 검색 적용
+  // 👥 전체 유저 목록에서 프로필 카드 열기
+function openUserProfileFromUserList(userId) {
+
+  // 1) 목록 오버레이는 닫고
+  if (typeof closeUserListOverlay === "function") {
+    closeUserListOverlay();
+  }
+
+  // 2) 기존에 있던 프로필 팝업 함수 호출
+  //    (랭킹에서 쓰는 그 함수 그대로 재사용)
+  if (typeof openOtherUserProfilePopup === "function") {
+    openOtherUserProfilePopup(userId);
+  } else {
+    // 혹시라도 함수 못 찾을 때 대비
+    alert("프로필 팝업 함수를 찾을 수 없습니다.");
+  }
+}
+
+  // 🔍 전체 유저 목록 검색 적용
 function applyUserListSearch() {
   const searchInput = document.getElementById("userListSearch");
   if (!searchInput) return;
