@@ -324,6 +324,29 @@ button {
 .userListName:hover {
   color:#6cf;             /* 마우스 올리면 살짝 하이라이트 */
 }
+
+/* 🌏 전 서버 도전 알림 배너 */
+#worldBanner {
+  position: fixed;
+  top: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.4;
+  z-index: 2000;
+  display: none;           /* 기본은 숨김 */
+  text-align: center;
+  white-space: nowrap;
+}
+
+#worldBanner span.level {
+  color: #ffb74d;
+  font-weight: bold;
+}
   
 /* ================= 유저 프로필 카드 ================ */
 
@@ -932,7 +955,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.841)
+    (v3.842)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1550,6 +1573,7 @@ firebase.initializeApp({
 });
 const db = firebase.database();
 const logRef = db.ref("logs");
+const globalEventsRef = db.ref("globalEvents");
 
 function getTutorialKeyForUser(id) {
   return `swordGameTutorialSeen_${id}`;
@@ -4909,9 +4933,21 @@ if (useRate5) {
 
   writeLog(logMsg, true);
 
-      // 💥 25강 이상 파괴 시 붉은 플래시 + 전체 연출
+  // 💥 25강 이상 파괴 시 붉은 플래시 + 전체 연출
   if (targetLevel >= 25) {
     playUpgradeFlash("red");
+
+    // 🌏 전 서버 공용 이벤트 기록 (여기가 4단계)
+    try {
+      globalEventsRef.push({
+        type: "destroy25",
+        userId: userId,
+        level: targetLevel,
+        createdAt: firebase.database.ServerValue.TIMESTAMP
+      });
+    } catch (e) {
+      console.error("globalEventsRef push 실패:", e);
+    }
   }
 
   if (targetLevel >= 25) {
@@ -5482,6 +5518,9 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
     
         // ✅ 여기에서 자동 새로고침 타이머 시작
     startAutoRefreshTimer();
+
+        // 🌏 25강 이상 파괴 글로벌 알림 구독 시작
+    subscribeGlobalDestroyEvents();
     
     // 🔐 마지막 로그인 유저 저장
     try {
@@ -5876,6 +5915,9 @@ document.getElementById("userListBtn").style.display = "block";
 
         // ✅ 여기에서 자동 새로고침 타이머 시작
     startAutoRefreshTimer();
+
+        // 🌏 25강 이상 파괴 글로벌 알림 구독 시작
+    subscribeGlobalDestroyEvents();
 
     // 🔐 자동로그인으로 들어온 경우에도 이 탭이 세션을 가져가도록
     startSession();
@@ -6654,6 +6696,54 @@ logRef.limitToLast(50).on("child_added", s => {
     appendMournCommentToLog(logId, c);
   });
 });
+
+  // 🌏 전 서버 도전 알림 배너
+let worldBannerInited = false;
+
+function showWorldBanner(message) {
+  const banner = document.getElementById("worldBanner");
+  if (!banner) return;
+
+  banner.innerHTML = message;
+  banner.style.display = "block";
+
+  // 4.5초 후 자동 숨김
+  setTimeout(() => {
+    banner.style.display = "none";
+  }, 4500);
+}
+
+// 🔔 25강 이상 파괴 글로벌 이벤트 구독
+function subscribeGlobalDestroyEvents() {
+  if (!globalEventsRef) return;
+
+  let initialized = false;
+
+  globalEventsRef
+    .orderByChild("createdAt")
+    .limitToLast(1)          // 제일 마지막 이벤트만
+    .on("child_added", (snap) => {
+      const v = snap.val() || {};
+
+      // 처음 한 번 들어올 때는 "기존 마지막 이벤트"라서 그냥 기준점으로만 사용
+      if (!initialized) {
+        initialized = true;
+        return;
+      }
+
+      if (v.type !== "destroy25") return;
+
+      const name  = v.userId || "누군가";
+      const level = v.level  || 0;
+
+      const msg =
+        `<span class="level">+${level}강</span> 도전에 모든 것을 걸었던 ` +
+        `<strong>${name}</strong>님의 무기가 파괴되었습니다... ` +
+        `<span style="color:#ffb74d;">위대한 도전에 묵념을.</span>`;
+
+      showWorldBanner(msg);
+    });
+}
 
   // 검색창 변경 시 호출
 function onDuelSearchChange(value) {
@@ -7736,6 +7826,9 @@ async function recalcUserPower(userIdToFix) {
   </div>
 </div>
 
+  <!-- 🌏 전 서버 도전 알림 배너 -->
+  <div id="worldBanner"></div>
+  
 <div id="upgradeFlashOverlay"></div>
   
 </body>
