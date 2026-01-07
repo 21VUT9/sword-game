@@ -892,7 +892,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.824)
+    (v3.825)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -5870,7 +5870,7 @@ function closeOtherUserProfilePopup() {
   }
 }
 
-// 👤 다른 유저 프로필 팝업 관련 이벤트 초기화
+// 👤 다른 유저 프로필 팝업 / 공지 ESC 초기화
 document.addEventListener("DOMContentLoaded", function () {
   const overlay  = document.getElementById("otherProfileOverlay");
   const closeBtn = document.getElementById("otherProfileCloseBtn");
@@ -5887,57 +5887,29 @@ document.addEventListener("DOMContentLoaded", function () {
   // 2) X 버튼 클릭 → 닫기
   if (closeBtn) {
     closeBtn.addEventListener("click", function (e) {
-      e.stopPropagation();            // 배경으로 클릭 전파 막기
+      e.stopPropagation(); // 배경으로 클릭 전파 막기
       closeOtherUserProfilePopup();
     });
   }
 
-  // 3) ESC 키 → 닫기
+  // 3) ESC 키 → 프로필 / 공지 모두 처리
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") {
-      closeOtherUserProfilePopup();
-    }
-  });
-});
-  
-// 👉 팝업 관련 이벤트 한 번에 초기화 (DOM 다 만들어진 뒤에 실행)
-document.addEventListener("DOMContentLoaded", function () {
-  const overlay  = document.getElementById("otherProfileOverlay");
-  const closeBtn = document.getElementById("otherProfileCloseBtn");
+    if (e.key !== "Escape") return;
 
-  // ⌨ ESC 로 공지 닫기
-document.addEventListener("keydown", (e) => {
-  if (e.key !== "Escape") return;
+    // (1) 프로필 팝업 닫기
+    closeOtherUserProfilePopup();
 
-  // 공지 팝업 요소
-  const popup = document.getElementById("noticePopup");
-  const overlay = document.getElementById("noticeOverlay");
+    // (2) 공지 팝업 닫기 (기존 로직 유지)
+    const noticePopup   = document.getElementById("noticePopup");
+    const noticeOverlay = document.getElementById("noticeOverlay");
 
-  // 팝업이 열려 있으면 닫기
-  if (popup && popup.style.display !== "none") {
-    if (typeof closeNoticePopup === "function") {
-      closeNoticePopup();
-    } else {
-      popup.style.display = "none";
-      if (overlay) overlay.style.display = "none";
-    }
-  }
-});
-
-  // 어두운 배경 클릭 → 닫기
-  if (overlay) {
-    overlay.addEventListener("click", function (e) {
-      // 카드 바깥(어두운 부분) 누르면 닫기
-      if (!e.target.closest(".other-profile-card")) {
-        closeOtherUserProfilePopup();
+    if (noticePopup && noticePopup.style.display !== "none") {
+      if (typeof closeNoticePopup === "function") {
+        closeNoticePopup();
+      } else {
+        noticePopup.style.display = "none";
+        if (noticeOverlay) noticeOverlay.style.display = "none";
       }
-    });
-  }
-
-  // ESC 키 → 닫기
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") {
-      closeOtherUserProfilePopup();
     }
   });
 });
@@ -7591,20 +7563,18 @@ async function recalcUserPower(userIdToFix) {
   </div>
 </div>
 
-
-  <!-- 👤 다른 유저 프로필 팝업 (다운로드 버튼 없음) -->
+<!-- 👤 다른 유저 프로필 팝업 (다운로드 버튼 없음) -->
 <div id="otherProfileOverlay">
   <div class="other-profile-card">
     <div class="other-profile-header">
       <div id="otherProfileNickname" class="profile-nickname">-</div>
-<button
-  id="otherProfileCloseBtn"
-  class="other-profile-close-btn">
-  &times;
-</button>
 
-  &times;
-</button>
+      <!-- ✅ 우측 상단 X 버튼 하나만 -->
+      <button
+        id="otherProfileCloseBtn"
+        class="other-profile-close-btn">
+        &times;
+      </button>
     </div>
 
     <div class="profile-card-inner">
