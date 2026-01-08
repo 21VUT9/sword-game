@@ -955,7 +955,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.843)
+    (v3.844)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -4953,7 +4953,7 @@ if (useRate5) {
     `<span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`;
 
   // 🕯 25강 이상 도전은 별도 찬양 버전 메시지
-  if (targetLevel >= 25) {
+ if (before >= 25) {
     logMsg =
       `${userId}이 ${coloredLevel(targetLevel)}에 도전하다가 ` +
       `<span style="color:red;font-weight:bold;">파괴</span>되었습니다!<br>` +
@@ -4963,7 +4963,7 @@ if (useRate5) {
   writeLog(logMsg, true);
 
   // 💥 25강 이상 파괴 시 붉은 플래시 + 전체 연출
-  if (targetLevel >= 25) {
+  if (before >= 25) {
     playUpgradeFlash("red");
 
     // 🌏 전 서버 공용 이벤트 기록 (여기가 4단계)
@@ -4979,7 +4979,7 @@ if (useRate5) {
     }
   }
 
-  if (targetLevel >= 25) {
+  if (before >= 25) {
     // 🕯 25강 이상 파괴 시 퍼그란트 특수 멘트
     const shardLine =
       gainedShard > 0
