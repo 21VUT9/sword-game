@@ -971,7 +971,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.906)
+    (v3.907)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3049,7 +3049,9 @@ currentSessionId = null;
   document.getElementById("couponBtn").style.display    = "none";
   document.getElementById("userListBtn").style.display  = "none";
   document.getElementById("achievementBtn").style.display = "none";
- 
+
+  titlesOwned = {};
+equippedTitle = "";
   closeTitleOverlay();
 
     // ✅ 자동 새로고침 타이머 해제
@@ -3123,9 +3125,28 @@ function updateUpgradeItemLabels() {
 /* UI */
   
 const TITLE_DEFS = [
-  { id: "newbie", name: "새내기 대장장이" },
-  { id: "master15", name: "명인" },
-  { id: "artisan21", name: "장인" }
+  { id:"newbie",   name:"새내기 대장장이", how:"최초 1회 강화 성공" },
+  { id:"master15", name:"명인",             how:"무기 15강 달성" },
+  { id:"artisan21",name:"장인",             how:"무기 21강 달성" },
+  { id:"legend26", name:"전설",             how:"무기 26강 달성" },
+
+  { id:"knight",   name:"기사",   how:"검으로 21강 달성" },
+  { id:"warrior",  name:"전사",   how:"창으로 21강 달성" },
+  { id:"viking",   name:"바이킹", how:"도끼로 21강 달성" },
+
+  { id:"destroy100", name:"파괴왕", how:"무기 파괴 횟수 100회" },
+  { id:"destroy300", name:"파괴신", how:"무기 파괴 횟수 300회" },
+
+  // ✅ 서버 최초 (붉은 금색)
+  { id:"worldchamp", name:"월드챔피언", how:"서버 최초 30강 달성", color:"redgold" },
+
+  // ✅ 엔드(종착지) (금색)
+  { id:"end_sword", name:"검의 종착지",  how:"검으로 30강 달성",  color:"gold" },
+  { id:"end_axe",   name:"도끼의 종착지",how:"도끼로 30강 달성", color:"gold" },
+  { id:"end_spear", name:"창의 종착지",  how:"창으로 30강 달성",  color:"gold" },
+
+  // ✅ 역병쥐 (반짝 초록) + 방법 숨김
+  { id:"plague", name:"역병쥐", how:"???", color:"plague" },
 ];
   
 function renderNameWithTitle(id) {
@@ -5577,6 +5598,11 @@ function getHuntReward(fieldId) {
 }
 
 function login() {
+  
+  // ✅ 계정 바뀔 때 이전 계정 칭호가 섞이지 않도록 무조건 초기화
+titlesOwned = {};
+equippedTitle = "";
+  
   // 1️⃣ DOM에서 직접 입력창 가져오기
   const idInput = document.getElementById("loginId");
   const pwInput = document.getElementById("loginPw");
@@ -5651,6 +5677,9 @@ equippedTitle: ""
     } else {
       // ⭐ 기존 계정 로그인 시
       const data = s.val();
+
+      titlesOwned = (data.titlesOwned && typeof data.titlesOwned === "object") ? data.titlesOwned : {};
+equippedTitle = (typeof data.equippedTitle === "string") ? data.equippedTitle : "";
 
       // 🔐 이미 다른 곳에서 접속 중인지 체크
       if (data.sessionId) {
