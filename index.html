@@ -971,7 +971,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.905)
+    (v3.906)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3147,6 +3147,59 @@ const LINEA_LINES = [
   "나? 수다 좋아해! 근데 장부 정리는 더 좋아해!"
 ];
 
+// =====================
+// 🏷️ 칭호 자동 지급 로직
+// =====================
+
+// changed가 true면, 호출한 쪽에서 save() 한번만 해주면 됨(중복 save 방지)
+function grantTitleOnceNoSave(titleId){
+  if(!titleId) return false;
+  if(!titlesOwned) titlesOwned = {};
+  if(titlesOwned[titleId]) return false;
+  titlesOwned[titleId] = true;
+  return true;
+}
+
+function checkAndGrantTitles(){
+  let changed = false;
+
+  // 1) 새내기 대장장이: 최초 1회 강화 성공
+  // - "sword >= 1"로도 되지만, 네 코드에 maxSwordLevel이 있으니 그걸 우선 활용
+  if(Number(maxSwordLevel || 0) >= 1 || Number(sword || 0) >= 1){
+    changed = grantTitleOnceNoSave("newbie") || changed;
+  }
+
+  // 2) 강화 단계 업적
+  const maxLv = Number(maxSwordLevel || 0);
+  if(maxLv >= 15) changed = grantTitleOnceNoSave("master15") || changed;   // [명인]
+  if(maxLv >= 21) changed = grantTitleOnceNoSave("artisan21") || changed;  // [장인]
+  if(maxLv >= 26) changed = grantTitleOnceNoSave("legend26") || changed;   // [전설]
+  if(maxLv >= 30) changed = grantTitleOnceNoSave("best30") || changed;     // [최강자]
+
+  // 3) 무기별 21강 칭호(검/창/도끼)
+  // - weaponType 값은 네 랭킹에서도 쓰고 있음 (users list 정렬 데이터에 들어감) :contentReference[oaicite:1]{index=1}
+  if(maxLv >= 21){
+    if(weaponType === "sword") changed = grantTitleOnceNoSave("knight")  || changed;
+    if(weaponType === "spear") changed = grantTitleOnceNoSave("warrior") || changed;
+    if(weaponType === "axe")   changed = grantTitleOnceNoSave("viking")  || changed;
+  }
+
+  // 4) 파괴 업적
+  const dc = Number(destroyCount || 0);
+  if(dc >= 100) changed = grantTitleOnceNoSave("destroy100") || changed; // [파괴왕]
+  if(dc >= 300) changed = grantTitleOnceNoSave("destroy300") || changed; // [파괴신]
+
+  // 5) 무기별 "종착지" (30강 도달 시점의 weaponType 기준)
+  // - 여기서는 “현재 무기가 30 이상”이면 지급.
+  if(Number(sword || 0) >= 30){
+    if(weaponType === "sword") changed = grantTitleOnceNoSave("end_sword") || changed;
+    if(weaponType === "axe")   changed = grantTitleOnceNoSave("end_axe")   || changed;
+    if(weaponType === "spear") changed = grantTitleOnceNoSave("end_spear") || changed;
+  }
+
+  return changed;
+}
+  
 function openTitleOverlay(){
   const ov = document.getElementById("titleOverlay");
   if(!ov) return;
@@ -5097,6 +5150,7 @@ if (useRate5) {
     rollPowerForCurrentSword();
 
     destroyCount++;  // 🧨 누적 파괴 횟수 증가
+    checkAndGrantTitles();
 
     // 🔔 로그 메시지
   let logMsg =
@@ -5215,6 +5269,7 @@ if (useRate5) {
 
 // UI 갱신 + 저장 + 플래그 해제
 update();
+checkAndGrantTitles();
 save();
 
 isUpgrading = false;
@@ -5593,7 +5648,6 @@ titlesOwned: {},
 equippedTitle: ""
 });
 
-
     } else {
       // ⭐ 기존 계정 로그인 시
       const data = s.val();
@@ -5727,6 +5781,10 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
     // 🏆 로그인 직후 랭킹/내 랭킹 갱신
     loadRanking();
 
+// 🏷️ 칭호 자동 지급(로그인 로드 직후)
+const titleChanged = checkAndGrantTitles();
+if(titleChanged) save();
+    
     update();
     showTutorialIfFirstTime();
     save(); // 신규 생성 직후 값 저장
@@ -6117,6 +6175,10 @@ document.getElementById("userListBtn").style.display = "block";
 
     // 🔐 자동로그인으로 들어온 경우에도 이 탭이 세션을 가져가도록
     startSession();
+
+// 🏷️ 칭호 자동 지급(자동로그인 로드 직후)
+const titleChanged = checkAndGrantTitles();
+if (titleChanged) save();
     
     update();
     showTutorialIfFirstTime();
