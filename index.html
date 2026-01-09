@@ -955,7 +955,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.844)
+    (v3.901)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2272,6 +2272,8 @@ let weaponType = null;
 // null: 아직 미배정(0강) / "sword": 검 / "spear": 창
 let isUpgrading = false; 
 let isDueling   = false;   // ⚔️ 결투 VS 대기중일 때 true
+let titlesOwned = {};     // { titleId: true }
+let equippedTitle = "";   // 장착중 칭호 ID
 
 // 🧭 사냥터 이동 중인지 여부
 let isMoving = false;
@@ -3096,6 +3098,12 @@ function updateUpgradeItemLabels() {
 
 /* UI */
 
+function renderNameWithTitle(id) {
+  const safeId = id || "-";
+  if (!equippedTitle) return safeId;
+  return `<span style="color:#9a9a9a;">[${equippedTitle}]</span>${safeId}`;
+}
+  
 function update() {
 
   /* 🧾 유저 프로필 영역 갱신 */
@@ -3114,7 +3122,7 @@ function update() {
   }
 
   if (nickEl) {
-    nickEl.textContent  = userId || "-";
+    nickEl.innerHTML = renderNameWithTitle(userId);
   }
 
   // 🔰 현재 강화 단계에 따른 검 정보
@@ -5435,8 +5443,13 @@ function login() {
         duelPointWeekKey: getKstWeekKey(),
         duelLastWeekPoint: 0,
         duelLastWeekRank: 0,
-        duelLastWeekRewardClaimed: false
-      });
+        duelLastWeekRewardClaimed: false,
+
+// 🏷️ 칭호(업적) 기본값
+titlesOwned: {},
+equippedTitle: ""
+});
+
 
     } else {
       // ⭐ 기존 계정 로그인 시
@@ -5456,6 +5469,10 @@ function login() {
 
       sword = data.sword ?? 0;
       gold  = data.gold  ?? 100;
+
+      // 🏷️ 칭호 데이터 로드
+titlesOwned   = data.titlesOwned   || {};
+equippedTitle = data.equippedTitle || "";
 
       // 🗡 무기 타입 로드 (v3.8 이전 계정 호환용)
 if (data.weaponType !== undefined && data.weaponType !== null) {
@@ -5612,7 +5629,10 @@ function save() {
     duelLastWeekRewardClaimed: Boolean(duelLastWeekRewardClaimed),
     duelUpdated: Number(duelUpdated || 0),
     duelLastWeekUpdated: Number(duelLastWeekUpdated || 0),
-    couponUsed: couponUsedMap   // 🆕 사용 완료 쿠폰 기록
+    couponUsed: couponUsedMap   // 🆕 사용 완료 쿠폰 기록,
+    // 🏷️ 칭호 저장
+titlesOwned: titlesOwned,
+equippedTitle: equippedTitle
   };
 
   // ⭐ 강화 수치가 바뀌었을 때만 updated 갱신
@@ -5858,6 +5878,9 @@ function autoLoginFromStorage() {
 
     sword = data.sword ?? 0;
     gold  = data.gold  ?? 100;
+
+    titlesOwned   = data.titlesOwned   || {};
+equippedTitle = data.equippedTitle || "";
 
       // 🗡 무기 타입 로드 (v3.8 이전 계정 호환 포함)
   if (data.weaponType !== undefined && data.weaponType !== null) {
