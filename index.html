@@ -196,11 +196,20 @@ body {
   display: none !important;
 }
 
-  #achievementBtn{
+/* 🏅 업적 버튼 (쿠폰 버튼 아래) */
+#achievementBtn{
   position:fixed;
-  top: 130px;   /* 쿠폰이 90px이면 -> 130px 같은 식으로 “아래” */
+  top:120px;      /* 쿠폰(80px) 아래 */
   left:10px;
-  z-index:1002;
+  z-index:1200;
+  display:none;   /* ✅ 로그인 전에는 숨김 */
+  font-size:14px;
+  padding:8px 16px;
+}
+
+/* 캡처 모드에서 숨기기 */
+.capture-mode #achievementBtn{
+  display:none !important;
 }
 
 /* 버튼 */
@@ -962,7 +971,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.903)
+    (v3.904)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3039,7 +3048,7 @@ currentSessionId = null;
   document.getElementById("mapBtn").style.display       = "none";
   document.getElementById("couponBtn").style.display    = "none";
   document.getElementById("userListBtn").style.display  = "none";
-
+  document.getElementById("achievementBtn").style.display = "none";
 
     // ✅ 자동 새로고침 타이머 해제
   stopAutoRefreshTimer();
@@ -5693,6 +5702,7 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
     document.getElementById("mapBtn").style.display = "block";
     document.getElementById("couponBtn").style.display = "block";
     document.getElementById("userListBtn").style.display = "block";
+    document.getElementById("achievementBtn").style.display = "block";
     
         // ✅ 여기에서 자동 새로고침 타이머 시작
     startAutoRefreshTimer();
@@ -6095,7 +6105,7 @@ document.getElementById("scrollShopBtn").style.display = "block";
 document.getElementById("mapBtn").style.display = "block";
 document.getElementById("couponBtn").style.display = "block";
 document.getElementById("userListBtn").style.display = "block";
-
+ document.getElementById("achievementBtn").style.display = "block";
 
         // ✅ 여기에서 자동 새로고침 타이머 시작
     startAutoRefreshTimer();
