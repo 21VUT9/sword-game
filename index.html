@@ -971,7 +971,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.907)
+    (v3.908)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1020,11 +1020,6 @@ button {
   <div class="profile-card-inner">
     <!-- 🔝 닉네임 (카드 최상단) -->
     <div class="profile-nickname" id="profileNickname">-</div>
-
-<div style="margin-top:6px;">
-  <button onclick="equipTestTitle('newbie')" style="font-size:12px;">칭호장착(테스트)</button>
-  <button onclick="equipTestTitle('')" style="font-size:12px;">칭호해제(테스트)</button>
-</div>
     
     <!-- ⚔️ 검 이미지 -->
     <div class="profile-weapon-box">
@@ -5673,6 +5668,10 @@ equippedTitle = "";
 titlesOwned: {},
 equippedTitle: ""
 });
+      
+// ✅ (중요) 신규 계정 생성 직후: 로컬 메모리도 초기화
+titlesOwned = {};
+equippedTitle = "";
 
     } else {
       // ⭐ 기존 계정 로그인 시
