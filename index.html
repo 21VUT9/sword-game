@@ -3221,6 +3221,15 @@ function hideDuelBattleOverlay() {
   const actionButtons = document.querySelectorAll(".action-buttons button");
   actionButtons.forEach(btn => btn.disabled = false);
 }
+
+function hideEl(id){
+  const el = document.getElementById(id);
+  if(el) el.style.display = "none";
+}
+function showEl(id){
+  const el = document.getElementById(id);
+  if(el) el.style.display = "block";
+}
   
 function logout() {
 
@@ -3274,18 +3283,19 @@ currentSessionId = null;
 
 
   // 화면 전환
-  document.getElementById("gameScreen").style.display   = "none";
-  document.getElementById("loginScreen").style.display  = "block";
-  document.getElementById("attendanceBtn").style.display = "none";
-  document.getElementById("inventoryBtn").style.display = "none";
-  document.getElementById("logToggle").style.display    = "none";
-  document.getElementById("logoutBtn").style.display    = "none";
-  document.getElementById("duelBtn").style.display      = "none";
-  document.getElementById("scrollShopBtn").style.display = "none";
-  document.getElementById("mapBtn").style.display       = "none";
-  document.getElementById("couponBtn").style.display    = "none";
-  document.getElementById("achievementBtn").style.display = "none";
-  document.getElementById("userListBtn").style.display  = "none";
+hideEl("gameScreen");
+showEl("loginScreen");
+hideEl("attendanceBtn");
+hideEl("inventoryBtn");
+hideEl("logToggle");
+hideEl("logoutBtn");
+hideEl("duelBtn");
+hideEl("scrollShopBtn");
+hideEl("mapBtn");
+hideEl("couponBtn");
+hideEl("achievementBtn");
+hideEl("userListBtn");
+
 const ov = document.getElementById("titleOverlay");
 if (ov) ov.style.display = "none";
 
