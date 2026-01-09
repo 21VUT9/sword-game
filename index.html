@@ -971,7 +971,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.904)
+    (v3.905)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3049,6 +3049,8 @@ currentSessionId = null;
   document.getElementById("couponBtn").style.display    = "none";
   document.getElementById("userListBtn").style.display  = "none";
   document.getElementById("achievementBtn").style.display = "none";
+ 
+  closeTitleOverlay();
 
     // ✅ 자동 새로고침 타이머 해제
   stopAutoRefreshTimer();
@@ -8026,8 +8028,12 @@ async function recalcUserPower(userIdToFix) {
 <div id="upgradeFlashOverlay"></div>
 
 <!-- 🏷️ 업적(칭호) 오버레이 -->
-<div id="titleOverlay" class="overlay" style="display:none;">
-  <div class="popup" style="max-width:720px; width:92%; position:relative;">
+<div id="titleOverlay"
+     style="position:fixed; inset:0; background:rgba(0,0,0,0.6);
+            display:none; z-index:1305; align-items:center; justify-content:center;"
+     onclick="if(event.target===this) closeTitleOverlay();">
+ <div class="popup" style="max-width:720px; width:92%; position:relative;"
+     onclick="event.stopPropagation();">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
       <div style="font-size:18px; font-weight:bold;">업적(칭호)</div>
       <button onclick="closeTitleOverlay()">닫기</button>
