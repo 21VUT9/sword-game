@@ -190,26 +190,10 @@ body {
   font-size:14px;
   padding:8px 16px;
 }
-  
+
 /* 캡처 모드에서 숨기기 */
 .capture-mode #couponBtn {
   display: none !important;
-}
-
-  /* 🏅 업적 버튼 (쿠폰 버튼 아래) */
-#achieveBtn{
-  position:fixed;
-  top:120px;      /* 쿠폰(80) 아래 */
-  left:10px;
-  z-index:1100;
-  display:none;
-  font-size:14px;
-  padding:8px 16px;
-}
-
-/* 캡처 모드에서 숨기기 */
-.capture-mode #achieveBtn{
-  display:none !important;
 }
 
 /* 버튼 */
@@ -971,7 +955,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.901)
+    (v3.844)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1167,7 +1151,6 @@ button {
 
   <button id="couponBtn" onclick="openCouponPopup()">쿠폰</button>
 
-  <button id="achieveBtn" onclick="openTitleOverlay()">업적</button>
 
   <button id="logoutBtn" onclick="logout()" style="
   position:fixed;
@@ -1337,51 +1320,6 @@ button {
       </div>
     </div>
 
-  </div>
-</div>
-
-  <!-- 🏅 칭호(업적) 오버레이 -->
-<div id="titleOverlay"
-     style="position:fixed; inset:0; background:rgba(0,0,0,0.6);
-            display:none; z-index:1305;"
-     onclick="if(event.target===this) closeTitleOverlay();">
-
-  <div id="titlePanel"
-       style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-              width:720px; max-width:calc(100% - 40px); max-height:82%;
-              background:#111; border:1px solid #666; border-radius:10px;
-              padding:12px 14px; color:#fff; box-shadow:0 0 20px rgba(0,0,0,0.9);
-              display:flex; flex-direction:column;"
-       onclick="event.stopPropagation();">
-
-    <!-- 상단 -->
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-      <div style="font-size:16px; font-weight:bold;">🏅 업적 · 칭호</div>
-      <button style="font-size:12px; padding:4px 8px;" onclick="closeTitleOverlay()">닫기</button>
-    </div>
-
-    <!-- 장착중 -->
-    <div style="text-align:center; font-size:13px; color:#ccc; margin-bottom:8px;">
-      장착중: <span id="titleEquippedText" style="color:#fff; font-weight:bold; cursor:pointer;"
-                   onclick="promptUnequipTitle()">(없음)</span>
-    </div>
-
-    <!-- 리스트 (5×6) -->
-    <div id="titleGrid"
-         style="display:grid; grid-template-columns:repeat(6, 1fr);
-                gap:6px; overflow-y:auto; padding-right:4px; flex:1;">
-    </div>
-
-    <!-- 하단: 리네아 + 대사 -->
-    <div style="display:flex; justify-content:flex-end; align-items:flex-end; gap:12px; margin-top:10px;">
-      <div style="font-size:12px; line-height:1.5; max-width:320px; text-align:right;">
-        <div style="font-weight:bold; margin-bottom:4px;">서기관 – 리네아</div>
-        <div id="titleNpcText"></div>
-      </div>
-      <img id="titleNpcImg"
-           src="images/npc/linea_idle.png"
-           style="width:120px; height:auto; border-radius:10px;">
-    </div>
   </div>
 </div>
   
@@ -2334,13 +2272,7 @@ let weaponType = null;
 // null: 아직 미배정(0강) / "sword": 검 / "spear": 창
 let isUpgrading = false; 
 let isDueling   = false;   // ⚔️ 결투 VS 대기중일 때 true
-let titlesOwned = {};
-let titleEquipped = "";
-let serverFirst30Weapon = "";
-let max30Total = 0;
-let max30ByWeapon = { sword:0, axe:0, spear:0 };
-let titleUpdatedAt = 0;
-  
+
 // 🧭 사냥터 이동 중인지 여부
 let isMoving = false;
 
@@ -2355,7 +2287,6 @@ let lastDuelDate = "";            // 마지막 결투 날짜 (YYYY-MM-DD)
 // 오늘 같은 상대에게 몇 번 도전했는지: { 상대아이디: 횟수 }
 let duelTargetsToday = {};
 let couponUsedMap = {};   // 사용 완료한 쿠폰코드 기록 { CODE: true }
-let everReached30 = false;
 
 // 🔔 업데이트 공지 상태
 let updateNotices = [];       // {id, title, content, createdAt} 배열
@@ -2383,192 +2314,6 @@ let lastStaminaUpdate = 0;     // 마지막 스태미나 갱신 시각 (ms times
 // 🆕 25강 이상 강화 경고 안내 표시 여부 (세션 기준 1회)
 let hasSeen25Warning = false;
 let ignoreNextUpgradeWarning = false;
-
-  // =========================
-// 🏅 칭호(업적) 정의 리스트
-// =========================
-const TITLE_DEFS = [
-  { id:"newbie", name:"새내기 대장장이", how:"최초 1회 강화 성공", color:"gray" },
-  { id:"master15", name:"명인", how:"무기 15강 달성", color:"gray" },
-  { id:"artisan21", name:"장인", how:"무기 21강 달성", color:"gray" },
-  { id:"legend26", name:"전설", how:"무기 26강 달성", color:"gray" },
-
-  { id:"speed21", name:"스피드광", how:"0강에서 42초만에 21강 도달", color:"gray" },
-
-  { id:"knight", name:"기사", how:"검으로 21강 달성", color:"gray" },
-  { id:"warrior", name:"전사", how:"창으로 21강 달성", color:"gray" },
-  { id:"viking", name:"바이킹", how:"도끼로 21강 달성", color:"gray" },
-
-  { id:"destroy100", name:"파괴왕", how:"무기파괴횟수 100회 달성", color:"gray" },
-  { id:"destroy300", name:"파괴신", how:"무기파괴횟수 300회 달성", color:"gray" },
-
-  { id:"park7d", name:"장기주차", how:"21강 이후, 7일 이상 강화변동 없음", color:"gray" },
-
-  { id:"worldchamp", name:"월드챔피언", how:"서버 최초 30강 달성", color:"first" },
-
-  { id:"gambler24", name:"승부사", how:"21강부터 주문서 없이 24강 도달", color:"gray" },
-  { id:"dopamine", name:"도파민중독자", how:"25강 이후 파괴방지 없이 강화시도", color:"gray" },
-
-  { id:"superstar", name:"슈퍼스타", how:"슈퍼강화 1회 성공", color:"gray" },
-
-  { id:"bully10", name:"강약약강", how:"본인보다 강화 낮은 상대에게 지정매칭 10회", color:"gray" },
-  { id:"challenger10", name:"도전자", how:"본인보다 강한 상대에게 지정매칭 승리 10회", color:"gray" },
-
-  { id:"fighter500", name:"싸움꾼", how:"결투 500회 이상", color:"gray" },
-  { id:"godfighter", name:"투신", how:"본인보다 4강 이상 높은 상대에게 결투 승리 1회", color:"gray" },
-
-  { id:"slide4", name:"미끄럼틀", how:"강등 연속 4회", color:"gray" },
-
-  { id:"luckydestroy", name:"운수좋은날", how:"20강 이전에서 파괴", color:"gray" },
-  { id:"icarus", name:"이카루스", how:"26강 이상에서 파괴", color:"gray" },
-
-  { id:"god30", name:"신", how:"29강에서 주문서 없이 30강 달성", color:"end" },
-  { id:"firework", name:"폭죽놀이", how:"21강~29강 모두 파괴", color:"gray" },
-
-  { id:"best30", name:"최강자", how:"무기 30강 1회 달성", color:"end" },
-
-  // 🔥 종결 → 종착지
-  { id:"end_sword", name:"검의 종착지", how:"검으로 종점 도달", color:"end" },
-  { id:"end_axe", name:"도끼의 종착지", how:"도끼로 종점 도달", color:"end" },
-  { id:"end_spear", name:"창의 종착지", how:"창으로 종점 도달", color:"end" },
-
-  { id:"master30_3", name:"달인", how:"무기 30강 3회 달성", color:"end" },
-  { id:"old2", name:"고인물", how:"같은 무기 30강 2회 달성", color:"end" },
-  { id:"old3", name:"썩은물", how:"같은 무기 30강 3회 달성", color:"end" },
-
-  // ❓ 특수 히든
-  { id:"plague", name:"역병쥐", how:"???", color:"plague", hiddenHow:true }
-];
-
-  // =========================
-// 🎨 칭호 색상 스타일 반환
-// =========================
-function getTitleColorStyle(colorKey){
-  if(colorKey === "first"){
-    // 서버 최초 - 붉은 금색
-    return "color:#ffcc66; text-shadow:0 0 6px rgba(255,90,0,0.55);";
-  }
-
-  if(colorKey === "end"){
-    // 엔드 칭호 - 금색
-    return "color:#ffd54f; text-shadow:0 0 6px rgba(255,213,79,0.35);";
-  }
-
-  if(colorKey === "plague"){
-    // 역병쥐 - 반짝이는 짙은 초록
-    return "color:#00c853; text-shadow:0 0 10px rgba(0,200,83,0.7); animation:sparkle 1.2s infinite alternate;";
-  }
-
-  // 기본 - 회색
-  return "color:#aaa;";
-}
-
-  function formatNicknameWithTitle(nickname, titleId) {
-  if (!titleId) return nickname;
-
-  const def = TITLE_DEFS.find(t => t.id === titleId);
-  if (!def) return nickname;
-
-  return `<span style="${getTitleColorStyle(def.color)}">[${def.name}]</span>${nickname}`;
-}
-
-
-  const LINEA_LINES = [
-  "칭호는 명예이자 기록이야! 어떤 걸 달아볼래?",
-  "오… 방금 너 데이터 정리하다가 감탄했어. 헤헤!",
-  "세레나랑 얘기하다 왔는데… 또 일 얘기만 하더라구!",
-  "칭호 달면 사람들이 바로 알아보지. 완전 뿌듯!",
-  "나? 수다 좋아해! 근데 장부 정리는 더 좋아해!"
-];
-
-function openTitleOverlay(){
-  const ov = document.getElementById("titleOverlay");
-  if(!ov) return;
-  ov.style.display = "block";
-
-  const lineEl = document.getElementById("titleNpcText");
-  if(lineEl) lineEl.textContent = LINEA_LINES[Math.floor(Math.random()*LINEA_LINES.length)];
-
-  renderTitleGrid();
-}
-
-function closeTitleOverlay(){
-  const ov = document.getElementById("titleOverlay");
-  if(ov) ov.style.display = "none";
-}
-
-function renderTitleGrid(){
-  const grid = document.getElementById("titleGrid");
-  const equippedEl = document.getElementById("titleEquippedText");
-  if(!grid) return;
-
-  const equippedDef = TITLE_DEFS.find(t=>t.id===titleEquipped);
-  if(equippedEl){
-    if(equippedDef){
-      equippedEl.textContent = `[${equippedDef.name}]`;
-      equippedEl.style = getTitleColorStyle(equippedDef.color) + "font-weight:bold;";
-    }else{
-      equippedEl.textContent = "(없음)";
-      equippedEl.style = "color:#ccc;";
-    }
-  }
-
-  grid.innerHTML = TITLE_DEFS.map(def=>{
-    const owned = !!(titlesOwned && titlesOwned[def.id]);
-    const textColor = owned ? "#fff" : "#777";
-    const badgeStyle = owned ? getTitleColorStyle(def.color) : "color:#555;";
-    return `
-      <div
-        onclick="onClickTitleCell('${def.id}')"
-        style="border:1px solid #333; border-radius:8px; padding:8px 6px;
-               background:#0f0f0f; text-align:center; cursor:pointer;
-               font-size:12px; line-height:1.2; user-select:none;">
-        <div style="${badgeStyle} font-weight:bold;">
-          [${def.name}]
-        </div>
-        <div style="margin-top:4px; color:${textColor}; font-size:11px;">
-          ${owned ? "획득" : "미획득"}
-        </div>
-      </div>
-    `;
-  }).join("");
-}
-
-function onClickTitleCell(titleId){
-  const def = TITLE_DEFS.find(t=>t.id===titleId);
-  if(!def) return;
-
-  const owned = !!titlesOwned[titleId];
-  if(owned){
-    // 획득한 칭호 → 장착하기
-    if(confirm(`[${def.name}] 칭호를 장착할까?`)){
-      equipTitle(titleId);
-    }
-  }else{
-    // 미획득 → 방법 안내(작은 팝업)
-    const how = def.hiddenHow ? "???" : (def.how || "???");
-    alert(`칭호 획득방법:\n${how}`);
-  }
-}
-
-function equipTitle(titleId){
-  titleEquipped = titleId;
-  titleUpdatedAt = Date.now();
-  save();
-  update();           // 닉네임 표시 갱신
-  renderTitleGrid();  // 상단 장착중 텍스트 갱신
-}
-
-function promptUnequipTitle(){
-  if(!titleEquipped) return;
-  if(confirm("현재 칭호를 장착해제할까?")){
-    titleEquipped = "";
-    titleUpdatedAt = Date.now();
-    save();
-    update();
-    renderTitleGrid();
-  }
-}
   
 // 🧮 사냥 스태미나 계산 (리셋 + 회복 처리)
 function recalcHuntStamina() {
@@ -3221,15 +2966,6 @@ function hideDuelBattleOverlay() {
   const actionButtons = document.querySelectorAll(".action-buttons button");
   actionButtons.forEach(btn => btn.disabled = false);
 }
-
-function hideEl(id){
-  const el = document.getElementById(id);
-  if(el) el.style.display = "none";
-}
-function showEl(id){
-  const el = document.getElementById(id);
-  if(el) el.style.display = "block";
-}
   
 function logout() {
 
@@ -3269,12 +3005,6 @@ currentSessionId = null;
   itemSuper          = 0;
   itemDownProtect    = 0;
   starShard          = 0;
-  titlesOwned = {};
-  titleEquipped = "";
-  serverFirst30Weapon = "";
-  max30Total = 0;
-  max30ByWeapon = { sword:0, axe:0, spear:0 };
-  titleUpdatedAt = 0;
   duelWin = 0;
   duelLose = 0;
   duelCountToday = 0;
@@ -3283,27 +3013,22 @@ currentSessionId = null;
 
 
   // 화면 전환
-hideEl("gameScreen");
-showEl("loginScreen");
-hideEl("attendanceBtn");
-hideEl("inventoryBtn");
-hideEl("logToggle");
-hideEl("logoutBtn");
-hideEl("duelBtn");
-hideEl("scrollShopBtn");
-hideEl("mapBtn");
-hideEl("couponBtn");
-hideEl("achievementBtn");
-hideEl("userListBtn");
+  document.getElementById("gameScreen").style.display   = "none";
+  document.getElementById("loginScreen").style.display  = "block";
+  document.getElementById("attendanceBtn").style.display = "none";
+  document.getElementById("inventoryBtn").style.display = "none";
+  document.getElementById("logToggle").style.display    = "none";
+  document.getElementById("logoutBtn").style.display    = "none";
+  document.getElementById("duelBtn").style.display      = "none";
+  document.getElementById("scrollShopBtn").style.display = "none";
+  document.getElementById("mapBtn").style.display       = "none";
+  document.getElementById("couponBtn").style.display    = "none";
+  document.getElementById("userListBtn").style.display  = "none";
 
-const ov = document.getElementById("titleOverlay");
-if (ov) ov.style.display = "none";
 
     // ✅ 자동 새로고침 타이머 해제
   stopAutoRefreshTimer();
 
-  closeTitleOverlay(); // 열려있던 업적창 닫기
-  
   // 프로필 영역도 초기 상태로 갱신
   update();
 }
@@ -3572,68 +3297,6 @@ updateDuelUI();
 
     // ✅ 강화 아이템 라벨 수량 갱신
   updateUpgradeItemLabels();
-
-  checkAndGrantTitles();
-}
-
-  function grantTitleOnce(id){
-  if(!titlesOwned) titlesOwned = {};
-  if(titlesOwned[id]) return false;
-  titlesOwned[id] = true;
-  save();
-  return true;
-}
-
-function checkAndGrantTitles(){
-  // 1) 최초 강화 성공 → sword가 1 이상 된 순간
-  if(sword >= 1) grantTitleOnce("newbie");
-
-  // 2) 단계 업적
-  if(sword >= 15) grantTitleOnce("master15");
-  if(sword >= 21) grantTitleOnce("artisan21");
-  if(sword >= 26) grantTitleOnce("legend26");
-
-  // 3) 무기별 21강
-  if(sword >= 21){
-    if(weaponType==="sword") grantTitleOnce("knight");
-    if(weaponType==="spear") grantTitleOnce("warrior");
-    if(weaponType==="axe")   grantTitleOnce("viking");
-  }
-
-  // 4) 파괴 누적
-  if(destroyCount >= 100) grantTitleOnce("destroy100");
-  if(destroyCount >= 300) grantTitleOnce("destroy300");
-
-// 5) 30강 도달 처리(무기별 종착지 + 누적 카운트)
-// ✅ "처음 30강 달성 순간"에만 1번 실행되도록 가드
-if (sword >= 30 && !everReached30) {
-  everReached30 = true;
-
-  // 서버 최초 체크 (⚠️ 이건 지금은 임시 로직: 나중에 전역 트랜잭션으로 교체)
-  if (!serverFirst30Weapon) {
-    serverFirst30Weapon = weaponType || "";
-    grantTitleOnce("worldchamp");
-  }
-
-  grantTitleOnce("best30");
-
-  // 무기별 종착지
-  if (weaponType === "sword") grantTitleOnce("end_sword");
-  if (weaponType === "axe")   grantTitleOnce("end_axe");
-  if (weaponType === "spear") grantTitleOnce("end_spear");
-
-  // 누적
-  max30Total = Number(max30Total || 0) + 1;
-  if (!max30ByWeapon) max30ByWeapon = { sword:0, axe:0, spear:0 };
-  if (weaponType) max30ByWeapon[weaponType] = Number(max30ByWeapon[weaponType] || 0) + 1;
-
-  if (max30Total >= 3) grantTitleOnce("master30_3");
-  if (max30ByWeapon.sword >= 2 || max30ByWeapon.axe >= 2 || max30ByWeapon.spear >= 2) grantTitleOnce("old2");
-  if (max30ByWeapon.sword >= 3 || max30ByWeapon.axe >= 3 || max30ByWeapon.spear >= 3) grantTitleOnce("old3");
-
-  save();
-}
-
 }
 
 // ⚔️ 결투 일자/카운트 초기화
@@ -5707,8 +5370,6 @@ function getHuntReward(fieldId) {
   return Math.floor(baseCost * mul * 0.4);
 }
 
-
-  
 function login() {
   // 1️⃣ DOM에서 직접 입력창 가져오기
   const idInput = document.getElementById("loginId");
@@ -5765,8 +5426,6 @@ function login() {
         huntStamina: 20,
         lastStaminaUpdate: Date.now(),
         // ⚔️ 결투 초기값
-        titlesOwned: {},
-        titleEquipped: "",
         duelWin: 0,
         duelLose: 0,
         duelCountToday: 0,
@@ -5777,7 +5436,6 @@ function login() {
         duelLastWeekPoint: 0,
         duelLastWeekRank: 0,
         duelLastWeekRewardClaimed: false
-        
       });
 
     } else {
@@ -5840,13 +5498,6 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
       itemDownProtect    = data.itemDownProtect ?? 0;
       starShard          = data.starShard ?? 0;
       couponUsedMap = data.couponUsed || {};
-      everReached30 = !!data.everReached30;
-      titlesOwned = data.titlesOwned || {};
-      titleEquipped = data.titleEquipped || "";
-      serverFirst30Weapon = data.serverFirst30Weapon || "";
-      max30Total = Number(data.max30Total || 0);
-      max30ByWeapon = data.max30ByWeapon || { sword:0, axe:0, spear:0 };
-      titleUpdatedAt = Number(data.titleUpdatedAt || 0);
       itemScroll21    = Number(data.itemScroll21    ?? 0); 
       itemRateUp5     = Number(data.itemRateUp5     ?? 0);
       huntStamina        = data.huntStamina       ?? 20;
@@ -5864,7 +5515,7 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
       duelPointWeekKey = data.duelPointWeekKey || "";
       duelLastWeekPoint = data.duelLastWeekPoint ?? 0;
       duelLastWeekRank  = data.duelLastWeekRank ?? 0;
-      duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
+            duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
       duelUpdated         = data.duelUpdated ?? 0;
       duelLastWeekUpdated = data.duelLastWeekUpdated ?? 0;
       
@@ -5892,7 +5543,6 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
     document.getElementById("scrollShopBtn").style.display = "block";
     document.getElementById("mapBtn").style.display = "block";
     document.getElementById("couponBtn").style.display = "block";
-    document.getElementById("achievementBtn").style.display = "block"; // ✅ 추가
     document.getElementById("userListBtn").style.display = "block";
     
         // ✅ 여기에서 자동 새로고침 타이머 시작
@@ -5962,15 +5612,7 @@ function save() {
     duelLastWeekRewardClaimed: Boolean(duelLastWeekRewardClaimed),
     duelUpdated: Number(duelUpdated || 0),
     duelLastWeekUpdated: Number(duelLastWeekUpdated || 0),
-    couponUsed: couponUsedMap,   // 🆕 사용 완료 쿠폰 기록
-    everReached30: !!everReached30,
-   titlesOwned: titlesOwned || {},
-   titleEquipped: titleEquipped || "",
-   serverFirst30Weapon: serverFirst30Weapon || "",
-   max30Total: Number(max30Total || 0),
-   max30ByWeapon: max30ByWeapon || { sword:0, axe:0, spear:0 },
-   titleUpdatedAt: Number(titleUpdatedAt || 0),
-
+    couponUsed: couponUsedMap   // 🆕 사용 완료 쿠폰 기록
   };
 
   // ⭐ 강화 수치가 바뀌었을 때만 updated 갱신
@@ -6270,18 +5912,11 @@ lastAttendanceDay  = data.lastAttendanceDay  ?? "";
     itemHonorMedal = data.itemHonorMedal ?? 0;
     starShard = data.starShard ?? 0;
     couponUsedMap = data.couponUsed || {};
-    everReached30 = !!data.everReached30;
-    titlesOwned = data.titlesOwned || {};
-    titleEquipped = data.titleEquipped || "";
-    serverFirst30Weapon = data.serverFirst30Weapon || "";
-    max30Total = Number(data.max30Total || 0);
-    max30ByWeapon = data.max30ByWeapon || { sword:0, axe:0, spear:0 };
-    titleUpdatedAt = Number(data.titleUpdatedAt || 0);
     duelPoint      = data.duelPoint      ?? 0;
     duelPointWeekKey = data.duelPointWeekKey || "";
     duelLastWeekPoint = data.duelLastWeekPoint ?? 0;
     duelLastWeekRank  = data.duelLastWeekRank ?? 0;
-    duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
+        duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
     duelUpdated         = data.duelUpdated ?? 0;
     duelLastWeekUpdated = data.duelLastWeekUpdated ?? 0;
 
@@ -6304,7 +5939,6 @@ document.getElementById("duelBtn").style.display = "block";
 document.getElementById("scrollShopBtn").style.display = "block";
 document.getElementById("mapBtn").style.display = "block";
 document.getElementById("couponBtn").style.display = "block";
-document.getElementById("achievementBtn").style.display = "block";
 document.getElementById("userListBtn").style.display = "block";
 
 
@@ -6548,8 +6182,7 @@ function loadRanking() {
           updated: Number(d.updated || 0),
           duelWin: Number(d.duelWin || 0),
           duelLose: Number(d.duelLose || 0),
-          weaponType: d.weaponType || "sword",
-          titleEquipped: d.titleEquipped || ""
+          weaponType: d.weaponType || "sword"
         });
       });
 
@@ -6562,15 +6195,13 @@ rankingEl.innerHTML = arr.map((u, i) => {
   const wInfo = getWeaponInfo(u.sword, u.weaponType || "sword");
   const weaponNameStyled = coloredWeaponName(u.sword, wInfo.name);
 
-return `
-  <div class="ranking-row" style="font-weight:bold;">
-    ${i+1}. <span class="rank-user" data-user-id="${u.id}">
-      ${formatNicknameWithTitle(u.id, u.titleEquipped)}
-    </span>
-    | ${weaponNameStyled} ${coloredLevel(u.sword)}
-    | 전적: ${u.duelWin}승 ${u.duelLose}패
-  </div>
-`;
+  return `
+    <div class="ranking-row" style="font-weight:bold;">
+      ${i+1}. <span class="rank-user" data-user-id="${u.id}">${u.id}</span>
+      | ${weaponNameStyled} ${coloredLevel(u.sword)}
+      | 전적: ${u.duelWin}승 ${u.duelLose}패
+    </div>
+  `;
 }).join("");
 
 
@@ -6591,8 +6222,7 @@ return `
           sword: Number(d.sword || 0),
           updated: Number(d.updated || 0),
           power: Number(d.power || 0),
-          weaponType: d.weaponType || "sword",
-          titleEquipped: d.titleEquipped || ""
+          weaponType: d.weaponType || "sword"
         });
       });
 
@@ -6672,9 +6302,9 @@ const rows = list.map((u, idx) => {
         <!-- 👇 하얀 글자, 밑줄 없음, 클릭 가능 -->
         <span
           class="userListName"
-          onclick="openUserProfileFromUserList('${formatNicknameWithTitle(u.id, u.titleEquipped)}')"
+          onclick="openUserProfileFromUserList('${u.id}')"
           >
-          ${formatNicknameWithTitle(u.id, u.titleEquipped)}
+          ${u.id}
         </span>
       </div>
 
@@ -7203,7 +6833,7 @@ if (!keyword) {
 
     const left = document.createElement("div");
     left.innerHTML = `
-      <div style="font-weight:bold;">${formatNicknameWithTitle(u.id, u.titleEquipped)}</div>
+      <div style="font-weight:bold;">${u.id}</div>
       <div style="font-size:12px; color:#ccc;">
         ${coloredLevel(u.sword)} / 전투력: ${formatGold(u.power || 0)}
       </div>
@@ -7465,7 +7095,7 @@ function loadDuelArenaRanking() {
           <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid #333; font-size:12px;">
             <div>
               <span style="font-weight:bold;">${rank}위</span>
-              &nbsp; ${formatNicknameWithTitle(u.id, u.titleEquipped)}
+              &nbsp; ${u.id}
             </div>
             <div style="text-align:right;">
               <div>결투포인트 <span style="color:#ffd54f;">${u.duelPoint}</span></div>
@@ -7691,7 +7321,7 @@ arr.sort((a, b) => {
         return `
           <tr>
             <td style="padding:2px 4px; text-align:center;">${i + 1}</td>
-            <td style="padding:2px 4px;">${formatNicknameWithTitle(u.id, u.titleEquipped)}</td>
+            <td style="padding:2px 4px;">${u.id}</td>
             <td style="padding:2px 4px; text-align:right;">${u.duelLastWeekPoint}</td>
             <td style="padding:2px 4px;">${weaponNameStyled} ${coloredLevel(u.sword)}</td>
             <td style="padding:2px 4px; text-align:right;">
