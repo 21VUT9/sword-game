@@ -955,7 +955,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.901)
+    (v3.902)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1005,6 +1005,11 @@ button {
     <!-- 🔝 닉네임 (카드 최상단) -->
     <div class="profile-nickname" id="profileNickname">-</div>
 
+<div style="margin-top:6px;">
+  <button onclick="equipTestTitle('newbie')" style="font-size:12px;">칭호장착(테스트)</button>
+  <button onclick="equipTestTitle('')" style="font-size:12px;">칭호해제(테스트)</button>
+</div>
+    
     <!-- ⚔️ 검 이미지 -->
     <div class="profile-weapon-box">
       <img id="weaponImage"
@@ -3097,14 +3102,30 @@ function updateUpgradeItemLabels() {
 }
 
 /* UI */
-
+  
+const TITLE_DEFS = [
+  { id: "newbie", name: "새내기 대장장이" },
+  { id: "master15", name: "명인" },
+  { id: "artisan21", name: "장인" }
+];
+  
 function renderNameWithTitle(id) {
   const safeId = id || "-";
   if (!equippedTitle) return safeId;
-  return `<span style="color:#9a9a9a;">[${equippedTitle}]</span>${safeId}`;
+
+  const def = TITLE_DEFS.find(t => t.id === equippedTitle);
+  const titleName = def ? def.name : equippedTitle; // 못 찾으면 id 그대로 표시(안전장치)
+
+  return `<span style="color:#9a9a9a;">[${titleName}]</span>${safeId}`;
 }
-  
-function update() {
+
+function equipTestTitle(id){
+  equippedTitle = id || "";
+  save();
+  update();
+}
+
+  function update() {
 
   /* 🧾 유저 프로필 영역 갱신 */
   const nickEl   = document.getElementById("profileNickname");
