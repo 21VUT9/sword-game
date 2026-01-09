@@ -971,7 +971,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.908)
+    (v3.909)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -5616,6 +5616,11 @@ equippedTitle = "";
     return;
   }
 
+  // ✅ (중요) 로그인 시도 시작할 때 이전 계정 칭호 흔적 제거
+titlesOwned = {};
+equippedTitle = "";
+closeTitleOverlay();
+  
   // 3️⃣ Firebase ref 세팅
   userRef = db.ref("users/" + userId);
 
@@ -5677,9 +5682,6 @@ equippedTitle = "";
       // ⭐ 기존 계정 로그인 시
       const data = s.val();
 
-      titlesOwned = (data.titlesOwned && typeof data.titlesOwned === "object") ? data.titlesOwned : {};
-equippedTitle = (typeof data.equippedTitle === "string") ? data.equippedTitle : "";
-
       // 🔐 이미 다른 곳에서 접속 중인지 체크
       if (data.sessionId) {
         alert("이미 다른 곳에서 이 계정으로 접속 중입니다.\n기존 접속을 종료한 뒤 다시 시도해주세요.");
@@ -5692,12 +5694,12 @@ equippedTitle = (typeof data.equippedTitle === "string") ? data.equippedTitle : 
         return;
       }
 
+      // ✅ 여기서부터 진짜 로그인 성공이 확정된 뒤에만 칭호 로드
+titlesOwned = (data.titlesOwned && typeof data.titlesOwned === "object") ? data.titlesOwned : {};
+equippedTitle = (typeof data.equippedTitle === "string") ? data.equippedTitle : "";
+
       sword = data.sword ?? 0;
       gold  = data.gold  ?? 100;
-
-      // 🏷️ 칭호 데이터 로드
-titlesOwned   = data.titlesOwned   || {};
-equippedTitle = data.equippedTitle || "";
 
       // 🗡 무기 타입 로드 (v3.8 이전 계정 호환용)
 if (data.weaponType !== undefined && data.weaponType !== null) {
