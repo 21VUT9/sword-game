@@ -274,6 +274,10 @@ button {
     opacity: 1;
     filter: brightness(1.4);
   }
+
+    from { filter: brightness(1); }
+  to   { filter: brightness(1.25); }
+
 }
 
 /* 🔤 검 이름 한 줄 표시 (줄바꿈 금지 + 말줄임) */
@@ -988,7 +992,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.915)
+    (v3.916)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3151,7 +3155,7 @@ const TITLE_DEFS = [
   { id:"viking",   name:"바이킹", how:"도끼로 21강 달성" },
 
   { id:"destroy100", name:"파괴왕", how:"무기 파괴 횟수 100회" },
-  { id:"destroy300", name:"파괴신", how:"무기 파괴 횟수 300회" },
+  { id:"destroy500", name:"파괴신", how:"무기 파괴 횟수 500회" },
 
   // ✅ 서버 최초 (붉은 금색)
   { id:"worldchamp", name:"월드챔피언", how:"서버 최초 30강 달성", color:"redgold" },
@@ -3164,6 +3168,40 @@ const TITLE_DEFS = [
   // ✅ 역병쥐 (반짝 초록) + 방법 숨김
   { id:"plague", name:"역병쥐", how:"???", color:"plague" },
 ];
+
+  // 🎨 칭호 색상 스타일
+function getTitleColorStyle(colorKey) {
+  // 기본(회색)
+  if (!colorKey) return "color:#9a9a9a;";
+
+  // 엔드(금색)
+  if (colorKey === "gold") {
+    return "color:#ffd54f;font-weight:bold;text-shadow:0 0 6px rgba(255,213,79,0.35);";
+  }
+
+  // 서버최초(붉은 금색)
+  if (colorKey === "redgold") {
+    return "color:#ffb74d;font-weight:bold;text-shadow:0 0 6px rgba(255,120,80,0.35);";
+  }
+
+  // 역병쥐(반짝 짙은 초록)
+  if (colorKey === "plague") {
+    return "color:#00c853;font-weight:bold;text-shadow:0 0 10px rgba(0,200,83,0.7); animation:sparkle 1.2s infinite alternate;";
+  }
+
+  return "color:#9a9a9a;";
+}
+
+// 🏷️ 닉네임에 칭호 붙이기 (색상 포함)
+function formatNicknameWithTitle(id, titleId) {
+  const safeId = (id ?? "-");
+  if (!titleId) return safeId;
+
+  const def = TITLE_DEFS.find(t => t.id === titleId);
+  const titleName = def ? def.name : titleId;
+
+  return `<span style="${getTitleColorStyle(def?.color)}">[${titleName}]</span>${safeId}`;
+}
   
 function getTitleStyle(colorKey) {
   // 기본(회색)
@@ -3255,7 +3293,7 @@ function checkAndGrantTitles(){
   // 4) 파괴 업적
   const dc = Number(destroyCount || 0);
   if(dc >= 100) changed = grantTitleOnceNoSave("destroy100") || changed; // [파괴왕]
-  if(dc >= 300) changed = grantTitleOnceNoSave("destroy300") || changed; // [파괴신]
+  if(dc >= 500) changed = grantTitleOnceNoSave("destroy300") || changed; // [파괴신]
 
   // 5) 무기별 "종착지" (30강 도달 시점의 weaponType 기준)
   // - 여기서는 “현재 무기가 30 이상”이면 지급.
@@ -7647,7 +7685,8 @@ function openDuelHistoryPopup() {
           duelWin: Number(val.duelWin || 0),
           duelLose: Number(val.duelLose || 0),
           updated: t,
-          weaponType: val.weaponType || "sword"
+          weaponType: val.weaponType || "sword",
+          equippedTitle: val.equippedTitle || ""
         });
       });
 
@@ -7690,7 +7729,7 @@ arr.sort((a, b) => {
         return `
           <tr>
             <td style="padding:2px 4px; text-align:center;">${i + 1}</td>
-            <td style="padding:2px 4px;">${u.id}</td>
+            <td style="padding:2px 4px;">${formatNicknameWithTitle(u.id, u.equippedTitle || "")}</td>
             <td style="padding:2px 4px; text-align:right;">${u.duelLastWeekPoint}</td>
             <td style="padding:2px 4px;">${weaponNameStyled} ${coloredLevel(u.sword)}</td>
             <td style="padding:2px 4px; text-align:right;">
