@@ -992,7 +992,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.916)
+    (v3.917)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -5372,10 +5372,11 @@ if (useRate5) {
       "images/npc/blacksmith_fail.png"
     );
   }
-
+    
 // UI 갱신 + 저장 + 플래그 해제
 update();
-checkAndGrantTitles();
+const titleChanged = checkAndGrantTitles();
+if (titleChanged) save();
 save();
 
 isUpgrading = false;
