@@ -971,7 +971,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.909)
+    (v3.910)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -5593,11 +5593,7 @@ function getHuntReward(fieldId) {
 }
 
 function login() {
-  
-  // ✅ 계정 바뀔 때 이전 계정 칭호가 섞이지 않도록 무조건 초기화
-titlesOwned = {};
-equippedTitle = "";
-  
+    
   // 1️⃣ DOM에서 직접 입력창 가져오기
   const idInput = document.getElementById("loginId");
   const pwInput = document.getElementById("loginPw");
@@ -5673,8 +5669,49 @@ closeTitleOverlay();
 titlesOwned: {},
 equippedTitle: ""
 });
+
+    // ✅ 신규 계정 생성 직후에는 바로 화면 전환 + 저장으로 마무리
+startSession();
+
+try { localStorage.setItem("swordGameLastUser", userId); } catch(e) {}
+
+const loginScreen = document.getElementById("loginScreen");
+const gameScreen  = document.getElementById("gameScreen");
+loginScreen.style.display = "none";
+gameScreen.style.display  = "block";
+document.getElementById("attendanceBtn").style.display = "block";
+document.getElementById("inventoryBtn").style.display  = "block";
+document.getElementById("logToggle").style.display     = "block";
+document.getElementById("logoutBtn").style.display     = "block";
+document.getElementById("duelBtn").style.display       = "block";
+document.getElementById("scrollShopBtn").style.display = "block";
+document.getElementById("mapBtn").style.display        = "block";
+document.getElementById("couponBtn").style.display     = "block";
+document.getElementById("userListBtn").style.display   = "block";
+document.getElementById("achievementBtn").style.display = "block";
+
+startAutoRefreshTimer();
+subscribeGlobalDestroyEvents();
+
+update();
+showTutorialIfFirstTime();
+loadUpdateNotices();
+ensureDuelWeek();
+loadRanking();
+
+// 신규 계정은 아직 업적 조건이 거의 없으니(0강), 체크해도 무해하지만 안전상 여기선 생략 가능
+// checkAndGrantTitles();
+
+save();
+return;
       
 // ✅ (중요) 신규 계정 생성 직후: 로컬 메모리도 초기화
+// ✅ 신규 계정은 다른 스탯도 확실히 초기화(이전 계정 잔상 방지)
+weaponType = null;
+maxSwordLevel = 0;
+destroyCount = 0;
+duelPoint = 0;
+duelWin = 0; duelLose = 0;
 titlesOwned = {};
 equippedTitle = "";
 
@@ -5814,11 +5851,6 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
 // 🏷️ 칭호 자동 지급(로그인 로드 직후)
 const titleChanged = checkAndGrantTitles();
 if(titleChanged) save();
-    
-    update();
-    showTutorialIfFirstTime();
-    save(); // 신규 생성 직후 값 저장
-
   });
 }
 
@@ -6081,6 +6113,12 @@ document.addEventListener("mousedown", function (e) {
 
 // 🧷 새로고침 시 자동 로그인
 function autoLoginFromStorage() {
+    
+      // ✅ 자동로그인 시도 시작 전, 이전 계정 잔상 방지
+  titlesOwned = {};
+  equippedTitle = "";
+  closeTitleOverlay();
+
   let savedId = null;
   try {
     savedId = localStorage.getItem("swordGameLastUser");
@@ -6103,16 +6141,24 @@ function autoLoginFromStorage() {
     const data = s.val();
 
         // 🔐 이미 다른 곳에서 로그인 중이면 자동로그인도 막기
-    if (data.sessionId) {
+     if (data.sessionId) {
       console.log("[autoLogin] 이미 다른 곳에서 접속 중, 자동로그인 취소");
+
+      // ✅ 자동로그인 취소 시, 계정 상태를 남기지 않기
+      userId = "";
+      userRef = null;
+      titlesOwned = {};
+      equippedTitle = "";
+      closeTitleOverlay();
+
       return;
     }
 
     sword = data.sword ?? 0;
     gold  = data.gold  ?? 100;
 
-    titlesOwned   = data.titlesOwned   || {};
-equippedTitle = data.equippedTitle || "";
+titlesOwned = (data.titlesOwned && typeof data.titlesOwned === "object") ? data.titlesOwned : {};
+equippedTitle = (typeof data.equippedTitle === "string") ? data.equippedTitle : "";
 
       // 🗡 무기 타입 로드 (v3.8 이전 계정 호환 포함)
   if (data.weaponType !== undefined && data.weaponType !== null) {
