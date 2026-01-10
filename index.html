@@ -3293,7 +3293,7 @@ function checkAndGrantTitles(){
   // 4) 파괴 업적
   const dc = Number(destroyCount || 0);
   if(dc >= 100) changed = grantTitleOnceNoSave("destroy100") || changed; // [파괴왕]
-  if(dc >= 500) changed = grantTitleOnceNoSave("destroy300") || changed; // [파괴신]
+  if(dc >= 500) changed = grantTitleOnceNoSave("destroy500") || changed; // [파괴신]
 
   // 5) 무기별 "종착지" (30강 도달 시점의 weaponType 기준)
   // - 여기서는 “현재 무기가 30 이상”이면 지급.
