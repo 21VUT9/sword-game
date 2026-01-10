@@ -992,7 +992,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.917)
+    (v3.918)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3262,7 +3262,7 @@ function grantTitleOnceNoSave(titleId){
   if(!titleId) return false;
   if(!titlesOwned) titlesOwned = {};
   if(titlesOwned[titleId]) return false;
-  titlesOwned[titleId] = true;
+  titlesOwned[titleId] = Date.now();
   return true;
 }
 
@@ -3332,21 +3332,28 @@ function renderTitleGrid(){
   const eqDef = TITLE_DEFS.find(t => t.id === equippedTitle);
   if(equippedEl){
     equippedEl.textContent = eqDef ? `[${eqDef.name}]` : "(없음)";
-    equippedEl.style.color = eqDef ? "#ddd" : "#999";
+    equippedEl.style = eqDef ? getTitleColorStyle(eqDef.color) + "font-weight:bold;" : "color:#999;";
   }
 
   grid.innerHTML = TITLE_DEFS.map(def => {
     const owned = !!(titlesOwned && titlesOwned[def.id]);
     const color = owned ? "#fff" : "#777";
     const border = owned ? "1px solid #666" : "1px solid #333";
+    const ts = titlesOwned?.[def.id] || 0;
+    const earnedText = owned ? new Date(ts).toLocaleDateString("ko-KR") : "미획득";
+
 
     return `
-      <div class="titleCell"
-           data-id="${def.id}"
-           style="padding:10px 6px; text-align:center; border:${border}; border-radius:10px; cursor:pointer; color:${color}; user-select:none;">
-        ${def.name}
-      </div>
-    `;
+  <div class="titleCell"
+       data-id="${def.id}"
+       style="padding:10px 6px; text-align:center; border:${border}; border-radius:10px; cursor:pointer; color:${color}; user-select:none;">
+    <div style="font-weight:bold;">${def.name}</div>
+    <div style="margin-top:4px; font-size:11px; color:${owned ? "#bbb" : "#555"};">
+      ${earnedText}
+    </div>
+  </div>
+`;
+
   }).join("");
 
   // 클릭 바인딩
