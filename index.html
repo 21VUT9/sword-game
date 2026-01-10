@@ -971,7 +971,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.912)
+    (v3.913)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3147,15 +3147,52 @@ const TITLE_DEFS = [
   // ✅ 역병쥐 (반짝 초록) + 방법 숨김
   { id:"plague", name:"역병쥐", how:"???", color:"plague" },
 ];
+
+// =========================
+// 🏷️ 닉네임에 칭호 붙이기
+// =========================
+function formatNicknameWithTitle(nickname, titleId) {
+  if (!titleId) return nickname;
+
+  const def = TITLE_DEFS.find(t => t.id === titleId);
+  if (!def) return nickname;
+
+  return `<span style="${getTitleColorStyle(def.color)}">[${def.name}]</span>${nickname}`;
+}
   
-function renderNameWithTitle(id) {
-  const safeId = id || "-";
-  if (!equippedTitle) return safeId;
+function getTitleStyle(colorKey) {
+  // 기본(회색)
+  if (!colorKey) return "color:#9a9a9a;";
 
-  const def = TITLE_DEFS.find(t => t.id === equippedTitle);
-  const titleName = def ? def.name : equippedTitle; // 못 찾으면 id 그대로 표시(안전장치)
+  // 엔드(금색)
+  if (colorKey === "gold") {
+    return "color:#ffd54f;font-weight:bold;text-shadow:0 0 6px rgba(255,213,79,0.35);";
+  }
 
-  return `<span style="color:#9a9a9a;">[${titleName}]</span>${safeId}`;
+  // 서버최초(붉은 금색)
+  if (colorKey === "redgold") {
+    return "color:#ffb74d;font-weight:bold;text-shadow:0 0 6px rgba(255,120,80,0.35);";
+  }
+
+  // 역병쥐(짙은 초록 + 반짝 느낌은 일단 글로우)
+  if (colorKey === "plague") {
+    return "color:#00c853;font-weight:bold;text-shadow:0 0 8px rgba(0,200,83,0.45);";
+  }
+
+  return "color:#9a9a9a;";
+}
+
+function formatNicknameWithTitle(id, titleId) {
+  const safeId = (id ?? "-");
+
+  if (!titleId) return safeId;
+
+  const def = TITLE_DEFS.find(t => t.id === titleId);
+  const titleName = def ? def.name : titleId;
+
+  const style = getTitleStyle(def?.color);
+
+  return `<span style="${style}">[${titleName}]</span>${safeId}`;
 }
 
 // 리네아 대사(랜덤)
@@ -3340,7 +3377,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (nickEl) {
-    nickEl.innerHTML = renderNameWithTitle(userId);
+    nameEl.innerHTML = formatNicknameWithTitle(userId, equippedTitle);
   }
 
   // 🔰 현재 강화 단계에 따른 검 정보
@@ -7152,7 +7189,8 @@ if (!keyword) {
 
     const left = document.createElement("div");
     left.innerHTML = `
-      <div style="font-weight:bold;">${u.id}</div>
+      <div style="font-weight:bold;">${formatNicknameWithTitle(u.id, u.equippedTitle || "")}</div>
+
       <div style="font-size:12px; color:#ccc;">
         ${coloredLevel(u.sword)} / 전투력: ${formatGold(u.power || 0)}
       </div>
