@@ -992,7 +992,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.920)
+    (v3.921)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3256,7 +3256,8 @@ const LINEA_LINES = [
 // =====================
 // 🏷️ 칭호 자동 지급 로직
 // =====================
-
+let titleSortMode = "default"; // "default" | "recent"
+  
 // changed가 true면, 호출한 쪽에서 save() 한번만 해주면 됨(중복 save 방지)
 function grantTitleOnceNoSave(titleId){
   if(!titleId) return false;
@@ -3314,6 +3315,15 @@ function openTitleOverlay(){
   const lineEl = document.getElementById("titleNpcText");
   if(lineEl) lineEl.textContent = LINEA_LINES[Math.floor(Math.random()*LINEA_LINES.length)];
 
+const sortBtn = document.getElementById("titleSortBtn");
+if (sortBtn) {
+  sortBtn.onclick = () => {
+    titleSortMode = (titleSortMode === "default") ? "recent" : "default";
+    sortBtn.textContent = (titleSortMode === "recent") ? "기본정렬" : "최근획득순";
+    renderTitleGrid();
+  };
+}
+  
   renderTitleGrid();
 }
 
@@ -3335,28 +3345,48 @@ function renderTitleGrid(){
     equippedEl.style = eqDef ? getTitleColorStyle(eqDef.color) + "font-weight:bold;" : "color:#999;";
   }
 
-  grid.innerHTML = TITLE_DEFS.map(def => {
-    const owned = !!(titlesOwned && titlesOwned[def.id]);
-    const color = owned ? "#fff" : "#777";
-    const border = owned ? "1px solid #666" : "1px solid #333";
-    const raw = titlesOwned?.[def.id];
-    const ts = (typeof raw === "number") ? raw : 0;
-    const earnedText = owned
-      ? (ts ? new Date(ts).toLocaleDateString("ko-KR") : "획득")
-      : "미획득";
-  
-    return `
-  <div class="titleCell"
-       data-id="${def.id}"
-       style="padding:10px 6px; text-align:center; border:${border}; border-radius:10px; cursor:pointer; color:${color}; user-select:none;">
-    <div style="font-weight:bold;">${def.name}</div>
-    <div style="margin-top:4px; font-size:11px; color:${owned ? "#bbb" : "#555"};">
-      ${earnedText}
-    </div>
-  </div>
-`;
+let defs = [...TITLE_DEFS];
 
-  }).join("");
+// ✅ 최근 획득순 정렬 모드일 때만 정렬
+if (titleSortMode === "recent") {
+  defs.sort((a, b) => {
+    const aRaw = titlesOwned?.[a.id];
+    const bRaw = titlesOwned?.[b.id];
+
+    // number(timestamp)면 그 값, true면 1, 없으면 0
+    const aTs = (typeof aRaw === "number") ? aRaw : (aRaw ? 1 : 0);
+    const bTs = (typeof bRaw === "number") ? bRaw : (bRaw ? 1 : 0);
+
+    // 1) 획득한 것 먼저
+    if (!!aTs !== !!bTs) return bTs - aTs;
+
+    // 2) 둘 다 획득이면 최근 획득이 위
+    return bTs - aTs;
+  });
+}
+
+grid.innerHTML = defs.map(def => {
+  const owned = !!(titlesOwned && titlesOwned[def.id]);
+  const color = owned ? "#fff" : "#777";
+  const border = owned ? "1px solid #666" : "1px solid #333";
+
+  const raw = titlesOwned?.[def.id];
+  const ts = (typeof raw === "number") ? raw : 0;
+  const earnedText = owned
+    ? (ts ? new Date(ts).toLocaleDateString("ko-KR") : "획득")
+    : "미획득";
+
+  return `
+    <div class="titleCell"
+         data-id="${def.id}"
+         style="padding:10px 6px; text-align:center; border:${border}; border-radius:10px; cursor:pointer; color:${color}; user-select:none;">
+      <div style="font-weight:bold;">${def.name}</div>
+      <div style="margin-top:4px; font-size:11px; color:${owned ? "#bbb" : "#555"};">
+        ${earnedText}
+      </div>
+    </div>
+  `;
+}).join("");
 
   // 클릭 바인딩
   grid.querySelectorAll(".titleCell").forEach(el => {
@@ -8288,6 +8318,7 @@ async function recalcUserPower(userIdToFix) {
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
       <div style="font-size:18px; font-weight:bold;">업적(칭호)</div>
       <button onclick="closeTitleOverlay()">닫기</button>
+      <button id="titleSortBtn" style="margin-left:8px; padding:6px 10px; font-size:12px;">최근획득순</button>
     </div>
 
     <div style="text-align:center; margin-bottom:10px; color:#ddd;">
