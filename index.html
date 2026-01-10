@@ -971,7 +971,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.913)
+    (v3.914)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3147,18 +3147,6 @@ const TITLE_DEFS = [
   // ✅ 역병쥐 (반짝 초록) + 방법 숨김
   { id:"plague", name:"역병쥐", how:"???", color:"plague" },
 ];
-
-// =========================
-// 🏷️ 닉네임에 칭호 붙이기
-// =========================
-function formatNicknameWithTitle(nickname, titleId) {
-  if (!titleId) return nickname;
-
-  const def = TITLE_DEFS.find(t => t.id === titleId);
-  if (!def) return nickname;
-
-  return `<span style="${getTitleColorStyle(def.color)}">[${def.name}]</span>${nickname}`;
-}
   
 function getTitleStyle(colorKey) {
   // 기본(회색)
@@ -3361,23 +3349,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function update() {
 
-  /* 🧾 유저 프로필 영역 갱신 */
-  const nickEl   = document.getElementById("profileNickname");
+   /* 🧾 유저 프로필 영역 갱신 */
+  const nameEl = document.getElementById("profileNickname");
+  if (nameEl) nameEl.innerHTML = formatNicknameWithTitle(userId, equippedTitle);
+
   const weaponTitleEl = document.getElementById("profileWeaponTitle");
   const weaponDescEl  = document.getElementById("profileWeaponDesc");
   const maxInfoEl     = document.getElementById("profileMaxInfo");
-
   const powerEl  = document.getElementById("profilePower");
   const goldEl   = document.getElementById("profileGold");
   const huntEl   = document.getElementById("profileHuntCount");
   const weaponValueEl = document.getElementById("profileWeaponValue");
   const recordEl = document.getElementById("profileRecord");
+
   if (recordEl) {
     recordEl.textContent = `승 ${duelWin} / 패 ${duelLose}`;
-  }
-
-  if (nickEl) {
-    nameEl.innerHTML = formatNicknameWithTitle(userId, equippedTitle);
   }
 
   // 🔰 현재 강화 단계에 따른 검 정보
