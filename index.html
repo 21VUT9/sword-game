@@ -971,7 +971,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.911)
+    (v3.912)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3278,29 +3278,31 @@ function onTitleClick(titleId){
 
   const owned = !!(titlesOwned && titlesOwned[titleId]);
 
-  if(!owned){
-    alert("칭호 획득방법: ???");
-    return;
-  }
-
-  // 이미 장착중이면 → 해제
-  if(equippedTitle === titleId){
-    if(confirm(`[${def.name}]을(를) 장착 해제할까?`)){
-      equippedTitle = "";
-      save();  // save에 equippedTitle 저장은 이미 들어가있음 :contentReference[oaicite:4]{index=4}
-      update(); // 프로필 닉네임 즉시 반영 :contentReference[oaicite:5]{index=5}
-      renderTitleGrid();
-    }
-    return;
-  }
-
-  // 장착
-  if(confirm(`[${def.name}]을(를) 장착할까?`)){
-    equippedTitle = titleId;
+if(!owned){
+  const how = def.hiddenHow ? "???" : (def.how || "???");
+  alert(`칭호 획득방법:\n${how}`);
+  return;
+}
+  
+// ✅ 획득한 칭호 클릭
+// 1) 이미 장착중이면 -> 장착해제
+if (equippedTitle === titleId) {
+  if (confirm("현재 칭호를 장착해제할까?")) {
+    equippedTitle = "";
     save();
     update();
     renderTitleGrid();
   }
+  return;
+}
+
+// 2) 장착중이 아니면 -> 장착하기
+if (confirm(`[${def.name}] 칭호를 장착할까?`)) {
+  equippedTitle = titleId;
+  save();
+  update();
+  renderTitleGrid();
+}
 }
 
 // 오버레이: 바깥 클릭 닫기 + ESC 닫기
