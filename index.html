@@ -46,6 +46,23 @@ body {
   visibility: hidden !important;
 }
 
+/* 🦠 역병쥐 반짝 텍스트 */
+.title-plague {
+  font-weight: bold;
+  background: linear-gradient(90deg, #00c853, #b9ffcc, #00c853);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 10px rgba(0, 200, 83, 0.35);
+  animation: plagueShine 1.6s linear infinite;
+}
+
+@keyframes plagueShine {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+  
 /* 🔗 랭킹에서 닉네임 클릭 가능하게 */
 .rank-user {
   cursor: pointer;
@@ -971,7 +988,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.914)
+    (v3.915)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3178,7 +3195,13 @@ function formatNicknameWithTitle(id, titleId) {
   const def = TITLE_DEFS.find(t => t.id === titleId);
   const titleName = def ? def.name : titleId;
 
-  const style = getTitleStyle(def?.color);
+ const colorKey = def?.color || "";
+if (colorKey === "plague") {
+  return `<span class="title-plague">[${titleName}]</span>${safeId}`;
+}
+
+const style = getTitleStyle(colorKey);
+return `<span style="${style}">[${titleName}]</span>${safeId}`;
 
   return `<span style="${style}">[${titleName}]</span>${safeId}`;
 }
@@ -6334,6 +6357,7 @@ function openOtherUserProfilePopup(targetId) {
     }
 
     const d = snap.val() || {};
+    if (nickEl) nickEl.innerHTML = formatNicknameWithTitle(targetId, d.equippedTitle || "");
 
     const swordLevel = Number(d.sword || 0);
     const weaponTypeOther = d.weaponType || "sword";
@@ -6524,7 +6548,8 @@ function loadRanking() {
           updated: Number(d.updated || 0),
           duelWin: Number(d.duelWin || 0),
           duelLose: Number(d.duelLose || 0),
-          weaponType: d.weaponType || "sword"
+          weaponType: d.weaponType || "sword",
+          equippedTitle: d.equippedTitle || ""
         });
       });
 
@@ -6539,7 +6564,7 @@ rankingEl.innerHTML = arr.map((u, i) => {
 
   return `
     <div class="ranking-row" style="font-weight:bold;">
-      ${i+1}. <span class="rank-user" data-user-id="${u.id}">${u.id}</span>
+      ${i+1}. <span class="rank-user" data-user-id="${u.id}">${formatNicknameWithTitle(u.id, u.equippedTitle)}</span>
       | ${weaponNameStyled} ${coloredLevel(u.sword)}
       | 전적: ${u.duelWin}승 ${u.duelLose}패
     </div>
@@ -6564,7 +6589,8 @@ rankingEl.innerHTML = arr.map((u, i) => {
           sword: Number(d.sword || 0),
           updated: Number(d.updated || 0),
           power: Number(d.power || 0),
-          weaponType: d.weaponType || "sword"
+          weaponType: d.weaponType || "sword",
+          equippedTitle: d.equippedTitle || ""
         });
       });
 
@@ -6646,7 +6672,7 @@ const rows = list.map((u, idx) => {
           class="userListName"
           onclick="openUserProfileFromUserList('${u.id}')"
           >
-          ${u.id}
+           ${formatNicknameWithTitle(u.id, u.equippedTitle)}
         </span>
       </div>
 
