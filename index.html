@@ -992,7 +992,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.918)
+    (v3.919)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3338,11 +3338,12 @@ function renderTitleGrid(){
   grid.innerHTML = TITLE_DEFS.map(def => {
     const owned = !!(titlesOwned && titlesOwned[def.id]);
     const color = owned ? "#fff" : "#777";
-    const border = owned ? "1px solid #666" : "1px solid #333";
-    const ts = titlesOwned?.[def.id] || 0;
-    const earnedText = owned ? new Date(ts).toLocaleDateString("ko-KR") : "미획득";
-
-
+    const raw = titlesOwned?.[def.id];
+    const ts = (typeof raw === "number") ? raw : 0;
+    const earnedText = owned
+      ? (ts ? new Date(ts).toLocaleDateString("ko-KR") : "획득")
+      : "미획득";
+  
     return `
   <div class="titleCell"
        data-id="${def.id}"
