@@ -1075,33 +1075,38 @@ button {
   background:rgba(255,255,255,0.03);
 }
 
-/* NPC 영역 */
-.titleNpcRow{
-  display:flex;
-  gap:12px;
-  align-items:flex-end;
+/* 업적창 NPC 영역: 좌 대사 / 우하 NPC */
+.titleNpcWrap{
+  position:relative;
   margin-top:12px;
-}
-
-.titleNpcBox{
-  width:120px;
-  height:140px;
-  border:1px solid rgba(255,255,255,0.12);
-  border-radius:14px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:#aaa;
-  background:rgba(0,0,0,0.18);
+  min-height:160px; /* NPC 이미지가 들어갈 공간 확보 */
 }
 
 .titleNpcTalk{
-  flex:1;
+  width: calc(100% - 170px);
   border:1px solid rgba(255,255,255,0.12);
   border-radius:14px;
   padding:10px;
   color:#ddd;
   background:rgba(0,0,0,0.18);
+  text-align:left;
+}
+
+.titleNpcName{
+  font-weight:800;
+  margin-bottom:6px;
+}
+
+.titleNpcImg{
+  position:absolute;
+  right:0;
+  bottom:-6px;
+  width:160px;
+  height:auto;
+  image-rendering:auto;
+  filter: drop-shadow(0 10px 18px rgba(0,0,0,0.55));
+  user-select:none;
+  pointer-events:none; /* 클릭 방해 방지 */
 }
 
 .titleNpcName{
@@ -1119,7 +1124,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.922)
+    (v3.923)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3435,6 +3440,9 @@ function checkAndGrantTitles(){
 }
   
 function openTitleOverlay(){
+  const npcImg = document.getElementById("titleNpcImg");
+if (npcImg) npcImg.src = "images/npc/linea_idle.png";
+
   const ov = document.getElementById("titleOverlay");
   if(!ov) return;
   ov.style.display = "flex";
@@ -8458,14 +8466,19 @@ async function recalcUserPower(userIdToFix) {
     <!-- 그리드 -->
     <div id="titleGrid" class="titleGrid"></div>
 
-    <!-- NPC/대사 -->
-    <div class="titleNpcRow">
-      <div class="titleNpcBox">리네아</div>
+<!-- NPC/대사 -->
+<div class="titleNpcWrap">
+  <div class="titleNpcTalk">
+    <div class="titleNpcName">서기관 리네아</div>
+    <div id="titleNpcText">칭호는 명예이자 기록이야! 어떤 걸 달아볼래?</div>
+  </div>
 
-      <div class="titleNpcTalk">
-        <div class="titleNpcName">서기관 리네아</div>
-        <div id="titleNpcText">칭호는 명예이자 기록이야! 어떤 걸 달아볼래?</div>
-      </div>
+  <img id="titleNpcImg"
+       class="titleNpcImg"
+       src="images/npc/linea_idle.png"
+       alt="리네아"
+       draggable="false">
+</div>
     </div>
 
   </div>
