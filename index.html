@@ -1173,7 +1173,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.933)
+    (v3.934)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2492,6 +2492,8 @@ let weaponType = null;
 let isUpgrading = false; 
 let isDueling   = false;   // ⚔️ 결투 VS 대기중일 때 true
 let titlesOwned = {};     // { titleId: true }
+let downStreak = 0;          // 강등 연속 카운터(미끄럼틀)
+let superSuccessCount = 0;   // 슈퍼강화 성공 횟수(슈퍼스타)
   // ⚡ 스피드런(0강 → 21강)
 // 0에서 1로 “처음 성공”한 순간부터 측정 시작
 let speed21StartAt = 0;   // 측정 시작 시각(ms)
@@ -3388,7 +3390,8 @@ const TITLE_DEFS = [
 
   // 💰 자산
   { id:"mansur",   name:"만수르",     how:"10조 골드 이상 보유" },
-];
+
+  ];
 
   // 🎨 칭호 색상 스타일
 function getTitleColorStyle(colorKey) {
@@ -5210,6 +5213,14 @@ function upgrade() {
   }
   // 경고를 보고 다시 들어온 호출은 이 플래그로 한 번 스킵
   ignoreNextUpgradeWarning = false;
+
+  // 도파민중독자: 25강 이후 파괴방지 없이 강화 '시도'
+if (sword >= 25) {
+  const usingProtect = (document.getElementById("useProtect")?.checked); // 너 코드의 체크박스 id에 맞춰야 함
+  if (!usingProtect) {
+    if (grantTitleOnceNoSave("dopamine")) save();
+  }
+}
   
   // 이미 강화 중이면 중복 클릭 방지
   if (isUpgrading) return;
@@ -5412,10 +5423,25 @@ if (Math.random() < chance / 100) {
   // ✅ 성공
   let up = useSuper ? 2 : 1; // 슈퍼강화면 +2
 
+// ✅ 슈퍼강화 성공일 때만 카운트/칭호 지급
+if (useSuper) {
+  superSuccessCount = Number(superSuccessCount || 0) + 1;
+  if (grantTitleOnceNoSave("superstar")) {
+    // superstar는 1회 성공이면 바로 지급
+  }
+  save(); // superSuccessCount / titlesOwned 저장
+}
+
+}
+save();
+  
   while (up > 0 && sword < 30) {
     sword++;
     up--;
+    downStreak = 0;
+    
   }
+
   
   // 🔹 0강 → 1강 이상으로 처음 올라갔으면 여기서 타입 확정
       ensureWeaponTypeAfterUpgrade(before, sword);
@@ -5587,6 +5613,13 @@ if (useRate5) {
       );
     } else {
       sword--;
+      
+      downStreak = Number(downStreak || 0) + 1;
+if (downStreak >= 4) {
+  if (grantTitleOnceNoSave("slide4")) save();
+}
+save(); // downStreak 저장
+
       rollPowerForCurrentSword();
       showNpcMessage(
         `
@@ -5604,6 +5637,15 @@ if (useRate5) {
   } else {
     // 파괴 (강등방지는 파괴엔 효과 없음)
     const targetLevel = before + 1; // 도전하던 강화 단계
+          const beforeLevel = sword;
+
+// 운수좋은날 / 이카루스
+if (beforeLevel < 20) {
+  if (grantTitleOnceNoSave("lucky")) save();
+}
+if (beforeLevel >= 26) {
+  if (grantTitleOnceNoSave("icarus")) save();
+}
     let gainedShard = 0;
 
     // ⭐ 22강 이상 파괴 시 '빛나지 못한 별의 조각' 지급
@@ -5627,6 +5669,7 @@ if (useRate5) {
     sword = 0;
           // ⚡ 파괴되면 진행중인 스피드런은 끊기
     speed21StartAt = 0;
+    downStreak = 0;
     weaponType = null;       // 🔹 파괴되면 무기 타입도 초기화 (다음에 다시 랜덤)
 
     rollPowerForCurrentSword();
@@ -5772,6 +5815,7 @@ function completeSell(beforeLevel, rewardGold) {
   sword = 0;
   weaponType = null;
   speed21StartAt = 0;  // ⚡ 판매로 무기 초기화 시 진행중 스피드런 끊기
+  downStreak = 0;
   rollPowerForCurrentSword();
 
   // 20강 이상 전용 완료 멘트
@@ -6278,6 +6322,8 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
             duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
       duelUpdated         = data.duelUpdated ?? 0;
       duelLastWeekUpdated = data.duelLastWeekUpdated ?? 0;
+      downStreak = Number(data.downStreak || 0);
+superSuccessCount = Number(data.superSuccessCount || 0);
       
       // 🟢 주차 정리 (지난주 포인트 스냅샷 + 이번 주 초기화)
       ensureDuelWeek();
@@ -6378,7 +6424,9 @@ function save() {
 speed21StartAt: Number(speed21StartAt || 0),
 speed21BestMs:  Number(speed21BestMs  || 0),
 titlesOwned: titlesOwned,
-equippedTitle: equippedTitle
+equippedTitle: equippedTitle,
+downStreak: Number(downStreak || 0),
+superSuccessCount: Number(superSuccessCount || 0)
       };
 
   // ⭐ 강화 수치가 바뀌었을 때만 updated 갱신
@@ -6708,6 +6756,8 @@ lastAttendanceDay  = data.lastAttendanceDay  ?? "";
         duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
     duelUpdated         = data.duelUpdated ?? 0;
     duelLastWeekUpdated = data.duelLastWeekUpdated ?? 0;
+    downStreak = Number(data.downStreak || 0);
+superSuccessCount = Number(data.superSuccessCount || 0);
 
     // 🟢 주차 정리 (지난주 포인트 스냅샷 + 이번 주 초기화)
     ensureDuelWeek();
