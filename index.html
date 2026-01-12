@@ -1001,11 +1001,15 @@ button {
   width: min(860px, 92vw);
   height: min(560px, 84vh);
   border-radius: 16px;
-  padding: 14px 14px 150px; 
+  padding: 14px;                 /* ✅ padding-bottom 고정값 제거 */
   background: rgba(10,10,10,0.88);
   border: 1px solid rgba(255,255,255,0.08);
   box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   backdrop-filter: blur(6px);
+
+  display: flex;                 /* ✅ 2단 레이아웃 */
+  flex-direction: column;
+  overflow: hidden;              /* ✅ NPC 삐져나오는거 방지 */
 }
 
 /* 헤더 */
@@ -1064,9 +1068,10 @@ button {
   grid-template-columns: repeat(6, 1fr);
   gap: 10px;
   align-content: start;
+
+  flex: 1;                       /* ✅ 남는 공간 전부 그리드 */
   overflow-y: auto;
-  padding-right: 4px;
-  height: calc(100% - 88px);  /* ✅ 헤더+장착중 영역만큼 빼기 
+  padding: 6px 2px 10px;         /* ✅ 상점처럼 촘촘 */
 }
 
 /* 카드 셀 공통(기존 inline style보다 우선되게 하려면 !important도 가능) */
@@ -1080,31 +1085,27 @@ button {
 
 /* ✅ NPC 영역: 스크롤상점처럼 “우측하단 NPC / 좌측 대사”, 그리고 패널에 붙이기 */
 .titleNpcWrap{
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: 14px;
-  height: 120px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
 
-  display:flex;
-  align-items:flex-end;
-  justify-content:space-between;
-  gap: 16px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(255,255,255,0.10);
+  background: rgba(0,0,0,0.22);
 
-  pointer-events: none; /* ✅ 대사/이미지는 클릭 방해 안하게 */
+  pointer-events: none;          /* 클릭 방해 X */
 }
 
 /* ✅ 대사 박스 제거: 배경/테두리 없애고 텍스트만 */
 .titleNpcTalk{
-  width: calc(100% - 170px);
-
-  /* ✅ 박스 제거 */
-  border: none;
-  border-radius: 0;
+  flex: 1;
+  max-width: calc(100% - 160px);
   padding: 0;
   background: transparent;
+  border: none;
 
-  /* ✅ 가독성 */
   color: #e7e7e7;
   text-align: left;
   text-shadow: 0 2px 6px rgba(0,0,0,0.85);
@@ -1122,7 +1123,7 @@ button {
 
 /* ✅ NPC는 우측하단 */
 .titleNpcImg{
-  width: 130px;
+  width: 110px;                  /* ✅ 상점처럼 ‘작고 귀엽게’ */
   height: auto;
   object-fit: contain;
   filter: drop-shadow(0 6px 10px rgba(0,0,0,0.65));
@@ -1139,7 +1140,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.927)
+    (v3.928)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
