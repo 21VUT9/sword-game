@@ -1173,7 +1173,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.931)
+    (v3.932)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2527,6 +2527,7 @@ let lastSavedSwordForUpdated = 0;
 let currentField = 1;          // 1~10 사냥터
 let huntCountToday = 0;        // 오늘 사냥 횟수
 let lastHuntDate = "";         // 마지막 사냥 날짜 (YYYY-MM-DD)
+let plagueRatHuntCount = 0; // 🦠 2레벨 사냥터(시궁창) 사냥 누적 카운트
 
 // 🆕 사냥 스태미나
 let huntStamina = 20;          // 현재 사냥 가능 횟수 (0~20)
@@ -3450,6 +3451,11 @@ function grantTitleOnceNoSave(titleId){
 
 function checkAndGrantTitles(){
   let changed = false;
+
+  // 🦠 역병쥐: 2레벨 사냥터(시궁창) 사냥 100회
+if (Number(plagueRatHuntCount || 0) >= 100) {
+  if (grantTitleOnceNoSave("plague")) changed = true;
+}
 
   // 1) 새내기 대장장이: 최초 1회 강화 성공
   // - "sword >= 1"로도 되지만, 네 코드에 maxSwordLevel이 있으니 그걸 우선 활용
@@ -5859,6 +5865,10 @@ function hunt(){
 // 실제 공격력은 미리 굴려둔 power 사용 (±5% 편차 반영된 값)
 const atk = power; // 지금은 사용 X, 나중에 사냥 데미지/성공률에 반영 가능
 
+// 🦠 역병쥐(시궁창) 사냥 카운트: "사냥 시도" 1회로 누적
+if (currentField === 2) {
+  plagueRatHuntCount = Number(plagueRatHuntCount || 0) + 1;
+}
 
 // 성공 여부
 const r = Math.random() * 100;
@@ -6030,6 +6040,7 @@ destroyCount  = 0;
         lastAttendanceDay: "",    
         currentField: 1,
         huntCountToday: 0,
+        plagueRatHuntCount: 0,
         lastHuntDate: "",
         itemScroll15: Number(itemScroll15),
         itemProtect: Number(itemProtect),
@@ -6121,6 +6132,7 @@ equippedTitle = "";
       // ✅ 여기서부터 진짜 로그인 성공이 확정된 뒤에만 칭호 로드
 titlesOwned = (data.titlesOwned && typeof data.titlesOwned === "object") ? data.titlesOwned : {};
 equippedTitle = (typeof data.equippedTitle === "string") ? data.equippedTitle : "";
+      plagueRatHuntCount = Number(data.plagueRatHuntCount || 0);
 
       sword = data.sword ?? 0;
       gold  = data.gold  ?? 100;
@@ -6282,8 +6294,10 @@ function save() {
     duelLastWeekUpdated: Number(duelLastWeekUpdated || 0),
     couponUsed: couponUsedMap,   // 🆕 사용 완료 쿠폰 기록
     // 🏷️ 칭호 저장
-titlesOwned: titlesOwned,
-equippedTitle: equippedTitle
+    titlesOwned: titlesOwned,
+    equippedTitle: equippedTitle,
+    plagueRatHuntCount: Number(plagueRatHuntCount || 0),
+
   };
 
   // ⭐ 강화 수치가 바뀌었을 때만 updated 갱신
@@ -6549,6 +6563,7 @@ destroyCount  = 0;
 
 titlesOwned = (data.titlesOwned && typeof data.titlesOwned === "object") ? data.titlesOwned : {};
 equippedTitle = (typeof data.equippedTitle === "string") ? data.equippedTitle : "";
+    plagueRatHuntCount = Number(data.plagueRatHuntCount || 0);
 
       // 🗡 무기 타입 로드 (v3.8 이전 계정 호환 포함)
   if (data.weaponType !== undefined && data.weaponType !== null) {
