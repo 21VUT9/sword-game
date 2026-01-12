@@ -1173,7 +1173,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.931)
+    (v3.932)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3348,6 +3348,40 @@ const TITLE_DEFS = [
 
   // ✅ 역병쥐 (반짝 초록) + 방법 숨김
   { id:"plague", name:"역병쥐", how:"???", color:"plague" },
+    // ⚡ 스피드런
+  { id:"speed60",  name:"스피드광",   how:"0강에서 1분만에 21강 도달" },
+  { id:"speed42",  name:"빛의속도",   how:"0강에서 42초만에 21강 도달" },
+
+  // 🅿️ 장기주차
+  { id:"park7",    name:"장기주차",   how:"21강 이후 7일 이상 강화변동 없음" },
+
+  // 🎲 강화 관련
+  { id:"gambler",  name:"승부사",     how:"21강부터 주문서 없이 24강 도달" },
+  { id:"dopamine", name:"도파민중독자", how:"25강 이후 파괴방지 없이 강화 시도" },
+  { id:"superstar",name:"슈퍼스타",   how:"슈퍼강화 1회 성공" },
+
+  // ⚔️ 결투 관련
+  { id:"bully10",  name:"강약약강",   how:"나보다 낮은 상대 지정매칭 10회" },
+  { id:"challenger10", name:"도전자", how:"나보다 강한 상대 지정매칭 승리 10회" },
+  { id:"brawler500", name:"싸움꾼",   how:"결투 500회 달성" },
+  { id:"warGod",   name:"투신",       how:"나보다 4강 이상 높은 상대에게 승리 1회" },
+
+  // 📉 강화 결과(강등/파괴)
+  { id:"slide4",   name:"미끄럼틀",   how:"강등 연속 4회" },
+  { id:"luckyday", name:"운수좋은날", how:"20강 이전에서 파괴" },
+  { id:"icarus",   name:"이카루스",   how:"26강 이상에서 파괴" },
+
+  // 🌟 초고난도
+  { id:"god30",    name:"신",         how:"29강에서 주문서 없이 30강 달성" },
+  { id:"fireworks",name:"폭죽놀이",   how:"21~29강 모든 구간에서 파괴 경험" },
+
+  // 🏆 30강 누적
+  { id:"master30_3", name:"달인",     how:"무기 30강 3회 달성" },
+  { id:"old2",       name:"고인물",   how:"같은 무기 30강 2회 달성" },
+  { id:"old3",       name:"썩은물",   how:"같은 무기 30강 3회 달성" },
+
+  // 💰 자산
+  { id:"mansur",   name:"만수르",     how:"10조 골드 이상 보유" },
 ];
 
   // 🎨 칭호 색상 스타일
@@ -3443,7 +3477,11 @@ let titleSortMode = "default"; // "default" | "recent"
 function grantTitleOnceNoSave(titleId){
   if(!titleId) return false;
   if(!titlesOwned) titlesOwned = {};
-  if(titlesOwned[titleId]) return false;
+
+  // 이미 숫자(획득시간)가 있으면 보유중
+  if(typeof titlesOwned[titleId] === "number" && titlesOwned[titleId] > 0) return false;
+
+  // 과거에 true로 저장된 계정도 호환: true면 지금 시간으로 업그레이드
   titlesOwned[titleId] = Date.now();
   return true;
 }
@@ -3483,6 +3521,20 @@ function checkAndGrantTitles(){
     if(weaponType === "sword") changed = grantTitleOnceNoSave("end_sword") || changed;
     if(weaponType === "axe")   changed = grantTitleOnceNoSave("end_axe")   || changed;
     if(weaponType === "spear") changed = grantTitleOnceNoSave("end_spear") || changed;
+  }
+
+    // 💰 만수르: 10조(= 10,000,000,000,000) 이상
+  if (Number(gold || 0) >= 10000000000000) {
+    changed = grantTitleOnceNoSave("mansur") || changed;
+  }
+
+  // 🅿️ 장기주차: 21강 이상 + updated(강화변동시각) 기준 7일 경과
+  // updated는 네 DB에서 강화수치 바뀔 때만 갱신하는 값으로 이미 쓰고 있음
+  if (Number(sword || 0) >= 21 && Number(updated || 0) > 0) {
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+    if (Date.now() - Number(updated) >= sevenDays) {
+      changed = grantTitleOnceNoSave("park7") || changed;
+    }
   }
 
   return changed;
