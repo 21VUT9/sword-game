@@ -1173,7 +1173,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.934)
+    (v3.935)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -5425,15 +5425,14 @@ if (Math.random() < chance / 100) {
 
 // ✅ 슈퍼강화 성공일 때만 카운트/칭호 지급
 if (useSuper) {
-  superSuccessCount = Number(superSuccessCount || 0) + 1;
-  if (grantTitleOnceNoSave("superstar")) {
-    // superstar는 1회 성공이면 바로 지급
-  }
-  save(); // superSuccessCount / titlesOwned 저장
-}
+// ⭐ 슈퍼강화 성공 업적: [슈퍼스타] (1회 성공)
+superSuccessCount = Number(superSuccessCount || 0) + 1;
 
+if (superSuccessCount >= 1) {
+  if (grantTitleOnceNoSave("superstar")) {
+    save();  // 처음 획득 시만 저장
+  }
 }
-save();
   
   while (up > 0 && sword < 30) {
     sword++;
