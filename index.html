@@ -1173,7 +1173,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.939)
+    (v3.938)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3496,7 +3496,7 @@ function grantTitleOnceNoSave(titleId){
 }
 
 function checkAndGrantTitles(){
-   let updated = false;
+  let changed = false;
 
   // 1) 새내기 대장장이: 최초 1회 강화 성공
   // - "sword >= 1"로도 되지만, 네 코드에 maxSwordLevel이 있으니 그걸 우선 활용
@@ -3554,7 +3554,7 @@ if (bestMs > 0 && bestMs <= 42 * 1000) {
   changed = grantTitleOnceNoSave("speed42") || changed; // 빛의속도
 }
 
-  return updated;
+  return changed;
 }
   
 function openTitleOverlay(){
