@@ -1173,7 +1173,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.936)
+    (v3.937)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -5413,7 +5413,7 @@ showNpcMessage(
   false   // ⬅ 버튼 숨김
 );
 
-setTimeout(() => {
+setTimeout((() => {
   // 준비 팝업 닫기
   closeNpcPopup();
 
@@ -5801,7 +5801,7 @@ isUpgrading = false;
 const actionButtons = document.querySelectorAll(".action-buttons button");
 actionButtons.forEach(btn => btn.disabled = false);
 
-  }, delayMs);
+  }), delayMs);
 }
 
 // 🛒 실제 판매 처리 + "판매 완료" 멘트
