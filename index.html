@@ -999,9 +999,9 @@ button {
 .titlePanel{
   position: relative;
   width: min(860px, 92vw);
-  height: min(640px, 88vh);
+  height: min(560px, 84vh);
   border-radius: 16px;
-  padding: 16px 16px 190px; /* ✅ 아래 NPC 영역 자리 확보 */
+  padding: 14px 14px 150px; 
   background: rgba(10,10,10,0.88);
   border: 1px solid rgba(255,255,255,0.08);
   box-shadow: 0 10px 30px rgba(0,0,0,0.5);
@@ -1064,9 +1064,9 @@ button {
   grid-template-columns: repeat(6, 1fr);
   gap: 10px;
   align-content: start;
-  overflow: auto;
+  overflow-y: auto;
   padding-right: 4px;
-  height: 100%;
+  height: calc(100% - 88px);  /* ✅ 헤더+장착중 영역만큼 빼기 
 }
 
 /* 카드 셀 공통(기존 inline style보다 우선되게 하려면 !important도 가능) */
@@ -1139,7 +1139,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.925)
+    (v3.926)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
