@@ -1173,7 +1173,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.929)
+    (v3.931)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3571,6 +3571,15 @@ function showActionPopupAt(x, y, html){
   el.style.top  = ny + "px";
 }
 
+  // ✅ actionPopup에서 쓰는 버튼 HTML 생성 (없으면 획득 칭호 클릭 시 팝업이 안뜸)
+function popupBtn(label, onClickJs){
+  return `
+    <button class="actionBtn" onclick="${onClickJs}">
+      ${label}
+    </button>
+  `;
+}
+
 // “장착중” 표시 + 5x6 그리드 렌더
 function renderTitleGrid(){
   const grid = document.getElementById("titleGrid");
@@ -3629,10 +3638,10 @@ grid.innerHTML = defs.map(def => {
 
   // 클릭 바인딩
   grid.querySelectorAll(".titleCell").forEach(el => {
-    el.addEventListener("click", () => {
-      const id = el.getAttribute("data-id");
-      onTitleClick(id);
-    });
+    el.addEventListener("click", (e) => {
+  const id = el.getAttribute("data-id");
+  onTitleClick(id, e);
+});
   });
 }
 
