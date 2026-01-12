@@ -1096,17 +1096,24 @@ button {
 
 /* ✅ 대사 박스 제거: 배경/테두리 없애고 텍스트만 */
 .titleNpcTalk{
-  flex: 1;
-  max-width: 68%;
-  padding: 0;
+  width: calc(100% - 170px);
+
+  /* ✅ 박스 제거 */
   border: none;
+  border-radius: 0;
+  padding: 0;
   background: transparent;
-  text-align: left;
 
+  /* ✅ 가독성 */
   color: #e7e7e7;
-  text-shadow: 0 2px 6px rgba(0,0,0,0.8);
+  text-align: left;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.85);
 }
-
+  
+#titleNpcText{
+  line-height: 1.35;
+}
+  
 .titleNpcName{
   font-weight: 900;
   margin-bottom: 6px;
@@ -1132,7 +1139,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.924)
+    (v3.925)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
