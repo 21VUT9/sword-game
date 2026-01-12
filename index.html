@@ -1173,7 +1173,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.935)
+    (v3.936)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -5404,7 +5404,7 @@ if (useRate5) {
   if (chance > 95) chance = 95;  // 상한 (원하면 조절 가능)
 }
 
-  // 🕒 1~2초 랜덤 딜레이 동안 "강화 중..." 팝업
+// 🕒 1~2초 랜덤 딜레이 동안 "강화 중..." 팝업
 const delayMs = 500 + Math.random() * 500; // 0.5 ~ 1.0초
 
 showNpcMessage(
@@ -5413,10 +5413,9 @@ showNpcMessage(
   false   // ⬅ 버튼 숨김
 );
 
-
-  setTimeout(() => {
-    // 준비 팝업 닫기
-    closeNpcPopup();
+setTimeout(() => {
+  // 준비 팝업 닫기
+  closeNpcPopup();
 
     // 🎲 성공 / 실패 판정
 if (Math.random() < chance / 100) {
