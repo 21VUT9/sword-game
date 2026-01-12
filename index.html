@@ -1173,7 +1173,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.933)
+    (v3.934)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2431,6 +2431,55 @@ const WEAPON_INFO_AXE = {
   }
 };
 
+  const WEAPON_INFO_BOW = {
+0: WEAPON_INFO[0],  // "제련되지 않은 금속괴" 공용
+    
+  // 🌑 1~10강 : 현실 사냥 장비
+  1:  { name: "낡은 사냥 활",          desc: "손에 익은 나무 활. 시작은 조용하다.", img: "images/weapons/bow_01.png" },
+  2:  { name: "가죽 시위 단궁",        desc: "가죽 시위가 팽팽히 울린다.",         img: "images/weapons/bow_02.png" },
+  3:  { name: "사냥 단궁",            desc: "급소를 찾는 눈이 조금 더 선명해진다.", img: "images/weapons/bow_03.png" },
+  4:  { name: "롱보우",               desc: "사정거리가 곧 자신감이 된다.",         img: "images/weapons/bow_04.png" },
+  5:  { name: "사냥 장궁",            desc: "한 발로 끝내는 사냥꾼의 기본기.",       img: "images/weapons/bow_05.png" },
+  6:  { name: "매복 장궁",            desc: "숨을 죽이면, 바람이 길을 알려준다.",    img: "images/weapons/bow_06.png" },
+  7:  { name: "바이탈샷 보우",         desc: "심장 박동을 따라 화살이 간다.",        img: "images/weapons/bow_07.png" },
+  8:  { name: "프리시전",             desc: "조준이 아니라 ‘확신’으로 쏜다.",        img: "images/weapons/bow_08.png" },
+  9:  { name: "실버스트링 보우",       desc: "은빛 시위가 미세한 떨림까지 잠근다.",   img: "images/weapons/bow_09.png" },
+  10: { name: "명궁(名弓)",            desc: "이제부터는 ‘장비’가 아니라 ‘기술’이다.", img: "images/weapons/bow_10.png" },
+
+  // 🌒 11~17강 : 달·숲·별
+  11: { name: "월림궁(月林弓)",         desc: "달빛이 숲을 스치면, 화살은 소리 없이 사라진다.", img: "images/weapons/bow_11.png" },
+  12: { name: "은엽궁(銀葉弓)",         desc: "은빛 잎맥처럼 궤적이 얇게 남는다.",             img: "images/weapons/bow_12.png" },
+  13: { name: "별 사냥꾼",              desc: "별을 겨누는 자는, 이미 돌아올 길을 버렸다.",      img: "images/weapons/bow_13.png" },
+  14: { name: "제피로스",    desc: "서풍이 등을 밀면, 명중은 ‘시간 문제’가 된다.",     img: "images/weapons/bow_14.png" },
+  15: { name: "루나리스 보우", desc: "달의 윤곽을 따라 궤도가 정렬된다.",          img: "images/weapons/bow_15.png" },
+  16: { name: "스타체이서", desc: "도망치는 빛조차 놓치지 않는다.",                 img: "images/weapons/bow_16.png" },
+  17: { name: "녹턴",        desc: "밤이 깊을수록, 한 발은 더 차갑다.",               img: "images/weapons/bow_17.png" },
+
+  // 🌕 18~20강 : 타이탄 사냥터 구간
+  18: { name: "타이탄헌터",             desc: "거신의 그림자에, 급소 하나면 충분하다.",           img: "images/weapons/bow_18.png" },
+  19: { name: "콜로서스 피어서", desc: "거대한 방어도 ‘한 점’에서 무너진다.", img: "images/weapons/bow_19.png" },
+  20: { name: "천공관통궁(穿空貫弓)",   desc: "하늘을 찢는 게 아니다 — 하늘을 ‘통과’한다.",       img: "images/weapons/bow_20.png" },
+
+  // 🌟 21~23강 : 대천사의 요람
+  21: { name: "오리온자리",             desc: "사냥꾼의 별자리가 깨어난다. 이제 ‘추적’은 끝까지 간다.", img: "images/weapons/bow_21.png" },
+  22: { name: "생츄어리 스토커", desc: "성역이라도, 표적이면 예외는 없다.",     img: "images/weapons/bow_22.png" },
+  23: { name: "세라프 애로우", desc: "빛이 떨어지는 각도 그대로, 급소에 박힌다.",      img: "images/weapons/bow_23.png" },
+
+  // 🌟 24~25강 : 신의 처소
+  24: { name: "아르테미스",   desc: "달 아래서 맹세한다 — 빗나감은 허락되지 않는다.",     img: "images/weapons/bow_24.png" },
+  25: { name: "크로노스 아크", desc: "시위를 당기는 순간, 표적의 시간이 느려진다.",      img: "images/weapons/bow_25.png" },
+
+  // 🌈 26~29강 : 심연/법칙/영겁
+  26: { name: "템페스트 애로우", desc: "바람이 아니라 폭풍을 쏜다.",                 img: "images/weapons/bow_26.png" },
+  27: { name: "인피니트 드로우", desc: "끝없는 당김 — 끝없는 확정.",                img: "images/weapons/bow_27.png" },
+  28: { name: "아포칼립스",              desc: "하나의 발사로, 전장의 결말이 정해진다.",               img: "images/weapons/bow_28.png" },
+  29: { name: "영겁포식자",              desc: "명중은 사건이 아니다 — 영겁이 먹히는 방식이다.",       img: "images/weapons/bow_29.png" },
+
+  // 🌈 30강 : 최종
+  30: { name: "신궁(神弓) 「아이온」", desc: "시간 법칙 그 자체. ‘쏘는 행위’가 곧 결과가 된다.", img: "images/weapons/bow_30.png" }
+};
+
+
 // 현재 강화 수치 & 타입 기준으로 안전하게 정보 가져오기
 function getWeaponInfo(level, type) {
   const lv = Math.max(0, Math.min(30, level | 0));
@@ -2441,9 +2490,13 @@ function getWeaponInfo(level, type) {
   if (t === "spear") {
     return WEAPON_INFO_SPEAR[lv] || WEAPON_INFO_SPEAR[0];
   }
-  
-    if (t === "axe") {
+
+  if (t === "axe") {
     return WEAPON_INFO_AXE[lv] || WEAPON_INFO_AXE[0];
+  }
+
+  if (t === "bow") {
+    return WEAPON_INFO_BOW[lv] || WEAPON_INFO_BOW[0];
   }
 
   // 기본: 검
@@ -2454,7 +2507,7 @@ function getWeaponInfo(level, type) {
 function ensureWeaponTypeAfterUpgrade(beforeLevel, afterLevel) {
   if (beforeLevel <= 0 && afterLevel >= 1) {
     if (!weaponType) {
-      const types = ["sword", "spear", "axe"];
+      const types = ["sword", "spear", "axe", "bow"];
       const idx = Math.floor(Math.random() * types.length);
       weaponType = types[idx];
     }
@@ -2488,7 +2541,7 @@ let duelLastWeekRewardClaimed = false; // 지난주 보상 이미 받았는지 �
 let duelUpdated = 0;          // 이번 주 결투 포인트가 마지막으로 바뀐 시각
 let duelLastWeekUpdated = 0;  // 지난주 결투 포인트 최종 기록 시각  
 let weaponType = null; 
-// null: 아직 미배정(0강) / "sword": 검 / "spear": 창
+// null: 아직 미배정(0강) / "sword": 검 / "spear": 창 / "axe": 도끼 / "bow": 활
 let isUpgrading = false; 
 let isDueling   = false;   // ⚔️ 결투 VS 대기중일 때 true
 let titlesOwned = {};     // { titleId: true }
@@ -3350,6 +3403,8 @@ const TITLE_DEFS = [
   // ✅ 역병쥐 (반짝 초록) + 방법 숨김
   { id:"plague", name:"역병쥐", how:"???", color:"plague" },
 ];
+    { id:"bow21", name:"사냥꾼", how:"활 21강 달성", color:"" },
+  { id:"bow30", name:"활의 종착지", how:"활 30강 달성", color:"gold" },
 
   // 🎨 칭호 색상 스타일
 function getTitleColorStyle(colorKey) {
@@ -3489,6 +3544,15 @@ if (Number(plagueRatHuntCount || 0) >= 100) {
     if(weaponType === "sword") changed = grantTitleOnceNoSave("end_sword") || changed;
     if(weaponType === "axe")   changed = grantTitleOnceNoSave("end_axe")   || changed;
     if(weaponType === "spear") changed = grantTitleOnceNoSave("end_spear") || changed;
+  }
+
+    // 🏹 활 전용 칭호
+  if (weaponType === "bow" && maxSwordLevel >= 21) {
+    if (grantTitleOnceNoSave("bow21")) changed = true;
+  }
+
+  if (weaponType === "bow" && maxSwordLevel >= 30) {
+    if (grantTitleOnceNoSave("bow30")) changed = true;
   }
 
   return changed;
