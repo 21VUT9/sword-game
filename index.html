@@ -23,6 +23,37 @@ body {
 #upgradeItems label {
   white-space: nowrap;       /* 🔥 라벨 안에서 줄바꿈 금지 (항상 한 줄) */
 }
+
+/* 공용 액션 팝업 버튼 (게임 버튼 느낌) */
+.actionBtn{
+  width: 100%;
+  margin: 6px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.actionBtn:hover{
+  background: rgba(255,255,255,0.10);
+}
+
+.actionText{
+  color: #ddd;
+  font-size: 12px;
+  line-height: 1.35;
+  padding: 6px 4px;
+  white-space: pre-line; /* 줄바꿈 유지 */
+}
+
+.actionTitle{
+  font-weight: 900;
+  margin-bottom: 6px;
+  color: #fff;
+}
   
 /* 🔨 강화 / 사냥 / 판매 버튼 묶음 */
 .action-buttons {
@@ -1129,6 +1160,8 @@ button {
   filter: drop-shadow(0 6px 10px rgba(0,0,0,0.65));
   pointer-events: none;
 }
+
+  
   
 </style>
 </head>
@@ -1140,7 +1173,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.928)
+    (v3.929)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3481,6 +3514,61 @@ if (sortBtn) {
 function closeTitleOverlay(){
   const ov = document.getElementById("titleOverlay");
   if(ov) ov.style.display = "none";
+  hideActionPopup();
+}
+
+  // =====================
+// 🪟 공용 액션 팝업 (프로필보기 스타일)
+// =====================
+let actionPopupEl = null;
+
+function ensureActionPopup(){
+  if (actionPopupEl) return actionPopupEl;
+
+  const el = document.createElement("div");
+  el.id = "actionPopup";
+  el.style.display = "none";
+  el.style.position = "fixed";
+  el.style.zIndex = 10050;
+  el.style.minWidth = "160px";
+  el.style.padding = "8px";
+  el.style.borderRadius = "12px";
+  el.style.border = "1px solid rgba(255,255,255,0.18)";
+  el.style.background = "rgba(20,20,20,0.96)";
+  el.style.boxShadow = "0 10px 25px rgba(0,0,0,0.55)";
+  el.style.backdropFilter = "blur(4px)";
+
+  // 바깥 클릭 닫기
+  el.addEventListener("click", (e) => e.stopPropagation());
+  document.addEventListener("click", () => hideActionPopup());
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") hideActionPopup(); });
+
+  document.body.appendChild(el);
+  actionPopupEl = el;
+  return el;
+}
+
+function hideActionPopup(){
+  const el = ensureActionPopup();
+  el.style.display = "none";
+  el.innerHTML = "";
+}
+
+function showActionPopupAt(x, y, html){
+  const el = ensureActionPopup();
+  el.innerHTML = html;
+
+  // 화면 밖으로 안 나가게 보정
+  el.style.display = "block";
+  const rect = el.getBoundingClientRect();
+  let nx = x, ny = y;
+  if (nx + rect.width > window.innerWidth - 8) nx = window.innerWidth - rect.width - 8;
+  if (ny + rect.height > window.innerHeight - 8) ny = window.innerHeight - rect.height - 8;
+  if (nx < 8) nx = 8;
+  if (ny < 8) ny = 8;
+
+  el.style.left = nx + "px";
+  el.style.top  = ny + "px";
 }
 
 // “장착중” 표시 + 5x6 그리드 렌더
@@ -3554,31 +3642,35 @@ function onTitleClick(titleId){
 
   const owned = !!(titlesOwned && titlesOwned[titleId]);
 
-if(!owned){
-  const how = def.hiddenHow ? "???" : (def.how || "???");
-  alert(`칭호 획득방법:\n${how}`);
-  return;
-}
-  
-// ✅ 획득한 칭호 클릭
-// 1) 이미 장착중이면 -> 장착해제
-if (equippedTitle === titleId) {
-  if (confirm("현재 칭호를 장착해제할까?")) {
-    equippedTitle = "";
-    save();
-    update();
-    renderTitleGrid();
-  }
-  return;
-}
+  // 클릭 위치: 셀 중심 근처로 띄우기 (마우스 위치가 제일 자연스럽)
+  const x = (window.event && window.event.clientX) ? window.event.clientX : (window.innerWidth/2);
+  const y = (window.event && window.event.clientY) ? window.event.clientY : (window.innerHeight/2);
 
-// 2) 장착중이 아니면 -> 장착하기
-if (confirm(`[${def.name}] 칭호를 장착할까?`)) {
-  equippedTitle = titleId;
-  save();
-  update();
-  renderTitleGrid();
-}
+  // ❌ 미획득 → alert 대신 “획득방법 팝업”
+  if(!owned){
+    const how = def.hiddenHow ? "???" : (def.how || "???");
+    showActionPopupAt(x, y, `
+      <div class="actionTitle">[${def.name}]</div>
+      <div class="actionText">칭호 획득방법:\n${how}</div>
+    `);
+    return;
+  }
+
+  // ✅ 획득한 칭호 클릭
+  // 1) 이미 장착중 → “장착해제” 팝업
+  if (equippedTitle === titleId) {
+    showActionPopupAt(x, y, `
+      <div class="actionTitle">[${def.name}]</div>
+      ${popupBtn("장착해제", "equippedTitle=''; save(); update(); renderTitleGrid(); hideActionPopup();")}
+    `);
+    return;
+  }
+
+  // 2) 장착중 아님 → “장착하기” 팝업
+  showActionPopupAt(x, y, `
+    <div class="actionTitle">[${def.name}]</div>
+    ${popupBtn("장착하기", "equippedTitle='${titleId}'; save(); update(); renderTitleGrid(); hideActionPopup();")}
+  `);
 }
 
 // 오버레이: 바깥 클릭 닫기 + ESC 닫기
