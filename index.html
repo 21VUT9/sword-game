@@ -1173,7 +1173,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.932)
+    (v3.933)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3684,7 +3684,7 @@ function onTitleClick(titleId){
   // 2) 장착중 아님 → “장착하기” 팝업
   showActionPopupAt(x, y, `
     <div class="actionTitle">[${def.name}]</div>
-    ${popupBtn("장착하기", "equippedTitle='${titleId}'; save(); update(); renderTitleGrid(); hideActionPopup();")}
+    ${popupBtn("장착하기", "equippedTitle='" + titleId + "'; save(); update(); renderTitleGrid(); hideActionPopup();")}
   `);
 }
 
@@ -6132,6 +6132,9 @@ equippedTitle = "";
       // ✅ 여기서부터 진짜 로그인 성공이 확정된 뒤에만 칭호 로드
 titlesOwned = (data.titlesOwned && typeof data.titlesOwned === "object") ? data.titlesOwned : {};
 equippedTitle = (typeof data.equippedTitle === "string") ? data.equippedTitle : "";
+      // 🧹 과거 버그 값 정리: "${titleId}" 같은 쓰레기 값이면 장착 해제
+if (equippedTitle && equippedTitle.includes("${")) equippedTitle = "";
+
       plagueRatHuntCount = Number(data.plagueRatHuntCount || 0);
 
       sword = data.sword ?? 0;
@@ -6563,6 +6566,9 @@ destroyCount  = 0;
 
 titlesOwned = (data.titlesOwned && typeof data.titlesOwned === "object") ? data.titlesOwned : {};
 equippedTitle = (typeof data.equippedTitle === "string") ? data.equippedTitle : "";
+    // 🧹 과거 버그 값 정리: "${titleId}" 같은 쓰레기 값이면 장착 해제
+if (equippedTitle && equippedTitle.includes("${")) equippedTitle = "";
+
     plagueRatHuntCount = Number(data.plagueRatHuntCount || 0);
 
       // 🗡 무기 타입 로드 (v3.8 이전 계정 호환 포함)
