@@ -1173,7 +1173,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.938)
+    (v3.931)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2492,12 +2492,6 @@ let weaponType = null;
 let isUpgrading = false; 
 let isDueling   = false;   // ⚔️ 결투 VS 대기중일 때 true
 let titlesOwned = {};     // { titleId: true }
-let downStreak = 0;          // 강등 연속 카운터(미끄럼틀)
-let superSuccessCount = 0;   // 슈퍼강화 성공 횟수(슈퍼스타)
-  // ⚡ 스피드런(0강 → 21강)
-// 0에서 1로 “처음 성공”한 순간부터 측정 시작
-let speed21StartAt = 0;   // 측정 시작 시각(ms)
-let speed21BestMs  = 0;   // 0→21 최단 기록(ms)
 let equippedTitle = "";   // 장착중 칭호 ID
 
 // 🧭 사냥터 이동 중인지 여부
@@ -3258,8 +3252,6 @@ destroyCount  = 0;
   document.getElementById("achievementBtn").style.display = "none";
 
   titlesOwned = {};
-  speed21StartAt = 0;
-speed21BestMs  = 0;
 equippedTitle = "";
   closeTitleOverlay();
 
@@ -3356,42 +3348,7 @@ const TITLE_DEFS = [
 
   // ✅ 역병쥐 (반짝 초록) + 방법 숨김
   { id:"plague", name:"역병쥐", how:"???", color:"plague" },
-    // ⚡ 스피드런
-  { id:"speed60",  name:"스피드광",   how:"0강에서 1분만에 21강 도달" },
-  { id:"speed42",  name:"빛의속도",   how:"0강에서 42초만에 21강 도달" },
-
-  // 🅿️ 장기주차
-  { id:"park7",    name:"장기주차",   how:"21강 이후 7일 이상 강화변동 없음" },
-
-  // 🎲 강화 관련
-  { id:"gambler",  name:"승부사",     how:"21강부터 주문서 없이 24강 도달" },
-  { id:"dopamine", name:"도파민중독자", how:"25강 이후 파괴방지 없이 강화 시도" },
-  { id:"superstar",name:"슈퍼스타",   how:"슈퍼강화 1회 성공" },
-
-  // ⚔️ 결투 관련
-  { id:"bully10",  name:"강약약강",   how:"나보다 낮은 상대 지정매칭 10회" },
-  { id:"challenger10", name:"도전자", how:"나보다 강한 상대 지정매칭 승리 10회" },
-  { id:"brawler500", name:"싸움꾼",   how:"결투 500회 달성" },
-  { id:"warGod",   name:"투신",       how:"나보다 4강 이상 높은 상대에게 승리 1회" },
-
-  // 📉 강화 결과(강등/파괴)
-  { id:"slide4",   name:"미끄럼틀",   how:"강등 연속 4회" },
-  { id:"luckyday", name:"운수좋은날", how:"20강 이전에서 파괴" },
-  { id:"icarus",   name:"이카루스",   how:"26강 이상에서 파괴" },
-
-  // 🌟 초고난도
-  { id:"god30",    name:"신",         how:"29강에서 주문서 없이 30강 달성" },
-  { id:"fireworks",name:"폭죽놀이",   how:"21~29강 모든 구간에서 파괴 경험" },
-
-  // 🏆 30강 누적
-  { id:"master30_3", name:"달인",     how:"무기 30강 3회 달성" },
-  { id:"old2",       name:"고인물",   how:"같은 무기 30강 2회 달성" },
-  { id:"old3",       name:"썩은물",   how:"같은 무기 30강 3회 달성" },
-
-  // 💰 자산
-  { id:"mansur",   name:"만수르",     how:"10조 골드 이상 보유" },
-
-  ];
+];
 
   // 🎨 칭호 색상 스타일
 function getTitleColorStyle(colorKey) {
@@ -3486,11 +3443,7 @@ let titleSortMode = "default"; // "default" | "recent"
 function grantTitleOnceNoSave(titleId){
   if(!titleId) return false;
   if(!titlesOwned) titlesOwned = {};
-
-  // 이미 숫자(획득시간)가 있으면 보유중
-  if(typeof titlesOwned[titleId] === "number" && titlesOwned[titleId] > 0) return false;
-
-  // 과거에 true로 저장된 계정도 호환: true면 지금 시간으로 업그레이드
+  if(titlesOwned[titleId]) return false;
   titlesOwned[titleId] = Date.now();
   return true;
 }
@@ -3531,28 +3484,6 @@ function checkAndGrantTitles(){
     if(weaponType === "axe")   changed = grantTitleOnceNoSave("end_axe")   || changed;
     if(weaponType === "spear") changed = grantTitleOnceNoSave("end_spear") || changed;
   }
-
-    // 💰 만수르: 10조(= 10,000,000,000,000) 이상
-  if (Number(gold || 0) >= 10000000000000) {
-    changed = grantTitleOnceNoSave("mansur") || changed;
-  }
-
-  // 🅿️ 장기주차: 21강 이상 + updated(강화변동시각) 기준 7일 경과
-  // updated는 네 DB에서 강화수치 바뀔 때만 갱신하는 값으로 이미 쓰고 있음
-  if (Number(sword || 0) >= 21 && Number(updated || 0) > 0) {
-    const sevenDays = 7 * 24 * 60 * 60 * 1000;
-    if (Date.now() - Number(updated) >= sevenDays) {
-      changed = grantTitleOnceNoSave("park7") || changed;
-    }
-  }
-// ⚡ 스피드런: 0강 → 21강 최단 기록 기준
-const bestMs = Number(speed21BestMs || 0);
-if (bestMs > 0 && bestMs <= 60 * 1000) {
-  changed = grantTitleOnceNoSave("speed60") || changed; // 스피드광
-}
-if (bestMs > 0 && bestMs <= 42 * 1000) {
-  changed = grantTitleOnceNoSave("speed42") || changed; // 빛의속도
-}
 
   return changed;
 }
@@ -5204,7 +5135,6 @@ function upgrade() {
     alert("최대 강화");
     return;
   }
-  const beforeSword = sword;  // ✅ 강화 시도 직전 강화단계
 
   // 🛑 25강 이상 첫 도전 경고 안내 (세션 1회)
   if (sword >= 25 && !hasSeen25Warning && !ignoreNextUpgradeWarning) {
@@ -5213,14 +5143,6 @@ function upgrade() {
   }
   // 경고를 보고 다시 들어온 호출은 이 플래그로 한 번 스킵
   ignoreNextUpgradeWarning = false;
-
-  // 도파민중독자: 25강 이후 파괴방지 없이 강화 '시도'
-if (sword >= 25) {
-  const usingProtect = (document.getElementById("useProtect")?.checked); // 너 코드의 체크박스 id에 맞춰야 함
-  if (!usingProtect) {
-    if (grantTitleOnceNoSave("dopamine")) save();
-  }
-}
   
   // 이미 강화 중이면 중복 클릭 방지
   if (isUpgrading) return;
@@ -5404,7 +5326,7 @@ if (useRate5) {
   if (chance > 95) chance = 95;  // 상한 (원하면 조절 가능)
 }
 
-// 🕒 1~2초 랜덤 딜레이 동안 "강화 중..." 팝업
+  // 🕒 1~2초 랜덤 딜레이 동안 "강화 중..." 팝업
 const delayMs = 500 + Math.random() * 500; // 0.5 ~ 1.0초
 
 showNpcMessage(
@@ -5413,53 +5335,23 @@ showNpcMessage(
   false   // ⬅ 버튼 숨김
 );
 
-setTimeout((() => {
-  // 준비 팝업 닫기
-  closeNpcPopup();
+
+  setTimeout(() => {
+    // 준비 팝업 닫기
+    closeNpcPopup();
 
     // 🎲 성공 / 실패 판정
 if (Math.random() < chance / 100) {
   // ✅ 성공
   let up = useSuper ? 2 : 1; // 슈퍼강화면 +2
 
-// ✅ 슈퍼강화 성공일 때만 카운트/칭호 지급
-if (useSuper) {
-// ⭐ 슈퍼강화 성공 업적: [슈퍼스타] (1회 성공)
-superSuccessCount = Number(superSuccessCount || 0) + 1;
-
-if (superSuccessCount >= 1) {
-  if (grantTitleOnceNoSave("superstar")) {
-    save();  // 처음 획득 시만 저장
-  }
-}
-}
-  
   while (up > 0 && sword < 30) {
     sword++;
     up--;
-    downStreak = 0;
-    
   }
-
   
   // 🔹 0강 → 1강 이상으로 처음 올라갔으면 여기서 타입 확정
       ensureWeaponTypeAfterUpgrade(before, sword);
-
-  // ⚡ 스피드런 시작: 0강에서 1강 “처음 성공”한 순간
-if (beforeSword === 0 && sword >= 1 && Number(speed21StartAt || 0) === 0) {
-  speed21StartAt = Date.now();
-}
-
-// ⚡ 스피드런 종료: 21강 “처음 도달” 순간에 기록 확정
-if (beforeSword < 21 && sword >= 21 && Number(speed21StartAt || 0) > 0) {
-  const ms = Date.now() - Number(speed21StartAt || 0);
-
-  // 최단 기록 갱신
-  if (!speed21BestMs || ms < speed21BestMs) speed21BestMs = ms;
-
-  // 한 번 기록했으면 이번 런 종료
-  speed21StartAt = 0;
-}
 
   rollPowerForCurrentSword();
   
@@ -5612,13 +5504,6 @@ if (useRate5) {
       );
     } else {
       sword--;
-      
-      downStreak = Number(downStreak || 0) + 1;
-if (downStreak >= 4) {
-  if (grantTitleOnceNoSave("slide4")) save();
-}
-save(); // downStreak 저장
-
       rollPowerForCurrentSword();
       showNpcMessage(
         `
@@ -5636,15 +5521,6 @@ save(); // downStreak 저장
   } else {
     // 파괴 (강등방지는 파괴엔 효과 없음)
     const targetLevel = before + 1; // 도전하던 강화 단계
-          const beforeLevel = sword;
-
-// 운수좋은날 / 이카루스
-if (beforeLevel < 20) {
-  if (grantTitleOnceNoSave("lucky")) save();
-}
-if (beforeLevel >= 26) {
-  if (grantTitleOnceNoSave("icarus")) save();
-}
     let gainedShard = 0;
 
     // ⭐ 22강 이상 파괴 시 '빛나지 못한 별의 조각' 지급
@@ -5666,9 +5542,6 @@ if (beforeLevel >= 26) {
 
     // 실제 파괴 처리
     sword = 0;
-          // ⚡ 파괴되면 진행중인 스피드런은 끊기
-    speed21StartAt = 0;
-    downStreak = 0;
     weaponType = null;       // 🔹 파괴되면 무기 타입도 초기화 (다음에 다시 랜덤)
 
     rollPowerForCurrentSword();
@@ -5802,7 +5675,7 @@ isUpgrading = false;
 const actionButtons = document.querySelectorAll(".action-buttons button");
 actionButtons.forEach(btn => btn.disabled = false);
 
-  }), delayMs);
+  }, delayMs);
 }
 
 // 🛒 실제 판매 처리 + "판매 완료" 멘트
@@ -5813,8 +5686,6 @@ function completeSell(beforeLevel, rewardGold) {
   gold += rewardGold;
   sword = 0;
   weaponType = null;
-  speed21StartAt = 0;  // ⚡ 판매로 무기 초기화 시 진행중 스피드런 끊기
-  downStreak = 0;
   rollPowerForCurrentSword();
 
   // 20강 이상 전용 완료 멘트
@@ -6183,10 +6054,7 @@ destroyCount  = 0;
 
 // 🏷️ 칭호(업적) 기본값
 titlesOwned: {},
-equippedTitle: "",
- // ⚡ 스피드런 기본값
-speed21StartAt: 0,
-speed21BestMs:  0,
+equippedTitle: ""
 });
 
     // ✅ 신규 계정 생성 직후에는 바로 화면 전환 + 저장으로 마무리
@@ -6253,9 +6121,6 @@ equippedTitle = "";
       // ✅ 여기서부터 진짜 로그인 성공이 확정된 뒤에만 칭호 로드
 titlesOwned = (data.titlesOwned && typeof data.titlesOwned === "object") ? data.titlesOwned : {};
 equippedTitle = (typeof data.equippedTitle === "string") ? data.equippedTitle : "";
-      // ⚡ 스피드런 로드
-speed21StartAt = Number(data.speed21StartAt || 0);
-speed21BestMs  = Number(data.speed21BestMs  || 0);
 
       sword = data.sword ?? 0;
       gold  = data.gold  ?? 100;
@@ -6321,8 +6186,6 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
             duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
       duelUpdated         = data.duelUpdated ?? 0;
       duelLastWeekUpdated = data.duelLastWeekUpdated ?? 0;
-      downStreak = Number(data.downStreak || 0);
-superSuccessCount = Number(data.superSuccessCount || 0);
       
       // 🟢 주차 정리 (지난주 포인트 스냅샷 + 이번 주 초기화)
       ensureDuelWeek();
@@ -6419,14 +6282,9 @@ function save() {
     duelLastWeekUpdated: Number(duelLastWeekUpdated || 0),
     couponUsed: couponUsedMap,   // 🆕 사용 완료 쿠폰 기록
     // 🏷️ 칭호 저장
-    // ⚡ 스피드런 저장
-speed21StartAt: Number(speed21StartAt || 0),
-speed21BestMs:  Number(speed21BestMs  || 0),
 titlesOwned: titlesOwned,
-equippedTitle: equippedTitle,
-downStreak: Number(downStreak || 0),
-superSuccessCount: Number(superSuccessCount || 0)
-      };
+equippedTitle: equippedTitle
+  };
 
   // ⭐ 강화 수치가 바뀌었을 때만 updated 갱신
   if (sword !== lastSavedSwordForUpdated) {
@@ -6691,9 +6549,6 @@ destroyCount  = 0;
 
 titlesOwned = (data.titlesOwned && typeof data.titlesOwned === "object") ? data.titlesOwned : {};
 equippedTitle = (typeof data.equippedTitle === "string") ? data.equippedTitle : "";
-    // ⚡ 스피드런 로드
-speed21StartAt = Number(data.speed21StartAt || 0);
-speed21BestMs  = Number(data.speed21BestMs  || 0);
 
       // 🗡 무기 타입 로드 (v3.8 이전 계정 호환 포함)
   if (data.weaponType !== undefined && data.weaponType !== null) {
@@ -6755,8 +6610,6 @@ lastAttendanceDay  = data.lastAttendanceDay  ?? "";
         duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
     duelUpdated         = data.duelUpdated ?? 0;
     duelLastWeekUpdated = data.duelLastWeekUpdated ?? 0;
-    downStreak = Number(data.downStreak || 0);
-superSuccessCount = Number(data.superSuccessCount || 0);
 
     // 🟢 주차 정리 (지난주 포인트 스냅샷 + 이번 주 초기화)
     ensureDuelWeek();
