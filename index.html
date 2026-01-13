@@ -1160,8 +1160,6 @@ button {
   filter: drop-shadow(0 6px 10px rgba(0,0,0,0.65));
   pointer-events: none;
 }
-
-  
   
 </style>
 </head>
@@ -1173,7 +1171,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.935)
+    (v3.936)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2581,6 +2579,9 @@ let currentField = 1;          // 1~10 사냥터
 let huntCountToday = 0;        // 오늘 사냥 횟수
 let lastHuntDate = "";         // 마지막 사냥 날짜 (YYYY-MM-DD)
 let plagueRatHuntCount = 0; // 🦠 2레벨 사냥터(시궁창) 사냥 누적 카운트
+  let superSuccessCount = 0; // 슈퍼강화 성공 누적
+let downStreak = 0;        // 강등 연속 횟수
+let dopamineTried = 0;     // 25강+에서 파괴방지 없이 강화 시도(1회면 업적)
 
 // 🆕 사냥 스태미나
 let huntStamina = 20;          // 현재 사냥 가능 횟수 (0~20)
@@ -3405,6 +3406,13 @@ const TITLE_DEFS = [
   
       { id:"bow21", name:"사냥꾼", how:"활 21강 달성", color:"" },
   { id:"bow30", name:"활의 종착지", how:"활 30강 달성", color:"gold" },
+
+    // ✅ 강화/파괴/강등 계열
+  { id:"superstar", name:"슈퍼스타", how:"슈퍼강화 1회 성공" },
+  { id:"slide4",    name:"미끄럼틀", how:"강등 연속 4회" },
+  { id:"luckyday",  name:"운수좋은날", how:"20강 이전에서 파괴" },
+  { id:"icarus",    name:"이카루스", how:"26강 이상에서 파괴" },
+  { id:"dopamine",  name:"도파민중독자", how:"25강 이후 파괴방지 주문서 없이 강화 시도" },
 ];
 
   // 🎨 칭호 색상 스타일
@@ -5214,6 +5222,15 @@ function upgrade() {
   }
   // 경고를 보고 다시 들어온 호출은 이 플래그로 한 번 스킵
   ignoreNextUpgradeWarning = false;
+
+    // ✅ 도파민중독자: 25강 이후 파괴방지 없이 강화 '시도'
+  if (sword >= 25) {
+    const usingProtect = (document.getElementById("useProtect")?.checked);
+    if (!usingProtect) {
+      dopamineTried = 1;
+      if (grantTitleOnceNoSave("dopamine")) save();
+    }
+  }
   
   // 이미 강화 중이면 중복 클릭 방지
   if (isUpgrading) return;
@@ -5415,10 +5432,21 @@ showNpcMessage(
 if (Math.random() < chance / 100) {
   // ✅ 성공
   let up = useSuper ? 2 : 1; // 슈퍼강화면 +2
+  
+// ✅ 슈퍼강화 성공일 때만 카운트/칭호 지급 (슈퍼스타)
+if (useSuper) {
+  superSuccessCount = Number(superSuccessCount || 0) + 1;
+
+  // 1회 달성 즉시 칭호 지급
+  if (superSuccessCount >= 1) {
+    if (grantTitleOnceNoSave("superstar")) save(); // 최초 획득 시만 저장
+  }
+}
 
   while (up > 0 && sword < 30) {
     sword++;
     up--;
+    downStreak = 0;
   }
   
   // 🔹 0강 → 1강 이상으로 처음 올라갔으면 여기서 타입 확정
@@ -5504,6 +5532,7 @@ if (useRate5) {
     const isSafeLevel = (before % 5 === 0 && before <= 20);
 
     if (useProtect) {
+      downStreak = 0;
       // 파괴방지 주문서 사용 시
       showNpcMessage(
         `
@@ -5518,6 +5547,7 @@ if (useRate5) {
       );
     } else {
       if (isSafeLevel) {
+        downStreak = 0;
         // 세이프 구간 실패 → 유지
         showNpcMessage(
           `
@@ -5532,6 +5562,7 @@ if (useRate5) {
         );
       } else {
         if (sword <= 10) {
+          downStreak = 0;
           // 저레벨 실패 → 그냥 유지
           showNpcMessage(
             `
@@ -5547,6 +5578,7 @@ if (useRate5) {
 } else if (sword <= 20) {
   // 11~20구간 : 절반은 유지, 절반은 강등
   if (Math.random() < 0.5) {
+    downStreak = 0;
     // 실패 (유지)
     showNpcMessage(
       `
@@ -5562,6 +5594,7 @@ if (useRate5) {
   } else {
     // 강등 or 강등방지 발동
     if (useDownProt) {
+      downStreak = 0;
       showNpcMessage(
         `
         <div style="font-size:18px; font-weight:bold; color:#FFA500;">
@@ -5575,6 +5608,12 @@ if (useRate5) {
       );
     } else {
       sword--;
+      
+            downStreak = Number(downStreak || 0) + 1;
+      if (downStreak >= 4) {
+        if (grantTitleOnceNoSave("slide4")) save();
+      }
+
       rollPowerForCurrentSword();
       showNpcMessage(
         `
@@ -5613,12 +5652,22 @@ if (useRate5) {
 
     // 실제 파괴 처리
     sword = 0;
+          downStreak = 0;
     weaponType = null;       // 🔹 파괴되면 무기 타입도 초기화 (다음에 다시 랜덤)
 
     rollPowerForCurrentSword();
 
-    destroyCount++;  // 🧨 누적 파괴 횟수 증가
+    destroyCount++;  
+    // 🧨 누적 파괴 횟수 증가
     checkAndGrantTitles();
+
+   // ✅ 운수좋은날 / 이카루스 (파괴 당시 도전 레벨 기준)
+   if (targetLevel < 20) {
+    if (grantTitleOnceNoSave("luckyday")) save();
+  }
+  if (targetLevel >= 26) {
+    if (grantTitleOnceNoSave("icarus")) save();
+  }
 
     // 🔔 로그 메시지
   let logMsg =
@@ -6365,7 +6414,9 @@ function save() {
     titlesOwned: titlesOwned,
     equippedTitle: equippedTitle,
     plagueRatHuntCount: Number(plagueRatHuntCount || 0),
-
+    superSuccessCount: Number(superSuccessCount || 0),
+    downStreak: Number(downStreak || 0),
+    dopamineTried: Number(dopamineTried || 0),
   };
 
   // ⭐ 강화 수치가 바뀌었을 때만 updated 갱신
@@ -6579,7 +6630,6 @@ document.addEventListener("mousedown", function (e) {
   closeIfClickOutside(e, "duelPanel", "duelBtn");           // 결투
 });
 
-
 // 🧷 새로고침 시 자동 로그인
 function autoLoginFromStorage() {
     
@@ -6635,6 +6685,9 @@ equippedTitle = (typeof data.equippedTitle === "string") ? data.equippedTitle : 
 if (equippedTitle && equippedTitle.includes("${")) equippedTitle = "";
 
     plagueRatHuntCount = Number(data.plagueRatHuntCount || 0);
+    superSuccessCount = Number(data.superSuccessCount || 0);
+    downStreak        = Number(data.downStreak || 0);
+    dopamineTried     = Number(data.dopamineTried || 0);
 
       // 🗡 무기 타입 로드 (v3.8 이전 계정 호환 포함)
   if (data.weaponType !== undefined && data.weaponType !== null) {
