@@ -1171,7 +1171,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.938)
+    (v3.939)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2585,9 +2585,20 @@ let currentField = 1;          // 1~10 사냥터
 let huntCountToday = 0;        // 오늘 사냥 횟수
 let lastHuntDate = "";         // 마지막 사냥 날짜 (YYYY-MM-DD)
 let plagueRatHuntCount = 0; // 🦠 2레벨 사냥터(시궁창) 사냥 누적 카운트
-  let superSuccessCount = 0; // 슈퍼강화 성공 누적
+let superSuccessCount = 0; // 슈퍼강화 성공 누적
 let downStreak = 0;        // 강등 연속 횟수
 let dopamineTried = 0;     // 25강+에서 파괴방지 없이 강화 시도(1회면 업적)
+
+  // ✅ 승부사(21~24 무주문서 런) 추적
+let gamblerRunActive = false;   // 21강 이상 구간 진입 여부
+let gamblerRunNoScroll = true;  // 21강 이후 주문서/스크롤 “한 번도” 안 썼는지
+
+// ✅ 폭죽놀이(21~25 파괴 체크)
+let fireworksDestroyed = { 21:false, 22:false, 23:false, 24:false, 25:false };
+
+// ✅ 30강 달성 횟수(전체/무기별)
+let reach30Count = 0;           // 30강 달성 누적(무기 상관없이)
+let weapon30Counts = {};        // { sword:0, axe:0, spear:0, bow:0 } 형태로 저장
 
 // 🆕 사냥 스태미나
 let huntStamina = 20;          // 현재 사냥 가능 횟수 (0~20)
@@ -3425,6 +3436,17 @@ const TITLE_DEFS = [
   { id:"brawl500", name:"싸움꾼", how:"500회 이상 결투" },
   { id:"warGod", name:"투신", how:"4강 이상 높은 상대에게 결투장 승리 1회" },
   { id:"mansur", name:"만수르", how:"10조 골드 이상 보유" },
+
+  // ✅ 강화 타이밍 묶음
+  { id:"gambler",  name:"승부사",  how:"21강부터 주문서 없이 24강 도달" },
+  { id:"god30",    name:"신",      how:"29강에서 주문서 없이 30강 달성" },
+  { id:"fireworks",name:"폭죽놀이",how:"21~25강 전부 파괴해봄" },
+
+  { id:"best30",   name:"최강자",  how:"무기 30강 1회 달성", color:"gold" },
+  { id:"master30", name:"달인",    how:"무기 30강 3회 달성", color:"gold" },
+
+  { id:"oldwater", name:"고인물",  how:"같은 무기로 30강 2회 달성", color:"gold" },
+  { id:"stale",    name:"썩은물",  how:"같은 무기로 30강 3회 달성", color:"gold" },
 ];
 
   // 🎨 칭호 색상 스타일
@@ -5453,6 +5475,25 @@ const useSuper    = wantSuper    && itemSuper   > 0;
 const useDownProt = wantDownProt && itemDownProtect > 0;
 const useRate5    = wantRate5    && itemRateUp5 > 0;   // 🆕
 
+  // ✅ 이번 시도에 “주문서/강화템”을 썼는지(승부사/신 판정용)
+const usedAnyScrollThisAttempt = !!(useProtect || useDownProt || useSuper || useRate5);
+
+// ✅ 승부사 런 상태 관리
+if (before < 21) {
+  // 21강 미만이면 런 초기화
+  gamblerRunActive = false;
+  gamblerRunNoScroll = true;
+} else if (!gamblerRunActive) {
+  // 21강 이상 “진입 순간”
+  gamblerRunActive = true;
+  gamblerRunNoScroll = true;
+}
+
+// 21강 런 도중 주문서를 한 번이라도 쓰면 실패 처리
+if (gamblerRunActive && usedAnyScrollThisAttempt) {
+  gamblerRunNoScroll = false;
+}
+
 // ✅ 모든 주문서는 강화 버튼 누른 시점에 즉시 소모
 if (useProtect)  itemProtect     -= 1;
 if (useSuper)    itemSuper       -= 1;
@@ -5500,6 +5541,39 @@ if (useSuper) {
   
   // 🔹 0강 → 1강 이상으로 처음 올라갔으면 여기서 타입 확정
       ensureWeaponTypeAfterUpgrade(before, sword);
+
+  // ✅ 승부사: 21강부터 “주문서 없이” 24강 도달
+if (gamblerRunActive && gamblerRunNoScroll && before < 24 && sword >= 24) {
+  if (grantTitleOnceNoSave("gambler")) save();
+}
+
+// ✅ 신: 29강에서 “주문서 없이” 30강 달성 (이번 시도 자체가 무주문서여야 함)
+if (before === 29 && sword >= 30 && !usedAnyScrollThisAttempt) {
+  if (grantTitleOnceNoSave("god30")) save();
+}
+
+// ✅ 30강 달성 누적(최강자/달인/고인물/썩은물)
+if (before < 30 && sword >= 30) {
+  reach30Count = Number(reach30Count || 0) + 1;
+
+  // weaponType이 아직 없을 수도 있으니 방어
+  const wt = weaponType || "sword";
+  weapon30Counts = weapon30Counts || {};
+  weapon30Counts[wt] = Number(weapon30Counts[wt] || 0) + 1;
+
+  if (reach30Count >= 1) {
+    if (grantTitleOnceNoSave("best30")) save();
+  }
+  if (reach30Count >= 3) {
+    if (grantTitleOnceNoSave("master30")) save();
+  }
+  if (weapon30Counts[wt] >= 2) {
+    if (grantTitleOnceNoSave("oldwater")) save();
+  }
+  if (weapon30Counts[wt] >= 3) {
+    if (grantTitleOnceNoSave("stale")) save();
+  }
+}
 
   rollPowerForCurrentSword();
   
@@ -5701,10 +5775,30 @@ if (useRate5) {
 
     // 실제 파괴 처리
     sword = 0;
-          downStreak = 0;
+    downStreak = 0;
     weaponType = null;       // 🔹 파괴되면 무기 타입도 초기화 (다음에 다시 랜덤)
+          // ✅ 파괴되면 승부사 런은 끊김
+gamblerRunActive = false;
+gamblerRunNoScroll = true;
 
-    rollPowerForCurrentSword();
+// ✅ 폭죽놀이: 21~25강 도전(=targetLevel) 파괴 체크
+if (targetLevel >= 21 && targetLevel <= 25) {
+  fireworksDestroyed = fireworksDestroyed || { 21:false, 22:false, 23:false, 24:false, 25:false };
+  fireworksDestroyed[targetLevel] = true;
+
+  const allDone =
+    fireworksDestroyed[21] &&
+    fireworksDestroyed[22] &&
+    fireworksDestroyed[23] &&
+    fireworksDestroyed[24] &&
+    fireworksDestroyed[25];
+
+  if (allDone) {
+    if (grantTitleOnceNoSave("fireworks")) save();
+  }
+}
+
+          rollPowerForCurrentSword();
 
     destroyCount++;  
     // 🧨 누적 파괴 횟수 증가
@@ -6204,6 +6298,12 @@ destroyCount  = 0;
         currentField: 1,
         huntCountToday: 0,
         plagueRatHuntCount: 0,
+        dopamineTried: false,
+        gamblerRunActive: false,
+        gamblerRunNoScroll: true,
+        fireworksDestroyed: { 21:false, 22:false, 23:false, 24:false, 25:false },
+        reach30Count: 0,
+        weapon30Counts: {},
         lastHuntDate: "",
         itemScroll15: Number(itemScroll15),
         itemProtect: Number(itemProtect),
@@ -6299,6 +6399,14 @@ equippedTitle = (typeof data.equippedTitle === "string") ? data.equippedTitle : 
 if (equippedTitle && equippedTitle.includes("${")) equippedTitle = "";
 
       plagueRatHuntCount = Number(data.plagueRatHuntCount || 0);
+      gamblerRunActive = !!data.gamblerRunActive;
+      gamblerRunNoScroll = (data.gamblerRunNoScroll !== false); // 기본 true
+      fireworksDestroyed = data.fireworksDestroyed || { 21:false, 22:false, 23:false, 24:false, 25:false };
+      reach30Count = Number(data.reach30Count || 0);
+      weapon30Counts = data.weapon30Counts || {};
+      superSuccessCount = Number(data.superSuccessCount || 0);
+      downStreak        = Number(data.downStreak || 0);
+      dopamineTried     = Number(data.dopamineTried || 0);
 
       sword = data.sword ?? 0;
       gold  = data.gold  ?? 100;
@@ -6474,6 +6582,11 @@ function save() {
     superSuccessCount: Number(superSuccessCount || 0),
     downStreak: Number(downStreak || 0),
     dopamineTried: Number(dopamineTried || 0),
+    gamblerRunActive: gamblerRunActive,
+    gamblerRunNoScroll: gamblerRunNoScroll,
+    fireworksDestroyed: fireworksDestroyed,
+    reach30Count: reach30Count,
+    weapon30Counts: weapon30Counts,
   };
 
   // ⭐ 강화 수치가 바뀌었을 때만 updated 갱신
@@ -6742,6 +6855,11 @@ equippedTitle = (typeof data.equippedTitle === "string") ? data.equippedTitle : 
 if (equippedTitle && equippedTitle.includes("${")) equippedTitle = "";
 
     plagueRatHuntCount = Number(data.plagueRatHuntCount || 0);
+    gamblerRunActive = !!data.gamblerRunActive;
+    gamblerRunNoScroll = (data.gamblerRunNoScroll !== false); // 기본 true
+    fireworksDestroyed = data.fireworksDestroyed || { 21:false, 22:false, 23:false, 24:false, 25:false };
+    reach30Count = Number(data.reach30Count || 0);
+    weapon30Counts = data.weapon30Counts || {};
     superSuccessCount = Number(data.superSuccessCount || 0);
     downStreak        = Number(data.downStreak || 0);
     dopamineTried     = Number(data.dopamineTried || 0);
