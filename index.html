@@ -1171,7 +1171,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.936)
+    (v3.937)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2558,6 +2558,12 @@ let duelCountToday = 0;           // 오늘 결투한 총 횟수 (모든 상대 
 let lastDuelDate = "";            // 마지막 결투 날짜 (YYYY-MM-DD)
 // 오늘 같은 상대에게 몇 번 도전했는지: { 상대아이디: 횟수 }
 let duelTargetsToday = {};
+// 🏷️ 결투 업적 카운트
+let bully10Count = 0;        // 강약약강: 약한 상대에게 지정매칭 10회
+let challenger10Count = 0;   // 도전자: 강한 상대에게 지정매칭 승리 10회
+let brawl500Count = 0;       // 싸움꾼: 결투 누적 500회
+let warGodWin = false;       // 투신: +4강 이상 높은 상대에게 승리 1회
+
 let couponUsedMap = {};   // 사용 완료한 쿠폰코드 기록 { CODE: true }
 
 // 🔔 업데이트 공지 상태
@@ -3413,6 +3419,11 @@ const TITLE_DEFS = [
   { id:"luckyday",  name:"운수좋은날", how:"20강 이전에서 파괴" },
   { id:"icarus",    name:"이카루스", how:"26강 이상에서 파괴" },
   { id:"dopamine",  name:"도파민중독자", how:"25강 이후 파괴방지 주문서 없이 강화 시도" },
+
+  { id:"bully10", name:"강약약강", how:"약한 상대에게 결투장 지정매칭 10회" },
+  { id:"challenger10", name:"도전자", how:"강한 상대에게 결투장 지정매칭 승리 10회" },
+  { id:"brawl500", name:"싸움꾼", how:"500회 이상 결투" },
+  { id:"warGod", name:"투신", how:"4강 이상 높은 상대에게 결투장 승리 1회" },
 ];
 
   // 🎨 칭호 색상 스타일
@@ -3520,9 +3531,20 @@ function checkAndGrantTitles(){
 if (Number(plagueRatHuntCount || 0) >= 100) {
   if (grantTitleOnceNoSave("plague")) changed = true;
 }
-
+  // ⚔️ 결투 업적
+if (Number(bully10Count || 0) >= 10) {
+  if (grantTitleOnceNoSave("bully10")) updated = true;
+}
+if (Number(challenger10Count || 0) >= 10) {
+  if (grantTitleOnceNoSave("challenger10")) updated = true;
+}
+if (Number(brawl500Count || 0) >= 500) {
+  if (grantTitleOnceNoSave("brawl500")) updated = true;
+}
+if (warGodWin) {
+  if (grantTitleOnceNoSave("warGod")) updated = true;
+}
   // 1) 새내기 대장장이: 최초 1회 강화 성공
-  // - "sword >= 1"로도 되지만, 네 코드에 maxSwordLevel이 있으니 그걸 우선 활용
   if(Number(maxSwordLevel || 0) >= 1 || Number(sword || 0) >= 1){
     changed = grantTitleOnceNoSave("newbie") || changed;
   }
@@ -4259,6 +4281,28 @@ function performDuel(targetUserId, isRandomMatch) {
         // 🏅 명예의 훈장 계산
         let honorGain = 0;
         const diff = targetSword - sword; // 상대 - 나
+
+        // 🏷️ 결투 업적 카운트 업데이트
+// 싸움꾼: 결투 누적 횟수
+brawl500Count = Number(brawl500Count || 0) + 1;
+
+// 강약약강: 본인보다 강화가 낮은 상대에게 지정매칭 10회 (승패 무관, "시도" 기준)
+if (!isRandomMatch && diff < 0) {
+  bully10Count = Number(bully10Count || 0) + 1;
+}
+
+// 도전자/투신: 승리 기준
+if (isWin) {
+  // 도전자: 본인보다 강한 상대에게 지정매칭 승리 10회
+  if (!isRandomMatch && diff > 0) {
+    challenger10Count = Number(challenger10Count || 0) + 1;
+  }
+
+  // 투신: 본인보다 4강 이상 높은 상대에게 승리 1회
+  if (diff >= 4) {
+    warGodWin = true;
+  }
+}
 
         if (diff >= 5) {
           honorGain = 40;
@@ -6306,6 +6350,10 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
       duelCountToday = data.duelCountToday ?? 0;
       lastDuelDate   = data.lastDuelDate   ?? "";
       duelTargetsToday = data.duelTargetsToday ?? {};
+      bully10Count      = Number(data.bully10Count || 0);
+      challenger10Count = Number(data.challenger10Count || 0);
+      brawl500Count     = Number(data.brawl500Count || 0);
+      warGodWin         = Boolean(data.warGodWin || false);
       itemHonorMedal = data.itemHonorMedal ?? 0;
         // ⭐ 결투 포인트 로드 (없으면 0)
       duelPoint       = data.duelPoint ?? 0;
@@ -6414,6 +6462,10 @@ function save() {
     titlesOwned: titlesOwned,
     equippedTitle: equippedTitle,
     plagueRatHuntCount: Number(plagueRatHuntCount || 0),
+    bully10Count: Number(bully10Count || 0),
+    challenger10Count: Number(challenger10Count || 0),
+    brawl500Count: Number(brawl500Count || 0),
+    warGodWin: Boolean(warGodWin || false),
     superSuccessCount: Number(superSuccessCount || 0),
     downStreak: Number(downStreak || 0),
     dopamineTried: Number(dopamineTried || 0),
@@ -6739,6 +6791,10 @@ lastAttendanceDay  = data.lastAttendanceDay  ?? "";
     duelCountToday = data.duelCountToday ?? 0;
     lastDuelDate   = data.lastDuelDate   ?? "";
     duelTargetsToday = data.duelTargetsToday ?? {};
+    bully10Count      = Number(data.bully10Count || 0);
+    challenger10Count = Number(data.challenger10Count || 0);
+    brawl500Count     = Number(data.brawl500Count || 0);
+    warGodWin         = Boolean(data.warGodWin || false);
     itemHonorMedal = data.itemHonorMedal ?? 0;
     starShard = data.starShard ?? 0;
     couponUsedMap = data.couponUsed || {};
