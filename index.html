@@ -1171,7 +1171,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.937)
+    (v3.938)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3424,6 +3424,7 @@ const TITLE_DEFS = [
   { id:"challenger10", name:"도전자", how:"강한 상대에게 결투장 지정매칭 승리 10회" },
   { id:"brawl500", name:"싸움꾼", how:"500회 이상 결투" },
   { id:"warGod", name:"투신", how:"4강 이상 높은 상대에게 결투장 승리 1회" },
+  { id:"mansur", name:"만수르", how:"10조 골드 이상 보유" },
 ];
 
   // 🎨 칭호 색상 스타일
@@ -3531,6 +3532,10 @@ function checkAndGrantTitles(){
 if (Number(plagueRatHuntCount || 0) >= 100) {
   if (grantTitleOnceNoSave("plague")) changed = true;
 }
+    // 💰 만수르: 10조 골드 이상 보유
+  if (Number(gold || 0) >= 10000000000000) {
+    if (grantTitleOnceNoSave("mansur")) changed = true;
+  }
   // ⚔️ 결투 업적
 if (Number(bully10Count || 0) >= 10) {
   if (grantTitleOnceNoSave("bully10")) updated = true;
