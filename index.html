@@ -1171,7 +1171,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.952)
+    (v3.953)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -5272,7 +5272,7 @@ function playAttendanceGachaAnimationAndGrant(onDone) {
   const subEl  = document.getElementById("attendanceGachaSub");
 
   const start = Date.now();
-  const endAt = start + 3000;
+  const endAt = start + 5000; // ✅ 총 5초
 
   let delay = 60; // 시작은 빠르게
 
@@ -5327,8 +5327,19 @@ function playAttendanceGachaAnimationAndGrant(onDone) {
         : ("x" + current.count);
     }
 
-    // 시간이 지날수록 느려지게
-    delay = Math.min(380, Math.floor(delay * 1.13));
+        // ✅ 뒤로 갈수록 확 느려지게 (특히 마지막 2초가 더 쫄깃)
+    const totalMs = 5000;
+    const t = Math.min(1, (now - start) / totalMs); // 0~1 진행률
+
+    // 마지막 40% 구간(= 약 2초)에 더 강한 감속을 주기 위해 지수 가중
+    // t가 0.6 넘어가면 급격히 느려짐
+    const eased = Math.pow(t, 2.6); // 숫자 ↑ = 끝부분 더 늘어짐
+
+    // delay 범위: 초반 50~90ms, 후반 700ms까지
+    const minDelay = 55;
+    const maxDelay = 720;
+
+    delay = Math.floor(minDelay + (maxDelay - minDelay) * eased);
 
     setTimeout(tick, delay);
   }
