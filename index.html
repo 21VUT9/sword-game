@@ -5236,6 +5236,16 @@ function grantAttendanceGachaReward(reward) {
   }
 }
 
+function preloadAttendanceGachaImages() {
+  try {
+    ATTENDANCE_GACHA_POOL.forEach(r => {
+      if (!r.img) return;
+      const img = new Image();
+      img.src = r.img;
+    });
+  } catch (e) {}
+}
+  
 // 🎞️ 3초 가챠 연출: 빠르게→점점 느려지다가 멈춤
 function playAttendanceGachaAnimationAndGrant(onDone) {
   // 초기 표시용(첫 프레임도 랜덤)
@@ -5336,7 +5346,7 @@ function playAttendanceGachaAnimationAndGrant(onDone) {
     const eased = Math.pow(t, 2.6); // 숫자 ↑ = 끝부분 더 늘어짐
 
     // delay 범위: 초반 50~90ms, 후반 700ms까지
-    const minDelay = 55;
+    const minDelay = 130;
     const maxDelay = 720;
 
     delay = Math.floor(minDelay + (maxDelay - minDelay) * eased);
@@ -5376,6 +5386,7 @@ function checkAttendance() {
   attendanceCount++;
 
   // ✅ 여기서 바로 “가챠 연출 + 보상 지급”
+  preloadAttendanceGachaImages();
   playAttendanceGachaAnimationAndGrant();
 }
   
