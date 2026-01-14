@@ -1171,7 +1171,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.954)
+    (v3.955)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3567,6 +3567,8 @@ function sendUserToHallOfFame(targetId, reason) {
 // 🔁 전당 큐 스윕: 만료된 유저를 찾아 자동 전당행 처리
 function sweepHofQueue() {
   const now = Date.now();
+
+  // 1) hofQueue 기반 스윕 (기존 방식)
   db.ref("hofQueue")
     .orderByValue()
     .endAt(now)
@@ -3574,12 +3576,35 @@ function sweepHofQueue() {
     .once("value")
     .then(snap => {
       const val = snap.val();
-      if (!val) return;
+      if (val) {
+        Object.keys(val).forEach(uid => {
+          sendUserToHallOfFame(uid, "auto");
+        });
+      }
+    })
+    .catch(() => {});
 
-      Object.keys(val).forEach(uid => {
-        sendUserToHallOfFame(uid, "auto");
+  // 2) ✅ 안전망: hofQueue가 누락/깨져도 users.hofDeadline 기반으로 만료 유저를 직접 찾아 처리
+  db.ref("users")
+    .orderByChild("hofDeadline")
+    .endAt(now)
+    .limitToFirst(10)
+    .once("value")
+    .then(snap => {
+      snap.forEach(child => {
+        const uid = child.key;
+        const u = child.val() || {};
+
+        // 이미 처리됐으면 스킵
+        if (Number(u.hofProcessedAt || 0) > 0) return;
+
+        // 30강 이상 + 데드라인 만료인 경우만 처리
+        if (Number(u.sword || 0) >= 30 && Number(u.hofDeadline || 0) > 0 && Number(u.hofDeadline || 0) <= now) {
+          sendUserToHallOfFame(uid, "auto");
+        }
       });
-    });
+    })
+    .catch(() => {});
 }
 
 // ✅ 로그인 후 호출: 버튼 타이머 + 큐 스윕 타이머 시작
@@ -3597,6 +3622,7 @@ function startHonorHallTimers() {
 
   // 큐 스윕(다른 유저 포함)
   if (hofSweepTimer) clearInterval(hofSweepTimer);
+   sweepHofQueue();
   hofSweepTimer = setInterval(() => {
     sweepHofQueue();
   }, 15000); // 15초마다 스윕
@@ -3625,7 +3651,9 @@ function loadHallOfFame() {
         const d = r.achievedAt ? new Date(Number(r.achievedAt)).toLocaleString("ko-KR") : "-";
         const stars = "★".repeat(Math.min(10, Number(r.stars || 0)));
         return `
-          <div style="padding:4px 0; border-bottom:1px solid #333;">
+         <div
+  onclick="openHallOfFameProfilePopup('${r.id}','${r.weaponType || "sword"}','${r.achievedAt || 0}')"
+  style="padding:4px 0; border-bottom:1px solid #333; cursor:pointer;">
             <div style="display:flex; justify-content:space-between; gap:8px;">
               <div>
                 <b>${i + 1}.</b> ${r.id} <span style="color:#ffcc66;">${stars}</span>
@@ -7466,6 +7494,80 @@ function openOtherUserProfilePopup(targetId) {
     alert("프로필을 불러오지 못했습니다.");
   });
 }
+
+// 🌈 명예의 전당 전용: 달성 당시(+30) 무기 이미지로 프로필 보기
+function openHallOfFameProfilePopup(targetId, weaponTypeAt30, achievedAt) {
+  const overlay        = document.getElementById("otherProfileOverlay");
+  if (!overlay) return;
+
+  const nickEl         = document.getElementById("otherProfileNickname");
+  const weaponTitleEl  = document.getElementById("otherProfileWeaponTitle");
+  const weaponDescEl   = document.getElementById("otherProfileWeaponDesc");
+  const maxInfoEl      = document.getElementById("otherProfileMaxInfo");
+  const powerEl        = document.getElementById("otherProfilePower");
+  const goldEl         = document.getElementById("otherProfileGold");
+  const weaponValueEl  = document.getElementById("otherProfileWeaponValue");
+  const recordEl       = document.getElementById("otherProfileRecord");
+  const imgEl          = document.getElementById("otherWeaponImage");
+
+  // 기본 초기화
+  if (nickEl)        nickEl.textContent        = targetId;
+  if (weaponTitleEl) weaponTitleEl.textContent = "-";
+  if (weaponDescEl)  weaponDescEl.textContent  = "-";
+  if (maxInfoEl)     maxInfoEl.textContent     = "-";
+  if (powerEl)       powerEl.textContent       = "0";
+  if (goldEl)        goldEl.textContent        = "0";
+  if (weaponValueEl) weaponValueEl.textContent = "0";
+  if (recordEl)      recordEl.textContent      = "승 0 / 패 0";
+  if (imgEl)         imgEl.src                 = "images/weapons/sword_real_temp.png";
+
+  db.ref("users/" + targetId).once("value").then(snap => {
+    if (!snap.exists()) {
+      alert("해당 유저 정보를 찾을 수 없습니다.");
+      return;
+    }
+
+    const d = snap.val() || {};
+    if (nickEl) nickEl.innerHTML = formatNicknameWithTitle(targetId, d.equippedTitle || "");
+
+    // ✅ 전당은 무조건 “달성 당시 +30”로 표시
+    const swordLevel = 30;
+    const wt = weaponTypeAt30 || d.hofWeaponTypeAt30 || d.weaponType || "sword";
+    const wInfo = getWeaponInfo(swordLevel, wt);
+
+    const powerVal   = Number(d.power || 0);
+    const goldVal    = Number(d.gold || 0);
+    const duelW      = Number(d.duelWin || 0);
+    const duelL      = Number(d.duelLose || 0);
+
+    if (weaponTitleEl && wInfo) weaponTitleEl.textContent = `${wInfo.name} (+${swordLevel}강)`;
+    if (weaponDescEl && wInfo)  weaponDescEl.textContent  = wInfo.desc;
+
+    // 전당 기록 정보 표시(달성 시각)
+    if (maxInfoEl) {
+      const dt = achievedAt ? new Date(Number(achievedAt)).toLocaleString("ko-KR") : "-";
+      maxInfoEl.innerHTML = `<span style="color:#ffd54f;">명예의 전당 기록</span> <span style="font-size:12px; color:#bbbbbb;">(${dt})</span>`;
+    }
+
+    if (powerEl) powerEl.textContent = formatGold(powerVal);
+    if (goldEl)  goldEl.textContent  = formatGold(goldVal);
+
+    if (weaponValueEl) {
+      const avgValue = getSellRewardAverage(swordLevel);
+      weaponValueEl.textContent = formatGold(avgValue);
+    }
+
+    if (recordEl) recordEl.textContent = `승 ${duelW} / 패 ${duelL}`;
+
+    if (imgEl && wInfo && wInfo.img) imgEl.src = wInfo.img;
+
+    overlay.style.display = "flex";
+  }).catch(err => {
+    console.error("전당 프로필 불러오기 실패:", err);
+    alert("프로필을 불러오지 못했습니다.");
+  });
+}
+  
 // 👤 다른 유저 프로필 팝업 닫기 (통합)
 function closeOtherUserProfilePopup() {
   const overlay = document.getElementById("otherProfileOverlay");
