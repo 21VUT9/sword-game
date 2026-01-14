@@ -1252,7 +1252,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.959)
+    (v3.960)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3575,7 +3575,6 @@ destroyCount  = 0;
   duelCountToday = 0;
   lastDuelDate = "";
   duelTargetsToday = {};
-
 
   // 화면 전환
   document.getElementById("gameScreen").style.display   = "none";
@@ -7091,7 +7090,6 @@ if (equippedTitle && equippedTitle.includes("${")) equippedTitle = "";
       lastSeenGlobal30EventId = Number(v.lastSeenGlobal30EventId || 0);
       aweUsedGlobal30EventId  = Number(v.aweUsedGlobal30EventId || 0);
 
-
       sword = data.sword ?? 0;
       gold  = data.gold  ?? 100;
 
@@ -7136,6 +7134,17 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
       itemDownProtect    = data.itemDownProtect ?? 0;
       starShard          = data.starShard ?? 0;
       couponUsedMap = data.couponUsed || {};
+      // ✅ 명예의전당(30강) / 글로벌 30강 이벤트 상태 로드
+      hofDeadline = Number(data.hofDeadline || 0);
+      hofAchievedAt = Number(data.hofAchievedAt || 0);
+      hofWeaponTypeAt30 = data.hofWeaponTypeAt30 || "";
+      hofProcessedAt = Number(data.hofProcessedAt || 0);
+
+      lastSeenGlobal30EventId = Number(data.lastSeenGlobal30EventId || 0);
+      aweUsedGlobal30EventId = Number(data.aweUsedGlobal30EventId || 0);
+
+      reach30Count = Number(data.reach30Count || 0);
+
       itemScroll21    = Number(data.itemScroll21    ?? 0); 
       itemRateUp5     = Number(data.itemRateUp5     ?? 0);
       huntStamina        = data.huntStamina       ?? 20;
@@ -7157,7 +7166,7 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
       duelPointWeekKey = data.duelPointWeekKey || "";
       duelLastWeekPoint = data.duelLastWeekPoint ?? 0;
       duelLastWeekRank  = data.duelLastWeekRank ?? 0;
-            duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
+      duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
       duelUpdated         = data.duelUpdated ?? 0;
       duelLastWeekUpdated = data.duelLastWeekUpdated ?? 0;
       
@@ -7166,6 +7175,11 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
       // 🏆 지난주 보상 체크 & 지급
       checkWeeklyDuelReward();
 
+// 🏛️ 명예의 전당 UI + 자동 전당행 스윕 + 글로벌 이벤트 구독 시작
+loadHallOfFame();
+startHonorHallTimers();
+updateHonorHallButton();
+subscribeGlobal30Events();
    }
 
     // 🟢 여기까지 왔다는 건 실제로 이 탭이 접속을 가져가는 것 → 세션 시작
@@ -7596,7 +7610,7 @@ if (!power || power <= 20) {
     attendanceCount    = data.attendanceCount    ?? 0;
     lastAttendanceDate = data.lastAttendanceDate ?? "";
     attendanceStreak   = data.attendanceStreak   ?? 0;   
-lastAttendanceDay  = data.lastAttendanceDay  ?? "";  
+    lastAttendanceDay  = data.lastAttendanceDay  ?? "";  
     currentField       = data.currentField       ?? 1;
     huntCountToday     = data.huntCountToday     ?? 0;
     lastHuntDate       = data.lastHuntDate       ?? "";
@@ -7621,11 +7635,22 @@ lastAttendanceDay  = data.lastAttendanceDay  ?? "";
     itemHonorMedal = data.itemHonorMedal ?? 0;
     starShard = data.starShard ?? 0;
     couponUsedMap = data.couponUsed || {};
+    // ✅ 명예의전당(30강) / 글로벌 30강 이벤트 상태 로드
+    hofDeadline = Number(data.hofDeadline || 0);
+    hofAchievedAt = Number(data.hofAchievedAt || 0);
+    hofWeaponTypeAt30 = data.hofWeaponTypeAt30 || "";
+    hofProcessedAt = Number(data.hofProcessedAt || 0);
+
+    lastSeenGlobal30EventId = Number(data.lastSeenGlobal30EventId || 0);
+    aweUsedGlobal30EventId = Number(data.aweUsedGlobal30EventId || 0);
+
+    reach30Count = Number(data.reach30Count || 0);
+
     duelPoint      = data.duelPoint      ?? 0;
     duelPointWeekKey = data.duelPointWeekKey || "";
     duelLastWeekPoint = data.duelLastWeekPoint ?? 0;
     duelLastWeekRank  = data.duelLastWeekRank ?? 0;
-        duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
+    duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
     duelUpdated         = data.duelUpdated ?? 0;
     duelLastWeekUpdated = data.duelLastWeekUpdated ?? 0;
 
