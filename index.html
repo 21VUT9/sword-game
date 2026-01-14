@@ -1182,7 +1182,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.957)
+    (v3.958)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -4150,7 +4150,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
    /* 🧾 유저 프로필 영역 갱신 */
   const nameEl = document.getElementById("profileNickname");
-  if (nameEl) nameEl.innerHTML = formatNicknameWithTitle(userId, equippedTitle);
+  if (nameEl) nameEl.innerHTML = formatNicknameWithTitle(userId, equippedTitle, reach30Count);
 
   const weaponTitleEl = document.getElementById("profileWeaponTitle");
   const weaponDescEl  = document.getElementById("profileWeaponDesc");
@@ -7458,7 +7458,7 @@ function openOtherUserProfilePopup(targetId) {
     }
 
     const d = snap.val() || {};
-    if (nickEl) nickEl.innerHTML = formatNicknameWithTitle(targetId, d.equippedTitle || "");
+    if (nickEl) nickEl.innerHTML = formatNicknameWithTitle(targetId, d.equippedTitle || "", d.reach30Count);
 
     const swordLevel = Number(d.sword || 0);
     const weaponTypeOther = d.weaponType || "sword";
@@ -7539,7 +7539,7 @@ function openHallOfFameProfilePopup(targetId, weaponTypeAt30, achievedAt) {
     }
 
     const d = snap.val() || {};
-    if (nickEl) nickEl.innerHTML = formatNicknameWithTitle(targetId, d.equippedTitle || "");
+    if (nickEl) nickEl.innerHTML = formatNicknameWithTitle(targetId, d.equippedTitle || "", d.reach30Count);
 
     // ✅ 전당은 무조건 “달성 당시 +30”로 표시
     const swordLevel = 30;
@@ -8378,7 +8378,7 @@ if (!keyword) {
 
     const left = document.createElement("div");
     left.innerHTML = `
-      <div style="font-weight:bold;">${formatNicknameWithTitle(u.id, u.equippedTitle || "")}</div>
+      <div style="font-weight:bold;">${formatNicknameWithTitle(u.id, u.equippedTitle || "", u.reach30Count)}</div>
 
       <div style="font-size:12px; color:#ccc;">
         ${coloredLevel(u.sword)} / 전투력: ${formatGold(u.power || 0)}
@@ -8868,7 +8868,7 @@ arr.sort((a, b) => {
         return `
           <tr>
             <td style="padding:2px 4px; text-align:center;">${i + 1}</td>
-            <td style="padding:2px 4px;">${formatNicknameWithTitle(u.id, u.equippedTitle || "")}</td>
+            <td style="padding:2px 4px;">${formatNicknameWithTitle(u.id, u.equippedTitle || "", u.reach30Count)}</td>
             <td style="padding:2px 4px; text-align:right;">${u.duelLastWeekPoint}</td>
             <td style="padding:2px 4px;">${weaponNameStyled} ${coloredLevel(u.sword)}</td>
             <td style="padding:2px 4px; text-align:right;">
