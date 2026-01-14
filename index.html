@@ -1252,7 +1252,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.960)
+    (v3.961)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -7087,8 +7087,8 @@ if (equippedTitle && equippedTitle.includes("${")) equippedTitle = "";
       superSuccessCount = Number(data.superSuccessCount || 0);
       downStreak        = Number(data.downStreak || 0);
       dopamineTried     = Number(data.dopamineTried || 0);
-      lastSeenGlobal30EventId = Number(v.lastSeenGlobal30EventId || 0);
-      aweUsedGlobal30EventId  = Number(v.aweUsedGlobal30EventId || 0);
+      lastSeenGlobal30EventId = Number(data.lastSeenGlobal30EventId || 0);
+      aweUsedGlobal30EventId  = Number(data.aweUsedGlobal30EventId || 0);
 
       sword = data.sword ?? 0;
       gold  = data.gold  ?? 100;
@@ -7575,10 +7575,10 @@ if (equippedTitle && equippedTitle.includes("${")) equippedTitle = "";
     superSuccessCount = Number(data.superSuccessCount || 0);
     downStreak        = Number(data.downStreak || 0);
     dopamineTried     = Number(data.dopamineTried || 0);
-    lastSeenGlobal30EventId = Number(v.lastSeenGlobal30EventId || 0);
-    aweUsedGlobal30EventId  = Number(v.aweUsedGlobal30EventId || 0);
+    lastSeenGlobal30EventId = Number(data.lastSeenGlobal30EventId || 0);
+    aweUsedGlobal30EventId  = Number(data.aweUsedGlobal30EventId || 0);
 
-      // 🗡 무기 타입 로드 (v3.8 이전 계정 호환 포함)
+    // 🗡 무기 타입 로드 (v3.8 이전 계정 호환 포함)
   if (data.weaponType !== undefined && data.weaponType !== null) {
     // v3.8 이후 저장된 계정 → 그대로 사용
     weaponType = data.weaponType;   // "sword" 또는 "spear"
