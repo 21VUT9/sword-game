@@ -426,6 +426,76 @@ button {
   color: #ffb74d;
   font-weight: bold;
 }
+
+/* 🌙 +30 글로벌 연출 오버레이 */
+#global30Overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+}
+
+#global30Overlay .global30-backdrop{
+  position:absolute;
+  inset:0;
+  background: rgba(220, 230, 255, 0.22);
+  backdrop-filter: blur(2px);
+}
+
+#global30Overlay .global30-box{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform: translate(-50%, -50%);
+  width: min(520px, 92vw);
+  background: rgba(10,10,12,0.88);
+  border: 1px solid rgba(180,200,255,0.35);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.55);
+  border-radius: 14px;
+  padding: 18px 16px 14px 16px;
+  text-align:center;
+}
+
+#global30Overlay .global30-title{
+  font-size: 18px;
+  font-weight: 800;
+  color: #e8efff;
+  margin-bottom: 8px;
+  letter-spacing: 0.2px;
+}
+
+#global30Overlay .global30-desc{
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(235,240,255,0.9);
+  white-space: pre-line;
+  margin-bottom: 12px;
+}
+
+#global30Overlay .global30-btn{
+  width: 140px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 0;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+  .toast-30 {
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.toast-awe button{
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 0;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.toast-awe-msg{
+  font-weight: 700;
+}
   
 /* ================= 유저 프로필 카드 ================ */
 
@@ -1182,7 +1252,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.958)
+    (v3.959)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1822,6 +1892,165 @@ const db = firebase.database();
 const logRef = db.ref("logs");
 const globalEventsRef = db.ref("globalEvents");
 
+  // 🌙 +30 글로벌 이벤트 키
+const GLOBAL30_KEY = "latest30";
+
+// 🌙 경외 문구(1인 1회 랜덤)
+const AWE_MESSAGES = [
+  "그 검 끝에서… 별이 태어났다. ★",
+  "30강은 우연이 아니라, 집념이 증명된 자리였다.",
+  "퍼그란트의 불꽃이 오늘, 전설을 하나 더 만들었다.",
+  "나는 보았다. 강화의 끝에서 흔들리지 않은 손을.",
+  "그 이름을 기억하라. 우리의 하늘에 새겨진 첫 문장이다.",
+  "검이 아니라, 의지가 빛났다.",
+  "오늘의 기록은 내일의 기준이 된다. 경외를.",
+  "별은 아무에게나 붙지 않는다. 오직 달성한 자에게만.",
+  "이것이 ‘끝’이라면… 얼마나 아름다운 끝인가.",
+  "경외한다. 그리고 따라가겠다. 언젠가 나도 그 자리에."
+];
+
+// ✅ +30 축하 로그(3줄 도트아트) 만들기
+function build30CongratsLogLines(nick, weaponName) {
+  return [
+    "✦✧✦✧✦  🌌  [ +30  달 성 ]  🌌  ✦✧✦✧✦",
+    "██████╗  ██████╗  ██████╗  ██████╗  ██████╗  ★",
+    `★  ${nick} ┃ ${weaponName} +30 ┃ 퍼그란트의 기록이 빛납니다  ✨`
+  ];
+}
+
+// ✅ 글로벌 +30 이벤트 발행(마지막 1개만 유지)
+function publishGlobal30Event(winnerId, winnerNick, weaponName, weaponType) {
+  const eventId = Date.now();
+  const payload = {
+    id: eventId,
+    winnerId: winnerId || "",
+    winnerNick: winnerNick || "",
+    weaponName: weaponName || "",
+    weaponType: weaponType || "",
+    time: eventId
+  };
+  globalEventsRef.child(GLOBAL30_KEY).set(payload);
+  return eventId;
+}
+
+// ✅ +30 오버레이 열기
+function openGlobal30Overlay(payload) {
+  const overlay = document.getElementById("global30Overlay");
+  if (!overlay) return;
+
+  const titleEl = document.getElementById("global30Title");
+  const descEl  = document.getElementById("global30Desc");
+
+  const nick = payload?.winnerNick || "누군가";
+  const weaponName = payload?.weaponName || "무기";
+
+  if (titleEl) titleEl.textContent = `🌌 ${nick} 님이 30강 달성에 성공하였습니다!`;
+  if (descEl) descEl.textContent =
+`퍼그란트 대장간에 새로운 우주의 질서가 기록됩니다.
+
+달성 무기: ${weaponName} +30`;
+
+  overlay.style.display = "block";
+}
+
+// ✅ +30 오버레이 닫기 + ‘봤음’ 저장
+function closeGlobal30Overlay() {
+  const overlay = document.getElementById("global30Overlay");
+  if (overlay) overlay.style.display = "none";
+
+  // 현재 떠있는 이벤트를 “봤음” 처리하기 위해 latest30을 다시 읽어서 저장
+  globalEventsRef.child(GLOBAL30_KEY).once("value").then(snap => {
+    const v = snap.val() || {};
+    const id = Number(v.id || 0);
+    if (id > 0) {
+      lastSeenGlobal30EventId = id;
+      save(); // ⚠️ save()에 필드 추가도 아래에서 안내할거야
+    }
+  });
+}
+
+// ✅ +30 이벤트 구독: 안 본 유저만 오버레이 + 축하 로그 + 경외 버튼 로그
+function subscribeGlobal30Events() {
+  globalEventsRef.child(GLOBAL30_KEY).on("value", (snap) => {
+    const v = snap.val();
+    if (!v) return;
+
+    const eventId = Number(v.id || 0);
+    if (!eventId) return;
+
+    // 1) 축하 로그 3줄(스팸 방지: 이벤트ID 기준으로 한번만)
+    if (lastSeenGlobal30EventId !== eventId) {
+      // 3줄 로그 출력
+      try {
+        const lines = build30CongratsLogLines(v.winnerNick, v.weaponName);
+        // 기존 로그 함수가 있으면 그걸 쓰는게 베스트.
+        // 3958에서 토스트 로그를 쓰고 있으니, 최소한 alert 대신 토스트로 넣기:
+        lines.forEach(line => pushSystemToast(line, "toast-30"));
+        // 경외하기 버튼도 로그(토스트)로 1회 노출
+        pushAweToast(eventId, v.winnerNick);
+      } catch(e) {}
+
+      // 2) 은빛 오버레이(안 본 사람만)
+      openGlobal30Overlay(v);
+    }
+  });
+}
+
+// ✅ (필수) 시스템 토스트 푸시 함수: 3958의 토스트/로그 방식에 맞춰 “한 줄” 추가
+function pushSystemToast(text, extraClass) {
+  const toastLog = document.getElementById("toastLog");
+  if (!toastLog) return;
+
+  const div = document.createElement("div");
+  div.className = `toast-item ${extraClass || ""}`;
+  div.textContent = text;
+
+  toastLog.prepend(div);
+
+  // 너무 길어지면 위에서 잘라내기
+  while (toastLog.children.length > 50) {
+    toastLog.removeChild(toastLog.lastChild);
+  }
+}
+
+// ✅ 경외하기 버튼 토스트(1인 1회)
+function pushAweToast(eventId, winnerNick) {
+  const toastLog = document.getElementById("toastLog");
+  if (!toastLog) return;
+
+  const row = document.createElement("div");
+  row.className = "toast-item toast-awe";
+
+  const left = document.createElement("span");
+  left.textContent = `🙏 ${winnerNick} 님의 업적에 경외를 바칩니다.`;
+
+  const btn = document.createElement("button");
+  btn.textContent = "경외하기";
+  btn.style.marginLeft = "10px";
+  btn.onclick = () => {
+    // 1인 1회 제한
+    if (Number(aweUsedGlobal30EventId || 0) === Number(eventId)) {
+      alert("이미 경외를 남겼습니다.");
+      return;
+    }
+    aweUsedGlobal30EventId = Number(eventId);
+
+    // 랜덤 문구
+    const msg = AWE_MESSAGES[Math.floor(Math.random() * AWE_MESSAGES.length)];
+    // 로그에 한 줄 추가(시스템 토스트)
+    pushSystemToast(`★ 경외: ${msg}`, "toast-awe-msg");
+
+    save(); // 유저에 저장
+    btn.disabled = true;
+  };
+
+  row.appendChild(left);
+  row.appendChild(btn);
+  toastLog.prepend(row);
+}
+
+
+  
 function getTutorialKeyForUser(id) {
   return `swordGameTutorialSeen_${id}`;
 }
@@ -2574,6 +2803,9 @@ let isUpgrading = false;
 let isDueling   = false;   // ⚔️ 결투 VS 대기중일 때 true
 let titlesOwned = {};     // { titleId: true }
 let equippedTitle = "";   // 장착중 칭호 ID
+let lastSeenGlobal30EventId = 0;  // 마지막으로 본 +30 글로벌 이벤트 ID
+let aweUsedGlobal30EventId = 0;   // 마지막으로 ‘경외하기’를 사용한 +30 이벤트 ID (1인 1회)
+
 
 // 🧭 사냥터 이동 중인지 여부
 let isMoving = false;
@@ -6004,6 +6236,16 @@ if (before < 30 && sword >= 30) {
   try {
     db.ref("hofQueue/" + userId).set(hofDeadline);
   } catch (e) {}
+
+    // 🌌 30강 글로벌 이벤트 발행
+  const weaponName = getWeaponInfo(30, wt).name;
+  const winnerNick = formatNicknameWithTitle(userId, titleId, reach30Count);
+  const eventId = publishGlobal30Event(userId, winnerNick, weaponName, wt);
+
+  // 달성자는 ‘봤음’ 처리 (원하면)
+  lastSeenGlobal30EventId = eventId;
+  save();
+
 }
 
   rollPowerForCurrentSword();
@@ -6788,7 +7030,7 @@ document.getElementById("achievementBtn").style.display = "block";
 
 startAutoRefreshTimer();
 subscribeGlobalDestroyEvents();
-
+subscribeGlobal30Events();
 update();
 showTutorialIfFirstTime();
 loadUpdateNotices();
@@ -6846,6 +7088,9 @@ if (equippedTitle && equippedTitle.includes("${")) equippedTitle = "";
       superSuccessCount = Number(data.superSuccessCount || 0);
       downStreak        = Number(data.downStreak || 0);
       dopamineTried     = Number(data.dopamineTried || 0);
+      lastSeenGlobal30EventId = Number(v.lastSeenGlobal30EventId || 0);
+      aweUsedGlobal30EventId  = Number(v.aweUsedGlobal30EventId || 0);
+
 
       sword = data.sword ?? 0;
       gold  = data.gold  ?? 100;
@@ -6948,7 +7193,8 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
 
         // 🌏 25강 이상 파괴 글로벌 알림 구독 시작
     subscribeGlobalDestroyEvents();
-    
+    subscribeGlobal30Events();
+        
     // 🔐 마지막 로그인 유저 저장
     try {
       localStorage.setItem("swordGameLastUser", userId);
@@ -7033,6 +7279,8 @@ function save() {
     hofAchievedAt: Number(hofAchievedAt || 0),
     hofWeaponTypeAt30: hofWeaponTypeAt30 || "",
     hofProcessedAt: Number(hofProcessedAt || 0),
+    lastSeenGlobal30EventId: Number(lastSeenGlobal30EventId || 0),
+aweUsedGlobal30EventId: Number(aweUsedGlobal30EventId || 0)
   };
 
   // ⭐ 강화 수치가 바뀌었을 때만 updated 갱신
@@ -7313,6 +7561,8 @@ if (equippedTitle && equippedTitle.includes("${")) equippedTitle = "";
     superSuccessCount = Number(data.superSuccessCount || 0);
     downStreak        = Number(data.downStreak || 0);
     dopamineTried     = Number(data.dopamineTried || 0);
+    lastSeenGlobal30EventId = Number(v.lastSeenGlobal30EventId || 0);
+    aweUsedGlobal30EventId  = Number(v.aweUsedGlobal30EventId || 0);
 
       // 🗡 무기 타입 로드 (v3.8 이전 계정 호환 포함)
   if (data.weaponType !== undefined && data.weaponType !== null) {
@@ -7406,6 +7656,8 @@ document.getElementById("userListBtn").style.display = "block";
 
         // 🌏 25강 이상 파괴 글로벌 알림 구독 시작
     subscribeGlobalDestroyEvents();
+
+    subscribeGlobal30Events();
 
     // 🔐 자동로그인으로 들어온 경우에도 이 탭이 세션을 가져가도록
     startSession();
@@ -9445,6 +9697,16 @@ async function recalcUserPower(userIdToFix) {
 </div>
     </div>
 
+  </div>
+</div>
+
+  <!-- 🌙 +30 글로벌 연출 오버레이 -->
+<div id="global30Overlay" style="display:none;">
+  <div class="global30-backdrop"></div>
+  <div class="global30-box">
+    <div id="global30Title" class="global30-title"></div>
+    <div id="global30Desc" class="global30-desc"></div>
+    <button class="global30-btn" onclick="closeGlobal30Overlay()">확인</button>
   </div>
 </div>
 
