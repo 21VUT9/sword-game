@@ -1252,7 +1252,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.964)
+    (v3.965)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1977,21 +1977,32 @@ function subscribeGlobal30Events() {
     const eventId = Number(v.id || 0);
     if (!eventId) return;
 
-    // 1) 축하 로그 3줄(스팸 방지: 이벤트ID 기준으로 한번만)
-    if (lastSeenGlobal30EventId !== eventId) {
-      // 3줄 로그 출력
-      try {
-        const lines = build30CongratsLogLines(v.winnerNick, v.weaponName);
-        // 기존 로그 함수가 있으면 그걸 쓰는게 베스트.
-        // 3958에서 토스트 로그를 쓰고 있으니, 최소한 alert 대신 토스트로 넣기:
-        lines.forEach(line => pushSystemToast(line, "toast-30"));
-        // 경외하기 버튼도 로그(토스트)로 1회 노출
-        pushAweToast(eventId, v.winnerNick);
-      } catch(e) {}
+// 1) 축하 로그: "기존 실시간 로그"에 1개만 남기기(줄바꿈으로 2줄)
+if (lastSeenGlobal30EventId !== eventId) {
+  try {
+    const nick = v.winnerNick || "누군가";
+    const weaponName = v.weaponName || "무기";
 
-      // 2) 은빛 오버레이(안 본 사람만)
-      openGlobal30Overlay(v);
-    }
+    const msg =
+      `${nick}이 +30강의 벽을 돌파하여 +30강에 도달했습니다!<br>` +
+      `그 용기에 퍼그란트의 대장간이 박수를 보냅니다.`;
+
+    // ✅ DB에 남는 실시간 로그 1개 (5줄 제한 UI는 기존 로직이 이미 처리)
+    writeLog(msg, false, {
+      isReach30: true,
+      global30EventId: eventId,
+      winnerNick: nick,
+      weaponName: weaponName
+    });
+  } catch(e) {}
+
+  // 2) 은빛 오버레이(안 본 사람만)
+  openGlobal30Overlay(v);
+
+  // ✅ "봤음" 처리(중복 출력 방지)
+  lastSeenGlobal30EventId = eventId;
+  save();
+}
   });
 }
 
@@ -8462,9 +8473,69 @@ function handleMournClick(e) {
   });
 }
 
+  function getRandomAweComment() {
+  const lines = [
+    "그 검 끝에서… 별이 태어났다. ★",
+    "30강은 우연이 아니라, 집념이 증명된 자리였다.",
+    "퍼그란트의 불꽃이 오늘, 전설을 하나 더 만들었다.",
+    "나는 보았다. 강화의 끝에서 흔들리지 않은 손을.",
+    "그 이름을 기억하라. 우리의 하늘에 새겨진 첫 문장이다.",
+    "검이 아니라, 의지가 빛났다.",
+    "오늘의 기록은 내일의 기준이 된다. 경외를.",
+    "별은 아무에게나 붙지 않는다. 오직 달성한 자에게만.",
+    "경외한다. 그리고 따라가겠다. 언젠가 나도 그 자리에.",
+    "전설은 이렇게 태어난다… 지금, 여기서."
+  ];
+  return lines[Math.floor(Math.random() * lines.length)];
+}
+
+function handleAweClick(e) {
+  if (!userId) {
+    alert("로그인 후 이용 가능합니다.");
+    return;
+  }
+
+  const logId = e.target.dataset.logId;
+  const eventId = Number(e.target.dataset.eventId || 0);
+  if (!logId || !eventId) return;
+
+  // ✅ 1인 1회(이벤트ID 기준) - 로컬 세이브 기준
+  if (aweUsedGlobal30EventId === eventId) {
+    alert("이미 이 +30 기록에 경외를 바쳤습니다.");
+    return;
+  }
+
+  // ✅ DB 기준 1인 1회(다른 기기/브라우저 대비)
+  const userAweRef = logRef.child(logId).child("awedBy").child(userId);
+  userAweRef.once("value").then(snap => {
+    if (snap.exists()) {
+      aweUsedGlobal30EventId = eventId;
+      save();
+      alert("이미 이 +30 기록에 경외를 바쳤습니다.");
+      return;
+    }
+
+    // 사용 처리
+    aweUsedGlobal30EventId = eventId;
+    save();
+    userAweRef.set(true);
+
+    const comment = {
+      userId: userId,
+      text: getRandomAweComment(),
+      time: Date.now()
+    };
+
+    // 기존 묵념 댓글과 동일하게 comments에 달기
+    logRef.child(logId).child("comments").push(comment);
+  });
+}
+
 /* 로그 */
-function writeLog(message,isDestroy=false){
-  logRef.push({message,isDestroy,time:Date.now()});
+function writeLog(message, isDestroy=false, extra=null){
+  const payload = { message, isDestroy, time: Date.now() };
+  if (extra && typeof extra === "object") Object.assign(payload, extra);
+  logRef.push(payload);
 }
 logRef.limitToLast(50).on("child_added", s => {
   const d = s.val();
@@ -8495,6 +8566,18 @@ logRef.limitToLast(50).on("child_added", s => {
     toastMain.appendChild(btn);
   }
 
+  // 30강 로그라면 [경외하기] 버튼 추가 (묵념하기와 동일한 형태)
+if (d.isReach30) {
+  const btn = document.createElement("span");
+  btn.textContent = " [경외하기]";
+  btn.style.cursor = "pointer";
+  btn.style.color = "#ffffff";
+  btn.dataset.logId = logId;
+  btn.dataset.eventId = String(d.global30EventId || 0);
+  btn.onclick = handleAweClick;
+  toastMain.appendChild(btn);
+}
+
   toastEl.appendChild(toastMain);
 
   // ⬇ 댓글이 달릴 영역
@@ -8524,6 +8607,17 @@ logRef.limitToLast(50).on("child_added", s => {
     btn2.onclick = handleMournClick;
     mainLine.appendChild(btn2);
   }
+
+  if (d.isReach30) {
+  const btn3 = document.createElement("span");
+  btn3.textContent = " [경외하기]";
+  btn3.style.cursor = "pointer";
+  btn3.style.color = "#ffffff";
+  btn3.dataset.logId = logId;
+  btn3.dataset.eventId = String(d.global30EventId || 0);
+  btn3.onclick = handleAweClick;
+  mainLine.appendChild(btn3);
+}
 
   panelItem.appendChild(mainLine);
 
