@@ -280,6 +280,17 @@ button {
   from {background-position:0%}
   to {background-position:100%}
 }
+
+.rainbowStar{
+  background: linear-gradient(90deg, #ff4d4d, #ffb84d, #fff04d, #4dff88, #4dd2ff, #7a5cff, #ff4dff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-shadow: 0 0 10px rgba(255,255,255,0.25);
+}
+  
   /* ✨ 실버 / 골드 반짝임 */
 .sparkle-silver {
   color: #C0C0C0;
@@ -1171,7 +1182,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.955)
+    (v3.956)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3647,25 +3658,27 @@ function loadHallOfFame() {
         return;
       }
 
-      listEl.innerHTML = arr.map((r, i) => {
-        const d = r.achievedAt ? new Date(Number(r.achievedAt)).toLocaleString("ko-KR") : "-";
-        const stars = "★".repeat(Math.min(10, Number(r.stars || 0)));
-        return `
-         <div
-  onclick="openHallOfFameProfilePopup('${r.id}','${r.weaponType || "sword"}','${r.achievedAt || 0}')"
-  style="padding:4px 0; border-bottom:1px solid #333; cursor:pointer;">
-            <div style="display:flex; justify-content:space-between; gap:8px;">
-              <div>
-                <b>${i + 1}.</b> ${r.id} <span style="color:#ffcc66;">${stars}</span>
-              </div>
-              <div style="color:#aaa; font-size:11px;">${d}</div>
-            </div>
-            <div style="font-size:11px; color:#ccc; margin-top:2px;">
-              ${r.weaponName} (+30강)
-            </div>
-          </div>
-        `;
-      }).join("");
+listEl.innerHTML = arr.map((r, i) => {
+  const d = r.achievedAt
+    ? new Date(Number(r.achievedAt)).toLocaleString("ko-KR")
+    : "-";
+
+  const starCount = Math.min(10, Number(r.stars || 0));
+  const stars = "★".repeat(starCount);
+
+  return `
+    <div style="padding:6px 0; border-bottom:1px solid #333;">
+      <div style="font-size:12px; color:#ddd;">
+        <b>${i + 1}.</b>
+        ${r.id}${starCount > 0 ? ` <span class="rainbowStar">${stars}</span>` : ""}
+        <span style="color:#666;"> ㅣ </span>
+        <span style="color:#ccc;">${r.weaponName} (+30강)</span>
+        <span style="color:#666;"> ㅣ </span>
+        <span style="color:#aaa; font-size:11px;">${d}</span>
+      </div>
+    </div>
+  `;
+}).join("");
     });
 }
 
@@ -7728,13 +7741,13 @@ rankingEl.innerHTML = arr.map((u, i) => {
 
   return `
     <div class="ranking-row" style="font-weight:bold;">
-      ${i+1}. <span class="rank-user" data-user-id="${u.id}">${formatNicknameWithTitle(u.id, u.equippedTitle)}</span>
+      ${i+1}. <span class="rank-user" data-user-id="${u.id}">${formatNicknameWithTitle(u.id, u.equippedTitle, u.reach30Count)
+}</span>
       | ${weaponNameStyled} ${coloredLevel(u.sword)}
       | 전적: ${u.duelWin}승 ${u.duelLose}패
     </div>
   `;
 }).join("");
-
 
     });
 
@@ -7836,7 +7849,7 @@ const rows = list.map((u, idx) => {
           class="userListName"
           onclick="openUserProfileFromUserList('${u.id}')"
           >
-           ${formatNicknameWithTitle(u.id, u.equippedTitle)}
+           ${formatNicknameWithTitle(u.id, u.equippedTitle, u.reach30Count)}
         </span>
       </div>
 
