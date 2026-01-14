@@ -1171,7 +1171,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.941)
+    (v3.951)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -5350,6 +5350,11 @@ function upgrade() {
   showNpcMessage("강화 확률 +5% 주문서가 필요해.");
   return;
   }
+
+  // ✅ UX: 강화 1회 시도 시작 시, 선택한 아이템 체크박스는 모두 자동 해제
+  [scroll15El, protectEl, downProtEl, superEl, scroll21El, rate5El].forEach(el => {
+    if (el) el.checked = false;
+  });
   
   // 🛑 28강 이상에서는 슈퍼강화 주문서 사용 불가
   if (sword >= 28 && wantSuper) {
