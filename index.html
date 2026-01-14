@@ -1252,7 +1252,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.961)
+    (v3.962)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -6232,13 +6232,11 @@ if (before < 30 && sword >= 30) {
   hofProcessedAt = 0;
 
   // ✅ 전당 큐 등록: 해당 유저가 접속 안 해도, 다른 유저가 게임 켜면 스윕 처리 가능
-  try {
-    db.ref("hofQueue/" + userId).set(hofDeadline);
-  } catch (e) {}
+db.ref("hofQueue/" + userId).set(hofDeadline).catch(() => {});
 
     // 🌌 30강 글로벌 이벤트 발행
   const weaponName = getWeaponInfo(30, wt).name;
-  const winnerNick = formatNicknameWithTitle(userId, titleId, reach30Count);
+  const winnerNick = formatNicknameWithTitle(userId, equippedTitle, reach30Count);
   const eventId = publishGlobal30Event(userId, winnerNick, weaponName, wt);
 
   // 달성자는 ‘봤음’ 처리 (원하면)
