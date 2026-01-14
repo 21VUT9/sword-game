@@ -1182,7 +1182,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.956)
+    (v3.957)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3789,15 +3789,32 @@ function getTitleColorStyle(colorKey) {
   return "color:#9a9a9a;";
 }
 
-// 🏷️ 닉네임에 칭호 붙이기 (색상 포함)
-function formatNicknameWithTitle(id, titleId) {
+// 🏷️ 닉네임에 칭호 붙이기 (색상 포함 + 30강 달성 별)
+function formatNicknameWithTitle(id, titleId, reach30Count) {
   const safeId = (id ?? "-");
-  if (!titleId) return safeId;
+  const n = Math.max(0, Number(reach30Count || 0));
+
+  // ★ 문자열 만들기 (너무 길면 5개까지만 +N)
+  let starHtml = "";
+  if (n > 0) {
+    const show = Math.min(n, 5);
+    const more = n - show;
+    const starText = "★".repeat(show) + (more > 0 ? `+${more}` : "");
+    starHtml = ` <span class="rainbow">${starText}</span>`;
+  }
+
+  if (!titleId) return `${safeId}${starHtml}`;
 
   const def = TITLE_DEFS.find(t => t.id === titleId);
   const titleName = def ? def.name : titleId;
 
-  return `<span style="${getTitleColorStyle(def?.color)}">[${titleName}]</span>${safeId}`;
+  const colorKey = def?.color || "";
+  if (colorKey === "plague") {
+    return `<span class="title-plague">[${titleName}]</span>${safeId}${starHtml}`;
+  }
+
+  const style = getTitleStyle(colorKey);
+  return `<span style="${style}">[${titleName}]</span>${safeId}${starHtml}`;
 }
   
 function getTitleStyle(colorKey) {
@@ -3820,25 +3837,6 @@ function getTitleStyle(colorKey) {
   }
 
   return "color:#9a9a9a;";
-}
-
-function formatNicknameWithTitle(id, titleId) {
-  const safeId = (id ?? "-");
-
-  if (!titleId) return safeId;
-
-  const def = TITLE_DEFS.find(t => t.id === titleId);
-  const titleName = def ? def.name : titleId;
-
- const colorKey = def?.color || "";
-if (colorKey === "plague") {
-  return `<span class="title-plague">[${titleName}]</span>${safeId}`;
-}
-
-const style = getTitleStyle(colorKey);
-return `<span style="${style}">[${titleName}]</span>${safeId}`;
-
-  return `<span style="${style}">[${titleName}]</span>${safeId}`;
 }
 
 // 리네아 대사(랜덤)
@@ -7726,7 +7724,8 @@ function loadRanking() {
           duelWin: Number(d.duelWin || 0),
           duelLose: Number(d.duelLose || 0),
           weaponType: d.weaponType || "sword",
-          equippedTitle: d.equippedTitle || ""
+          equippedTitle: d.equippedTitle || "",
+          reach30Count: Number(d.reach30Count || 0)
         });
       });
 
@@ -7767,7 +7766,8 @@ rankingEl.innerHTML = arr.map((u, i) => {
           updated: Number(d.updated || 0),
           power: Number(d.power || 0),
           weaponType: d.weaponType || "sword",
-          equippedTitle: d.equippedTitle || ""
+          equippedTitle: d.equippedTitle || "",
+          reach30Count: Number(d.reach30Count || 0)
         });
       });
 
