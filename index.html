@@ -1252,7 +1252,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.962)
+    (v3.963)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1913,7 +1913,6 @@ const AWE_MESSAGES = [
 function build30CongratsLogLines(nick, weaponName) {
   return [
     "✦✧✦✧✦  🌌  [ +30  달 성 ]  🌌  ✦✧✦✧✦",
-    "██████╗  ██████╗  ██████╗  ██████╗  ██████╗  ★",
     `★  ${nick} ┃ ${weaponName} +30 ┃ 퍼그란트의 기록이 빛납니다  ✨`
   ];
 }
@@ -1944,7 +1943,7 @@ function openGlobal30Overlay(payload) {
   const nick = payload?.winnerNick || "누군가";
   const weaponName = payload?.weaponName || "무기";
 
-  if (titleEl) titleEl.textContent = `🌌 ${nick} 님이 30강 달성에 성공하였습니다!`;
+  if (titleEl) titleEl.innerHTML = `🌌 ${nick} 님이 30강 달성에 성공하였습니다!`;
   if (descEl) descEl.textContent =
 `퍼그란트 대장간에 새로운 우주의 질서가 기록됩니다.
 
