@@ -1171,7 +1171,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.953)
+    (v3.954)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1294,9 +1294,16 @@ button {
 </p>
 
 <div class="action-buttons">
-  <button onclick="upgrade()">🔨 강화</button>
+  <button id="upgradeBtn" onclick="upgrade()">🔨 강화</button>
   <button id="huntBtn" onclick="hunt()">⚔️ 사냥</button>
-  <button onclick="sell()">💰 판매</button>
+  <button id="sellBtn" onclick="sell()">💰 판매</button>
+
+  <!-- 🏛️ 30강 전용: 명예의 전당 보내기 -->
+  <button id="hallBtn"
+          onclick="openHonorHallSendPopup()"
+          style="display:none;">
+    🏛️ 명예의전당 보내기
+  </button>
 </div>
 
 <p id="huntInfo" style="margin-top:4px; color:#ccc; font-size:13px;"></p>
@@ -1336,6 +1343,18 @@ button {
   <h2>🏆 랭킹 TOP 10</h2>
   <div id="ranking">불러오는 중...</div>
   <div id="myRank" style="margin-top:8px; font-size:14px; color:#ccc;"></div>
+
+  <!-- 🌈 명예의 전당 -->
+<div id="hallOfFameBox"
+     style="margin-top:10px; border:1px solid #444; border-radius:8px; padding:8px;">
+  <div style="font-weight:bold; margin-bottom:6px; text-align:center;">
+    🌈 명예의 전당
+  </div>
+  <div id="hallOfFameList"
+       style="font-size:12px; color:#ddd; max-height:180px; overflow-y:auto;">
+    불러오는 중...
+  </div>
+</div>
 
   <!-- 🧷 랭킹 닉네임 클릭 시 뜨는 작은 메뉴 -->
 <div id="rankProfileMenu">
@@ -2600,6 +2619,12 @@ let fireworksDestroyed = { 21:false, 22:false, 23:false, 24:false, 25:false };
 let reach30Count = 0;           // 30강 달성 누적(무기 상관없이)
 let weapon30Counts = {};        // { sword:0, axe:0, spear:0, bow:0 } 형태로 저장
 
+  // 🏛️ 명예의 전당(30강 도달 후 72시간 카운트)
+let hofDeadline = 0;          // 강제 전당행 만료시각(ms)
+let hofAchievedAt = 0;        // 30강 달성 시각(ms)
+let hofWeaponTypeAt30 = "";   // 30강 달성 당시 무기 타입
+let hofProcessedAt = 0;       // 전당행 처리 완료 시각(ms) (중복방지)
+
 // 🆕 사냥 스태미나
 let huntStamina = 20;          // 현재 사냥 가능 횟수 (0~20)
 let lastStaminaUpdate = 0;     // 마지막 스태미나 갱신 시각 (ms timestamp)
@@ -3365,6 +3390,257 @@ function startSession() {
   userRef.child("sessionId").onDisconnect().remove();
 }
 
+  // ================================
+// 🏛️ 명예의 전당 시스템 (30강 → 72시간 후 강제 전당행)
+// ================================
+let hofUiTimer = null;
+let hofSweepTimer = null;
+
+// ⏳ 남은 시간 표시(초 단위)
+function formatLeftTime(msLeft) {
+  const sec = Math.max(0, Math.floor(msLeft / 1000));
+  const h = String(Math.floor(sec / 3600)).padStart(2, "0");
+  const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
+  const s = String(sec % 60).padStart(2, "0");
+  return `${h}:${m}:${s}`;
+}
+
+// 🔁 30강 유저면 버튼 교체(강화/사냥/판매 숨기고 전당 버튼만 노출)
+function updateHonorHallButton() {
+  const upBtn = document.getElementById("upgradeBtn");
+  const huBtn = document.getElementById("huntBtn");
+  const seBtn = document.getElementById("sellBtn");
+  const hallBtn = document.getElementById("hallBtn");
+
+  if (!hallBtn) return;
+
+  // 30강 미만: 원래 버튼
+  if (Number(sword) < 30) {
+    if (upBtn) upBtn.style.display = "";
+    if (huBtn) huBtn.style.display = "";
+    if (seBtn) seBtn.style.display = "";
+    hallBtn.style.display = "none";
+    hallBtn.textContent = "🏛️ 명예의전당 보내기";
+    return;
+  }
+
+  // 30강 이상: 전당 버튼만
+  if (upBtn) upBtn.style.display = "none";
+  if (huBtn) huBtn.style.display = "none";
+  if (seBtn) seBtn.style.display = "none";
+  hallBtn.style.display = "";
+
+  // 남은시간이 없으면 “곧 전당행” 표시
+  const left = Number(hofDeadline || 0) - Date.now();
+  if (!hofDeadline || left <= 0) {
+    hallBtn.textContent = "🏛️ 명예의전당 보내기 (곧 자동 처리)";
+  } else {
+    hallBtn.textContent = `🏛️ 명예의전당 보내기 (${formatLeftTime(left)})`;
+  }
+}
+
+// ✅ 전당 버튼 클릭 팝업
+function openHonorHallSendPopup() {
+  if (!userId || !userRef) return;
+
+  const left = Number(hofDeadline || 0) - Date.now();
+  const leftText = (hofDeadline && left > 0) ? formatLeftTime(left) : "곧 자동 처리";
+
+  const html = `
+    <div style="font-size:16px; font-weight:bold; margin-bottom:6px;">
+      🏛️ 명예의 전당
+    </div>
+    <div style="font-size:13px; line-height:1.5;">
+      ${leftText} 후, 너의 기록은 <b>명예의 전당</b>에 새겨질 거야.<br>
+      전당에 보내면 <b>무기는 0강으로 돌아가고</b>, 다시 처음부터 시작하게 돼.<br>
+      그래도… 그 별은, 네 이름 뒤에 남아. (★)
+    </div>
+    <div style="margin-top:10px; display:flex; gap:8px; justify-content:center;">
+      <button onclick="sendMeToHallOfFame('manual')" style="padding:8px 12px;">
+        보낸다
+      </button>
+      <button onclick="closeNpcPopup()" style="padding:8px 12px;">
+        잠시만..
+      </button>
+    </div>
+  `;
+
+  showNpcMessage(html, "images/npc/linea_idle.png", false, "서기관 리네아");
+}
+
+// ✅ 내 계정을 전당으로 보내기
+function sendMeToHallOfFame(reason) {
+  closeNpcPopup();
+  sendUserToHallOfFame(userId, reason || "manual");
+}
+
+// ✅ 전당 기록 생성 + 유저 리셋 (중복 방지 포함)
+function sendUserToHallOfFame(targetId, reason) {
+  if (!targetId) return;
+
+  const uref = db.ref("users/" + targetId);
+  uref.once("value").then(snap => {
+    const u = snap.val();
+    if (!u) return;
+
+    const uSword = Number(u.sword || 0);
+    const uDeadline = Number(u.hofDeadline || 0);
+    const uProcessedAt = Number(u.hofProcessedAt || 0);
+
+    // 이미 처리된 유저면 종료
+    if (uProcessedAt && uProcessedAt > 0) {
+      db.ref("hofQueue/" + targetId).remove();
+      return;
+    }
+
+    // 30강이 아니면 큐에서 제거
+    if (uSword < 30) {
+      db.ref("hofQueue/" + targetId).remove();
+      return;
+    }
+
+    // 수동이 아닌데 아직 만료 전이면 처리 금지
+    const now = Date.now();
+    if (reason !== "manual" && uDeadline && now < uDeadline) {
+      return;
+    }
+
+    const wt = u.hofWeaponTypeAt30 || u.weaponType || "sword";
+    const achievedAt = Number(u.hofAchievedAt || now);
+    const stars = Number(u.reach30Count || 0);
+
+    // 전당 기록 작성 (push)
+    const hofRef = db.ref("hallOfFame").push();
+    const wInfo = getWeaponInfo(30, wt);
+    const record = {
+      id: targetId,
+      weaponType: wt,
+      weaponName: (wInfo && wInfo.name) ? wInfo.name : "+30강",
+      achievedAt: achievedAt,
+      recordedAt: now,
+      stars: stars,
+      reason: reason || "auto"
+    };
+
+    // 유저 리셋 (골드는 유지, 무기 0강)
+    const updates = {
+      sword: 0,
+      power: 10,                 // 0강 기본 전투력 (현재 파일 기본값)
+      weaponType: null,          // 0강 공용 상태로 되돌림 (다음 1강 때 다시 랜덤배정)
+      hofProcessedAt: now,
+      hofDeadline: 0,
+      hofAchievedAt: 0,
+      hofWeaponTypeAt30: ""
+    };
+
+    // 기록 + 리셋 + 큐 제거
+    const multi = {};
+    multi["hallOfFame/" + hofRef.key] = record;
+    multi["users/" + targetId + "/sword"] = updates.sword;
+    multi["users/" + targetId + "/power"] = updates.power;
+    multi["users/" + targetId + "/weaponType"] = updates.weaponType;
+    multi["users/" + targetId + "/hofProcessedAt"] = updates.hofProcessedAt;
+    multi["users/" + targetId + "/hofDeadline"] = updates.hofDeadline;
+    multi["users/" + targetId + "/hofAchievedAt"] = updates.hofAchievedAt;
+    multi["users/" + targetId + "/hofWeaponTypeAt30"] = updates.hofWeaponTypeAt30;
+    multi["hofQueue/" + targetId] = null;
+
+    db.ref().update(multi).then(() => {
+      // 본인이라면 즉시 로컬 상태도 반영
+      if (targetId === userId) {
+        sword = 0;
+        power = 10;
+        weaponType = null;
+
+        hofDeadline = 0;
+        hofAchievedAt = 0;
+        hofWeaponTypeAt30 = "";
+        hofProcessedAt = now;
+
+        update();
+        updateHonorHallButton();
+      }
+    });
+  });
+}
+
+// 🔁 전당 큐 스윕: 만료된 유저를 찾아 자동 전당행 처리
+function sweepHofQueue() {
+  const now = Date.now();
+  db.ref("hofQueue")
+    .orderByValue()
+    .endAt(now)
+    .limitToFirst(10)
+    .once("value")
+    .then(snap => {
+      const val = snap.val();
+      if (!val) return;
+
+      Object.keys(val).forEach(uid => {
+        sendUserToHallOfFame(uid, "auto");
+      });
+    });
+}
+
+// ✅ 로그인 후 호출: 버튼 타이머 + 큐 스윕 타이머 시작
+function startHonorHallTimers() {
+  // UI 1초 갱신
+  if (hofUiTimer) clearInterval(hofUiTimer);
+  hofUiTimer = setInterval(() => {
+    updateHonorHallButton();
+
+    // 본인이 만료되면 자동 처리 트리거(본인도 즉시 전당행)
+    if (userId && Number(sword) >= 30 && hofDeadline && Date.now() >= hofDeadline) {
+      sendUserToHallOfFame(userId, "auto");
+    }
+  }, 1000);
+
+  // 큐 스윕(다른 유저 포함)
+  if (hofSweepTimer) clearInterval(hofSweepTimer);
+  hofSweepTimer = setInterval(() => {
+    sweepHofQueue();
+  }, 15000); // 15초마다 스윕
+}
+
+// 🌈 전당 리스트 로드
+function loadHallOfFame() {
+  const listEl = document.getElementById("hallOfFameList");
+  if (!listEl) return;
+
+  db.ref("hallOfFame")
+    .limitToLast(30)
+    .on("value", (snap) => {
+      const obj = snap.val() || {};
+      const arr = Object.keys(obj).map(k => ({ key:k, ...obj[k] }));
+
+      // 최신 기록이 위로
+      arr.sort((a, b) => Number(b.recordedAt || 0) - Number(a.recordedAt || 0));
+
+      if (arr.length === 0) {
+        listEl.innerHTML = `<div style="text-align:center; color:#999;">아직 기록이 없습니다.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = arr.map((r, i) => {
+        const d = r.achievedAt ? new Date(Number(r.achievedAt)).toLocaleString("ko-KR") : "-";
+        const stars = "★".repeat(Math.min(10, Number(r.stars || 0)));
+        return `
+          <div style="padding:4px 0; border-bottom:1px solid #333;">
+            <div style="display:flex; justify-content:space-between; gap:8px;">
+              <div>
+                <b>${i + 1}.</b> ${r.id} <span style="color:#ffcc66;">${stars}</span>
+              </div>
+              <div style="color:#aaa; font-size:11px;">${d}</div>
+            </div>
+            <div style="font-size:11px; color:#ccc; margin-top:2px;">
+              ${r.weaponName} (+30강)
+            </div>
+          </div>
+        `;
+      }).join("");
+    });
+}
+
 // 🎯 강화 아이템 체크박스 라벨 수량 갱신
 function updateUpgradeItemLabels() {
   const elScroll15 = document.getElementById("labelUseScroll15");
@@ -4027,6 +4303,8 @@ updateDuelUI();
   
   // 🔥 현재 사냥터 배경 적용 (CSS ::before용 변수 세팅)
   applyFieldBackground();
+
+  updateHonorHallButton();
 
     // ✅ 강화 아이템 라벨 수량 갱신
   updateUpgradeItemLabels();
@@ -5668,27 +5946,25 @@ if (before === 29 && sword >= 30 && !usedAnyScrollThisAttempt) {
   if (grantTitleOnceNoSave("god30")) save();
 }
 
-// ✅ 30강 달성 누적(최강자/달인/고인물/썩은물)
+// ✅ 30강 달성 → 명예의 전당 “대기 등록(72시간)”
 if (before < 30 && sword >= 30) {
   reach30Count = Number(reach30Count || 0) + 1;
 
-  // weaponType이 아직 없을 수도 있으니 방어
+  // 무기별 30강 달성 카운트도 유지(별/도감 등에 재사용 가능)
   const wt = weaponType || "sword";
   weapon30Counts = weapon30Counts || {};
   weapon30Counts[wt] = Number(weapon30Counts[wt] || 0) + 1;
 
-  if (reach30Count >= 1) {
-    if (grantTitleOnceNoSave("best30")) save();
-  }
-  if (reach30Count >= 3) {
-    if (grantTitleOnceNoSave("master30")) save();
-  }
-  if (weapon30Counts[wt] >= 2) {
-    if (grantTitleOnceNoSave("oldwater")) save();
-  }
-  if (weapon30Counts[wt] >= 3) {
-    if (grantTitleOnceNoSave("stale")) save();
-  }
+  // 🏛️ 전당 카운트 시작
+  hofAchievedAt = Date.now();
+  hofWeaponTypeAt30 = wt;
+  hofDeadline = hofAchievedAt + (72 * 60 * 60 * 1000); // 72시간
+  hofProcessedAt = 0;
+
+  // ✅ 전당 큐 등록: 해당 유저가 접속 안 해도, 다른 유저가 게임 켜면 스윕 처리 가능
+  try {
+    db.ref("hofQueue/" + userId).set(hofDeadline);
+  } catch (e) {}
 }
 
   rollPowerForCurrentSword();
@@ -6420,6 +6696,10 @@ destroyCount  = 0;
         fireworksDestroyed: { 21:false, 22:false, 23:false, 24:false, 25:false },
         reach30Count: 0,
         weapon30Counts: {},
+        hofDeadline: 0,
+        hofAchievedAt: 0,
+        hofWeaponTypeAt30: "",
+        hofProcessedAt: 0,
         lastHuntDate: "",
         itemScroll15: Number(itemScroll15),
         itemProtect: Number(itemProtect),
@@ -6520,6 +6800,10 @@ if (equippedTitle && equippedTitle.includes("${")) equippedTitle = "";
       fireworksDestroyed = data.fireworksDestroyed || { 21:false, 22:false, 23:false, 24:false, 25:false };
       reach30Count = Number(data.reach30Count || 0);
       weapon30Counts = data.weapon30Counts || {};
+      hofDeadline = Number(data.hofDeadline || 0);
+      hofAchievedAt = Number(data.hofAchievedAt || 0);
+      hofWeaponTypeAt30 = data.hofWeaponTypeAt30 || "";
+      hofProcessedAt = Number(data.hofProcessedAt || 0);
       superSuccessCount = Number(data.superSuccessCount || 0);
       downStreak        = Number(data.downStreak || 0);
       dopamineTried     = Number(data.dopamineTried || 0);
@@ -6635,6 +6919,9 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
 
     update();
     showTutorialIfFirstTime();
+    loadHallOfFame();
+startHonorHallTimers();
+updateHonorHallButton();
     loadUpdateNotices();   // 🔔 로그인 후 공지 불러오기
     ensureDuelWeek();
 
@@ -6703,6 +6990,10 @@ function save() {
     fireworksDestroyed: fireworksDestroyed,
     reach30Count: reach30Count,
     weapon30Counts: weapon30Counts,
+    hofDeadline: Number(hofDeadline || 0),
+    hofAchievedAt: Number(hofAchievedAt || 0),
+    hofWeaponTypeAt30: hofWeaponTypeAt30 || "",
+    hofProcessedAt: Number(hofProcessedAt || 0),
   };
 
   // ⭐ 강화 수치가 바뀌었을 때만 updated 갱신
@@ -6976,6 +7267,10 @@ if (equippedTitle && equippedTitle.includes("${")) equippedTitle = "";
     fireworksDestroyed = data.fireworksDestroyed || { 21:false, 22:false, 23:false, 24:false, 25:false };
     reach30Count = Number(data.reach30Count || 0);
     weapon30Counts = data.weapon30Counts || {};
+    hofDeadline = Number(data.hofDeadline || 0);
+    hofAchievedAt = Number(data.hofAchievedAt || 0);
+    hofWeaponTypeAt30 = data.hofWeaponTypeAt30 || "";
+    hofProcessedAt = Number(data.hofProcessedAt || 0);
     superSuccessCount = Number(data.superSuccessCount || 0);
     downStreak        = Number(data.downStreak || 0);
     dopamineTried     = Number(data.dopamineTried || 0);
@@ -7083,6 +7378,9 @@ if (titleChanged) save();
     update();
     showTutorialIfFirstTime();
     loadUpdateNotices();
+    loadHallOfFame();
+startHonorHallTimers();
+updateHonorHallButton();
     ensureDuelWeek();
   });
 }
