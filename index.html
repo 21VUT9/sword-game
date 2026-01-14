@@ -1171,7 +1171,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.951)
+    (v3.952)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -5173,16 +5173,169 @@ function getUpgradeChance(level) {
 
   return chance;
 }
+// 🎰 출석 가챠 보상(가중치 % 합계 = 100)
+const ATTENDANCE_GACHA_POOL = [
+  { type: "itemProtect",     name: "파괴방지 주문서",        count: 1,  weight: 5,  img: "images/items/scroll_destroy_protect.png" },
+  { type: "itemSuper",       name: "슈퍼강화 주문서",        count: 1,  weight: 3,  img: "images/items/scroll_super.png" },
+  { type: "itemDownProtect", name: "강등방지 주문서",        count: 1,  weight: 15, img: "images/items/scroll_down_protect.png" },
+  { type: "honorMedal",      name: "명예의 훈장",            count: 30, weight: 15, img: "images/items/honor_medal.png" },
+  { type: "itemRateUp5",     name: "강화확률 +5% 주문서",    count: 1,  weight: 7,  img: "images/items/item_rateup5.png" },
+  { type: "starShard",       name: "빛나지 못한 별의 조각",  count: 5,  weight: 15, img: "images/items/item_star_shard.png" },
+  { type: "itemScroll15",    name: "15강 강화 주문서",       count: 1,  weight: 10, img: "images/items/item_scroll15.png" },
+  { type: "itemScroll21",    name: "21강 강화 주문서",       count: 1,  weight: 5,  img: "images/items/item_scroll21.png" },
+  { type: "itemDownProtect", name: "강등방지 주문서",        count: 5,  weight: 5,  img: "images/items/scroll_down_protect.png" },
+  { type: "gold",            name: "5억 골드",               count: 500000000, weight: 20, img: "images/items/gold.png" }
+];
 
-// 🎁 출석 연속 보상 (5회마다 반복)
-const attendanceBonusTable = {
-  5:  { type: "downProtect",   name: "강등방어 주문서" },
-  10: { type: "scroll15",      name: "15강 강화 주문서" },
-  15: { type: "destroyProtect",name: "파괴방어 주문서" },
-  20: { type: "superScroll",   name: "슈퍼강화 주문서" },
-  25: { type: "downProtect",   name: "강등방어 주문서" }
-};
-  
+// 🎲 가중치 랜덤 1개 뽑기
+function pickAttendanceGachaReward() {
+  const total = ATTENDANCE_GACHA_POOL.reduce((sum, r) => sum + (Number(r.weight) || 0), 0);
+  let roll = Math.random() * total;
+
+  for (const r of ATTENDANCE_GACHA_POOL) {
+    roll -= (Number(r.weight) || 0);
+    if (roll <= 0) return r;
+  }
+  return ATTENDANCE_GACHA_POOL[ATTENDANCE_GACHA_POOL.length - 1];
+}
+
+// 🎁 실제 보상 지급 (기존 변수명 그대로 사용)
+function grantAttendanceGachaReward(reward) {
+  if (!reward) return;
+
+  switch (reward.type) {
+    case "itemProtect":
+      itemProtect = Number(itemProtect || 0) + reward.count;
+      break;
+    case "itemSuper":
+      itemSuper = Number(itemSuper || 0) + reward.count;
+      break;
+    case "itemDownProtect":
+      itemDownProtect = Number(itemDownProtect || 0) + reward.count;
+      break;
+    case "itemRateUp5":
+      itemRateUp5 = Number(itemRateUp5 || 0) + reward.count;
+      break;
+    case "itemScroll15":
+      itemScroll15 = Number(itemScroll15 || 0) + reward.count;
+      break;
+    case "itemScroll21":
+      itemScroll21 = Number(itemScroll21 || 0) + reward.count;
+      break;
+    case "starShard":
+      starShard = Number(starShard || 0) + reward.count;
+      break;
+    case "honorMedal":
+      itemHonorMedal = Number(itemHonorMedal || 0) + reward.count;
+      break;
+    case "gold":
+      gold = Number(gold || 0) + Number(reward.count || 0);
+      break;
+    default:
+      break;
+  }
+}
+
+// 🎞️ 3초 가챠 연출: 빠르게→점점 느려지다가 멈춤
+function playAttendanceGachaAnimationAndGrant(onDone) {
+  // 초기 표시용(첫 프레임도 랜덤)
+  let current = pickAttendanceGachaReward();
+
+  const html = `
+    <div style="font-size:16px; font-weight:bold; margin-bottom:6px;">
+      ✅ 출석 완료! (보상 추첨 중…)
+    </div>
+
+    <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-top:6px;">
+      <img id="attendanceGachaImg"
+           src="${current.img || ""}"
+           style="width:52px; height:52px; image-rendering:pixelated; border:1px solid #444; border-radius:8px;"
+           onerror="this.style.display='none'">
+      <div>
+        <div id="attendanceGachaName" style="font-size:14px; font-weight:bold;">${current.name}</div>
+        <div id="attendanceGachaSub" style="font-size:12px; color:#bbb; margin-top:2px;">
+          ${current.type === "gold" ? formatGold(current.count) + " 골드" : ("x" + current.count)}
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:10px; font-size:12px; color:#aaa;">
+      아이템이 멈추면 그 보상이 지급됩니다…
+    </div>
+  `;
+
+  // ✅ 버튼 숨기고 팝업 띄우기 (NPC 없이)
+  showNpcMessage(html, null, false, "");
+
+  const imgEl = document.getElementById("attendanceGachaImg");
+  const nameEl = document.getElementById("attendanceGachaName");
+  const subEl  = document.getElementById("attendanceGachaSub");
+
+  const start = Date.now();
+  const endAt = start + 3000;
+
+  let delay = 60; // 시작은 빠르게
+
+  function tick() {
+    const now = Date.now();
+    const left = endAt - now;
+
+    // 남은 시간이 0 이하면 확정
+    if (left <= 0) {
+      // 최종 보상 지급
+      grantAttendanceGachaReward(current);
+
+      // 로그
+      const rewardText = current.type === "gold"
+        ? `${formatGold(current.count)} 골드`
+        : `${current.name} x${current.count}`;
+
+      writeLog(`${userId}님이 출석 보상으로 ${rewardText} 를 획득했습니다. (연속 ${attendanceStreak}회)`);
+
+      // 저장/갱신
+      save();
+      update();
+
+      // 최종 결과 팝업(버튼 보이게)
+      const finalHtml = `
+        <div style="font-size:16px; font-weight:bold; margin-bottom:6px;">
+          🎉 출석 보상 확정!
+        </div>
+        <div style="font-size:13px;">
+          <b>${rewardText}</b> 를 획득했습니다.<br>
+          (연속 ${attendanceStreak}회)
+        </div>
+      `;
+      closeNpcPopup();
+      showNpcMessage(finalHtml, null, true, "");
+
+      if (typeof onDone === "function") onDone(current);
+      return;
+    }
+
+    // 계속 굴리기: 매 tick마다 “표시되는 아이템”을 바꿈
+    current = pickAttendanceGachaReward();
+
+    if (imgEl) {
+      imgEl.style.display = "block";
+      imgEl.src = current.img || "";
+    }
+    if (nameEl) nameEl.textContent = current.name;
+    if (subEl) {
+      subEl.textContent = (current.type === "gold")
+        ? (formatGold(current.count) + " 골드")
+        : ("x" + current.count);
+    }
+
+    // 시간이 지날수록 느려지게
+    delay = Math.min(380, Math.floor(delay * 1.13));
+
+    setTimeout(tick, delay);
+  }
+
+  tick();
+}
+
 function checkAttendance() {
   if (!userRef || !userId) {
     alert("로그인 후 이용 가능합니다.");
@@ -5198,89 +5351,21 @@ function checkAttendance() {
   }
 
   // 날짜 비교 (연속 출석 처리)
-const yesterday = getYesterdayDateString();
+  const yesterday = getYesterdayDateString();
 
-// 어제도 찍었으면 연속 출석 +1, 아니면 1부터
-if (lastAttendanceDay === yesterday) {
-  attendanceStreak++;
-} else {
-  attendanceStreak = 1;
-}
-
-lastAttendanceDay = today;
-lastAttendanceDate = today;
-attendanceCount++;
-
-  // ==========================
-  // 🎁 골드 지급 방식 변경
-  // ==========================
-
-  let rewardGold = 0;
-
-  if (sword < 15) {
-    // 15강 이전 → 기존 지급 유지
-    rewardGold = 60000;
+  // 어제도 찍었으면 연속 출석 +1, 아니면 1부터
+  if (lastAttendanceDay === yesterday) {
+    attendanceStreak++;
   } else {
-    // 15강 이후 → 강화 1번 가능한 금액 지급
-    rewardGold = getCurrentUpgradeCost();
-  }
-  // 골드 지급
-  gold += rewardGold;
-
-  writeLog(
-    `${userId}님이 출석으로 ${formatGold(rewardGold)} 골드를 획득했습니다. `
-    + `(연속 ${attendanceStreak}회)`
-  );
-
-  // ==========================
-  // 🎯 5회 / 10회 / 15회 / 20회 / 25회 보상
-  // ==========================
-
-  const key = (attendanceStreak % 25) || 25;
-  const bonus = attendanceBonusTable[key];
-
-  // 🎁 먼저 "기본 출석 완료" 메시지 HTML을 만든다
-  let messageHtml = `
-    <div style="font-size:16px; font-weight:bold;">
-      ✅ 출석 완료!
-    </div>
-    <div style="margin-top:4px; font-size:13px;">
-      오늘 출석 보상으로 <b>${formatGold(rewardGold)} 골드</b>를 획득했습니다.<br>
-      (연속 ${attendanceStreak}회)
-    </div>
-  `;
-
-  // 🔁 만약 이번이 5/10/15/20/25회라 보너스가 있다면, 아래 내용을 추가
-  if (bonus) {
-    // 아이템 지급
-    if (bonus.type === "scroll15")   itemScroll15++;
-    if (bonus.type === "superScroll") itemSuper++;
-    if (bonus.type === "downProtect") itemDownProtect++;
-    if (bonus.type === "destroyProtect") itemProtect++;
-
-    writeLog(
-      `${userId}님이 연속 ${attendanceStreak}회 출석 달성! `
-      + `출석 보상으로 ${bonus.name}이 지급되었습니다.`
-    );
-
-    // 팝업 HTML에 보너스 안내 추가
-    messageHtml += `
-      <div style="margin-top:8px; font-size:13px;">
-        🎁 <b>연속 ${attendanceStreak}회 출석 보상</b><br>
-        추가로 <b>${bonus.name}</b>이 지급되었습니다!
-      </div>
-    `;
+    attendanceStreak = 1;
   }
 
-  // 📢 최종 팝업 한 번만 호출
-  showNpcMessage(
-    messageHtml,
-    null,   // NPC 이미지 없으면 null
-    true
-  );
+  lastAttendanceDay = today;
+  lastAttendanceDate = today;
+  attendanceCount++;
 
-  update();
-  save();
+  // ✅ 여기서 바로 “가챠 연출 + 보상 지급”
+  playAttendanceGachaAnimationAndGrant();
 }
   
 /* 강화 */
