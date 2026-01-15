@@ -1273,7 +1273,7 @@ button {
 
 /* ✅ NPC는 우측하단 */
 .titleNpcImg{
-  width: 110px;                  /* ✅ 상점처럼 ‘작고 귀엽게’ */
+  width: 120px;           
   height: auto;
   object-fit: contain;
   filter: drop-shadow(0 6px 10px rgba(0,0,0,0.65));
@@ -1290,7 +1290,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.981)
+    (v3.991)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1881,7 +1881,7 @@ button {
     <!-- 아이템 리스트 영역 -->
     <div id="scrollShopItemList"
          style="border:1px solid #444; border-radius:6px; padding:4px;
-                max-height:220px; overflow-y:auto; margin-bottom:8px;">
+                style="height:220px; overflow-y:auto; margin-bottom:8px;">
       <!-- JS로 한 줄씩 채울 예정 -->
     </div>
 
@@ -3119,6 +3119,17 @@ const scrollShopItems = [
     img: "images/items/scroll_protect.png",
     desc: "강화 실패 시 무기가 파괴되는 것을 1회 막아줍니다."
   },
+
+  // 🆕 교환 상품: 강등방지 10개 → 파괴방지 1개
+  {
+    id: "protect_trade_down10",
+    name: "파괴방지 주문서 (교환)",
+    priceType: "downProtect", // 강등방지 주문서
+    price: 10,
+    img: "images/items/scroll_protect.png",
+    desc: "강등방지 주문서 10개로 파괴방지 주문서 1개를 교환합니다."
+  },
+
   {
     id: "super",
     name: "슈퍼강화 주문서",
@@ -3287,9 +3298,11 @@ function renderScrollShopItems() {
 
   scrollShopItems.forEach((item) => {
     const priceIcon =
-      item.priceType === "starShard"
-        ? "images/items/star_shard.png"
-        : "images/items/honor_medal.png";
+  item.priceType === "starShard"
+    ? "images/items/star_shard.png"
+    : item.priceType === "honor"
+      ? "images/items/honor_medal.png"
+      : "images/items/scroll_down_protect.png";
 
     html += `
       <div
@@ -3358,15 +3371,16 @@ function onClickScrollShopNo() {
   setScrollShopNpcIdle();
 }
 
-  
-
-  // 재화 충분한지 체크
+// 재화 충분한지 체크
 function checkScrollShopCurrency(item) {
   if (item.priceType === "starShard") {
     return starShard >= item.price;
   }
   if (item.priceType === "honor") {
     return itemHonorMedal >= item.price;
+  }
+  if (item.priceType === "downProtect") {
+    return itemDownProtect >= item.price;
   }
   return false;
 }
@@ -3424,13 +3438,16 @@ function proceedScrollShopPurchase(item) {
     }
 
     // 실제 재화 차감
-    if (item.priceType === "starShard") {
-      starShard -= item.price;
-      if (starShard < 0) starShard = 0;
-    } else if (item.priceType === "honor") {
-      itemHonorMedal -= item.price;
-      if (itemHonorMedal < 0) itemHonorMedal = 0;
-    }
+if (item.priceType === "starShard") {
+  starShard -= item.price;
+  if (starShard < 0) starShard = 0;
+} else if (item.priceType === "honor") {
+  itemHonorMedal -= item.price;
+  if (itemHonorMedal < 0) itemHonorMedal = 0;
+} else if (item.priceType === "downProtect") {
+  itemDownProtect -= item.price;
+  if (itemDownProtect < 0) itemDownProtect = 0;
+}
 
     // 아이템 지급 + 로그/저장/인벤토리 갱신
     grantScrollShopItem(item);
@@ -3462,6 +3479,9 @@ function proceedScrollShopPurchase(item) {
 function grantScrollShopItem(item) {
   if (item.id === "scroll21")   itemScroll21++;
   if (item.id === "protect")    itemProtect++;
+  else if (item.id === "protect_trade_down10") {
+  itemProtect += 1;
+}
   if (item.id === "super")      itemSuper++;
   if (item.id === "rateUp5")    itemRateUp5++;
 
