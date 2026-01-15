@@ -490,7 +490,7 @@ button {
   border-radius: 8px;
   border: 0;
   cursor: pointer;
-  font-weight: 700;
+  font-weight: 900;
 }
 
 .toast-awe-msg{
@@ -1252,7 +1252,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.965)
+    (v3.966)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1970,7 +1970,11 @@ function closeGlobal30Overlay() {
 
 // ✅ +30 이벤트 구독: 안 본 유저만 오버레이 + 축하 로그 + 경외 버튼 로그
 function subscribeGlobal30Events() {
+  // ✅ 중복 리스너 방지: 기존 구독 해제 후 재구독
+  globalEventsRef.child(GLOBAL30_KEY).off();
+
   globalEventsRef.child(GLOBAL30_KEY).on("value", (snap) => {
+
     const v = snap.val();
     if (!v) return;
 
@@ -1984,8 +1988,9 @@ if (lastSeenGlobal30EventId !== eventId) {
     const weaponName = v.weaponName || "무기";
 
     const msg =
-      `${nick}이 +30강의 벽을 돌파하여 +30강에 도달했습니다!<br>` +
-      `그 용기에 퍼그란트의 대장간이 박수를 보냅니다.`;
+  `✦✧✦✧✦ <span class="sparkle-silver">[천상(天上) 30강]</span> ✦✧✦✧✦<br>` +
+  `<span class="sparkle-gold">${nick}</span>이 <span class="rainbowStar">+30</span>에 도달했습니다!<br>` +
+  `<span style="color:#cfd8ff;">퍼그란트 대장간에 새로운 우주의 질서가 기록됩니다.</span>`;
 
     // ✅ DB에 남는 실시간 로그 1개 (5줄 제한 UI는 기존 로직이 이미 처리)
     writeLog(msg, false, {
@@ -3741,13 +3746,12 @@ function sendUserToHallOfFame(targetId, reason) {
 
     // 이미 처리된 유저면 종료
     if (uProcessedAt && uProcessedAt > 0) {
-      db.ref("hofQueue/" + targetId).remove();
       return;
-    }
+      }
+
 
     // 30강이 아니면 큐에서 제거
     if (uSword < 30) {
-      db.ref("hofQueue/" + targetId).remove();
       return;
     }
 
@@ -3795,7 +3799,6 @@ function sendUserToHallOfFame(targetId, reason) {
     multi["users/" + targetId + "/hofDeadline"] = updates.hofDeadline;
     multi["users/" + targetId + "/hofAchievedAt"] = updates.hofAchievedAt;
     multi["users/" + targetId + "/hofWeaponTypeAt30"] = updates.hofWeaponTypeAt30;
-    multi["hofQueue/" + targetId] = null;
 
     db.ref().update(multi).then(() => {
       // 본인이라면 즉시 로컬 상태도 반영
