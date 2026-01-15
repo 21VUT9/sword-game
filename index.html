@@ -1290,7 +1290,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.970)
+    (v3.971)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -7059,13 +7059,25 @@ destroyCount  = 0;
 
   userRef.once("value").then(s => {
 
-      // ✅ 신규 계정은 기존 글로벌 30강 이벤트를 "이미 본 것"으로 처리(첫 로그인 팝업 방지)
-      lastSeenGlobal30EventId = Date.now();
-      aweUsedGlobal30EventId = 0;
-      weaponLocked = {};
+      // ✅ (신규 계정) 서버에 올라와 있는 최신 +30 이벤트를 읽어서 "이미 본 것"으로 저장
+// Date.now()로 찍으면 신규유저 첫 로그인에 기존 +30 팝업이 뜰 수 있음
+function initNewUserGlobal30Seen() {
+  return globalEventsRef.child(GLOBAL30_KEY).once("value").then(snap => {
+    const v = snap.val() || {};
+    lastSeenGlobal30EventId = Number(v.id || 0); // 이벤트 없으면 0
+    aweUsedGlobal30EventId = 0;
+    weaponLocked = {};
+  }).catch(() => {
+    lastSeenGlobal30EventId = 0;
+    aweUsedGlobal30EventId = 0;
+    weaponLocked = {};
+  });
+}
     
     // ⭐ 신규 계정 생성 시
     if (!s.exists()) {
+
+       return initNewUserGlobal30Seen().then(() => {
 
       // 처음 계정 생성 시, 현재 sword 기준으로 공격력 한 번 굴려두기
       rollPowerForCurrentSword();
@@ -7161,6 +7173,7 @@ loadRanking();
 
 save();
 return;
+ });
       
 // ✅ (중요) 신규 계정 생성 직후: 로컬 메모리도 초기화
 // ✅ 신규 계정은 다른 스탯도 확실히 초기화(이전 계정 잔상 방지)
