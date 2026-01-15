@@ -1932,6 +1932,39 @@ function publishGlobal30Event(winnerId, winnerNick, weaponName, weaponType) {
   return eventId;
 }
 
+// ✅ 서버 최초 30강(월드챔피언) 1명만 지급용 키
+const GLOBAL_FIRST30_KEY = "first30";
+
+// ✅ 서버 최초 30강이면 worldchamp 지급 (트랜잭션으로 1명만 확정)
+function tryGrantWorldChampionIfFirst(winnerId, winnerNick, weaponName, weaponType) {
+  const now = Date.now();
+
+  return globalEventsRef.child(GLOBAL_FIRST30_KEY).transaction((cur) => {
+    // 이미 누가 먼저 기록했으면 아무 것도 안 함
+    if (cur) return;
+
+    // 최초 기록자 확정
+    return {
+      id: now,
+      winnerId: winnerId || "",
+      winnerNick: winnerNick || "",
+      weaponName: weaponName || "",
+      weaponType: weaponType || "",
+      time: now
+    };
+  }).then((res) => {
+    if (res && res.committed) {
+      // ✅ 최초 1명만 여기로 들어옴
+      grantTitleOnceNoSave("worldchamp");
+      save(); // 쉼표/괄호 누락 주의: save(); 로 끝
+      update();
+    }
+  }).catch((e) => {
+    // 네 콘솔에만 찍고 게임 흐름은 막지 않음
+    console.log("tryGrantWorldChampionIfFirst error:", e);
+  });
+}
+  
 // ✅ +30 오버레이 열기
 function openGlobal30Overlay(payload) {
   const overlay = document.getElementById("global30Overlay");
@@ -6278,6 +6311,7 @@ db.ref("hofQueue/" + userId).set(hofDeadline).catch(() => {});
   const weaponName = getWeaponInfo(30, wt).name;
   const winnerNick = formatNicknameWithTitle(userId, equippedTitle, reach30Count);
   const eventId = publishGlobal30Event(userId, winnerNick, weaponName, wt);
+  tryGrantWorldChampionIfFirst(userId, winnerNick, weaponName, weaponType);
 
   // 달성자는 ‘봤음’ 처리 (원하면)
   lastSeenGlobal30EventId = eventId;
