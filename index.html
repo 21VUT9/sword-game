@@ -1252,7 +1252,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.966)
+    (v3.967)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3789,33 +3789,60 @@ function sendUserToHallOfFame(targetId, reason) {
       hofWeaponTypeAt30: ""
     };
 
-    // 기록 + 리셋 + 큐 제거
-    const multi = {};
-    multi["hallOfFame/" + hofRef.key] = record;
-    multi["users/" + targetId + "/sword"] = updates.sword;
-    multi["users/" + targetId + "/power"] = updates.power;
-    multi["users/" + targetId + "/weaponType"] = updates.weaponType;
-    multi["users/" + targetId + "/hofProcessedAt"] = updates.hofProcessedAt;
-    multi["users/" + targetId + "/hofDeadline"] = updates.hofDeadline;
-    multi["users/" + targetId + "/hofAchievedAt"] = updates.hofAchievedAt;
-    multi["users/" + targetId + "/hofWeaponTypeAt30"] = updates.hofWeaponTypeAt30;
+// 기록 + 리셋 + 큐 제거
+const multi = {};
+multi["hallOfFame/" + hofRef.key] = record;
 
-    db.ref().update(multi).then(() => {
-      // 본인이라면 즉시 로컬 상태도 반영
-      if (targetId === userId) {
-        sword = 0;
-        power = 10;
-        weaponType = null;
+multi["users/" + targetId + "/sword"] = updates.sword;
+multi["users/" + targetId + "/power"] = updates.power;
+multi["users/" + targetId + "/weaponType"] = updates.weaponType;
 
-        hofDeadline = 0;
-        hofAchievedAt = 0;
-        hofWeaponTypeAt30 = "";
-        hofProcessedAt = now;
+multi["users/" + targetId + "/hofProcessedAt"] = updates.hofProcessedAt;
+multi["users/" + targetId + "/hofDeadline"] = updates.hofDeadline;
+multi["users/" + targetId + "/hofAchievedAt"] = updates.hofAchievedAt;
+multi["users/" + targetId + "/hofWeaponTypeAt30"] = updates.hofWeaponTypeAt30;
 
-        update();
-        updateHonorHallButton();
-      }
-    });
+// ✅ hofQueue도 같이 제거(안 지우면 만료 스윕에서 다시 건드릴 여지가 생김)
+multi["hofQueue/" + targetId] = null;
+
+db.ref().update(multi)
+  .then(() => {
+    // 본인이라면 즉시 로컬 상태도 반영
+    if (targetId === userId) {
+      sword = 0;
+      power = 10;
+      weaponType = null;
+
+      hofDeadline = 0;
+      hofAchievedAt = 0;
+      hofWeaponTypeAt30 = "";
+      hofProcessedAt = now;
+
+      save(); // ✅ 로컬 세이브도 확정(필드들 저장)
+      update();
+      updateHonorHallButton();
+
+      showNpcMessage(
+        `<div style="font-size:14px; line-height:1.6;">
+          기록 완료. <b>명예의 전당</b>에 새겨졌어.<br>
+          이제… 다시 처음부터, 별을 향해.
+        </div>`,
+        "images/npc/linea_idle.png"
+      );
+    }
+  })
+  .catch((e) => {
+    // ✅ 지금처럼 "아무 반응 없음"을 막기 위해 에러를 화면에 띄움
+    showNpcMessage(
+      `<div style="font-size:13px; line-height:1.6;">
+        전당 기록에 실패했어.<br>
+        <b>Firebase 권한(PERMISSION_DENIED)</b> 가능성이 높아.<br>
+        콘솔을 확인해줘.
+      </div>`,
+      "images/npc/linea_idle.png"
+    );
+    console.error(e);
+  });
   });
 }
 
