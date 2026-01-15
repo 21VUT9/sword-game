@@ -1290,7 +1290,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.972)
+    (v3.981)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2803,6 +2803,55 @@ const WEAPON_INFO_AXE = {
   30: { name: "신궁(神弓) 「아이온」", desc: "시간 법칙 그 자체. ‘쏘는 행위’가 곧 결과가 된다.", img: "images/weapons/bow_30.png" }
 };
 
+  // 🔮 강화 단계별 스태프 이름 / 설명 / 이미지 경로
+// 0강은 공용(제련되지 않은 금속괴)
+const WEAPON_INFO_STAFF = {
+  0: WEAPON_INFO[0],
+
+  // 🌑 1~10강 : 현실 마법 장비 (고유명사 없음)
+  1:  { name: "낡은 나무 지팡이",          desc: "마력이 거의 남지 않은, 오래된 나무 지팡이.", img: "images/weapons/staff_01.png" },
+  2:  { name: "수련용 마법 지팡이",        desc: "기초 주문을 연습하기 위한 수련 장비.",       img: "images/weapons/staff_02.png" },
+  3:  { name: "가죽끈 마력봉",            desc: "손에서 미끄러지지 않게 가죽끈을 감아 두었다.", img: "images/weapons/staff_03.png" },
+  4:  { name: "우드 스태프",              desc: "나무결 속에 잔잔한 마력이 흐른다.",           img: "images/weapons/staff_04.png" },
+  5:  { name: "평범한 마법 지팡이",        desc: "특별하진 않지만, 주문을 담아내기엔 충분하다.", img: "images/weapons/staff_05.png" },
+  6:  { name: "룬 각인 지팡이",            desc: "짧은 룬이 새겨져, 마력이 조금 더 또렷해졌다.", img: "images/weapons/staff_06.png" },
+  7:  { name: "마력 증폭 스태프",          desc: "주문이 퍼지는 반경이 넓어진다.",               img: "images/weapons/staff_07.png" },
+  8:  { name: "정령 친화 지팡이",          desc: "정령이 곁을 맴도는 듯한, 가벼운 진동이 느껴진다.", img: "images/weapons/staff_08.png" },
+  9:  { name: "상급 마력 스태프",          desc: "마력의 흐름이 안정적이다. 실패가 줄어든 느낌.", img: "images/weapons/staff_09.png" },
+  10: { name: "아케인 트레이스",           desc: "비전의 ‘흔적’만으로도 주문이 형태를 가진다.",   img: "images/weapons/staff_10.png" },
+
+  // 🌒 11~17강 : 마도학파·탑·금서
+  11: { name: "문릿 아카이브",             desc: "달빛 아래 봉인된 기록이, 손끝에서 페이지처럼 펼쳐진다.", img: "images/weapons/staff_11.png" },
+  12: { name: "에테르 시길",               desc: "보이지 않는 인장이 마력을 붙잡아, 폭주를 막아준다.",     img: "images/weapons/staff_12.png" },
+  13: { name: "스타폴 에코",               desc: "별이 떨어진 자리의 메아리가, 주문을 더 멀리 보낸다.",   img: "images/weapons/staff_13.png" },
+  14: { name: "이클립스 칸티클",           desc: "식(蝕)의 성가가 울릴 때, 빛과 어둠이 같은 규칙으로 움직인다.", img: "images/weapons/staff_14.png" },
+  15: { name: "세피로트 서킷",             desc: "마도의 ‘회로’가 완성되며, 주문이 한 단계 정교해진다.",   img: "images/weapons/staff_15.png" },
+  16: { name: "인버스 룰",                 desc: "법칙이 거꾸로 서는 순간, 불가능이 가능처럼 굴러간다.",   img: "images/weapons/staff_16.png" },
+  17: { name: "오벨리스크 리치",           desc: "탑의 꼭대기에 닿는 손. 주문의 사거리가 아닌, 세계의 높이를 겨눈다.", img: "images/weapons/staff_17.png" },
+
+  // 🌕 18~20강 : 베히모스 사냥터 구간
+  18: { name: "베히모스 백본",             desc: "거수의 척추를 뽑아냈다. 마력은 이제 ‘재료’가 아니라 ‘전리품’이다.", img: "images/weapons/staff_18.png" },
+  19: { name: "어비스 풋프린트",           desc: "심연을 밟았던 흔적. 되돌아올수록 주문은 더 차갑고 정확해진다.",     img: "images/weapons/staff_19.png" },
+  20: { name: "이블 리퀴엠",               desc: "악의 장례곡. 쓰러진 것들의 이름이 주문의 화음으로 남는다.",         img: "images/weapons/staff_20.png" },
+
+  // 🌟 21~23강 : 대천사의 요람
+  21: { name: "아크윙즈 다운폴",           desc: "날개가 꺾인 순간, 성역은 더 이상 안전지대가 아니게 된다.",           img: "images/weapons/staff_21.png" },
+  22: { name: "샤인락 픽커",               desc: "빛의 자물쇠를 ‘따는’ 손. 닫힌 기적을 강제로 열어젖힌다.",           img: "images/weapons/staff_22.png" },
+  23: { name: "프레이 폴아웃",             desc: "기도가 무너져 내리며, 신성은 잔해처럼 떨어진다.",                     img: "images/weapons/staff_23.png" },
+
+  // 🌟 24~25강 : 신의 처소
+  24: { name: "네임리스 디바인",           desc: "이름 없는 신성. 신을 죽인 뒤에야 ‘호칭’이 의미 없어진다.",           img: "images/weapons/staff_24.png" },
+  25: { name: "갓슬레이어 코드",           desc: "신살의 해석식. ‘죽일 수 있다’는 사실이 곧 새로운 주문이 된다.",        img: "images/weapons/staff_25.png" },
+
+  // 🌈 26~29강 : 초월 — 새로운 에너지 법칙의 탄생
+  26: { name: "프라임 스파크",             desc: "첫 불꽃. 에너지는 더 이상 ‘소모’가 아니라 ‘발생’으로 바뀐다.",         img: "images/weapons/staff_26.png" },
+  27: { name: "이터널 브레쓰",             desc: "끝나지 않는 숨결. 주문이 끊기지 않고, 세계에 남아 순환한다.",          img: "images/weapons/staff_27.png" },
+  28: { name: "루멘 프레임",               desc: "빛의 골격. 마력은 형태를 갖고, 형태는 곧 규칙이 된다.",                img: "images/weapons/staff_28.png" },
+  29: { name: "오로라 베인",               desc: "오로라의 혈관. 하늘의 흐름이 손끝으로 연결된다.",                      img: "images/weapons/staff_29.png" },
+
+  // 🌈 30강 : 최종
+  30: { name: "태고의 에너지 「아르카나」", desc: "마법이 아니다 — 에너지의 원형(原形) 그 자체로 존재한다.",             img: "images/weapons/staff_30.png" }
+};
 
 // 현재 강화 수치 & 타입 기준으로 안전하게 정보 가져오기
 function getWeaponInfo(level, type) {
@@ -2823,6 +2872,10 @@ function getWeaponInfo(level, type) {
     return WEAPON_INFO_BOW[lv] || WEAPON_INFO_BOW[0];
   }
 
+  if (t === "staff") {
+    return WEAPON_INFO_STAFF[lv] || WEAPON_INFO_STAFF[0];
+  }
+
   // 기본: 검
   return WEAPON_INFO[lv] || WEAPON_INFO[0];
 }
@@ -2831,7 +2884,7 @@ function getWeaponInfo(level, type) {
 function ensureWeaponTypeAfterUpgrade(beforeLevel, afterLevel) {
   if (beforeLevel <= 0 && afterLevel >= 1) {
     if (!weaponType) {
-      const types = ["sword", "spear", "axe", "bow"];
+      const types = ["sword", "spear", "axe", "bow", "staff"];
       const idx = Math.floor(Math.random() * types.length);
       weaponType = types[idx];
     }
@@ -2865,7 +2918,7 @@ let duelLastWeekRewardClaimed = false; // 지난주 보상 이미 받았는지 �
 let duelUpdated = 0;          // 이번 주 결투 포인트가 마지막으로 바뀐 시각
 let duelLastWeekUpdated = 0;  // 지난주 결투 포인트 최종 기록 시각  
 let weaponType = null; 
-// null: 아직 미배정(0강) / "sword": 검 / "spear": 창 / "axe": 도끼 / "bow": 활
+// null: 아직 미배정(0강) / "sword": 검 / "spear": 창 / "axe": 도끼 / "bow": 활 / "staff": 스태프
 let isUpgrading = false; 
 let isDueling   = false;   // ⚔️ 결투 VS 대기중일 때 true
 let titlesOwned = {};     // { titleId: true }
@@ -4066,8 +4119,11 @@ const TITLE_DEFS = [
   // ✅ 역병쥐 (반짝 초록) + 방법 숨김
   { id:"plague", name:"역병쥐", how:"???", color:"plague" },
   
-      { id:"bow21", name:"사냥꾼", how:"활 21강 달성", color:"" },
+  { id:"bow21", name:"사냥꾼", how:"활 21강 달성", color:"" },
   { id:"bow30", name:"활의 종착지", how:"활 30강 달성", color:"gold" },
+
+  { id:"staff21", name:"마법사",       how:"스태프 21강 달성", color:"" },
+  { id:"staff30", name:"스태프 종착지", how:"스태프 30강 달성", color:"gold" },
 
     // ✅ 강화/파괴/강등 계열
   { id:"superstar", name:"슈퍼스타", how:"슈퍼강화 1회 성공" },
@@ -4265,6 +4321,15 @@ if (warGodWin) {
 
   if (weaponType === "bow" && maxSwordLevel >= 30) {
     if (grantTitleOnceNoSave("bow30")) changed = true;
+  }
+
+    // 🔮 스태프 전용 칭호
+  if (weaponType === "staff" && maxSwordLevel >= 21) {
+    if (grantTitleOnceNoSave("staff21")) changed = true;
+  }
+
+  if (weaponType === "staff" && maxSwordLevel >= 30) {
+    if (grantTitleOnceNoSave("staff30")) changed = true;
   }
 
   return changed;
