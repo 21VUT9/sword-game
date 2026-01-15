@@ -1290,7 +1290,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.971)
+    (v3.972)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3859,6 +3859,11 @@ multi["hofQueue/" + targetId] = null;
 
 db.ref().update(multi)
   .then(() => {
+
+    // ✅ 전당 등록 로그 (성공했을 때 1회만)
+    const nickHtml = formatNicknameWithTitle(targetId, u.equippedTitle, u.reach30Count);
+    writeLog(`🏛️ ${nickHtml}님이 ${record.weaponName}을 명예의 전당에 등록하였습니다.`);
+
     // 본인이라면 즉시 로컬 상태도 반영
     if (targetId === userId) {
       sword = 0;
