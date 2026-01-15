@@ -8566,18 +8566,19 @@ logRef.limitToLast(50).on("child_added", s => {
     toastMain.appendChild(btn);
   }
 
-  // 30강 로그라면 [경외하기] 버튼 추가 (묵념하기와 동일한 형태)
-if (d.isReach30) {
+// +30 축하 로그라면 [경외하기] 버튼 추가 (묵념하기와 동일한 형태)
+if (d.isAwe) {
   const btn = document.createElement("span");
   btn.textContent = " [경외하기]";
   btn.style.cursor = "pointer";
   btn.style.color = "#ffffff";
+  btn.style.fontWeight = "bold"; // ✅ 글자 진하게
   btn.dataset.logId = logId;
-  btn.dataset.eventId = String(d.global30EventId || 0);
+  btn.dataset.eventId = String(d.aweEventId || 0);
+  btn.dataset.winnerNick = String(d.aweWinnerNick || "");
   btn.onclick = handleAweClick;
   toastMain.appendChild(btn);
 }
-
   toastEl.appendChild(toastMain);
 
   // ⬇ 댓글이 달릴 영역
