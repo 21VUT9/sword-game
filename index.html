@@ -1290,7 +1290,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v3.969)
+    (v3.970)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2039,46 +2039,27 @@ function closeGlobal30Overlay() {
   });
 }
 
-// ✅ +30 이벤트 구독: 안 본 유저만 오버레이 + 축하 로그 + 경외 버튼 로그
+// ✅ +30 이벤트 구독: 안 본 유저만 오버레이 (로그는 절대 쓰지 않음)
 function subscribeGlobal30Events() {
   // ✅ 중복 리스너 방지: 기존 구독 해제 후 재구독
   globalEventsRef.child(GLOBAL30_KEY).off();
 
   globalEventsRef.child(GLOBAL30_KEY).on("value", (snap) => {
-
     const v = snap.val();
     if (!v) return;
 
     const eventId = Number(v.id || 0);
     if (!eventId) return;
 
-// 1) 축하 로그: "기존 실시간 로그"에 1개만 남기기(줄바꿈으로 2줄)
-if (lastSeenGlobal30EventId !== eventId) {
-  try {
-    const nick = v.winnerNick || "누군가";
-    const weaponName = v.weaponName || "무기";
+    // ✅ 이미 본 이벤트면 아무것도 하지 않음 (신규 계정/재로그인 반복 방지 핵심)
+    if (Number(lastSeenGlobal30EventId || 0) >= eventId) return;
 
-    const msg =
-  `✦✧✦✧✦ <span class="sparkle-silver">[천상(天上) 30강]</span> ✦✧✦✧✦<br>` +
-  `<span class="sparkle-gold">${nick}</span>이 <span class="rainbowStar">+30</span>에 도달했습니다!<br>` +
-  `<span style="color:#cfd8ff;">퍼그란트 대장간에 새로운 우주의 질서가 기록됩니다.</span>`;
+    // ✅ 오버레이만 띄우기 (DB logs에는 쓰지 않는다!)
+    openGlobal30Overlay(v);
 
-    // ✅ DB에 남는 실시간 로그 1개 (5줄 제한 UI는 기존 로직이 이미 처리)
-    writeLog(msg, false, {
-      isReach30: true,
-      global30EventId: eventId,
-      winnerNick: nick,
-      weaponName: weaponName
-    });
-  } catch(e) {}
-
-  // 2) 은빛 오버레이(안 본 사람만)
-  openGlobal30Overlay(v);
-
-  // ✅ "봤음" 처리(중복 출력 방지)
-  lastSeenGlobal30EventId = eventId;
-  save();
-}
+    // ✅ "봤음" 처리(중복 출력 방지)
+    lastSeenGlobal30EventId = eventId;
+    save();
   });
 }
 
@@ -6356,6 +6337,19 @@ db.ref("hofQueue/" + userId).set(hofDeadline).catch(() => {});
   const weaponName = getWeaponInfo(30, wt).name;
   const winnerNick = formatNicknameWithTitle(userId, equippedTitle, reach30Count);
   const eventId = publishGlobal30Event(userId, winnerNick, weaponName, wt);
+    // ✅ (중요) 30강 축하 로그는 "달성 순간"에만 DB logs에 1회 기록
+  const msg =
+    `✦✧✦✧✦ <span class="sparkle-silver">[천상(天上) 30강]</span> ✦✧✦✧✦<br>` +
+    `<span class="sparkle-gold">${winnerNick}</span>이 <span class="rainbowStar">+30</span>에 도달했습니다!<br>` +
+    `<span style="color:#cfd8ff;">퍼그란트 대장간에 새로운 우주의 질서가 기록됩니다.</span>`;
+
+  writeLog(msg, false, {
+    isReach30: true,
+    global30EventId: eventId,
+    winnerNick: winnerNick,
+    weaponName: weaponName
+  });
+
   tryGrantWorldChampionIfFirst(userId, winnerNick, weaponName, weaponType);
 
   // 달성자는 ‘봤음’ 처리 (원하면)
@@ -7065,6 +7059,11 @@ destroyCount  = 0;
 
   userRef.once("value").then(s => {
 
+      // ✅ 신규 계정은 기존 글로벌 30강 이벤트를 "이미 본 것"으로 처리(첫 로그인 팝업 방지)
+      lastSeenGlobal30EventId = Date.now();
+      aweUsedGlobal30EventId = 0;
+      weaponLocked = {};
+    
     // ⭐ 신규 계정 생성 시
     if (!s.exists()) {
 
@@ -7121,7 +7120,11 @@ destroyCount  = 0;
 
 // 🏷️ 칭호(업적) 기본값
 titlesOwned: {},
-equippedTitle: ""
+equippedTitle: "",
+
+// ✅ 글로벌 30강 이벤트/경외 기본값(신규 계정 팝업 방지)
+lastSeenGlobal30EventId: lastSeenGlobal30EventId,
+aweUsedGlobal30EventId: 0
 });
 
     // ✅ 신규 계정 생성 직후에는 바로 화면 전환 + 저장으로 마무리
