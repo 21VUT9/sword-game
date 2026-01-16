@@ -1290,7 +1290,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.002)
+    (v4.003)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -8430,24 +8430,55 @@ function getKstWeekKey() {
 // 🏆 지난주 결투 보상 체크 & 지급
 function checkWeeklyDuelReward() {
   if (duelLastWeekRewardClaimed) return;
-  if (!duelLastWeekPoint || duelLastWeekPoint <= 0) return;
 
   // 🆕 이번 기준에서 "진짜 지난주" 범위 계산
   const range = getLastWeekRangeKst();
   const startTs = range.start;
   const endTs   = range.end;
 
+  // ✅ 이번 주 키
+  const thisWeekKey = getKstWeekKey();
+
+  // ✅ (내 기록도) 주차가 안 넘어간 상태면 duelPoint가 '지난주'일 수 있음
+  const myWeekKey = duelPointWeekKey || "";
+  const myPoint =
+    myWeekKey === thisWeekKey
+      ? Number(duelLastWeekPoint || 0)
+      : Number(duelPoint || 0);
+
+  const myTime =
+    myWeekKey === thisWeekKey
+      ? Number(duelLastWeekUpdated || 0)
+      : Number(duelUpdated || 0);
+
+  // 지난주 기록이 없으면 이번 주에는 보상 체크 다시 안 하게 플래그만 세움
+  if (myPoint <= 0 || !myTime || myTime < startTs || myTime >= endTs) {
+    duelLastWeekRewardClaimed = true;
+    save();
+    return;
+  }
+
   const usersRef = db.ref("users");
   usersRef
-    .orderByChild("duelLastWeekPoint")
     .once("value")
     .then((snap) => {
       const arr = [];
+
       snap.forEach((child) => {
         const val = child.val() || {};
         const uid = child.key;
-        const p   = Number(val.duelLastWeekPoint || 0);
-        const t   = Number(val.duelLastWeekUpdated || 0);
+
+        const userWeekKey = val.duelPointWeekKey || "";
+
+        const p =
+          userWeekKey === thisWeekKey
+            ? Number(val.duelLastWeekPoint || 0)
+            : Number(val.duelPoint || 0);
+
+        const t =
+          userWeekKey === thisWeekKey
+            ? Number(val.duelLastWeekUpdated || 0)
+            : Number(val.duelUpdated || 0);
 
         // 🔍 1) 포인트 0 이하는 제외
         if (p <= 0) return;
@@ -8462,9 +8493,13 @@ function checkWeeklyDuelReward() {
         });
       });
 
-      if (arr.length === 0) return;
+      if (arr.length === 0) {
+        duelLastWeekRewardClaimed = true;
+        save();
+        return;
+      }
 
-      // 이하 정렬/랭크 계산 로직은 그대로 유지
+      // 🔁 포인트 내림차순 / 동점이면 먼저 도달(시간 오름차순)
       arr.sort((a, b) => {
         if (b.point !== a.point) return b.point - a.point;
         const aTime = Number(a.updated || 0);
