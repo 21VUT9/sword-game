@@ -3239,9 +3239,11 @@ function showScrollShopConfirmPopup(item) {
   imgEl.src = "images/npc/npc_scrollshop_talk.png";
 
   const currencyLabel =
-    item.priceType === "starShard"
-      ? "빛나지 못한 별의 조각"
-      : "명예의 훈장";
+  item.priceType === "starShard"
+    ? "빛나지 못한 별의 조각"
+    : item.priceType === "honor"
+      ? "명예의 훈장"
+      : "강등방지 주문서";
 
   msgEl.innerHTML = `
     <div style="font-size:16px; font-weight:bold; margin-bottom:6px;">
