@@ -1290,7 +1290,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.001)
+    (v4.002)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -9384,16 +9384,32 @@ function openDuelHistoryPopup() {
   const startTs = range.start;
   const endTs   = range.end;
 
+    // ✅ 이번 주 키 (지난주/이번주 판별용)
+  const thisWeekKey = getKstWeekKey();
+
   usersRef
-    .orderByChild("duelLastWeekPoint")
     .once("value")
     .then((snap) => {
       const arr = [];
 
       snap.forEach((child) => {
-        const val   = child.val() || {};
-        const point = Number(val.duelLastWeekPoint || 0);
-        const t     = Number(val.duelLastWeekUpdated || 0);
+        const val = child.val() || {};
+
+        // ✅ 이 유저가 어떤 주차 데이터인지
+        const userWeekKey = val.duelPointWeekKey || "";
+
+        // ✅ 지난주 점수/시간 결정
+        // - 이미 주차가 넘어간 유저: duelLastWeekPoint 사용
+        // - 아직 주차가 안 넘어간 유저: duelPoint가 곧 지난주 점수
+        const point =
+          userWeekKey === thisWeekKey
+            ? Number(val.duelLastWeekPoint || 0)
+            : Number(val.duelPoint || 0);
+
+        const t =
+          userWeekKey === thisWeekKey
+            ? Number(val.duelLastWeekUpdated || 0)
+            : Number(val.duelUpdated || 0);
 
         if (point <= 0) return;
 
@@ -9408,7 +9424,8 @@ function openDuelHistoryPopup() {
           duelLose: Number(val.duelLose || 0),
           updated: t,
           weaponType: val.weaponType || "sword",
-          equippedTitle: val.equippedTitle || ""
+          equippedTitle: val.equippedTitle || "",
+          reach30Count: Number(val.reach30Count || 0)
         });
       });
 
@@ -9430,23 +9447,22 @@ function openDuelHistoryPopup() {
         return;
       }
 
-// 🔁 지난주 포인트 기준 내림차순 정렬
-arr.sort((a, b) => {
-  if (b.duelLastWeekPoint !== a.duelLastWeekPoint) {
-    return b.duelLastWeekPoint - a.duelLastWeekPoint;  // 포인트 높은 순
-  }
-
-  const aTime = Number(a.updated || 0);
-  const bTime = Number(b.updated || 0);
-  return aTime - bTime;   // 같은 포인트면 먼저 도달한 사람
-});
+      // 🔁 지난주 포인트 기준 내림차순 정렬 (동점이면 먼저 도달)
+      arr.sort((a, b) => {
+        if (b.duelLastWeekPoint !== a.duelLastWeekPoint) {
+          return b.duelLastWeekPoint - a.duelLastWeekPoint;
+        }
+        const aTime = Number(a.updated || 0);
+        const bTime = Number(b.updated || 0);
+        return aTime - bTime;
+      });
 
       // TOP 10만 출력
       const top10 = arr.slice(0, 10);
 
       const rowsHtml = top10.map((u, i) => {
-      const wInfo = getWeaponInfo(u.sword, u.weaponType);
-      const weaponNameStyled = coloredWeaponName(u.sword, wInfo.name);
+        const wInfo = getWeaponInfo(u.sword, u.weaponType);
+        const weaponNameStyled = coloredWeaponName(u.sword, wInfo.name);
 
         return `
           <tr>
@@ -9520,8 +9536,6 @@ arr.sort((a, b) => {
         "결투 심판관 – 카르니아 발크라이트"
       );
     });
-}
-
   
 // ⚔️ 결투 패널 토글
 function toggleDuelPanel() {
