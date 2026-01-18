@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.106)
+    (v4.107)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3106,7 +3106,9 @@ let lastStaminaUpdate = 0;     // 마지막 스태미나 갱신 시각 (ms times
 // 🆕 25강 이상 강화 경고 안내 표시 여부 (세션 기준 1회)
 let hasSeen25Warning = false;
 let ignoreNextUpgradeWarning = false;
-  
+
+let activeBossId = "";
+   
 // 🧮 사냥 스태미나 계산 (리셋 + 회복 처리)
 function recalcHuntStamina() {
   const now = Date.now();
@@ -9289,6 +9291,8 @@ function openAdventureGuild(){
   setLeonLine();
 
   ov.style.display = "flex";
+    ensureBossRunsSubscription();
+  renderAdventureGuildBossRuns();
 }
 
 function closeAdventureGuild(){
@@ -9330,7 +9334,7 @@ function openAdventureGuildHelp(){
   // 결투장 도움말처럼 NPC 팝업 방식 사용
   showNpcMessage(
     msg,
-    "images/npc/npc_guildmaster_leon.png",
+    LEON_IMG.idle,
     true
   );
 }
@@ -9368,13 +9372,215 @@ function formatHMS(ms) {
   return `${h}:${m}:${s}`;
 }
 
-function formatHMS(ms) {
-  ms = Math.max(0, Number(ms || 0));
-  const total = Math.floor(ms / 1000);
-  const h = String(Math.floor(total / 3600)).padStart(2, "0");
-  const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
-  const s = String(total % 60).padStart(2, "0");
-  return `${h}:${m}:${s}`;
+// ===============================
+// 🐲 보스전: Firebase ActiveRun (v1)
+// ===============================
+const BOSS_RUNS_ACTIVE_REF = db.ref("bossRunsActive");
+const BOSS_COOLDOWN_REF    = db.ref("bossCooldown");
+
+// 메모리 캐시(렌더용)
+let bossRunsActiveCache = {};   // { bossId: runObj }
+let bossRunsUnsubscribed = true;
+
+// ✅ 모험가길드 중앙 "현재 진행중인 보스전" 렌더
+function renderAdventureGuildBossRuns() {
+  const listEl = document.getElementById("adventureGuildRaidList");
+  if (!listEl) return;
+
+  const entries = Object.entries(bossRunsActiveCache || {})
+    .filter(([_, run]) => run && run.status === "active")
+    // 최신순(생성시각 desc)
+    .sort((a, b) => Number(b[1].createdAt || 0) - Number(a[1].createdAt || 0));
+
+  if (entries.length === 0) {
+    listEl.innerHTML = `
+      <div style="padding:10px; font-size:12px; color:#aaa; text-align:center;">
+        현재 진행중인 보스전이 없습니다.
+      </div>
+    `;
+    return;
+  }
+
+  let html = "";
+  entries.forEach(([bossId, run]) => {
+    const def = BOSS_DEFS.find(b => b.id === bossId);
+    const mapName   = def ? def.mapName : (run.mapName || "알 수 없는 지역");
+    const bossTitle = def ? def.bossTitle : (run.bossTitle || "보스");
+    const bossName  = def ? def.bossName : (run.bossName || "");
+    const leaderNick = run.leaderNick || "알 수 없음";
+
+    const remainMs = Math.max(0, Number(run.endsAt || 0) - Date.now());
+    const remainTxt = formatHMS(remainMs);
+
+    html += `
+      <div style="border:1px solid #444; border-radius:10px; padding:10px; margin-bottom:8px; background:rgba(0,0,0,0.35);">
+        <div style="font-weight:bold; margin-bottom:4px;">
+          ${mapName} · ${bossTitle} <span style="color:#ddd;">${bossName}</span>
+        </div>
+        <div style="font-size:12px; color:#aaa; margin-bottom:8px;">
+          대장: <b style="color:#ddd;">${leaderNick}</b> · 남은시간: <b style="color:#ffd54f;">${remainTxt}</b>
+        </div>
+        <button onclick="joinBossRun('${bossId}')" style="width:100%; padding:8px 10px; font-size:14px; border-radius:8px;">
+          👥 참여하기
+        </button>
+      </div>
+    `;
+  });
+
+  listEl.innerHTML = html;
+}
+
+// ✅ 모험가길드 열릴 때 한번만 구독 시작
+function ensureBossRunsSubscription() {
+  if (!bossRunsUnsubscribed) return;
+
+  bossRunsUnsubscribed = false;
+  BOSS_RUNS_ACTIVE_REF.on("value", (snap) => {
+    bossRunsActiveCache = snap.val() || {};
+    renderAdventureGuildBossRuns();
+  });
+
+  // 남은시간 카운트다운 UI 갱신(1초)
+  setInterval(() => {
+    const ov = document.getElementById("adventureGuildOverlay");
+    if (!ov || ov.style.display === "none") return;
+    renderAdventureGuildBossRuns();
+  }, 1000);
+}
+
+// ✅ 참여하기: 참여자 등록(파티장 동의 없이)
+function joinBossRun(bossId) {
+  const run = (bossRunsActiveCache || {})[bossId];
+  if (!run || run.status !== "active") {
+    showNpcMessage("이미 종료된 토벌입니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+    return;
+  }
+
+  // 참여 중인 토벌은 저장(다음 단계에서 '보스전 버튼' 띄우는 조건으로 사용)
+  activeBossId = bossId;
+  save();
+
+  const memberRef = db.ref(`bossRunsActive/${bossId}/members/${userId}`);
+  memberRef.set({
+    uid: userId,
+    nick: String(nickname || userId),
+    joinedAt: Date.now(),
+    dmg: 0
+  });
+
+  // 길드 진행 로그(보스전 전용 로그는 다음 스텝에서 분리)
+  writeLog(`${nickname}님이 토벌대에 참여했습니다.`, false);
+
+  showNpcMessage(
+    `
+    <div style="font-size:14px; line-height:1.6;">
+      토벌대에 참여 완료.<br>
+      <span style="color:#aaa;">※ 이제 메인 화면에 보스전 버튼을 붙이는 단계로 넘어가자.</span>
+    </div>
+    `,
+    LEON_IMG.idle,
+    true,
+    "길드마스터 – 레온하르트 발렌"
+  );
+}
+
+// ✅ 신청하기(토벌 생성): gold 차감 → activeRun 생성(중복이면 환불)
+function createBossRun(bossId) {
+  const def = BOSS_DEFS.find(b => b.id === bossId);
+  if (!def) return;
+
+  // 1) 조건 체크
+  if (Number(window.sword || 0) < def.minSword) {
+    showNpcMessage(`조건이 부족합니다. (필요: +${def.minSword}강)`, LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+    return;
+  }
+
+  const userGoldRef = db.ref(`users/${userId}/gold`);
+
+  // 2) 먼저 골드 차감(트랜잭션)
+  userGoldRef.transaction((g) => {
+    g = Number(g || 0);
+    if (g < def.applyCostGold) return; // abort
+    return g - def.applyCostGold;
+  }, (err, committed) => {
+    if (err) {
+      console.error(err);
+      showNpcMessage("서버 처리 중 오류가 발생했습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+      return;
+    }
+    if (!committed) {
+      showNpcMessage(`골드가 부족합니다. (필요: ${formatGold(def.applyCostGold)} 골드)`, LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+      return;
+    }
+
+    // 3) ActiveRun 생성(이미 있으면 실패)
+    const runRef = db.ref(`bossRunsActive/${bossId}`);
+    const now = Date.now();
+    const endsAt = now + def.durationHours * 60 * 60 * 1000;
+
+    runRef.transaction((cur) => {
+      if (cur && cur.status === "active") return; // abort
+      return {
+        bossId: def.id,
+        mapName: def.mapName,
+        bossTitle: def.bossTitle,
+        bossName: def.bossName,
+        desc: def.desc,
+
+        status: "active",
+        createdAt: now,
+        endsAt: endsAt,
+
+        // 1페이즈: 체력만 깎기
+        maxHp: 360000000000,
+        hp: 360000000000,
+
+        leaderUid: userId,
+        leaderNick: String(nickname || userId),
+
+        members: {
+          [userId]: { uid: userId, nick: String(nickname || userId), joinedAt: now, dmg: 0 }
+        },
+
+        lastAttackAt: 0
+      };
+    }, (err2, committed2) => {
+      if (err2) {
+        console.error(err2);
+      }
+
+      if (!committed2) {
+        // 4) 이미 진행중이면 환불
+        userGoldRef.transaction((g) => Number(g || 0) + def.applyCostGold);
+        showNpcMessage(
+          "이미 진행중인 토벌이 있습니다.\n(소모된 골드는 환불 처리했습니다.)",
+          LEON_IMG.focus,
+          true,
+          "길드마스터 – 레온하르트 발렌"
+        );
+        return;
+      }
+
+      // 5) 성공: 본인 자동 참여 처리
+      activeBossId = bossId;
+      save();
+
+      writeLog(`${nickname}님이 ${def.bossTitle} 토벌을 시작하였습니다.`, false);
+
+      showNpcMessage(
+        `
+        <div style="font-size:14px; line-height:1.6;">
+          ✅ 토벌이 시작됐다.<br>
+          중앙 리스트에 등록될 거다.<br>
+          <span style="color:#aaa;">이제 ‘보스전 버튼’과 실제 전투 화면을 붙이는 단계로 넘어가자.</span>
+        </div>
+        `,
+        LEON_IMG.apply,
+        true,
+        "길드마스터 – 레온하르트 발렌"
+      );
+    });
+  });
 }
 
 // ✅ 보스 신청 리스트 팝업(확장형)
@@ -9472,7 +9678,7 @@ function openBossApplyFinal(bossId) {
       수락하면 토벌이 시작됩니다.
     </div>
     <div style="margin-top:10px; display:flex; gap:8px;">
-      <button onclick="requestBossApply('${bossId}')" style="flex:1; padding:8px; font-size:14px; border-radius:8px;">
+      <button onclick="createBossRun('${bossId}')" style="flex:1; padding:8px; font-size:14px; border-radius:8px;">
         ✅ 수락
       </button>
       <button onclick="closeNpcPopup()" style="flex:1; padding:8px; font-size:14px; border-radius:8px;">
@@ -9485,42 +9691,6 @@ function openBossApplyFinal(bossId) {
     html,
     LEON_IMG.apply,
     false,
-    "길드마스터 – 레온하르트"
-  );
-}
-
-// ✅ (다음 스텝에서 Firebase 연동 예정) 지금은 UI만 먼저
-function requestBossApply(bossId) {
-  const def = BOSS_DEFS.find(b => b.id === bossId);
-  if (!def) return;
-
-  // 조건 체크
-  if (Number(window.sword || 0) < def.minSword) {
-    showNpcMessage(
-      `조건이 부족합니다. (필요: +${def.minSword}강)`,
-      LEON_IMG.focus,
-      true,
-      "길드마스터 – 레온하르트"
-    );
-    return;
-  }
-
-  // 골드 체크
-  if (Number(window.gold || 0) < def.applyCostGold) {
-    showNpcMessage(
-      `골드가 부족합니다. (필요: ${formatGold(def.applyCostGold)} 골드)`,
-      LEON_IMG.focus,
-      true,
-      "길드마스터 – 레온하르트"
-    );
-    return;
-  }
-
-  // ✅ 여기서부터가 “다음 단계”: Firebase에 보스전 생성 + 로그 + 리스트 반영
-  showNpcMessage(
-    `✅ (다음 단계에서 구현)\n${def.bossTitle} 토벌 생성/등록을 Firebase로 처리할게.`,
-    LEON_IMG.focus,
-    true,
     "길드마스터 – 레온하르트"
   );
 }
