@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.107)
+    (v4.108)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -9490,7 +9490,7 @@ function createBossRun(bossId) {
   if (!def) return;
 
   // 1) 조건 체크
-  if (Number(window.sword || 0) < def.minSword) {
+  if (Number(sword || 0) < def.minSword) {
     showNpcMessage(`조건이 부족합니다. (필요: +${def.minSword}강)`, LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
     return;
   }
@@ -9595,7 +9595,7 @@ function openBossApplyList() {
   `;
 
   BOSS_DEFS.forEach(def => {
-    const canApply = (Number(window.sword || 0) >= def.minSword);
+    const canApply = (Number(sword || 0) >= def.minSword);
     const lockText = canApply ? "" : ` (조건: ${def.minSword}강 이상)`;
 
     html += `
