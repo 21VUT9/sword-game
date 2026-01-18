@@ -9319,13 +9319,187 @@ function openAdventureGuildHelp(){
   );
 }
 
-// ✅ (다음 스텝에서 구현) 보스 신청 리스트 열기 - 지금은 임시
-function openBossApplyList(){
-  setLeonLine();
+// ✅ (보스 추가 확장용) 보스 정의 테이블
+const BOSS_DEFS = [
+  {
+    id: "swamp_elf_queen",
+    mapName: "늪엘프의 숲",
+    bossTitle: "하이엘프퀸",
+    bossName: "실바나 릴리아네",
+    desc: "인간을 증오하는 늪의 여왕. 양손 단검과 함정, 기습에 특화되어 있다.",
+    minSword: 24,
+    applyCostGold: 50000000,
+    durationHours: 72
+  }
+];
+
+// ✅ 레온하르트 6종(파일명은 여기만 수정하면 됨)
+const LEON_IMG = {
+  idle:   "images/npc/leonhardt_idle.png",    // 기본
+  focus:  "images/npc/leonhardt_focus.png",   // 집중
+  apply:  "images/npc/leonhardt_apply.png",   // 보스 신청 안내
+  win:    "images/npc/leonhardt_win.png",     // 보스 승리
+  lose:   "images/npc/leonhardt_lose.png",    // 보스 실패
+  reward: "images/npc/leonhardt_reward.png"   // 보상 수령
+};
+
+function formatHMS(ms) {
+  ms = Math.max(0, Number(ms || 0));
+  const total = Math.floor(ms / 1000);
+  const h = String(Math.floor(total / 3600)).padStart(2, "0");
+  const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+  const s = String(total % 60).padStart(2, "0");
+  return `${h}:${m}:${s}`;
+}
+
+// ✅ 보스 신청 리스트 팝업(확장형)
+function openBossApplyList() {
+  // (현재 단계) “신청 가능까지 남은 시간”은 아직 서버 쿨타임 로직 붙이기 전이므로
+  // 우선 UI만 먼저 세팅. 다음 스텝에서 Firebase cooldown을 연결할거야.
+
+  let html = `
+    <div style="font-size:14px; font-weight:bold; margin-bottom:8px;">
+      🗡️ 토벌 대상 목록
+    </div>
+    <div style="font-size:12px; color:#aaa; margin-bottom:10px; line-height:1.4;">
+      보스는 순차적으로 추가될 예정입니다.<br>
+      토벌 신청자는 자동으로 토벌대에 참여합니다.
+    </div>
+  `;
+
+  BOSS_DEFS.forEach(def => {
+    const canApply = (Number(window.sword || 0) >= def.minSword);
+    const lockText = canApply ? "" : ` (조건: ${def.minSword}강 이상)`;
+
+    html += `
+      <div style="border:1px solid #444; border-radius:8px; padding:10px; margin-bottom:8px; background:rgba(0,0,0,0.35);">
+        <div style="font-weight:bold; margin-bottom:4px;">
+          ${def.mapName} · ${def.bossTitle} <span style="color:#ddd;">${def.bossName}</span>
+        </div>
+        <div style="font-size:12px; color:#bbb; line-height:1.4; margin-bottom:8px;">
+          ${def.desc}
+        </div>
+
+        <div style="font-size:12px; color:#aaa; margin-bottom:8px;">
+          ⏳ 신청 가능까지: <b style="color:#ddd;">--:--:--</b>
+        </div>
+
+        <button
+          ${canApply ? "" : "disabled"}
+          onclick="openBossApplyConfirm('${def.id}')"
+          style="
+            width:100%;
+            padding:8px 10px;
+            font-size:14px;
+            border-radius:8px;
+            ${canApply ? "" : "opacity:0.4; cursor:not-allowed;"}
+          ">
+          ${canApply ? "✅ 신청하기" : "🔒 신청 불가" + lockText}
+        </button>
+      </div>
+    `;
+  });
+
   showNpcMessage(
-    "아직은 '모험가길드 UI'만 붙여둔 상태다.\n다음 스텝에서 보스 리스트/신청 로직을 연결하자.",
-    "images/npc/npc_guildmaster_leon.png",
-    true
+    html,
+    LEON_IMG.apply,
+    true,
+    "길드마스터 – 레온하르트"
+  );
+}
+
+// ✅ 신청 확인(레온하르트가 설명 → 도전/포기)
+function openBossApplyConfirm(bossId) {
+  const def = BOSS_DEFS.find(b => b.id === bossId);
+  if (!def) return;
+
+  const intro = `
+    <div style="font-size:13px; line-height:1.5;">
+      <b>${def.bossTitle} ${def.bossName}</b>.<br>
+      ${def.desc}<br><br>
+      정말 도전하겠나?
+    </div>
+    <div style="margin-top:10px; display:flex; gap:8px;">
+      <button onclick="openBossApplyFinal('${bossId}')" style="flex:1; padding:8px; font-size:14px; border-radius:8px;">
+        ⚔️ 도전한다
+      </button>
+      <button onclick="closeNpcPopup()" style="flex:1; padding:8px; font-size:14px; border-radius:8px;">
+        ❌ 포기한다
+      </button>
+    </div>
+  `;
+
+  showNpcMessage(
+    intro,
+    LEON_IMG.focus,
+    false,
+    "길드마스터 – 레온하르트"
+  );
+}
+
+// ✅ 최종 확인(골드 소모/조건 안내)
+function openBossApplyFinal(bossId) {
+  const def = BOSS_DEFS.find(b => b.id === bossId);
+  if (!def) return;
+
+  const html = `
+    <div style="font-size:13px; line-height:1.6;">
+      <b>${def.bossTitle} 토벌</b>을 신청합니다.<br>
+      · 조건: <b>+${def.minSword}강 이상</b><br>
+      · 소모: <b>${formatGold(def.applyCostGold)} 골드</b><br><br>
+      수락하면 토벌이 시작됩니다.
+    </div>
+    <div style="margin-top:10px; display:flex; gap:8px;">
+      <button onclick="requestBossApply('${bossId}')" style="flex:1; padding:8px; font-size:14px; border-radius:8px;">
+        ✅ 수락
+      </button>
+      <button onclick="closeNpcPopup()" style="flex:1; padding:8px; font-size:14px; border-radius:8px;">
+        ❌ 취소
+      </button>
+    </div>
+  `;
+
+  showNpcMessage(
+    html,
+    LEON_IMG.apply,
+    false,
+    "길드마스터 – 레온하르트"
+  );
+}
+
+// ✅ (다음 스텝에서 Firebase 연동 예정) 지금은 UI만 먼저
+function requestBossApply(bossId) {
+  const def = BOSS_DEFS.find(b => b.id === bossId);
+  if (!def) return;
+
+  // 조건 체크
+  if (Number(window.sword || 0) < def.minSword) {
+    showNpcMessage(
+      `조건이 부족합니다. (필요: +${def.minSword}강)`,
+      LEON_IMG.focus,
+      true,
+      "길드마스터 – 레온하르트"
+    );
+    return;
+  }
+
+  // 골드 체크
+  if (Number(window.gold || 0) < def.applyCostGold) {
+    showNpcMessage(
+      `골드가 부족합니다. (필요: ${formatGold(def.applyCostGold)} 골드)`,
+      LEON_IMG.focus,
+      true,
+      "길드마스터 – 레온하르트"
+    );
+    return;
+  }
+
+  // ✅ 여기서부터가 “다음 단계”: Firebase에 보스전 생성 + 로그 + 리스트 반영
+  showNpcMessage(
+    `✅ (다음 단계에서 구현)\n${def.bossTitle} 토벌 생성/등록을 Firebase로 처리할게.`,
+    LEON_IMG.focus,
+    true,
+    "길드마스터 – 레온하르트"
   );
 }
 
