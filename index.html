@@ -666,18 +666,55 @@ button {
   top: 50px;   
 }
   
+/* ⚔️ 결투장 버튼 */
 #duelBtn {
-  top: 90px;
+  position:fixed;
+  top:90px;
+  right:10px;
+  z-index:1200;
+  display:none;
+  font-size:14px;
+  padding:8px 16px;
 }
 
-#inventoryBtn {
-  top: 130px;
+/* 🏛️ 모험가길드 버튼 (결투장 아래) */
+#adventureGuildBtn{
+  position:fixed;
+  top:130px;
+  right:10px;
+  z-index:1200;
+  display:none; /* ✅ 로그인 전 숨김 */
+  font-size:14px;
+  padding:8px 16px;
 }
 
-#userListBtn {
-  top: 170px;
+/* 🎒 인벤토리 버튼 */
+#inventoryBtn{
+  position:fixed;
+  top:170px;
+  right:10px;
+  z-index:1200;
+  display:none;
+  font-size:14px;
+  padding:8px 16px;
 }
-  
+
+/* 👥 전체유저 버튼 */
+#userListBtn{
+  position:fixed;
+  top:210px;
+  right:10px;
+  z-index:1200;
+  display:none;
+  font-size:14px;
+  padding:8px 16px;
+}
+
+/* 캡처 모드에서 숨기기 */
+.capture-mode #adventureGuildBtn{
+  display:none !important;
+}
+
 /* 🗺 MAP 패널 */
 #mapPanel {
   position:fixed;
@@ -1290,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.003)
+    (v4.104)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1541,6 +1578,8 @@ button {
         onclick="openDuelArena()">
   ⚔️ 결투장
 </button>
+
+<button id="adventureGuildBtn" class="side-menu-btn" onclick="openAdventureGuild()">🏛️ 모험가길드</button>
   
   <!-- 🎒 인벤토리 버튼 (로그 버튼 위) -->
 <button id="inventoryBtn"
@@ -1673,6 +1712,72 @@ button {
       <div style="padding:8px 0; text-align:center; color:#999; font-size:12px;">
         잠시만 기다려 주세요...
       </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 🏛️ 모험가길드 오버레이 -->
+<div id="adventureGuildOverlay"
+     style="position:fixed; inset:0; background:rgba(0,0,0,0.7);
+            display:none; align-items:center; justify-content:center; z-index:2200;">
+  <div id="adventureGuildPanel"
+       style="position:relative; width:92%; max-width:720px; height:82%;
+              background:#1b1b1b; border:1px solid #555; border-radius:14px;
+              box-shadow:0 0 18px rgba(0,0,0,0.9); padding:12px; overflow:hidden;">
+
+    <!-- 상단바 -->
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px;">
+      <div style="text-align:left;">
+        <div style="font-weight:900; font-size:18px;">🏛️ 모험가길드</div>
+        <div id="adventureGuildHuntRemain"
+             style="margin-top:2px; font-size:12px; color:#bbb;">
+          오늘 남은 사냥횟수: -
+        </div>
+      </div>
+
+      <div style="display:flex; gap:8px;">
+        <button class="actionBtn" style="width:auto; padding:8px 12px; font-size:13px;"
+                onclick="openAdventureGuildHelp()">?</button>
+        <button class="actionBtn" style="width:auto; padding:8px 12px; font-size:13px;"
+                onclick="closeAdventureGuild()">닫기</button>
+      </div>
+    </div>
+
+    <!-- 중앙: 진행중 보스전 리스트 -->
+    <div style="margin-top:10px; height: calc(100% - 130px); overflow:auto; padding-right:6px;">
+      <div style="font-weight:900; margin-bottom:8px;">현재 진행중인 보스전</div>
+
+      <!-- ✅ 지금은 UI만: 나중에 Firebase에서 최신순으로 채울 예정 -->
+      <div id="adventureGuildRaidList"
+           style="background:#141414; border:1px solid #444; border-radius:12px;
+                  padding:10px; color:#bbb; font-size:13px;">
+        진행중인 보스전이 없습니다.
+      </div>
+    </div>
+
+    <!-- 좌하단: 신청 버튼 -->
+    <div style="position:absolute; left:12px; bottom:12px;">
+      <button class="actionBtn"
+              style="width:auto; padding:10px 14px; font-size:14px;"
+              onclick="openBossApplyList()">
+        🗡️ 보스전 신청하기
+      </button>
+    </div>
+
+    <!-- 우하단: NPC + 대사 -->
+    <div style="position:absolute; right:12px; bottom:10px; display:flex; align-items:flex-end; gap:10px;">
+      <div id="adventureGuildNpcLine"
+           style="max-width:360px; text-align:left; font-size:13px; color:#ddd;
+                  background:rgba(0,0,0,0.45); border:1px solid rgba(255,255,255,0.12);
+                  border-radius:12px; padding:10px; white-space:pre-line;">
+        -
+      </div>
+
+      <img id="adventureGuildNpcImg"
+           src="images/npc/npc_guildmaster_leon.png"
+           style="width:110px; height:auto; image-rendering:auto;"
+           alt="길드마스터 레온하르트">
     </div>
 
   </div>
@@ -3726,6 +3831,7 @@ destroyCount  = 0;
   document.getElementById("logToggle").style.display    = "none";
   document.getElementById("logoutBtn").style.display    = "none";
   document.getElementById("duelBtn").style.display      = "none";
+  document.getElementById("adventureGuildBtn").style.display = "none";
   document.getElementById("scrollShopBtn").style.display = "none";
   document.getElementById("mapBtn").style.display       = "none";
   document.getElementById("couponBtn").style.display    = "none";
@@ -7421,6 +7527,7 @@ subscribeGlobal30Events();
     document.getElementById("logToggle").style.display = "block";
     document.getElementById("logoutBtn").style.display = "block";
     document.getElementById("duelBtn").style.display = "block";
+    document.getElementById("adventureGuildBtn").style.display = "block";
     document.getElementById("scrollShopBtn").style.display = "block";
     document.getElementById("mapBtn").style.display = "block";
     document.getElementById("couponBtn").style.display = "block";
@@ -7894,6 +8001,7 @@ document.getElementById("inventoryBtn").style.display = "block";
 document.getElementById("logToggle").style.display = "block";
 document.getElementById("logoutBtn").style.display = "block";
 document.getElementById("duelBtn").style.display = "block";
+document.getElementById("adventureGuildBtn").style.display = "block";
 document.getElementById("scrollShopBtn").style.display = "block";
 document.getElementById("mapBtn").style.display = "block";
 document.getElementById("couponBtn").style.display = "block";
@@ -9136,6 +9244,89 @@ function closeDuelArena() {
   const overlay = document.getElementById("duelArenaOverlay");
   if (!overlay) return;
   overlay.style.display = "none";
+}
+
+  // ===============================
+// 🏛️ 모험가길드 (보스전) UI - v4.0
+// ===============================
+
+const LEON_LINES = [
+  "길드마스터 레온하르트 발렌이다.\n오늘도 살아 돌아올 각오는 되어 있나?",
+  "토벌은 명예가 아니라 '책임'이다.\n…그러니까, 대충 덤비지 마라.",
+  "카르니아 님의 판단은 늘 정확했다.\n나도… 언젠간 그 경지에 닿아야지.",
+  "세레나… 아니, 에델린 양은…\n아, 아니다. 아무것도 아니다.",
+  "숲의 주인이라… 쉽게 무너질 상대가 아니다.\n협동이 답이다.",
+  "…너무 오래 버티면, 모두가 다친다.\n결단은 빠를수록 좋다."
+];
+
+function getHuntRemainTextForToday(){
+  const today = getTodayDateString(); // 이미 update()에서도 쓰는 함수
+  let used = 0;
+  if (lastHuntDate === today) used = Number(huntCountToday || 0);
+  const remain = Math.max(0, 20 - used);
+  return `오늘 남은 사냥횟수: ${remain} / 20`;
+}
+
+function setLeonLine(){
+  const el = document.getElementById("adventureGuildNpcLine");
+  if (!el) return;
+  const line = LEON_LINES[Math.floor(Math.random() * LEON_LINES.length)];
+  el.textContent = line;
+}
+
+function openAdventureGuild(){
+  const ov = document.getElementById("adventureGuildOverlay");
+  const huntEl = document.getElementById("adventureGuildHuntRemain");
+  if (!ov) return;
+
+  if (huntEl) huntEl.textContent = getHuntRemainTextForToday();
+  setLeonLine();
+
+  ov.style.display = "flex";
+}
+
+function closeAdventureGuild(){
+  const ov = document.getElementById("adventureGuildOverlay");
+  if (ov) ov.style.display = "none";
+}
+
+function openAdventureGuildHelp(){
+  const msg =
+`------------ [ 보스전 공격력 / 주문력 시스템 ]---------------
+공격력 - 전투력비례
+치명타 확률 - 기본 0%
+치명타 데미지 - 20% 추가데미지
+
+검  : 공격력 = 전투력 x 1.0
+창  : 공격력 = 전투력 x 0.9 (보스 물리 방어력 10% 무시)
+도끼: 공격력 = 전투력 x 0.9 (치명타 확률 +10%)
+활  : 공격력 = 전투력 x 0.9 (보스 회피율 10% 무시)
+스태프: 주문력 = 전투력 x 1.0
+
+------------ [ 강화별 보정 : 하이엘프퀸 ] -------------------
+25강: 전투력 30% 감소
+26강: 전투력 50% 감소
+27강: 전투력 70% 감소
+28강: 전투력 80% 감소
+29강: 전투력 85% 감소
+30강: 전투력 90% 감소`;
+
+  // 결투장 도움말처럼 NPC 팝업 방식 사용
+  showNpcMessage(
+    msg,
+    "images/npc/npc_guildmaster_leon.png",
+    true
+  );
+}
+
+// ✅ (다음 스텝에서 구현) 보스 신청 리스트 열기 - 지금은 임시
+function openBossApplyList(){
+  setLeonLine();
+  showNpcMessage(
+    "아직은 '모험가길드 UI'만 붙여둔 상태다.\n다음 스텝에서 보스 리스트/신청 로직을 연결하자.",
+    "images/npc/npc_guildmaster_leon.png",
+    true
+  );
 }
 
 // 👥 전체 유저 목록 오버레이 열기
