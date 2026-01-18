@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.105)
+    (v4.106)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1773,6 +1773,12 @@ button {
                   border-radius:12px; padding:10px; white-space:pre-line;">
         -
       </div>
+
+      <div id="adventureGuildNpcName"
+     style="font-size:12px; color:#ddd; margin-bottom:6px; font-weight:bold;">
+  길드마스터-레온하르트 발렌
+</div>
+<div id="adventureGuildNpcLine"> ... </div>
 
       <img id="adventureGuildNpcImg"
            src="images/npc/npc_guildmaster_leon.png"
@@ -9290,6 +9296,16 @@ function closeAdventureGuild(){
   if (ov) ov.style.display = "none";
 }
 
+// ✅ ESC로 모험가길드 닫기 (한 번만 바인딩)
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  const ov = document.getElementById("adventureGuildOverlay");
+  if (!ov) return;
+  if (ov.style.display !== "none") {
+    closeAdventureGuild();
+  }
+});
+
 function openAdventureGuildHelp(){
   const msg =
 `------------ [ 보스전 공격력 / 주문력 시스템 ]---------------
@@ -9352,11 +9368,17 @@ function formatHMS(ms) {
   return `${h}:${m}:${s}`;
 }
 
+function formatHMS(ms) {
+  ms = Math.max(0, Number(ms || 0));
+  const total = Math.floor(ms / 1000);
+  const h = String(Math.floor(total / 3600)).padStart(2, "0");
+  const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+  const s = String(total % 60).padStart(2, "0");
+  return `${h}:${m}:${s}`;
+}
+
 // ✅ 보스 신청 리스트 팝업(확장형)
 function openBossApplyList() {
-  // (현재 단계) “신청 가능까지 남은 시간”은 아직 서버 쿨타임 로직 붙이기 전이므로
-  // 우선 UI만 먼저 세팅. 다음 스텝에서 Firebase cooldown을 연결할거야.
-
   let html = `
     <div style="font-size:14px; font-weight:bold; margin-bottom:8px;">
       🗡️ 토벌 대상 목록
