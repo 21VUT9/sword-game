@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.122)
+    (v4.123)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1813,13 +1813,9 @@ overflow: hidden;
 
     <!-- 상단 헤더 -->
     <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid #333;">
-      <div>
-        <div id="bossBattleMapName" style="font-weight:900; font-size:16px;">-</div>
-        <div style="display:flex; gap:10px; align-items:center; margin-top:2px;">
-          <div id="bossBattleBossName" style="font-size:12px; color:#bbb;">-</div>
-          <div id="bossBattleHuntRemain" style="font-size:12px; color:#9fd3ff; font-weight:900;">사냥횟수: -/20</div>
-        </div>
-      </div>
+      <div style="font-weight:900; font-size:16px; color:#ddd;">
+  ⚔️ 보스전
+</div>
 
       <div style="display:flex; gap:8px;">
         <button onclick="openBossBattleHelp()" style="padding:6px 10px; border-radius:10px;">?</button>
@@ -1835,41 +1831,46 @@ overflow: hidden;
            ======================= -->
       <div style="width:60%; border-right:1px solid #2a2a2a; display:flex; flex-direction:column;">
 
-        <!-- HP 바 영역 -->
-        <div style="padding:10px 12px;">
-          <div style="display:flex; align-items:center; gap:10px;">
-            <div style="flex:1; position:relative; height:28px;">
-              <!-- 테두리 -->
-              <img src="images/ui/boss_hp_frame.png"
-                   style="position:absolute; inset:0; width:100%; height:100%; object-fit:fill; pointer-events:none;">
-
-              <!-- 채움(가로 스케일) -->
-              <div id="bossHpFillWrap" style="position:absolute; left:0; top:0; bottom:0; width:100%; overflow:hidden;">
-                <img id="bossHpFillImg" src="images/ui/boss_hp_fill.png"
-                     style="width:100%; height:100%; object-fit:fill; pointer-events:none;">
-              </div>
-
-              <div id="bossHpText"
-                   style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900; text-shadow:0 1px 2px #000;">
-                -
-              </div>
-            </div>
-
-            <div id="bossBattleRemain" style="min-width:96px; text-align:right; font-size:12px; color:#ffd54f; font-weight:900;">
-              --:--:--
-            </div>
-          </div>
-
-          <div style="margin-top:8px; font-size:11px; color:#aaa;">
-            ※ 보스를 터치하면 사냥 포인트(오늘 남은 횟수)를 소모하여 공격합니다.
-          </div>
-          <div id="bossBattleBossLine" style="margin-top:6px; font-size:12px; color:#ddd;">
-            -
-          </div>
-        </div>
-
         <!-- 전투 필드(좌측 내부에서만) -->
         <div style="flex:1; position:relative; overflow:hidden;">
+          <!-- ✅ 머리 위 UI (맵이름/보스이름/사냥횟수/시간/HP바) -->
+<div id="bossBattleTopUi"
+     style="position:absolute; left:12px; right:12px; top:10px; z-index:10; pointer-events:none;">
+
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+    <div style="text-align:left;">
+      <div id="bossBattleMapName" style="font-weight:900; font-size:16px; text-align:left;">-</div>
+
+      <div style="display:flex; gap:10px; align-items:center; margin-top:2px;">
+        <div id="bossBattleBossName" style="font-size:12px; color:#ddd; font-weight:900;">-</div>
+        <div id="bossBattleHuntRemain" style="font-size:12px; color:#9fd3ff; font-weight:900;">사냥횟수: -/20</div>
+      </div>
+    </div>
+
+    <div id="bossBattleRemain"
+         style="min-width:96px; text-align:right; font-size:12px; color:#ffd54f; font-weight:900;">
+      --:--:--
+    </div>
+  </div>
+
+  <!-- ✅ HP 바 (비율: 높이1 / 너비7) -->
+  <div style="margin-top:8px; width:min(560px, 100%); position:relative; height:80px;">
+    <img src="images/ui/boss_hp_frame.png"
+         style="position:absolute; inset:0; width:100%; height:100%; object-fit:fill; pointer-events:none;">
+
+    <div id="bossHpFillWrap" style="position:absolute; left:0; top:0; bottom:0; width:100%; overflow:hidden;">
+      <img id="bossHpFillImg" src="images/ui/boss_hp_fill.png"
+           style="width:100%; height:100%; object-fit:fill; pointer-events:none;">
+    </div>
+
+    <div id="bossHpText"
+         style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+                font-size:12px; font-weight:900; text-shadow:0 1px 2px #000;">
+      -
+    </div>
+  </div>
+</div>
+
           <!-- 맵 배경 -->
           <img id="bossBattleBg"
                src="images/bossmaps/swamp_elf_forest.png"
@@ -1882,6 +1883,19 @@ overflow: hidden;
                onclick="attackBossByClick(event)">
         </div>
       </div>
+      
+      <!-- ✅ 하단 안내/보스 대사(보스 발밑) -->
+<div id="bossBattleBottomUi"
+     style="position:absolute; left:12px; right:12px; bottom:10px; z-index:10; text-align:center; pointer-events:none;">
+
+  <div style="font-size:11px; color:#aaa;">
+    ※ 보스를 터치하면 사냥 포인트(오늘 남은 횟수)를 소모하여 공격합니다.
+  </div>
+
+  <div id="bossBattleBossLine" style="margin-top:6px; font-size:12px; color:#ddd;">
+    -
+  </div>
+</div>
 
       <!-- =======================
            우측(40%) : 파티/로그
@@ -1893,11 +1907,11 @@ overflow: hidden;
           <div style="font-weight:900; margin-bottom:8px;">토벌대 진행상황</div>
 
           <div style="font-size:12px; color:#aaa; margin-bottom:6px;">
-            (Top 5) 기여도 순
-          </div>
+  기여도 순
+</div>
 
           <div id="bossBattlePartyList"
-               style="background:#141414; border:1px solid #333; border-radius:12px; padding:10px; font-size:12px; color:#ddd; max-height:180px; overflow:auto;">
+               style="background:#141414; border:1px solid #333; border-radius:12px; padding:10px; font-size:12px; color:#ddd; max-height:140px; overflow:auto;">
             -
           </div>
         </div>
@@ -9711,26 +9725,28 @@ function renderBossBattle(){
 
     arr.sort((a,b) => b.dmg - a.dmg);
 
-    const top = arr.slice(0, 5);
-    if (top.length === 0) {
-      partyEl.innerHTML = `<div style="color:#777;">참여자가 없습니다.</div>`;
-    } else {
-      let html = "";
-      top.forEach((m, idx) => {
-        const pct = Math.floor((m.dmg / totalDamage) * 1000) / 10; // 0.1% 단위
-        const isLeader = (String(run.leaderUid || "") === String(m.uid || ""));
-        const leaderTag = isLeader ? "대장- " : "";
-        html += `
-          <div style="display:flex; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid #222;">
-            <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-              <b style="color:#fff;">${idx+1}.</b> ${leaderTag}${m.nick}
-            </div>
-            <div style="color:#9fd3ff; font-weight:900;">${pct}%</div>
-          </div>
-        `;
-      });
-      partyEl.innerHTML = html;
-    }
+    const view = arr; // ✅ 전원 표시
+
+if (view.length === 0) {
+  partyEl.innerHTML = `<div style="color:#777;">참여자가 없습니다.</div>`;
+} else {
+  let html = "";
+  view.forEach((m, idx) => {
+    const pct = Math.floor((m.dmg / totalDamage) * 1000) / 10; // 0.1% 단위
+    const isLeader = (String(run.leaderUid || "") === String(m.uid || ""));
+    const leaderTag = isLeader ? "대장- " : "";
+
+    html += `
+      <div style="display:flex; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid #222;">
+        <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+          <b style="color:#fff;">${idx+1}.</b> ${leaderTag}${m.nick}
+        </div>
+        <div style="color:#9fd3ff; font-weight:900;">${pct}%</div>
+      </div>
+    `;
+  });
+  partyEl.innerHTML = html;
+}
   }
   
   // HP
