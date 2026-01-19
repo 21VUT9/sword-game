@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.110)
+    (v4.111)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1462,6 +1462,15 @@ button {
   </button>
 </div>
 
+<!-- 🐲 보스전 버튼(보스 참여중일 때만 노출) -->
+<div style="margin-top:8px; text-align:center;">
+  <button id="bossBattleBtn"
+          onclick="openBossBattle()"
+          style="display:none; padding:10px 16px; font-size:16px; border-radius:10px;">
+    🐲 보스전
+  </button>
+</div>
+    
 <p id="huntInfo" style="margin-top:4px; color:#ccc; font-size:13px;"></p>
     
 <!-- 🎯 강화 아이템 사용 체크박스 -->
@@ -1784,6 +1793,75 @@ button {
            src="images/npc/npc_guildmaster_leon.png"
            style="width:110px; height:auto; image-rendering:auto;"
            alt="길드마스터 레온하르트">
+    </div>
+
+  </div>
+</div>
+
+<!-- 🐲 보스전 오버레이 -->
+<div id="bossBattleOverlay"
+     style="position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:3000; background:rgba(0,0,0,0.72);">
+
+  <div style="width:min(980px, 96vw); height:min(680px, 92vh); background:#111; border:1px solid #555; border-radius:14px; overflow:hidden; position:relative;">
+
+    <!-- 상단 헤더 -->
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid #333;">
+      <div>
+        <div id="bossBattleMapName" style="font-weight:900; font-size:16px;">-</div>
+        <div id="bossBattleBossName" style="font-size:12px; color:#bbb; margin-top:2px;">-</div>
+      </div>
+
+      <div style="display:flex; gap:8px;">
+        <button onclick="openBossBattleHelp()" style="padding:6px 10px; border-radius:10px;">?</button>
+        <button onclick="closeBossBattle()" style="padding:6px 10px; border-radius:10px;">닫기</button>
+      </div>
+    </div>
+
+    <!-- HP 바 영역 -->
+    <div style="padding:10px 12px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="flex:1; position:relative; height:28px;">
+          <!-- 테두리 -->
+          <img src="images/ui/boss_hp_frame.png"
+               style="position:absolute; inset:0; width:100%; height:100%; object-fit:fill; pointer-events:none;">
+
+          <!-- 채움(가로 스케일) -->
+          <div id="bossHpFillWrap" style="position:absolute; left:0; top:0; bottom:0; width:100%; overflow:hidden;">
+            <img id="bossHpFillImg" src="images/ui/boss_hp_fill.png"
+                 style="width:100%; height:100%; object-fit:fill; pointer-events:none;">
+          </div>
+
+          <div id="bossHpText"
+               style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900; text-shadow:0 1px 2px #000;">
+            -
+          </div>
+        </div>
+
+        <div id="bossBattleRemain" style="min-width:96px; text-align:right; font-size:12px; color:#ffd54f; font-weight:900;">
+          --:--:--
+        </div>
+      </div>
+
+      <div style="margin-top:8px; font-size:11px; color:#aaa;">
+        ※ 보스를 터치하면 사냥 포인트(오늘 남은 횟수)를 소모하여 공격합니다.
+      </div>
+      <div id="bossBattleBossLine" style="margin-top:6px; font-size:12px; color:#ddd;">
+        -
+      </div>
+    </div>
+
+    <!-- 전투 필드 -->
+    <div style="position:absolute; left:0; right:0; top:140px; bottom:0; overflow:hidden;">
+      <!-- 맵 배경 -->
+      <img id="bossBattleBg"
+           src="images/bossmaps/swamp_elf_forest.png"
+           style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0.95;">
+
+      <!-- 보스 이미지(터치 대상) -->
+      <img id="bossBattleBossImg"
+           src="images/bosses/sylvana_idle.png"
+           style="position:absolute; left:50%; top:52%; transform:translate(-50%,-50%); width:min(420px, 70vw); height:auto; cursor:pointer; user-select:none;"
+           onclick="attackBossByClick(event)">
     </div>
 
   </div>
@@ -3840,6 +3918,7 @@ destroyCount  = 0;
   document.getElementById("logoutBtn").style.display    = "none";
   document.getElementById("duelBtn").style.display      = "none";
   document.getElementById("adventureGuildBtn").style.display = "none";
+  document.getElementById("bossBattleBtn").style.display = "none";
   document.getElementById("scrollShopBtn").style.display = "none";
   document.getElementById("mapBtn").style.display       = "none";
   document.getElementById("couponBtn").style.display    = "none";
@@ -9392,6 +9471,22 @@ let bossRunsActiveCache = {};   // { bossId: runObj }
 let bossCooldownCache = {};     // { bossId: { nextAt: ms } }
 let bossRunsUnsubscribed = true;
 
+function updateBossBattleBtn(){
+  const btn = document.getElementById("bossBattleBtn");
+  if (!btn) return;
+
+  const bossId = String(activeBossId || "");
+  if (!bossId) { btn.style.display = "none"; return; }
+
+  const run = (bossRunsActiveCache || {})[bossId];
+  if (!run || run.status !== "active") { btn.style.display = "none"; return; }
+
+  const mem = run.members && run.members[userId];
+  if (!mem) { btn.style.display = "none"; return; }
+
+  btn.style.display = "inline-block";
+}
+  
 // ✅ 모험가길드 중앙 "현재 진행중인 보스전" 렌더
 function renderAdventureGuildBossRuns() {
   const listEl = document.getElementById("adventureGuildRaidList");
@@ -9447,6 +9542,7 @@ function ensureBossRunsSubscription() {
   bossRunsUnsubscribed = false;
   BOSS_RUNS_ACTIVE_REF.on("value", (snap) => {
     bossRunsActiveCache = snap.val() || {};
+    updateBossBattleBtn();
     renderAdventureGuildBossRuns();
   });
   
@@ -9465,6 +9561,190 @@ function ensureBossRunsSubscription() {
   }, 1000);
 }
 
+const SYLVANA_LINES = [
+  "…늪의 숨결이 네 발목을 잡을 것이다.",
+  "인간은 모두 같은 냄새가 난다. 썩은 피의 냄새.",
+  "한 걸음만 더. …그 순간이 네 마지막이 된다.",
+  "숲은 내 편이다. 너희의 비명조차 삼켜주지."
+];
+
+let bossBattleTickTimer = null;
+
+function openBossBattle(){
+  const bossId = String(activeBossId || "");
+  const run = (bossRunsActiveCache || {})[bossId];
+  if (!bossId || !run || run.status !== "active") {
+    showNpcMessage("참여중인 보스전이 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+    return;
+  }
+
+  // 멤버 체크
+  if (!(run.members && run.members[userId])) {
+    showNpcMessage("토벌대에 참여한 기록이 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+    return;
+  }
+
+  const ov = document.getElementById("bossBattleOverlay");
+  if (!ov) return;
+
+  ov.style.display = "flex";
+  renderBossBattle();
+
+  if (bossBattleTickTimer) clearInterval(bossBattleTickTimer);
+  bossBattleTickTimer = setInterval(() => {
+    const ov2 = document.getElementById("bossBattleOverlay");
+    if (!ov2 || ov2.style.display === "none") return;
+    renderBossBattle();
+  }, 1000);
+}
+
+function closeBossBattle(){
+  const ov = document.getElementById("bossBattleOverlay");
+  if (ov) ov.style.display = "none";
+  if (bossBattleTickTimer) { clearInterval(bossBattleTickTimer); bossBattleTickTimer = null; }
+}
+
+function openBossBattleHelp(){
+  // 기존 도움말(모험가길드 ? 버튼) 그대로 활용
+  openAdventureGuildHelp();
+}
+
+function renderBossBattle(){
+  const bossId = String(activeBossId || "");
+  const run = (bossRunsActiveCache || {})[bossId];
+  if (!run) return;
+
+  const def = BOSS_DEFS.find(b => b.id === bossId);
+
+  const mapName = def ? def.mapName : (run.mapName || "-");
+  const bossTitle = def ? def.bossTitle : (run.bossTitle || "보스");
+  const bossName = def ? def.bossName : (run.bossName || "");
+
+  const mapEl = document.getElementById("bossBattleMapName");
+  const nameEl = document.getElementById("bossBattleBossName");
+  if (mapEl) mapEl.textContent = mapName;
+  if (nameEl) nameEl.textContent = `${bossTitle} - ${bossName}`;
+
+  const remainMs = Math.max(0, Number(run.endsAt || 0) - Date.now());
+  const remainEl = document.getElementById("bossBattleRemain");
+  if (remainEl) remainEl.textContent = formatHMS(remainMs);
+
+  // HP
+  const hp = Math.max(0, Number(run.hp || 0));
+  const maxHp = Math.max(1, Number(run.maxHp || 1));
+  const ratio = Math.max(0, Math.min(1, hp / maxHp));
+
+  const fillWrap = document.getElementById("bossHpFillWrap");
+  if (fillWrap) fillWrap.style.width = (ratio * 100).toFixed(3) + "%";
+
+  const hpText = document.getElementById("bossHpText");
+  if (hpText) hpText.textContent = `${formatGold(hp)} / ${formatGold(maxHp)}`;
+
+  // 보스 랜덤 대사
+  const lineEl = document.getElementById("bossBattleBossLine");
+  if (lineEl && (!lineEl.textContent || Math.random() < 0.12)) {
+    lineEl.textContent = SYLVANA_LINES[Math.floor(Math.random() * SYLVANA_LINES.length)];
+  }
+
+  // 상태 끝났으면 자동 닫기(1차)
+  if (run.status !== "active") {
+    closeBossBattle();
+  }
+}
+
+function consumeHuntPointForBoss(){
+  const today = getTodayDateString();
+  if (lastHuntDate !== today) {
+    lastHuntDate = today;
+    huntCountToday = 0;
+  }
+  const used = Number(huntCountToday || 0);
+  if (used >= 20) return false;
+
+  huntCountToday = used + 1;
+  save();
+  update();
+  return true;
+}
+
+// 1차 데미지: 전투력(power) 기반 + 무기별 계수만 반영(방어/회피/치명은 다음 스텝)
+function calcBossDamageBase(){
+  const p = Number(power || 0);
+
+  if (weaponType === "sword") return p * 1.0;
+  if (weaponType === "staff") return p * 1.0;
+
+  if (weaponType === "spear") return p * 0.9;
+  if (weaponType === "axe")   return p * 0.9;
+  if (weaponType === "bow")   return p * 0.9;
+
+  return p * 1.0;
+}
+
+function attackBossByClick(ev){
+  const bossId = String(activeBossId || "");
+  const run = (bossRunsActiveCache || {})[bossId];
+  if (!bossId || !run || run.status !== "active") return;
+
+  // 사냥횟수 소모
+  if (!consumeHuntPointForBoss()){
+    showNpcMessage("오늘 남은 사냥횟수가 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+    return;
+  }
+
+  // 데미지(85~100%)
+  const base = calcBossDamageBase();
+  const dmg = Math.max(1, Math.floor(base * (0.85 + Math.random() * 0.15)));
+
+  // 서버 반영(트랜잭션)
+  const runRef = db.ref(`bossRunsActive/${bossId}`);
+  runRef.transaction((cur) => {
+    if (!cur || cur.status !== "active") return;
+
+    cur.hp = Math.max(0, Number(cur.hp || 0) - dmg);
+
+    // 멤버 누적
+    if (!cur.members) cur.members = {};
+    if (!cur.members[userId]) cur.members[userId] = { uid:userId, nick:getNickSafe(), joinedAt:Date.now(), dmg:0 };
+    cur.members[userId].dmg = Number(cur.members[userId].dmg || 0) + dmg;
+
+    // (토벌 성공 처리) - 다음 스텝에서 “승리 연출/보상/쿨타임”로 확장
+    if (cur.hp <= 0) {
+      cur.hp = 0;
+      cur.status = "cleared";
+      cur.clearedAt = Date.now();
+    }
+
+    return cur;
+  });
+
+  // 1차: 화면에 숫자만 살짝 (스파크/미스/치명은 다음 스텝에서)
+  spawnBossDamageText(ev.clientX, ev.clientY, dmg);
+}
+
+function spawnBossDamageText(x, y, dmg){
+  const el = document.createElement("div");
+  el.textContent = "-" + formatGold(dmg);
+  el.style.position = "fixed";
+  el.style.left = x + "px";
+  el.style.top = y + "px";
+  el.style.transform = "translate(-50%, -50%)";
+  el.style.pointerEvents = "none";
+  el.style.zIndex = 99999;
+  el.style.fontWeight = "900";
+  el.style.color = "#ffd54f";
+  el.style.textShadow = "0 2px 6px rgba(0,0,0,0.85)";
+  el.style.transition = "transform 1.2s ease, opacity 1.2s ease";
+  document.body.appendChild(el);
+
+  requestAnimationFrame(() => {
+    el.style.opacity = "0";
+    el.style.transform = "translate(-50%, -90px)";
+  });
+
+  setTimeout(() => el.remove(), 1300);
+}
+  
 // ✅ 참여하기: 참여자 등록(파티장 동의 없이)
 function joinBossRun(bossId) {
   const run = (bossRunsActiveCache || {})[bossId];
@@ -9476,6 +9756,7 @@ function joinBossRun(bossId) {
   // 참여 중인 토벌은 저장(다음 단계에서 '보스전 버튼' 띄우는 조건으로 사용)
   activeBossId = bossId;
   save();
+  updateBossBattleBtn();
 
   const memberRef = db.ref(`bossRunsActive/${bossId}/members/${userId}`);
   memberRef.set({
@@ -9581,6 +9862,7 @@ function createBossRun(bossId) {
       // 5) 성공: 본인 자동 참여 처리
       activeBossId = bossId;
       save();
+      updateBossBattleBtn();
 
       writeLog(`${getNickSafe()}님이 ${def.bossTitle} 토벌을 시작하였습니다.`, false);
 
