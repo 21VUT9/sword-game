@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.108)
+    (v4.109)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -9372,6 +9372,15 @@ function formatHMS(ms) {
   return `${h}:${m}:${s}`;
 }
 
+// ✅ 보스전/로그용 닉네임 안전 getter (nickname 변수가 없을 때도 안전)
+function getNickSafe() {
+  // 기존에 nickname 변수가 있으면 그걸 쓰고, 없으면 userId로 대체
+  try {
+    if (typeof nickname !== "undefined" && nickname) return String(nickname);
+  } catch (e) {}
+  return String(userId || "???");
+}
+  
 // ===============================
 // 🐲 보스전: Firebase ActiveRun (v1)
 // ===============================
@@ -9463,13 +9472,13 @@ function joinBossRun(bossId) {
   const memberRef = db.ref(`bossRunsActive/${bossId}/members/${userId}`);
   memberRef.set({
     uid: userId,
-    nick: String(nickname || userId),
+    nick: getNickSafe(),
     joinedAt: Date.now(),
     dmg: 0
   });
-
+ 
   // 길드 진행 로그(보스전 전용 로그는 다음 스텝에서 분리)
-  writeLog(`${nickname}님이 토벌대에 참여했습니다.`, false);
+  writeLog(`${getNickSafe()}님이 토벌대에 참여했습니다.`, false);
 
   showNpcMessage(
     `
@@ -9536,10 +9545,10 @@ function createBossRun(bossId) {
         hp: 360000000000,
 
         leaderUid: userId,
-        leaderNick: String(nickname || userId),
+        leaderNick: getNickSafe(),
 
         members: {
-          [userId]: { uid: userId, nick: String(nickname || userId), joinedAt: now, dmg: 0 }
+          [userId]: { uid: userId, nick: getNickSafe(), joinedAt: now, dmg: 0 }
         },
 
         lastAttackAt: 0
@@ -9565,7 +9574,7 @@ function createBossRun(bossId) {
       activeBossId = bossId;
       save();
 
-      writeLog(`${nickname}님이 ${def.bossTitle} 토벌을 시작하였습니다.`, false);
+      writeLog(`${getNickSafe()}님이 ${def.bossTitle} 토벌을 시작하였습니다.`, false);
 
       showNpcMessage(
         `
