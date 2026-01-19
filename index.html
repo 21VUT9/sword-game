@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.112)
+    (v4.113)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1774,26 +1774,31 @@ button {
       </button>
     </div>
 
-    <!-- 우하단: NPC + 대사 -->
-    <div style="position:absolute; right:12px; bottom:10px; display:flex; align-items:flex-end; gap:10px;">
-      <div id="adventureGuildNpcLine"
-           style="max-width:360px; text-align:left; font-size:13px; color:#ddd;
-                  background:rgba(0,0,0,0.45); border:1px solid rgba(255,255,255,0.12);
-                  border-radius:12px; padding:10px; white-space:pre-line;">
-        -
-      </div>
+<!-- 우하단: NPC + 대사 -->
+<div style="position:absolute; right:12px; bottom:10px; display:flex; align-items:flex-end; gap:10px;">
 
-      <div id="adventureGuildNpcName"
-     style="font-size:12px; color:#ddd; margin-bottom:6px; font-weight:bold;">
-  길드마스터-레온하르트 발렌
-</div>
-<div id="adventureGuildNpcLine"> ... </div>
-
-      <img id="adventureGuildNpcImg"
-           src="images/npc/npc_guildmaster_leon.png"
-           style="width:110px; height:auto; image-rendering:auto;"
-           alt="길드마스터 레온하르트">
+  <!-- ✅ 말풍선 + 이름(이름은 말풍선 '밖' 위) -->
+  <div style="text-align:left; max-width:360px;">
+    <div id="adventureGuildNpcName"
+         style="font-size:12px; color:#fff; margin:0 0 6px 4px; font-weight:900;">
+      길드마스터-레온하르트 발렌
     </div>
+
+    <div id="adventureGuildNpcLine"
+         style="text-align:left; font-size:13px; color:#ddd;
+                background:rgba(0,0,0,0.45); border:1px solid rgba(255,255,255,0.12);
+                border-radius:12px; padding:10px; white-space:pre-line;">
+      -
+    </div>
+  </div>
+
+  <!-- ✅ NPC 이미지 -->
+  <img id="adventureGuildNpcImg"
+       src="images/npc/leonhardt_idle.png"
+       style="width:110px; height:auto; image-rendering:auto;"
+       alt="길드마스터 레온하르트 발렌">
+
+</div>
 
   </div>
 </div>
