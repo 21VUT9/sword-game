@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.121)
+    (v4.122)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -5013,6 +5013,9 @@ updateDuelUI();
 
     // ✅ 강화 아이템 라벨 수량 갱신
   updateUpgradeItemLabels();
+
+    updateBossBattleBtn();
+
 }
 
 // ⚔️ 결투 일자/카운트 초기화
@@ -9874,7 +9877,7 @@ function joinBossRunConfirm(bossId){
       <span style="color:#aaa;">※ 참여하면 토벌 종료(성공/실패)까지 이탈할 수 없다.</span>
     </div>
     <div style="margin-top:10px; display:flex; gap:8px;">
-      <button onclick="joinBossRunExecute('${bossId}')" style="flex:1; padding:8px; font-size:14px; border-radius:8px;">✅ 수락</button>
+      <button onclick="joinBossRun('${bossId}')" style="flex:1; padding:8px; font-size:14px; border-radius:8px;">✅ 수락</button>
       <button onclick="closeNpcPopup()" style="flex:1; padding:8px; font-size:14px; border-radius:8px;">❌ 거절</button>
     </div>
   `;
@@ -9884,6 +9887,7 @@ function joinBossRunConfirm(bossId){
   
 // ✅ 참여하기: 참여자 등록(파티장 동의 없이)
 function joinBossRun(bossId) {
+   closeNpcPopup();
   const run = (bossRunsActiveCache || {})[bossId];
   if (!run || run.status !== "active") {
     showNpcMessage("이미 종료된 토벌입니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
@@ -9893,7 +9897,7 @@ function joinBossRun(bossId) {
   // 참여 중인 토벌은 저장(다음 단계에서 '보스전 버튼' 띄우는 조건으로 사용)
   activeBossId = bossId;
   save();
-  updateBossBattleBtn();
+    updateBossBattleBtn();
 
   const memberRef = db.ref(`bossRunsActive/${bossId}/members/${userId}`);
   memberRef.set({
