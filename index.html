@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.124)
+    (v4.125)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1814,7 +1814,13 @@ overflow: hidden;
     <!-- 상단 헤더 -->
 <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid #333;">
   <div style="text-align:left;">
-    <div style="font-weight:900; font-size:16px; color:#ddd;">⚔️ 보스전</div>
+    <div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;">
+  <div style="font-weight:900; font-size:16px; color:#ddd;">⚔️ 보스전</div>
+  <div id="bossBattleHeaderHuntRemain" style="font-size:12px; color:#9fd3ff; font-weight:900;">
+    (사냥횟수 -/20)
+  </div>
+</div>
+
     <div id="bossBattleMapName" style="margin-top:2px; font-weight:900; font-size:14px; color:#ddd; text-align:left;">-</div>
   </div>
 
@@ -1840,7 +1846,6 @@ overflow: hidden;
 
   <!-- ✅ 우상단: 남은시간 + 사냥횟수(=타격횟수) -->
   <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px;">
-    <div id="bossBattleHuntRemain" style="font-size:12px; color:#9fd3ff; font-weight:900;">사냥횟수: -/20</div>
     <div id="bossBattleRemain"
          style="min-width:96px; text-align:right; font-size:12px; color:#ffd54f; font-weight:900;">
       --:--:--
@@ -1849,12 +1854,12 @@ overflow: hidden;
 
   <!-- ✅ 보스 이름: HP바 상단 중앙 -->
   <div id="bossBattleBossName"
-       style="margin-top:6px; text-align:center; font-size:14px; color:#fff; font-weight:900; text-shadow:0 2px 3px #000;">
+       style="margin-top:2px; text-align:center; font-size:14px; color:#fff; font-weight:900; text-shadow:0 2px 3px #000;">
     -
   </div>
 
   <!-- ✅ HP 바 (비율: 높이1 / 너비7) : 중앙 정렬 -->
-  <div style="margin:6px auto 0; width:min(560px, 100%); position:relative; height:80px;">
+  <div style="margin:2px auto 0; width:min(560px, 100%); position:relative; height:80px;">
 
     <!-- 채움(뒤) -->
     <div id="bossHpFillWrap"
@@ -1870,7 +1875,7 @@ overflow: hidden;
     <!-- 현재체력 텍스트(가장 앞 / 정확히 중앙) -->
     <div id="bossHpText"
          style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-                font-size:12px; font-weight:900; line-height:1; text-shadow:0 1px 2px #000; z-index:3;">
+                font-size:12px; font-weight:900; padding-top: 2px; line-height:1; text-shadow:0 1px 2px #000; z-index:3;">
       -
     </div>
   </div>
@@ -1891,7 +1896,7 @@ overflow: hidden;
       
       <!-- ✅ 하단 안내/보스 대사(보스 발밑) -->
 <div id="bossBattleBottomUi"
-     style="position:absolute; left:12px; right:12px; top:56%; transform:translateY(-50%); z-index:10; text-align:center; pointer-events:none;">
+     style="position:absolute; left:12px; right:12px; bottom:10px; z-index:10; text-align:center; pointer-events:none;">
 
   <div style="font-size:11px; color:#aaa;">
     ※ 보스를 터치하면 사냥 포인트(오늘 남은 횟수)를 소모하여 공격합니다.
@@ -9723,6 +9728,8 @@ function renderBossBattle(){
 
   // ✅ 보스전에서도 사냥횟수(=보스 타격 횟수) 표시
   const huntRemainEl = document.getElementById("bossBattleHuntRemain");
+  const headHunt = document.getElementById("bossBattleHeaderHuntRemain");
+if (headHunt) headHunt.textContent = `(사냥횟수 ${remain} / 20)`;
   if (huntRemainEl) {
     const today = getTodayDateString();
     let used = 0;
