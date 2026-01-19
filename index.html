@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.111)
+    (v4.112)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1859,9 +1859,9 @@ button {
 
       <!-- 보스 이미지(터치 대상) -->
       <img id="bossBattleBossImg"
-           src="images/bosses/sylvana_idle.png"
-           style="position:absolute; left:50%; top:52%; transform:translate(-50%,-50%); width:min(420px, 70vw); height:auto; cursor:pointer; user-select:none;"
-           onclick="attackBossByClick(event)">
+     src="images/bosses/silvana_idle.png"
+     style="position:absolute; left:50%; top:52%; transform:translate(-50%,-50%); width:min(420px, 70vw); height:auto; cursor:pointer; user-select:none;"
+     onclick="attackBossByClick(event)">
     </div>
 
   </div>
@@ -9561,7 +9561,7 @@ function ensureBossRunsSubscription() {
   }, 1000);
 }
 
-const SYLVANA_LINES = [
+const SILVANA_LINES = [
   "…늪의 숨결이 네 발목을 잡을 것이다.",
   "인간은 모두 같은 냄새가 난다. 썩은 피의 냄새.",
   "한 걸음만 더. …그 순간이 네 마지막이 된다.",
@@ -9643,7 +9643,7 @@ function renderBossBattle(){
   // 보스 랜덤 대사
   const lineEl = document.getElementById("bossBattleBossLine");
   if (lineEl && (!lineEl.textContent || Math.random() < 0.12)) {
-    lineEl.textContent = SYLVANA_LINES[Math.floor(Math.random() * SYLVANA_LINES.length)];
+    lineEl.textContent = SILVANA_LINES[Math.floor(Math.random() * SILVANA_LINES.length)];
   }
 
   // 상태 끝났으면 자동 닫기(1차)
