@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.125)
+    (v4.126)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -9727,15 +9727,16 @@ function renderBossBattle(){
   if (remainEl) remainEl.textContent = formatHMS(remainMs);
 
   // ✅ 보스전에서도 사냥횟수(=보스 타격 횟수) 표시
-  const huntRemainEl = document.getElementById("bossBattleHuntRemain");
-  const headHunt = document.getElementById("bossBattleHeaderHuntRemain");
+const huntRemainEl = document.getElementById("bossBattleHuntRemain");
+const headHunt = document.getElementById("bossBattleHeaderHuntRemain");
+
+const today = getTodayDateString();
+let used = 0;
+if (lastHuntDate === today) used = Number(huntCountToday || 0);
+const remain = Math.max(0, 20 - used);
+
+if (huntRemainEl) huntRemainEl.textContent = `사냥횟수: ${remain}/20`;
 if (headHunt) headHunt.textContent = `(사냥횟수 ${remain} / 20)`;
-  if (huntRemainEl) {
-    const today = getTodayDateString();
-    let used = 0;
-    if (lastHuntDate === today) used = Number(huntCountToday || 0);
-    const remain = Math.max(0, 20 - used);
-    huntRemainEl.textContent = `사냥횟수: ${remain}/20`;
   }
 
   // ✅ 우측 토벌대 Top5 + 기여도 렌더(일단 dmg 기반)
@@ -9761,17 +9762,21 @@ if (view.length === 0) {
   let html = "";
   view.forEach((m, idx) => {
     const pct = Math.floor((m.dmg / totalDamage) * 1000) / 10; // 0.1% 단위
+    const dmgTxt = formatBossHpShort(m.dmg || 0);
     const isLeader = (String(run.leaderUid || "") === String(m.uid || ""));
     const leaderTag = isLeader ? "대장- " : "";
 
     html += `
-      <div style="display:flex; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid #222;">
-        <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-          <b style="color:#fff;">${idx+1}.</b> ${leaderTag}${m.nick}
-        </div>
-        <div style="color:#9fd3ff; font-weight:900;">${pct}%</div>
-      </div>
-    `;
+  <div style="display:flex; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid #222;">
+    <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+      <b style="color:#fff;">${idx+1}.</b> ${leaderTag}${m.nick}
+    </div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <div style="color:#ddd; font-weight:900;">${dmgTxt}</div>
+      <div style="color:#9fd3ff; font-weight:900;">${pct}%</div>
+    </div>
+  </div>
+`;
   });
   partyEl.innerHTML = html;
 }
