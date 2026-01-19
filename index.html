@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.109)
+    (v4.110)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -9389,6 +9389,7 @@ const BOSS_COOLDOWN_REF    = db.ref("bossCooldown");
 
 // 메모리 캐시(렌더용)
 let bossRunsActiveCache = {};   // { bossId: runObj }
+let bossCooldownCache = {};     // { bossId: { nextAt: ms } }
 let bossRunsUnsubscribed = true;
 
 // ✅ 모험가길드 중앙 "현재 진행중인 보스전" 렌더
@@ -9448,6 +9449,13 @@ function ensureBossRunsSubscription() {
     bossRunsActiveCache = snap.val() || {};
     renderAdventureGuildBossRuns();
   });
+  
+    BOSS_COOLDOWN_REF.on("value", (snap) => {
+    bossCooldownCache = snap.val() || {};
+    // 길드가 열려있으면 신청 리스트 시간에도 영향을 주므로 렌더 반영
+    renderAdventureGuildBossRuns();
+  });
+
 
   // 남은시간 카운트다운 UI 갱신(1초)
   setInterval(() => {
@@ -9604,9 +9612,37 @@ function openBossApplyList() {
   `;
 
   BOSS_DEFS.forEach(def => {
-    const canApply = (Number(sword || 0) >= def.minSword);
-    const lockText = canApply ? "" : ` (조건: ${def.minSword}강 이상)`;
+    const run = (bossRunsActiveCache || {})[def.id];
+    const isActive = !!(run && run.status === "active");
 
+    const cd = (bossCooldownCache || {})[def.id];
+    const nextAt = Number(cd && cd.nextAt ? cd.nextAt : 0);
+    const remainMs = Math.max(0, nextAt - Date.now());
+    const cooldownTxt = formatHMS(remainMs);
+    const canApplyBySword = (Number(sword || 0) >= def.minSword);
+    const canApplyByCooldown = (remainMs <= 0);
+    const canApply = canApplyBySword && canApplyByCooldown && !isActive;
+    
+    // ✅ 상태별 버튼 텍스트/비활성 계산
+let btnText = "✅ 신청하기";
+let disabled = false;
+
+// (조건: 강화)
+if (!canApplyBySword) {
+  btnText = `🔒 신청 불가 (조건: ${def.minSword}강 이상)`;
+  disabled = true;
+}
+// (진행중)
+else if (isActive) {
+  btnText = `⏳ 진행중인 토벌이 있습니다`;
+  disabled = true;
+}
+// (쿨타임)
+else if (!canApplyByCooldown) {
+  btnText = `⏳ 신청 대기중`;
+  disabled = true;
+}
+    
     html += `
       <div style="border:1px solid #444; border-radius:8px; padding:10px; margin-bottom:8px; background:rgba(0,0,0,0.35);">
         <div style="font-weight:bold; margin-bottom:4px;">
@@ -9617,21 +9653,23 @@ function openBossApplyList() {
         </div>
 
         <div style="font-size:12px; color:#aaa; margin-bottom:8px;">
-          ⏳ 신청 가능까지: <b style="color:#ddd;">--:--:--</b>
+          ⏳ 신청 가능까지: <b style="color:#ddd;">${cooldownTxt}</b>
+          ${isActive ? `<span style="margin-left:8px; color:#ff6b6b; font-weight:bold;">(진행중)</span>` : ""}
         </div>
 
         <button
-          ${canApply ? "" : "disabled"}
-          onclick="openBossApplyConfirm('${def.id}')"
-          style="
-            width:100%;
-            padding:8px 10px;
-            font-size:14px;
-            border-radius:8px;
-            ${canApply ? "" : "opacity:0.4; cursor:not-allowed;"}
-          ">
-          ${canApply ? "✅ 신청하기" : "🔒 신청 불가" + lockText}
-        </button>
+  ${disabled ? "disabled" : ""}
+  onclick="${disabled ? "" : `openBossApplyConfirm('${def.id}')`}"
+  style="
+    width:100%;
+    padding:8px 10px;
+    font-size:14px;
+    border-radius:8px;
+    ${disabled ? "opacity:0.4; cursor:not-allowed;" : ""}
+  ">
+  ${btnText}
+</button>
+
       </div>
     `;
   });
