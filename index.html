@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.132)
+    (v4.133)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -9685,6 +9685,40 @@ function renderAdventureGuildBossRuns() {
     const leaderNick = run.leaderNick || "알 수 없음";
 
     const remainMs = Math.max(0, Number(run.endsAt || 0) - Date.now());
+
+    // ✅ 종료 24시간 전 경고 (한 번만)
+const warnMs = 24 * 60 * 60 * 1000;
+if (Number(run.endsAt || 0) > 0 &&
+    remainMs > 0 &&
+    remainMs <= warnMs &&
+    String(run.status || "") === "active" &&
+    !run.warn24hAnnounced) {
+
+  const runRefWarn = db.ref(`bossRunsActive/${bossId}`);
+  runRefWarn.transaction((cur) => {
+    if (!cur || String(cur.status || "") !== "active") return;
+    const ends = Number(cur.endsAt || 0);
+    if (!ends) return;
+    const left = ends - Date.now();
+    if (left <= 0 || left > warnMs) return;        // 아직 24h 구간 아니면 패스
+    if (cur.warn24hAnnounced) return;              // 이미 경고했으면 패스
+    cur.warn24hAnnounced = true;
+    cur.warn24hAnnouncedAt = Date.now();
+    return cur;
+  }, (err, committed) => {
+    if (err || !committed) return;
+
+    const msg = `${run.leaderNick || "누군가"}님의 토벌대가 위험에 처해있습니다. 지원이 필요합니다! (남은시간 24시간)`;
+    // ✅ 메인 실시간 로그 1회
+    writeLog(msg, false);
+
+    // ✅ (전용 로그 분리 단계까지 적용했다면) 보스전 전용 로그도 1회
+    if (typeof writeBossBattleLog === "function") {
+      writeBossBattleLog(bossId, "⚠️ 토벌 종료까지 24시간 남았습니다. 지원이 필요합니다!");
+    }
+  });
+}
+    
       // ✅ 제한시간 만료 시: 실패로 확정(한 번만)
   if (Number(run.endsAt || 0) > 0 && Date.now() >= Number(run.endsAt || 0) && String(run.status || "") === "active") {
     const bossId2 = String(activeBossId || "");
@@ -9783,6 +9817,84 @@ const SILVANA_LINES = [
 ];
 
 let bossBattleTickTimer = null;
+  // ===============================
+// ✅ 보스전 전용 로그 (bossBattleLogs/{bossId})
+// ===============================
+let bossBattleLogsCache = [];
+let bossBattleLogsUnsub = null;
+let bossBattleLogsBossId = "";
+
+// 로그 구독 시작(보스전 열 때/참여상태 복구 때 호출)
+function ensureBossBattleLogsSubscription(bossId) {
+  bossId = String(bossId || "");
+  if (!bossId) return;
+
+  // 같은 보스면 재구독 안함
+  if (bossBattleLogsUnsub && bossBattleLogsBossId === bossId) return;
+
+  // 이전 구독 해제
+  if (bossBattleLogsUnsub) {
+    try { bossBattleLogsUnsub(); } catch(e) {}
+  }
+  bossBattleLogsUnsub = null;
+  bossBattleLogsBossId = bossId;
+  bossBattleLogsCache = [];
+
+  const ref = db.ref(`bossBattleLogs/${bossId}`).limitToLast(80);
+
+  const onValue = (snap) => {
+    const v = snap.val() || {};
+    const arr = Object.keys(v).map(k => ({
+      t: Number(v[k].t || 0),
+      msg: String(v[k].msg || "")
+    }));
+    arr.sort((a,b) => a.t - b.t);
+    bossBattleLogsCache = arr;
+    renderBossBattleLogs();
+  };
+
+  ref.on("value", onValue);
+
+  // ✅ off 함수 저장
+  bossBattleLogsUnsub = () => ref.off("value", onValue);
+}
+
+function renderBossBattleLogs() {
+  const el = document.getElementById("bossBattleLogList");
+  if (!el) return;
+
+  const arr = bossBattleLogsCache || [];
+  if (!arr.length) {
+    el.innerHTML = `<div style="color:#aaa; font-size:12px;">진행 로그가 없습니다.</div>`;
+    return;
+  }
+
+  el.innerHTML = arr.map(x => {
+    const t = x.t ? new Date(x.t).toLocaleTimeString("ko-KR", { hour12:false }) : "";
+    const safeMsg = (x.msg || "").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
+    return `
+      <div style="margin-bottom:6px; font-size:12px; line-height:1.35;">
+        <span style="color:#888;">[${t}]</span> ${safeMsg}
+      </div>
+    `;
+  }).join("");
+
+  // 스크롤 항상 아래로
+  el.scrollTop = el.scrollHeight;
+}
+
+function writeBossBattleLog(bossId, msg) {
+  bossId = String(bossId || "");
+  if (!bossId) return;
+
+  const text = String(msg || "").trim();
+  if (!text) return;
+
+  db.ref(`bossBattleLogs/${bossId}`).push({
+    t: Date.now(),
+    msg: text
+  });
+}
 
 function openBossBattle(){
   const bossId = String(activeBossId || "");
@@ -9802,6 +9914,7 @@ function openBossBattle(){
   if (!ov) return;
 
   ov.style.display = "flex";
+  ensureBossBattleLogsSubscription(bossId);
   renderBossBattle();
 
   if (bossBattleTickTimer) clearInterval(bossBattleTickTimer);
@@ -9913,6 +10026,9 @@ if (view.length === 0) {
   partyEl.innerHTML = html;
 }
   }
+
+  ensureBossBattleLogsSubscription(bossId);
+renderBossBattleLogs();
   
   // HP
   const hp = Math.max(0, Number(run.hp || 0));
@@ -9986,8 +10102,10 @@ if (view.length === 0) {
 
       if (st === "cleared") {
         writeLog(`${getNickSafe()}님의 토벌대가 ${title} 토벌에 성공하였습니다. 잔혹한 사냥꾼의 몰락에 퍼그란트의 대장간이 환호합니다!`, false);
+        writeBossBattleLog(bossId2, "✅ 토벌 성공! 보상 수령이 가능합니다.");
       } else {
         writeLog(`${getNickSafe()}님의 토벌대가 ${title} 토벌에 실패하였습니다. 습격과 함정의 여왕은 다시 숲으로 숨어들었습니다…`, false);
+        writeBossBattleLog(bossId2, "❌ 토벌 실패… 포기(정산) 처리가 가능합니다.");
       }
     });
   })();
@@ -10193,8 +10311,8 @@ function joinBossRun(bossId) {
   };
 });
  
-  // 길드 진행 로그(보스전 전용 로그는 다음 스텝에서 분리)
-  writeLog(`${getNickSafe()}님이 토벌대에 참여했습니다.`, false);
+  // ✅ 보스전 전용 로그
+writeBossBattleLog(bossId, `${getNickSafe()}님이 토벌대에 참여했습니다.`);
 
   showNpcMessage(
     `
@@ -10292,6 +10410,7 @@ function createBossRun(bossId) {
       updateBossBattleBtn();
 
       writeLog(`${getNickSafe()}님이 ${def.bossTitle} 토벌을 시작하였습니다.`, false);
+      writeBossBattleLog(bossId, `토벌대가 결성되었습니다. (대장: ${getNickSafe()})`);
 
       showNpcMessage(
         `
