@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.131)
+    (v4.132)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -4122,6 +4122,10 @@ function startSession() {
 
   // 이 탭이 끊기면 sessionId 자동 제거
   userRef.child("sessionId").onDisconnect().remove();
+  
+    // ✅ 새로고침/재로그인 시에도 보스 참여 상태 복구를 위해 미리 구독 시작
+  ensureBossRunsSubscription();
+
 }
 
   // ================================
