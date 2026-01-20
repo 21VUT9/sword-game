@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.153)
+    (v4.154)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -10024,6 +10024,7 @@ function renderBossBattle(){
   if (nameEl) nameEl.textContent = `${bossTitle} - ${bossName}`;
 
   const remainMs = Math.max(0, Number(run.endsAt || 0) - Date.now());
+  ensureBoss24hWarningOnce(bossId, run, remainMs);
   const remainEl = document.getElementById("bossBattleRemain");
   if (remainEl) remainEl.textContent = formatHMS(remainMs);
 
@@ -10109,6 +10110,7 @@ renderBossBattleLogs();
   const bossImg = document.getElementById("bossBattleBossImg");
 
   const st = String(run.status || "");
+  
   // ✅ (1) 보스 쿨다운 24h 확정 (토벌 종료 순간 1회만)
 (function ensureCooldownOnce() {
   if (st !== "cleared" && st !== "failed") return;
@@ -10134,6 +10136,37 @@ renderBossBattleLogs();
     db.ref(`bossCooldown/${bossId}`).set({ nextAt });
   });
 })();
+
+  // ✅ 24시간 남음 경고(메인 로그 + 보스전용 로그) 1회만
+function ensureBoss24hWarningOnce(bossId, run, remainMs){
+  try{
+    if (!bossId || !run) return;
+    if (String(run.status || "") !== "active") return;
+
+    const ms24h = 24 * 60 * 60 * 1000;
+    if (remainMs > ms24h || remainMs <= 0) return;
+
+    const def = (BOSS_DEFS || []).find(d => String(d.id) === String(bossId)) || {};
+    const leaderNick = String(run.leaderNick || run.leader || "어떤 토벌대");
+
+    // ✅ 1회 도배 방지: warn24hLoggedAt 트랜잭션
+    db.ref(`bossRunsActive/${bossId}/warn24hLoggedAt`).transaction((cur) => {
+      if (cur) return;         // 이미 찍혔으면 그대로
+      return Date.now();       // 최초 1회만 기록
+    }, (err, committed) => {
+      if (err || !committed) return;
+
+      // 보스전 전용 로그(우측 패널)
+      writeBossBattleLog(bossId, `⚠️ 토벌 종료까지 24시간 남았습니다. 지원을 요청합니다!`);
+
+      // 메인 실시간 로그(전체 공개) - 1회만
+      // (문구는 너가 설계한 41번 메시지 기반)
+      const mapName = String(def.mapName || def.map || "어딘가");
+      const bossTitle = String(def.bossTitle || def.name || "보스");
+      writeLog(`${leaderNick}님의 토벌대 ${mapName} ${bossTitle} 토벌작전의 위험에 처해있습니다. ${leaderNick}이 지원을 요청합니다!`, false);
+    });
+  } catch(e){}
+}
 
 // ✅ (2) 메인 로그/전용 로그 결과 문구 1회만 출력
 (function announceResultOnce() {
