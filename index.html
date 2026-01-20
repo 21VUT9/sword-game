@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.126)
+    (v4.128)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1854,12 +1854,12 @@ overflow: hidden;
 
   <!-- ✅ 보스 이름: HP바 상단 중앙 -->
   <div id="bossBattleBossName"
-       style="margin-top:2px; text-align:center; font-size:14px; color:#fff; font-weight:900; text-shadow:0 2px 3px #000;">
+     style="margin-top:0px; text-align:center; font-size:14px; color:#fff; font-weight:900; text-shadow:0 2px 3px #000;">
     -
   </div>
 
   <!-- ✅ HP 바 (비율: 높이1 / 너비7) : 중앙 정렬 -->
-  <div style="margin:2px auto 0; width:min(560px, 100%); position:relative; height:80px;">
+ <div style="margin:0px auto 0; width:min(560px, 100%); position:relative; height:64px;">
 
     <!-- 채움(뒤) -->
     <div id="bossHpFillWrap"
@@ -1872,10 +1872,9 @@ overflow: hidden;
     <img src="images/ui/boss_hp_frame.png"
          style="position:absolute; inset:0; width:100%; height:100%; object-fit:fill; pointer-events:none; z-index:2;">
 
-    <!-- 현재체력 텍스트(가장 앞 / 정확히 중앙) -->
     <div id="bossHpText"
-         style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-                font-size:12px; font-weight:900; padding-top: 2px; line-height:1; text-shadow:0 1px 2px #000; z-index:3;">
+     style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+            font-size:12px; font-weight:900; padding-top: 0px; line-height:1; text-shadow:0 1px 2px #000; z-index:3;">
       -
     </div>
   </div>
@@ -1891,10 +1890,7 @@ overflow: hidden;
                src="images/bosses/silvana_idle.png"
                style="position:absolute; left:50%; top:52%; transform:translate(-50%,-50%); width:min(420px, 70vw); height:auto; cursor:pointer; user-select:none;"
                onclick="attackBossByClick(event)">
-        </div>
-      </div>
-      
-      <!-- ✅ 하단 안내/보스 대사(보스 발밑) -->
+                <!-- ✅ 하단 안내/보스 대사(보스 발밑) -->
 <div id="bossBattleBottomUi"
      style="position:absolute; left:12px; right:12px; bottom:10px; z-index:10; text-align:center; pointer-events:none;">
 
@@ -1906,7 +1902,9 @@ overflow: hidden;
     -
   </div>
 </div>
-
+        </div>
+      </div>
+      
       <!-- =======================
            우측(40%) : 파티/로그
            ======================= -->
@@ -9621,11 +9619,40 @@ function ensureBossRunsSubscription() {
   if (!bossRunsUnsubscribed) return;
 
   bossRunsUnsubscribed = false;
-  BOSS_RUNS_ACTIVE_REF.on("value", (snap) => {
-    bossRunsActiveCache = snap.val() || {};
-    updateBossBattleBtn();
-    renderAdventureGuildBossRuns();
-  });
+BOSS_RUNS_ACTIVE_REF.on("value", (snap) => {
+  bossRunsActiveCache = snap.val() || {};
+
+  // ✅ (핵심) 새로고침/재접속 시: 내가 이미 참여중인 토벌이 있으면 activeBossId 복구
+  const myUid = String(userId || "");
+  const curId = String(activeBossId || "");
+
+  // 1) 현재 activeBossId가 있는데, 그 토벌이 없거나/종료됐거나/내 멤버 기록이 없으면 초기화
+  if (curId) {
+    const curRun = (bossRunsActiveCache || {})[curId];
+    const isMember = !!(curRun && curRun.status === "active" && curRun.members && curRun.members[myUid]);
+    if (!isMember) activeBossId = "";
+  }
+
+  // 2) activeBossId가 비어있으면, 전체 activeRun 중 "내가 멤버인 run"을 찾아 복구
+  if (!activeBossId) {
+    let found = "";
+    Object.entries(bossRunsActiveCache || {}).some(([bid, run]) => {
+      if (run && run.status === "active" && run.members && run.members[myUid]) {
+        found = String(bid);
+        return true;
+      }
+      return false;
+    });
+
+    if (found) {
+      activeBossId = found;
+      save(); // 다음 접속에도 유지
+    }
+  }
+
+  updateBossBattleBtn();
+  renderAdventureGuildBossRuns();
+});
   
     BOSS_COOLDOWN_REF.on("value", (snap) => {
     bossCooldownCache = snap.val() || {};
@@ -9910,11 +9937,25 @@ function joinBossRunConfirm(bossId){
     return;
   }
 
-  // 이미 이 토벌대에 참여한 상태 방지
-  if (activeBossId === bossId) {
-    showNpcMessage("이미 해당 토벌대에 참여 중입니다.", LEON_IMG.idle, true, "길드마스터 – 레온하르트 발렌");
-    return;
-  }
+  // ✅ 이미 이 토벌대에 참여했는지 "실데이터(run.members)"로 체크 (새로고침에도 안전)
+const run = (bossRunsActiveCache || {})[bossId];
+const alreadyMember = !!(run && run.status === "active" && run.members && run.members[userId]);
+
+if (alreadyMember) {
+  // 새로고침으로 activeBossId가 날아간 케이스까지 복구
+  activeBossId = bossId;
+  save();
+  updateBossBattleBtn();
+
+  showNpcMessage("이미 해당 토벌대에 참여 중입니다.\n(보스전 버튼을 다시 표시했습니다.)", LEON_IMG.idle, true, "길드마스터 – 레온하르트 발렌");
+  return;
+}
+
+// ✅ 다른 토벌대에 이미 귀속되어 있으면 참여 불가(원하는 정책이면 유지)
+if (activeBossId && String(activeBossId) !== String(bossId)) {
+  showNpcMessage("이미 다른 토벌대에 귀속되어 있습니다.\n현재 토벌 종료 후 참여할 수 있습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+  return;
+}
 
   const def = BOSS_DEFS.find(b => b.id === bossId);
   const bossLabel = def ? `${def.bossTitle} ${def.bossName}` : "해당 보스";
@@ -9948,12 +9989,17 @@ function joinBossRun(bossId) {
     updateBossBattleBtn();
 
   const memberRef = db.ref(`bossRunsActive/${bossId}/members/${userId}`);
-  memberRef.set({
+ memberRef.transaction((cur) => {
+  // ✅ 이미 참여 기록이 있으면 절대 덮어쓰지 않음 (dmg 리셋 방지)
+  if (cur) return;
+
+  return {
     uid: userId,
     nick: getNickSafe(),
     joinedAt: Date.now(),
     dmg: 0
-  });
+  };
+});
  
   // 길드 진행 로그(보스전 전용 로그는 다음 스텝에서 분리)
   writeLog(`${getNickSafe()}님이 토벌대에 참여했습니다.`, false);
