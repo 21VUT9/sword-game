@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.152)
+    (v4.153)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -9637,6 +9637,7 @@ const BOSS_COOLDOWN_REF    = db.ref("bossCooldown");
 let bossRunsActiveCache = {};   // { bossId: runObj }
 let bossCooldownCache = {};     // { bossId: { nextAt: ms } }
 let bossRunsUnsubscribed = true;
+let bossRunWatchdogTimer = null;
 
 function updateBossBattleBtn(){
   if (activeBossId && bossRunsUnsubscribed) {
@@ -9655,6 +9656,64 @@ function updateBossBattleBtn(){
   if (!mem) { btn.style.display = "none"; return; }
 
   btn.style.display = "inline-block";
+}
+
+  // ✅ (스텝3-3) 보스전 종료 24시간 전 지원요청(메인 로그 1회 + 전용 로그 1회)
+function maybeWarnBossRun24h(bossId, run, mapName, bossTitle, bossName){
+  const remainMs = Math.max(0, Number(run?.endsAt || 0) - Date.now());
+  const warnMs = 24 * 60 * 60 * 1000;
+
+  if (Number(run?.endsAt || 0) <= 0) return;
+  if (String(run?.status || "") !== "active") return;
+  if (remainMs <= 0 || remainMs > warnMs) return;
+  if (run?.warn24hAnnounced) return;
+
+  const runRefWarn = db.ref(`bossRunsActive/${bossId}`);
+  runRefWarn.transaction((cur) => {
+    if (!cur || String(cur.status || "") !== "active") return;
+    const ends = Number(cur.endsAt || 0);
+    if (!ends) return;
+
+    const left = ends - Date.now();
+    if (left <= 0 || left > warnMs) return;      // 아직 24h 구간 아니면 패스
+    if (cur.warn24hAnnounced) return;            // 이미 경고했으면 패스
+
+    cur.warn24hAnnounced = true;
+    cur.warn24hAnnouncedAt = Date.now();
+    return cur;
+  }, (err, committed) => {
+    if (err || !committed) return;
+
+    const leader = run?.leaderNick || "누군가";
+    const place = `${mapName} · ${bossTitle}${bossName ? " " + bossName : ""}`;
+
+    // ✅ 메인 실시간 로그(도배 방지: transaction으로 1회 보장)
+    const msg = `${leader}님의 토벌대(${place})가 위험에 처해있습니다. 지원이 필요합니다! (남은시간 24시간)`;
+    writeLog(msg, false);
+
+    // ✅ 보스전 전용 로그도 1회(있으면)
+    if (typeof writeBossBattleLog === "function") {
+      writeBossBattleLog(bossId, "⚠️ 토벌 종료까지 24시간 남았습니다. 지원이 필요합니다!");
+    }
+  });
+}
+
+function startBossRunWatchdog(){
+  if (bossRunWatchdogTimer) return;
+
+  bossRunWatchdogTimer = setInterval(() => {
+    const entries = Object.entries(bossRunsActiveCache || {})
+      .filter(([_, run]) => run && String(run.status || "") === "active");
+
+    entries.forEach(([bossId, run]) => {
+      const def = BOSS_DEFS.find(b => b.id === bossId);
+      const mapName   = def ? def.mapName   : (run.mapName || "알 수 없는 지역");
+      const bossTitle = def ? def.bossTitle : (run.bossTitle || "보스");
+      const bossName  = def ? def.bossName  : (run.bossName || "");
+
+      maybeWarnBossRun24h(bossId, run, mapName, bossTitle, bossName);
+    });
+  }, 60 * 1000); // 1분마다 체크(가볍게)
 }
   
 // ✅ 모험가길드 중앙 "현재 진행중인 보스전" 렌더
@@ -9686,38 +9745,7 @@ function renderAdventureGuildBossRuns() {
 
     const remainMs = Math.max(0, Number(run.endsAt || 0) - Date.now());
 
-    // ✅ 종료 24시간 전 경고 (한 번만)
-const warnMs = 24 * 60 * 60 * 1000;
-if (Number(run.endsAt || 0) > 0 &&
-    remainMs > 0 &&
-    remainMs <= warnMs &&
-    String(run.status || "") === "active" &&
-    !run.warn24hAnnounced) {
-
-  const runRefWarn = db.ref(`bossRunsActive/${bossId}`);
-  runRefWarn.transaction((cur) => {
-    if (!cur || String(cur.status || "") !== "active") return;
-    const ends = Number(cur.endsAt || 0);
-    if (!ends) return;
-    const left = ends - Date.now();
-    if (left <= 0 || left > warnMs) return;        // 아직 24h 구간 아니면 패스
-    if (cur.warn24hAnnounced) return;              // 이미 경고했으면 패스
-    cur.warn24hAnnounced = true;
-    cur.warn24hAnnouncedAt = Date.now();
-    return cur;
-  }, (err, committed) => {
-    if (err || !committed) return;
-
-    const msg = `${run.leaderNick || "누군가"}님의 토벌대가 위험에 처해있습니다. 지원이 필요합니다! (남은시간 24시간)`;
-    // ✅ 메인 실시간 로그 1회
-    writeLog(msg, false);
-
-    // ✅ (전용 로그 분리 단계까지 적용했다면) 보스전 전용 로그도 1회
-    if (typeof writeBossBattleLog === "function") {
-      writeBossBattleLog(bossId, "⚠️ 토벌 종료까지 24시간 남았습니다. 지원이 필요합니다!");
-    }
-  });
-}
+    maybeWarnBossRun24h(bossId, run, mapName, bossTitle, bossName);
     
       // ✅ 제한시간 만료 시: 실패로 확정(한 번만)
   if (Number(run.endsAt || 0) > 0 && Date.now() >= Number(run.endsAt || 0) && String(run.status || "") === "active") {
@@ -9761,6 +9789,7 @@ function ensureBossRunsSubscription() {
   bossRunsUnsubscribed = false;
 BOSS_RUNS_ACTIVE_REF.on("value", (snap) => {
   bossRunsActiveCache = snap.val() || {};
+  startBossRunWatchdog();
 
   // ✅ (핵심) 새로고침/재접속 시: 내가 이미 참여중인 토벌이 있으면 activeBossId 복구
   const myUid = String(userId || "");
