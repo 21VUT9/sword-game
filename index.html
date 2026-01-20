@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.155)
+    (v4.156)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -10369,8 +10369,8 @@ function spawnBossHitEffectAt(clientX, clientY, kind, isMagic){
 
   const idx = String(1 + Math.floor(Math.random() * 7)).padStart(2, "0");
   const src = isMagic
-    ? `images/effects/hit_mag_${idx}.png`
-    : `images/effects/hit_atk_${idx}.png`;
+    ? `images/effects/boss_hit_mag_${idx}.png`
+    : `images/effects/boss_hit_atk_${idx}.png`;
 
   const img = document.createElement("img");
   img.src = src;
