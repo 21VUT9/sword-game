@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.141)
+    (v4.142)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1994,7 +1994,7 @@ overflow: hidden;
     <!-- 하단 레온하르트 + 버튼 -->
     <div style="display:flex; gap:10px; align-items:flex-end; margin-top:12px;">
       <img id="bossRewardLeonImg"
-           src="images/npc/guild_leon_focus.png"
+           src="images/npc/leonhardt_focus.png"
            style="width:120px; height:auto; border-radius:12px; border:1px solid rgba(255,255,255,0.12);" />
       <div style="flex:1;">
         <div id="bossRewardLeonLine"
@@ -10157,18 +10157,109 @@ function consumeHuntPointForBoss(){
   return true;
 }
 
-// 1차 데미지: 전투력(power) 기반 + 무기별 계수만 반영(방어/회피/치명은 다음 스텝)
+// ✅ 스텝2: 보스전 전투 룰(랜덤/MISS/치명타/무기패시브/강화보정)
+function getBossBattleStats(bossId){
+  // 현재는 하이엘프퀸 1종 기준(추후 보스 추가 시 여기 확장)
+  return {
+    evade: 0.10,        // 10% 회피
+    physDef: 0.00,      // 물리 방어 0%
+    magicRes: 0.00      // 마법 저항 0%
+  };
+}
+
+function getBossPowerMultiplier(bossId, swordLv){
+  // 하이엘프퀸 강화별 전투력 보정
+  const table = {
+    25: 0.70, // 30% 감소
+    26: 0.50,
+    27: 0.30,
+    28: 0.20,
+    29: 0.15,
+    30: 0.10
+  };
+  if (!swordLv) return 1;
+  if (table[swordLv] != null) return table[swordLv];
+  return 1;
+}
+
+function getBossWeaponProfile(){
+  // weaponType은 너 코드에서 이미 쓰고 있는 전역 값(예: "sword","spear","axe","bow","staff")을 그대로 사용
+  const t = String(weaponType || "sword");
+
+  // 기본값(검)
+  let coef = 1.0;
+  let critRate = 0.0;
+  let ignoreDef = 0.0;
+  let ignoreEvade = 0.0;
+  let dmgLabel = "공격력"; // 표시용(스태프는 주문력)
+
+  if (t === "staff") { coef = 1.0; dmgLabel = "주문력"; }
+  else if (t === "spear") { coef = 0.9; ignoreDef = 0.10; }
+  else if (t === "axe") { coef = 0.9; critRate = 0.10; }
+  else if (t === "bow") { coef = 0.9; ignoreEvade = 0.10; }
+
+  return { t, coef, critRate, ignoreDef, ignoreEvade, dmgLabel };
+}
+
+// ✅ 최종 공격 결과(한 번 클릭 시 결과)
+function calcBossAttackResult(bossId){
+  const stats = getBossBattleStats(bossId);
+  const wp = getBossWeaponProfile();
+
+  // 1) 전투력 기반 베이스
+  const rawPower = Number(power || 0);
+
+  // 2) 강화별 보정(25~30)
+  const swordLv = Number(sword || 0);
+  const powerMul = getBossPowerMultiplier(bossId, swordLv);
+  const adjPower = rawPower * powerMul;
+
+  // 3) 무기 계수 반영
+  let dmg = adjPower * wp.coef;
+
+  // 4) 방어/저항(현재 0%지만 룰로는 적용)
+  //    창은 물리방어 10% 무시
+  const effPhysDef = Math.max(0, Number(stats.physDef || 0) - Number(wp.ignoreDef || 0));
+  // 스태프는 마법 저항 적용(현재 0)
+  const effMagicRes = Math.max(0, Number(stats.magicRes || 0));
+
+  if (wp.t === "staff") {
+    dmg = dmg * (1 - effMagicRes);
+  } else {
+    dmg = dmg * (1 - effPhysDef);
+  }
+
+  // 5) 랜덤 85~100%
+  const randMul = 0.85 + Math.random() * 0.15;
+  dmg = Math.floor(dmg * randMul);
+
+  // 6) 회피(MISS)
+  //    활은 회피 10% 무시 → effEvade가 0이 됨(현재 보스 evade=0.10 기준)
+  const effEvade = Math.max(0, Number(stats.evade || 0) - Number(wp.ignoreEvade || 0));
+  const isMiss = (Math.random() < effEvade);
+
+  if (isMiss) {
+    return { damage: 0, isMiss: true, isCrit: false, label: wp.dmgLabel };
+  }
+
+  // 7) 치명타(기본 0% + 도끼 10%)
+  const baseCrit = 0.0;
+  const critRate = baseCrit + Number(wp.critRate || 0);
+  const isCrit = (Math.random() < critRate);
+
+  if (isCrit) {
+    dmg = Math.floor(dmg * 1.20); // 치명 피해 +20%
+  }
+
+  if (dmg < 0) dmg = 0;
+
+  return { damage: dmg, isMiss: false, isCrit, label: wp.dmgLabel };
+}
+
+// (기존 코드 호환용: 혹시 다른 곳에서 calcBossDamageBase()만 부르는 경우 대비)
 function calcBossDamageBase(){
-  const p = Number(power || 0);
-
-  if (weaponType === "sword") return p * 1.0;
-  if (weaponType === "staff") return p * 1.0;
-
-  if (weaponType === "spear") return p * 0.9;
-  if (weaponType === "axe")   return p * 0.9;
-  if (weaponType === "bow")   return p * 0.9;
-
-  return p * 1.0;
+  const r = calcBossAttackResult(String(activeBossId || ""));
+  return Number(r.damage || 0);
 }
 
 function attackBossByClick(ev){
@@ -10181,12 +10272,22 @@ function attackBossByClick(ev){
     showNpcMessage("오늘 남은 사냥횟수가 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
     return;
   }
+  
+// ✅ 스텝2 룰로 공격 결과 계산
+const result = calcBossAttackResult(bossId);
+const dmg = Number(result.damage || 0);
 
-  // 데미지(85~100%)
-  const base = calcBossDamageBase();
-  const dmg = Math.max(1, Math.floor(base * (0.85 + Math.random() * 0.15)));
+// ✅ 타격 텍스트(미스/크리)
+if (result.isMiss) {
+  spawnBossDamageText(ev.clientX, ev.clientY, "MISS", "miss");
+} else if (result.isCrit) {
+  spawnBossDamageText(ev.clientX, ev.clientY, dmg, "crit");
+} else {
+  spawnBossDamageText(ev.clientX, ev.clientY, dmg, "hit");
+}
 
   // 서버 반영(트랜잭션)
+  if (dmg <= 0) return; // ✅ MISS면 사냥포인트만 소모되고 HP/기여도는 증가하지 않음
   const runRef = db.ref(`bossRunsActive/${bossId}`);
   runRef.transaction((cur) => {
     if (!cur || cur.status !== "active") return;
@@ -10212,27 +10313,44 @@ function attackBossByClick(ev){
   spawnBossDamageText(ev.clientX, ev.clientY, dmg);
 }
 
-function spawnBossDamageText(x, y, dmg){
+function spawnBossDamageText(x, y, value, kind){
   const el = document.createElement("div");
-  el.textContent = "-" + formatGold(dmg);
   el.style.position = "fixed";
   el.style.left = x + "px";
-  el.style.top = y + "px";
+  el.style.top  = y + "px";
   el.style.transform = "translate(-50%, -50%)";
   el.style.pointerEvents = "none";
-  el.style.zIndex = 99999;
+  el.style.zIndex = 999999;
   el.style.fontWeight = "900";
-  el.style.color = "#ffd54f";
-  el.style.textShadow = "0 2px 6px rgba(0,0,0,0.85)";
-  el.style.transition = "transform 1.2s ease, opacity 1.2s ease";
+  el.style.fontSize = "18px";
+  el.style.textShadow = "0 0 10px rgba(0,0,0,0.85)";
+  el.style.opacity = "1";
+
+  if (kind === "miss") {
+    el.textContent = "MISS";
+    el.style.color = "#bdbdbd";
+    el.style.letterSpacing = "1px";
+  } else {
+    el.textContent = String(value);
+    if (kind === "crit") {
+      el.style.color = "#ff3b3b";
+    } else {
+      el.style.color = "#ffd700";
+    }
+  }
+
   document.body.appendChild(el);
 
-  requestAnimationFrame(() => {
-    el.style.opacity = "0";
-    el.style.transform = "translate(-50%, -90px)";
-  });
-
-  setTimeout(() => el.remove(), 1300);
+  let dy = 0;
+  const timer = setInterval(() => {
+    dy -= 1.2;
+    el.style.transform = `translate(-50%, calc(-50% + ${dy}px))`;
+    el.style.opacity = String(Math.max(0, Number(el.style.opacity) - 0.03));
+    if (Number(el.style.opacity) <= 0) {
+      clearInterval(timer);
+      el.remove();
+    }
+  }, 16);
 }
 
 function joinBossRunConfirm(bossId){
