@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.128)
+    (v4.129)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1854,12 +1854,12 @@ overflow: hidden;
 
   <!-- ✅ 보스 이름: HP바 상단 중앙 -->
   <div id="bossBattleBossName"
-     style="margin-top:0px; text-align:center; font-size:14px; color:#fff; font-weight:900; text-shadow:0 2px 3px #000;">
+     style="margin-top:0px; margin-bottom:-6px; text-align:center; font-size:14px; color:#fff; font-weight:900; text-shadow:0 2px 3px #000;">
     -
   </div>
 
   <!-- ✅ HP 바 (비율: 높이1 / 너비7) : 중앙 정렬 -->
- <div style="margin:0px auto 0; width:min(560px, 100%); position:relative; height:64px;">
+ <div style="margin:-4px auto 0; width:min(560px, 100%); position:relative; height:64px;">
 
     <!-- 채움(뒤) -->
     <div id="bossHpFillWrap"
@@ -1874,7 +1874,7 @@ overflow: hidden;
 
     <div id="bossHpText"
      style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-            font-size:12px; font-weight:900; padding-top: 0px; line-height:1; text-shadow:0 1px 2px #000; z-index:3;">
+            font-size:12px; font-weight:900; line-height:1; transform:translateY(2px); text-shadow:0 1px 2px #000; z-index:3;">
       -
     </div>
   </div>
@@ -9830,17 +9830,19 @@ if (view.length === 0) {
     closeBossBattle();
   }
 }
-
+  
 function consumeHuntPointForBoss(){
-  const today = getTodayDateString();
-  if (lastHuntDate !== today) {
-    lastHuntDate = today;
-    huntCountToday = 0;
-  }
-  const used = Number(huntCountToday || 0);
-  if (used >= 20) return false;
+  // ✅ 메인 사냥이랑 동일한 기준(스태미나)로 통일
+  recalcHuntStamina();
 
-  huntCountToday = used + 1;
+  if (huntStamina <= 0) return false;
+
+  // 1회 소모
+  huntStamina = Math.max(0, huntStamina - 1);
+
+  // 참고용 카운트도 메인과 동일하게 재계산
+  huntCountToday = Math.max(0, 20 - huntStamina);
+
   save();
   update();
   return true;
