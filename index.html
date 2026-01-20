@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.143)
+    (v4.151)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -10290,6 +10290,58 @@ function calcBossDamageBase(){
   return Number(r.damage || 0);
 }
 
+// ✅ (스텝3-1) 보스 타격 이펙트 7종 랜덤
+function pickBossHitEffectSrc(){
+  const idx = String(1 + Math.floor(Math.random() * 7)).padStart(2, "0");
+  const t = String(weaponType || "sword");
+  const isMagic = (t === "staff"); // 스태프만 주문력 이펙트
+  return isMagic
+    ? `images/effects/boss_hit_mag_${idx}.png`
+    : `images/effects/boss_hit_atk_${idx}.png`;
+}
+
+function spawnBossHitEffect(x, y, kind){
+  // kind: "hit" | "crit" | "miss"
+  const img = document.createElement("img");
+  img.src = pickBossHitEffectSrc();
+  img.alt = "hit";
+
+  img.style.position = "fixed";
+  img.style.left = x + "px";
+  img.style.top  = y + "px";
+  img.style.transform = "translate(-50%, -50%) scale(1)";
+  img.style.pointerEvents = "none";
+  img.style.zIndex = 999998;
+
+  // 기본 크기(너가 이미지 작업하면서 이 값만 조정하면 됨)
+  img.style.width = "96px";
+  img.style.height = "96px";
+  img.style.opacity = "1";
+
+  // 상태별 연출
+  if (kind === "crit") {
+    img.style.width = "120px";
+    img.style.height = "120px";
+  } else if (kind === "miss") {
+    img.style.opacity = "0.55";
+  }
+
+  document.body.appendChild(img);
+
+  // 애니메이션(짧게 커졌다가 사라짐)
+  const scaleTo = (kind === "crit") ? 1.25 : 1.12;
+  img.animate(
+    [
+      { transform: "translate(-50%, -50%) scale(0.92)", opacity: img.style.opacity },
+      { transform: `translate(-50%, -50%) scale(${scaleTo})`, opacity: "1" },
+      { transform: `translate(-50%, -50%) scale(${scaleTo + 0.08})`, opacity: "0" }
+    ],
+    { duration: (kind === "crit") ? 520 : 420, easing: "ease-out", fill: "forwards" }
+  );
+
+  setTimeout(() => img.remove(), (kind === "crit") ? 560 : 460);
+}
+  
 function attackBossByClick(ev){
   const bossId = String(activeBossId || "");
   const run = (bossRunsActiveCache || {})[bossId];
@@ -10304,6 +10356,9 @@ function attackBossByClick(ev){
 // ✅ 스텝2 룰로 공격 결과 계산
 const result = calcBossAttackResult(bossId);
 const dmg = Number(result.damage || 0);
+
+  // ✅ 타격 이미지 이펙트(클릭 위치)
+spawnBossHitEffect(ev.clientX, ev.clientY, result.isMiss ? "miss" : (result.isCrit ? "crit" : "hit"));
 
 // ✅ 타격 텍스트(미스/크리)
 if (result.isMiss) {
