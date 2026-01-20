@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.142)
+    (v4.143)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -9952,6 +9952,34 @@ function openBossBattleHelp(){
   return formatGold(v);
 }
 
+// ✅ 데미지용: 16억4215만5512 형태 (쉼표 없음 / 만, 억 단위)
+function formatDamageKoUnits(n){
+  n = Math.floor(Number(n || 0));
+  const sign = (n < 0) ? "-" : "";
+  n = Math.abs(n);
+
+  const eok = Math.floor(n / 100000000);        // 억
+  const man = Math.floor((n % 100000000) / 10000); // 만(4자리)
+  const rest = n % 10000;                       // 나머지(4자리)
+
+  let s = "";
+
+  if (eok > 0) {
+    s += eok + "억";
+    s += String(man).padStart(4, "0") + "만";
+    s += String(rest).padStart(4, "0");
+    return sign + s;
+  }
+
+  if (man > 0) {
+    s += man + "만";
+    s += String(rest).padStart(4, "0");
+    return sign + s;
+  }
+
+  return sign + String(rest);
+}
+  
 function renderBossBattle(){
   const bossId = String(activeBossId || "");
   const run = (bossRunsActiveCache || {})[bossId];
@@ -10331,7 +10359,7 @@ function spawnBossDamageText(x, y, value, kind){
     el.style.color = "#bdbdbd";
     el.style.letterSpacing = "1px";
   } else {
-    el.textContent = String(value);
+    el.textContent = formatDamageKoUnits(value);
     if (kind === "crit") {
       el.style.color = "#ff3b3b";
     } else {
