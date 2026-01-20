@@ -9938,7 +9938,6 @@ function joinBossRunConfirm(bossId){
   }
 
   // ✅ 이미 이 토벌대에 참여했는지 "실데이터(run.members)"로 체크 (새로고침에도 안전)
-const run = (bossRunsActiveCache || {})[bossId];
 const alreadyMember = !!(run && run.status === "active" && run.members && run.members[userId]);
 
 if (alreadyMember) {
