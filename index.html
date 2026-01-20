@@ -1811,6 +1811,27 @@ overflow: hidden;
 
   <div style="width:min(980px, 96vw); height:min(680px, 92vh); background:#111; border:1px solid #555; border-radius:14px; overflow:hidden; position:relative;">
 
+<!-- ✅ 토벌 결과 배너(성공/실패) -->
+<div id="bossBattleResultBanner"
+     style="position:absolute; left:0; right:0; top:52%; transform:translateY(-50%);
+            z-index:50; display:none; pointer-events:none; text-align:center;">
+  <div id="bossBattleResultText"
+       style="display:inline-block; padding:14px 18px; border-radius:14px;
+              font-weight:900; font-size:28px; letter-spacing:2px;
+              background:rgba(0,0,0,0.65); border:1px solid rgba(255,255,255,0.18);
+              text-shadow:0 2px 6px #000;">
+    -
+  </div>
+</div>
+
+<!-- ✅ 보상수령 버튼(우하단) -->
+<button id="bossBattleRewardBtn"
+        onclick="openBossRewardOverlay()"
+        style="position:absolute; right:14px; bottom:14px; z-index:60;
+               display:none; padding:10px 14px; border-radius:12px; font-weight:900;">
+  🎁 보상수령
+</button>
+    
     <!-- 상단 헤더 -->
 <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid #333;">
   <div style="text-align:left;">
@@ -9594,6 +9615,21 @@ function renderAdventureGuildBossRuns() {
     const leaderNick = run.leaderNick || "알 수 없음";
 
     const remainMs = Math.max(0, Number(run.endsAt || 0) - Date.now());
+      // ✅ 제한시간 만료 시: 실패로 확정(한 번만)
+  if (Number(run.endsAt || 0) > 0 && Date.now() >= Number(run.endsAt || 0) && String(run.status || "") === "active") {
+    const bossId2 = String(activeBossId || "");
+    if (bossId2) {
+      const runRef = db.ref(`bossRunsActive/${bossId2}`);
+      runRef.transaction((cur) => {
+        if (!cur || String(cur.status || "") !== "active") return;
+        if (Date.now() < Number(cur.endsAt || 0)) return;
+        cur.status = "failed";
+        cur.failedAt = Date.now();
+        return cur;
+      });
+    }
+  }
+
     const remainTxt = formatHMS(remainMs);
 
     html += `
@@ -9681,10 +9717,10 @@ let bossBattleTickTimer = null;
 function openBossBattle(){
   const bossId = String(activeBossId || "");
   const run = (bossRunsActiveCache || {})[bossId];
-  if (!bossId || !run || run.status !== "active") {
-    showNpcMessage("참여중인 보스전이 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
-    return;
-  }
+  if (!bossId || !run || !["active","cleared","failed"].includes(String(run.status || ""))) {
+  showNpcMessage("참여중인 보스전이 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+  return;
+}
 
   // 멤버 체크
   if (!(run.members && run.members[userId])) {
@@ -9715,6 +9751,10 @@ function closeBossBattle(){
 function openBossBattleHelp(){
   // 기존 도움말(모험가길드 ? 버튼) 그대로 활용
   openAdventureGuildHelp();
+}
+
+  function openBossRewardOverlay(){
+  showNpcMessage("아직 보상 집계 화면은 다음 스텝에서 구현합니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
 }
 
   function formatBossHpShort(v){
@@ -9825,11 +9865,43 @@ if (view.length === 0) {
     lineEl.textContent = SILVANA_LINES[Math.floor(Math.random() * SILVANA_LINES.length)];
   }
 
-  // 상태 끝났으면 자동 닫기(1차)
-  if (run.status !== "active") {
-    closeBossBattle();
+    // ✅ 결과 UI / 보상 버튼 토글 + 보스 클릭 가능 여부
+  const banner = document.getElementById("bossBattleResultBanner");
+  const bannerText = document.getElementById("bossBattleResultText");
+  const rewardBtn = document.getElementById("bossBattleRewardBtn");
+  const bossImg = document.getElementById("bossBattleBossImg");
+
+  const st = String(run.status || "");
+
+  if (st === "active") {
+    if (banner) banner.style.display = "none";
+    if (rewardBtn) rewardBtn.style.display = "none";
+    if (bossImg) {
+      bossImg.style.pointerEvents = "auto";
+      bossImg.style.filter = "none";
+      bossImg.style.opacity = "1";
+    }
+  } else {
+    // cleared / failed
+    if (banner) banner.style.display = "block";
+    if (bannerText) {
+      if (st === "cleared") {
+        bannerText.textContent = "토벌 성공";
+        bannerText.style.color = "#ffd54f";
+      } else {
+        bannerText.textContent = "토벌 실패";
+        bannerText.style.color = "#ff6b6b";
+      }
+    }
+    if (rewardBtn) rewardBtn.style.display = "inline-block";
+
+    // 공격 막기 + 연출(회색)
+    if (bossImg) {
+      bossImg.style.pointerEvents = "none";
+      bossImg.style.filter = "grayscale(1)";
+      bossImg.style.opacity = "0.9";
+    }
   }
-}
   
 function consumeHuntPointForBoss(){
   // ✅ 메인 사냥이랑 동일한 기준(스태미나)로 통일
