@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.154)
+    (v4.155)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1911,6 +1911,10 @@ overflow: hidden;
                src="images/bosses/silvana_idle.png"
                style="position:absolute; left:50%; top:52%; transform:translate(-50%,-50%); width:min(420px, 70vw); height:auto; cursor:pointer; user-select:none;"
                onclick="attackBossByClick(event)">
+          <!-- ✅ (신규) 보스 타격/숫자 FX 레이어 (보스 화면 내부 전용) -->
+    <div id="bossFxLayer"
+     style="position:absolute; inset:0; pointer-events:none; z-index:20;"></div>
+
                 <!-- ✅ 하단 안내/보스 대사(보스 발밑) -->
 <div id="bossBattleBottomUi"
      style="position:absolute; left:12px; right:12px; bottom:10px; z-index:10; text-align:center; pointer-events:none;">
@@ -10024,7 +10028,7 @@ function renderBossBattle(){
   if (nameEl) nameEl.textContent = `${bossTitle} - ${bossName}`;
 
   const remainMs = Math.max(0, Number(run.endsAt || 0) - Date.now());
-  ensureBoss24hWarningOnce(bossId, run, remainMs);
+  maybeWarnBossRun24h(bossId, run, mapName, bossTitle, bossName);
   const remainEl = document.getElementById("bossBattleRemain");
   if (remainEl) remainEl.textContent = formatHMS(remainMs);
 
@@ -10136,37 +10140,6 @@ renderBossBattleLogs();
     db.ref(`bossCooldown/${bossId}`).set({ nextAt });
   });
 })();
-
-  // ✅ 24시간 남음 경고(메인 로그 + 보스전용 로그) 1회만
-function ensureBoss24hWarningOnce(bossId, run, remainMs){
-  try{
-    if (!bossId || !run) return;
-    if (String(run.status || "") !== "active") return;
-
-    const ms24h = 24 * 60 * 60 * 1000;
-    if (remainMs > ms24h || remainMs <= 0) return;
-
-    const def = (BOSS_DEFS || []).find(d => String(d.id) === String(bossId)) || {};
-    const leaderNick = String(run.leaderNick || run.leader || "어떤 토벌대");
-
-    // ✅ 1회 도배 방지: warn24hLoggedAt 트랜잭션
-    db.ref(`bossRunsActive/${bossId}/warn24hLoggedAt`).transaction((cur) => {
-      if (cur) return;         // 이미 찍혔으면 그대로
-      return Date.now();       // 최초 1회만 기록
-    }, (err, committed) => {
-      if (err || !committed) return;
-
-      // 보스전 전용 로그(우측 패널)
-      writeBossBattleLog(bossId, `⚠️ 토벌 종료까지 24시간 남았습니다. 지원을 요청합니다!`);
-
-      // 메인 실시간 로그(전체 공개) - 1회만
-      // (문구는 너가 설계한 41번 메시지 기반)
-      const mapName = String(def.mapName || def.map || "어딘가");
-      const bossTitle = String(def.bossTitle || def.name || "보스");
-      writeLog(`${leaderNick}님의 토벌대 ${mapName} ${bossTitle} 토벌작전의 위험에 처해있습니다. ${leaderNick}이 지원을 요청합니다!`, false);
-    });
-  } catch(e){}
-}
 
 // ✅ (2) 메인 로그/전용 로그 결과 문구 1회만 출력
 (function announceResultOnce() {
@@ -10375,56 +10348,105 @@ function calcBossDamageBase(){
   return Number(r.damage || 0);
 }
 
-// ✅ (스텝3-1) 보스 타격 이펙트 7종 랜덤
-function pickBossHitEffectSrc(){
-  const idx = String(1 + Math.floor(Math.random() * 7)).padStart(2, "0");
-  const t = String(weaponType || "sword");
-  const isMagic = (t === "staff"); // 스태프만 주문력 이펙트
-  return isMagic
-    ? `images/effects/boss_hit_mag_${idx}.png`
-    : `images/effects/boss_hit_atk_${idx}.png`;
+  // ✅ 보스 FX 레이어 좌표 변환(클릭 좌표 → 보스 이미지 기준 좌표)
+function bossFxToLocalXY(clientX, clientY){
+  const bossImg = document.getElementById("bossBattleBossImg");
+  if (!bossImg) return null;
+  const rect = bossImg.getBoundingClientRect();
+  return {
+    x: clientX - rect.left,
+    y: clientY - rect.top
+  };
 }
 
-function spawnBossHitEffect(x, y, kind){
-  // kind: "hit" | "crit" | "miss"
+// ✅ (신규) 타격 이미지 이펙트: 보스 화면 내부(bossFxLayer)에만 뜸
+function spawnBossHitEffectAt(clientX, clientY, kind, isMagic){
+  const layer = document.getElementById("bossFxLayer");
+  if (!layer) return;
+
+  const pos = bossFxToLocalXY(clientX, clientY);
+  if (!pos) return;
+
+  const idx = String(1 + Math.floor(Math.random() * 7)).padStart(2, "0");
+  const src = isMagic
+    ? `images/effects/hit_mag_${idx}.png`
+    : `images/effects/hit_atk_${idx}.png`;
+
   const img = document.createElement("img");
-  img.src = pickBossHitEffectSrc();
-  img.alt = "hit";
-
-  img.style.position = "fixed";
-  img.style.left = x + "px";
-  img.style.top  = y + "px";
-  img.style.transform = "translate(-50%, -50%) scale(1)";
+  img.src = src;
+  img.style.position = "absolute";
+  img.style.left = pos.x + "px";
+  img.style.top  = pos.y + "px";
+  img.style.width = (kind === "crit") ? "88px" : "76px";
+  img.style.height = img.style.width;
+  img.style.transform = "translate(-50%, -50%) scale(0.85)";
+  img.style.opacity = (kind === "miss") ? "0.55" : "0";
   img.style.pointerEvents = "none";
-  img.style.zIndex = 999998;
+  img.style.zIndex = "20";
+  img.style.filter = "drop-shadow(0 2px 6px rgba(0,0,0,0.85))";
+  img.style.transition = "transform 520ms ease, opacity 520ms ease";
 
-  // 기본 크기(너가 이미지 작업하면서 이 값만 조정하면 됨)
-  img.style.width = "96px";
-  img.style.height = "96px";
-  img.style.opacity = "1";
+  layer.appendChild(img);
 
-  // 상태별 연출
-  if (kind === "crit") {
-    img.style.width = "120px";
-    img.style.height = "120px";
-  } else if (kind === "miss") {
-    img.style.opacity = "0.55";
+  requestAnimationFrame(() => {
+    img.style.opacity = "1";
+    img.style.transform = "translate(-50%, -50%) scale(1.15)";
+  });
+
+  setTimeout(() => {
+    img.style.opacity = "0";
+    img.style.transform = "translate(-50%, -50%) scale(1.00)";
+  }, 240);
+
+  setTimeout(() => img.remove(), 620);
+}
+
+// ✅ (신규) 데미지/미스 텍스트: 보스 화면 내부(bossFxLayer)에만 뜸
+function spawnBossDamageFloatAt(clientX, clientY, valueOrText, kind){
+  const layer = document.getElementById("bossFxLayer");
+  if (!layer) return;
+
+  const pos = bossFxToLocalXY(clientX, clientY);
+  if (!pos) return;
+
+  const el = document.createElement("div");
+  el.style.position = "absolute";
+  el.style.left = pos.x + "px";
+  el.style.top  = pos.y + "px";
+  el.style.transform = "translate(-50%, -50%)";
+  el.style.pointerEvents = "none";
+  el.style.zIndex = "30";
+  el.style.fontWeight = "900";
+  el.style.whiteSpace = "nowrap";
+  el.style.textShadow = "0 0 10px rgba(0,0,0,0.85)";
+  el.style.opacity = "0";
+  el.style.transition = "transform 900ms ease, opacity 900ms ease";
+
+  if (kind === "miss") {
+    el.textContent = "MISS";
+    el.style.color = "#bdbdbd";
+    el.style.fontSize = "18px";
+    el.style.letterSpacing = "1px";
+  } else {
+    const v = (typeof valueOrText === "number") ? formatDamageKoUnits(valueOrText) : String(valueOrText);
+    el.textContent = v;
+    el.style.color = (kind === "crit") ? "#ff3b3b" : "#ffd700";
+    el.style.fontSize = (kind === "crit") ? "20px" : "18px";
   }
 
-  document.body.appendChild(img);
+  layer.appendChild(el);
 
-  // 애니메이션(짧게 커졌다가 사라짐)
-  const scaleTo = (kind === "crit") ? 1.25 : 1.12;
-  img.animate(
-    [
-      { transform: "translate(-50%, -50%) scale(0.92)", opacity: img.style.opacity },
-      { transform: `translate(-50%, -50%) scale(${scaleTo})`, opacity: "1" },
-      { transform: `translate(-50%, -50%) scale(${scaleTo + 0.08})`, opacity: "0" }
-    ],
-    { duration: (kind === "crit") ? 520 : 420, easing: "ease-out", fill: "forwards" }
-  );
+  requestAnimationFrame(() => {
+    el.style.opacity = "1";
+    el.style.transform = "translate(-50%, -70px)";
+  });
 
-  setTimeout(() => img.remove(), (kind === "crit") ? 560 : 460);
+  setTimeout(() => {
+    el.style.opacity = "0";
+    el.style.transform = "translate(-50%, -110px)";
+  }, 420);
+
+  setTimeout(() => el.remove(), 950);
 }
   
 function attackBossByClick(ev){
@@ -10442,16 +10464,18 @@ function attackBossByClick(ev){
 const result = calcBossAttackResult(bossId);
 const dmg = Number(result.damage || 0);
 
-  // ✅ 타격 이미지 이펙트(클릭 위치)
-spawnBossHitEffect(ev.clientX, ev.clientY, result.isMiss ? "miss" : (result.isCrit ? "crit" : "hit"));
+// ✅ (신규 FX) 보스 화면 내부 전용 레이어에 이펙트/숫자 생성
+const isMagic = (weaponType === "staff");
+const kind = result.isMiss ? "miss" : (result.isCrit ? "crit" : "hit");
 
-// ✅ 타격 텍스트(미스/크리)
+// 타격 이미지
+spawnBossHitEffectAt(ev.clientX, ev.clientY, kind, isMagic);
+
+// 타격 숫자/미스
 if (result.isMiss) {
-  spawnBossDamageText(ev.clientX, ev.clientY, "MISS", "miss");
-} else if (result.isCrit) {
-  spawnBossDamageText(ev.clientX, ev.clientY, dmg, "crit");
+  spawnBossDamageFloatAt(ev.clientX, ev.clientY, "MISS", "miss");
 } else {
-  spawnBossDamageText(ev.clientX, ev.clientY, dmg, "hit");
+  spawnBossDamageFloatAt(ev.clientX, ev.clientY, dmg, result.isCrit ? "crit" : "hit");
 }
 
   // 서버 반영(트랜잭션)
@@ -10476,50 +10500,11 @@ if (result.isMiss) {
 
     return cur;
   });
-
-  // 1차: 화면에 숫자만 살짝 (스파크/미스/치명은 다음 스텝에서)
-  spawnBossDamageText(ev.clientX, ev.clientY, dmg);
 }
 
-function spawnBossDamageText(x, y, value, kind){
-  const el = document.createElement("div");
-  el.style.position = "fixed";
-  el.style.left = x + "px";
-  el.style.top  = y + "px";
-  el.style.transform = "translate(-50%, -50%)";
-  el.style.pointerEvents = "none";
-  el.style.zIndex = 999999;
-  el.style.fontWeight = "900";
-  el.style.fontSize = "18px";
-  el.style.textShadow = "0 0 10px rgba(0,0,0,0.85)";
-  el.style.opacity = "1";
-
-  if (kind === "miss") {
-    el.textContent = "MISS";
-    el.style.color = "#bdbdbd";
-    el.style.letterSpacing = "1px";
-  } else {
-    el.textContent = formatDamageKoUnits(value);
-    if (kind === "crit") {
-      el.style.color = "#ff3b3b";
-    } else {
-      el.style.color = "#ffd700";
-    }
-  }
-
-  document.body.appendChild(el);
-
-  let dy = 0;
-  const timer = setInterval(() => {
-    dy -= 1.2;
-    el.style.transform = `translate(-50%, calc(-50% + ${dy}px))`;
-    el.style.opacity = String(Math.max(0, Number(el.style.opacity) - 0.03));
-    if (Number(el.style.opacity) <= 0) {
-      clearInterval(timer);
-      el.remove();
-    }
-  }, 16);
-}
+// ✅ (신규) 보스 타격 FX 파일 규칙
+// 물리(검/창/활/도끼): images/effects/hit_atk_01.png ~ hit_atk_07.png
+// 마법(스태프):        images/effects/hit_mag_01.png ~ hit_mag_07.png
 
 function joinBossRunConfirm(bossId){
   const run = (bossRunsActiveCache || {})[bossId];
@@ -10946,7 +10931,7 @@ function getBossRewardByPct(pct, isLeader){
 
   if (isLeader) {
     reward.itemSuper += 1;    
-    reward.starShard += 30;
+    reward.itemEssence += 30;
   }
 
   return reward;
@@ -10998,6 +10983,7 @@ function claimBossReward(){
     itemScroll15 = Number(itemScroll15 || 0) + (rw.itemScroll15 || 0);
     itemEssence = Number(itemEssence || 0) + (rw.itemEssence || 0);
     itemSuper = Number(itemSuper || 0) + (rw.itemSuper || 0);
+    save(); // ✅ 보상(아이템) 지급 저장 확정
 
     // ✅ 내 귀속 해제 (보상 수령 전엔 계속 귀속)
     activeBossId = "";
