@@ -9748,19 +9748,17 @@ function renderAdventureGuildBossRuns() {
     maybeWarnBossRun24h(bossId, run, mapName, bossTitle, bossName);
     
       // ✅ 제한시간 만료 시: 실패로 확정(한 번만)
-  if (Number(run.endsAt || 0) > 0 && Date.now() >= Number(run.endsAt || 0) && String(run.status || "") === "active") {
-    const bossId2 = String(activeBossId || "");
-    if (bossId2) {
-      const runRef = db.ref(`bossRunsActive/${bossId2}`);
-      runRef.transaction((cur) => {
-        if (!cur || String(cur.status || "") !== "active") return;
-        if (Date.now() < Number(cur.endsAt || 0)) return;
-        cur.status = "failed";
-        cur.failedAt = Date.now();
-        return cur;
-      });
-    }
-  }
+if (Number(run.endsAt || 0) > 0 && Date.now() >= Number(run.endsAt || 0) && String(run.status || "") === "active") {
+  const runRef = db.ref(`bossRunsActive/${bossId}`); // ✅ 현재 렌더중인 bossId 사용
+  runRef.transaction((cur) => {
+    if (!cur || String(cur.status || "") !== "active") return;
+    if (Date.now() < Number(cur.endsAt || 0)) return;
+
+    cur.status = "failed";
+    cur.failedAt = Date.now();
+    return cur;
+  });
+}
 
     const remainTxt = formatHMS(remainMs);
 
@@ -10111,61 +10109,86 @@ renderBossBattleLogs();
   const bossImg = document.getElementById("bossBattleBossImg");
 
   const st = String(run.status || "");
-  // ✅ 토벌 종료 시 쿨타임 24h 시작(도배 방지)
-(function ensureCooldownOnce(){
-  const bossId = String(activeBossId || "");
+  // ✅ (1) 보스 쿨다운 24h 확정 (토벌 종료 순간 1회만)
+(function ensureCooldownOnce() {
+  if (st !== "cleared" && st !== "failed") return;
   if (!bossId) return;
 
-  const st = String(run.status || "");
-  if (st !== "cleared" && st !== "failed") return;
+  const runRef = db.ref(`bossRunsActive/${bossId}`);
+  runRef.transaction((cur) => {
+    if (!cur) return;
+    const s = String(cur.status || "");
+    if (s !== "cleared" && s !== "failed") return;
 
-  // 이미 쿨타임이 있으면 건드리지 않음
-  const cd = (bossCooldownCache || {})[bossId];
-  const nextAt = Number(cd && cd.nextAt ? cd.nextAt : 0);
-  if (nextAt > Date.now()) return;
+    // 이미 기록했으면 패스
+    if (cur.cooldownFixed) return;
 
-  // ✅ nextAt 세팅(한 번만)
-  db.ref(`bossCooldown/${bossId2}`).transaction((cur) => {
-    const now = Date.now();
-    const curNext = Number(cur && cur.nextAt ? cur.nextAt : 0);
-    if (curNext > now) return;            // 이미 누가 세팅함
-    return { nextAt: now + 24*60*60*1000 };
+    cur.cooldownFixed = true;
+    cur.cooldownFixedAt = Date.now();
+    return cur;
+  }, (err, committed) => {
+    if (err || !committed) return;
+
+    // ✅ 쿨다운 경로 기록(보스별 nextAt)
+    const nextAt = Date.now() + 24 * 60 * 60 * 1000;
+    db.ref(`bossCooldown/${bossId}`).set({ nextAt });
   });
 })();
 
-    // ✅ 성공/실패 메인 로그 1회만(도배 방지)
-  (function announceResultOnce(){
-    const bossId2 = String(activeBossId || "");
-    if (!bossId2) return;
+// ✅ (2) 메인 로그/전용 로그 결과 문구 1회만 출력
+(function announceResultOnce() {
+  if (st !== "cleared" && st !== "failed") return;
+  if (!bossId) return;
 
-    if (st !== "cleared" && st !== "failed") return;
+  const runRef = db.ref(`bossRunsActive/${bossId}`);
+  runRef.transaction((cur) => {
+    if (!cur) return;
+    const s = String(cur.status || "");
+    if (s !== "cleared" && s !== "failed") return;
 
-    const runRef = db.ref(`bossRunsActive/${bossId2}`);
+    if (cur.resultAnnounced) return;
+    cur.resultAnnounced = true;
+    cur.resultAnnouncedAt = Date.now();
+    return cur;
+  }, (err, committed) => {
+    if (err || !committed) return;
 
-    runRef.transaction((cur) => {
-      if (!cur) return;
+    const def = (typeof BOSS_DEFS !== "undefined")
+      ? (BOSS_DEFS.find(b => b.id === bossId) || null)
+      : null;
 
-      const st2 = String(cur.status || "");
-      if (st2 !== "cleared" && st2 !== "failed") return;
+    const mapName   = def ? def.mapName   : (run.mapName || "어딘가");
+    const bossTitle = def ? def.bossTitle : (run.bossTitle || "보스");
+    const bossName  = def ? def.bossName  : (run.bossName || "");
+    const title = `${mapName}의 주인 ${bossTitle}${bossName ? " " + bossName : ""}`;
 
-      if (cur.resultAnnounced) return; // ✅ 이미 출력했으면 종료
-      cur.resultAnnounced = true;
-      return cur;
-    }, (err, committed) => {
-      if (err || !committed) return;
+    const leader = run.leaderNick || getNickSafe();
 
-      const def = (BOSS_DEFS || []).find(d => String(d.id) === bossId2);
-      const title = def ? def.bossTitle : "보스";
+    if (st === "cleared") {
+      // ✅ 성공 메인 로그(도배 방지 1회)
+      writeLog(
+        `${leader}님의 토벌대가 ${title}를 토벌하는데 성공하였습니다. 잔혹한 사냥꾼의 몰락에 퍼그란트의 대장간이 환호합니다!`,
+        false
+      );
 
-      if (st === "cleared") {
-        writeLog(`${getNickSafe()}님의 토벌대가 ${title} 토벌에 성공하였습니다. 잔혹한 사냥꾼의 몰락에 퍼그란트의 대장간이 환호합니다!`, false);
-        writeBossBattleLog(bossId2, "✅ 토벌 성공! 보상 수령이 가능합니다.");
-      } else {
-        writeLog(`${getNickSafe()}님의 토벌대가 ${title} 토벌에 실패하였습니다. 습격과 함정의 여왕은 다시 숲으로 숨어들었습니다…`, false);
-        writeBossBattleLog(bossId2, "❌ 토벌 실패… 포기(정산) 처리가 가능합니다.");
+      // ✅ 전용 로그(1회)
+      if (typeof writeBossBattleLog === "function") {
+        writeBossBattleLog(bossId, "✅ 토벌 성공! 보상 수령이 가능합니다.");
       }
-    });
-  })();
+    } else {
+      // ✅ 실패 메인 로그(도배 방지 1회)
+      writeLog(
+        `${leader}님의 토벌대가 ${title} 토벌에 실패하였습니다. 습격과 함정의 여왕은 다시 숲으로 숨어들었습니다…`,
+        false
+      );
+
+      // ✅ 전용 로그(1회)
+      if (typeof writeBossBattleLog === "function") {
+        writeBossBattleLog(bossId, "❌ 토벌 실패… 포기(정산) 처리가 가능합니다.");
+      }
+    }
+  });
+})();
   
   if (st === "active") {
     if (banner) banner.style.display = "none";
