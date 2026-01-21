@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.157)
+    (v4.158)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1915,18 +1915,23 @@ overflow: hidden;
     <div id="bossFxLayer"
      style="position:absolute; inset:0; pointer-events:none; z-index:20;"></div>
 
-                <!-- ✅ 하단 안내/보스 대사(보스 발밑) -->
+          <!-- ✅ 하단 안내/보스 대사(보스 발밑) -->
 <div id="bossBattleBottomUi"
-     style="position:absolute; left:12px; right:12px; bottom:10px; z-index:10; text-align:center; pointer-events:none;">
+     style="position:absolute; left:12px; right:12px; bottom:42px; z-index:30; text-align:center; pointer-events:none;">
 
-  <div style="font-size:11px; color:#aaa;">
+  <!-- ✅ 보스 랜덤 대사(안내문 위) -->
+  <div id="bossBattleBossLine"
+       style="margin:0 0 6px 0; font-size:15px; color:#e6e6e6; font-weight:900;
+              text-shadow:0 2px 6px rgba(0,0,0,0.95);">
+  </div>
+
+  <!-- ✅ 안내 문구 -->
+  <div style="font-size:11px; color:#b5b5b5; text-shadow:0 2px 6px rgba(0,0,0,0.95);">
     ※ 보스를 터치하면 사냥횟수를 소모하여 공격합니다.
   </div>
 
-  <div id="bossBattleBossLine" style="margin-top:6px; font-size:13px; color:#ddd; font-weight:900; text-shadow:0 1px 2px #000;">
 </div>
 
-</div>
         </div>
       </div>
       
@@ -10111,19 +10116,25 @@ const lineEl = document.getElementById("bossBattleBossLine");
 if (lineEl) {
   const stNow = String(run.status || "");
 
-  if (stNow === "cleared") {
-    lineEl.textContent = SILVANA_DEAD_LINE;      // ✅ 사망 고정 대사
-  } else if (stNow === "failed") {
-    lineEl.textContent = SILVANA_FAIL_LINE;      // ✅ 실패 고정 대사(원하면 제거 가능)
-  } else {
-    // ✅ 진행중(=active): 랜덤 대사
-    const t = (lineEl.textContent || "").trim();
-    if (t === "" || t === "-") {
-      lineEl.textContent = SILVANA_LINES[Math.floor(Math.random() * SILVANA_LINES.length)];
-    } else if (Math.random() < 0.12) {
-      lineEl.textContent = SILVANA_LINES[Math.floor(Math.random() * SILVANA_LINES.length)];
-    }
+ if (st === "cleared") {
+  // ✅ 사망 고정 2줄(메인 + 서브)
+  lineEl.innerHTML = `
+    <div style="font-size:17px; font-weight:900; color:#ffd54f;">
+      ${SILVANA_DEAD_LINE}
+    </div>
+    <div style="margin-top:4px; font-size:12px; color:#9a9a9a;">
+      ${SILVANA_DEAD_SUBLINE}
+    </div>
+  `;
+} else if (st === "failed") {
+  // ✅ 실패 고정 대사(있으면 유지 or 너가 정한 FAILED_LINE 넣어도 됨)
+  lineEl.textContent = SILVANA_FAIL_LINE || "…인간은 결국, 약속을 찢는구나…";
+} else {
+  // ✅ 진행중만 랜덤
+  if (!lineEl.textContent || Math.random() < 0.12) {
+    lineEl.textContent = SILVANA_LINES[Math.floor(Math.random() * SILVANA_LINES.length)];
   }
+}
 }
 
     // ✅ 결과 UI / 보상 버튼 토글 + 보스 클릭 가능 여부
