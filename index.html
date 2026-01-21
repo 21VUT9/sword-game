@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.165)
+    (v4.166)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1909,7 +1909,10 @@ overflow: hidden;
           <!-- 보스 이미지(터치 대상) -->
           <img id="bossBattleBossImg"
                src="images/bosses/silvana_idle.png"
-               style="position:absolute; left:50%; top:52%; transform:translate(-50%,-50%); width:min(420px, 70vw); height:auto; cursor:pointer; user-select:none;"
+               style="position:absolute; left:50%; top:52%; transform:translate(-50%,-50%); width:min(420px, 70vw); height:auto; cursor:pointer; user-select:none;
+            -webkit-tap-highlight-color: rgba(0,0,0,0);
+            -webkit-user-select:none;
+            -webkit-touch-callout:none;"
                onclick="attackBossByClick(event)">
           <!-- ✅ (신규) 보스 타격/숫자 FX 레이어 (보스 화면 내부 전용) -->
     <div id="bossFxLayer"
@@ -1925,10 +1928,10 @@ overflow: hidden;
 
   <!-- ✅ 보스 대사(안내문 위, 조금 더 큼) -->
   <div id="bossBattleBossLineMain"
-       style="font-size:14px; color:#eee; font-weight:900; text-shadow:0 2px 8px rgba(0,0,0,0.95);">
+       style="font-size:14px; color:#eee; font-weight:400; text-shadow:0 2px 8px rgba(0,0,0,0.95);">
   </div>
   <div id="bossBattleBossLineSub"
-       style="margin-top:4px; font-size:11px; color:#a9a9a9; font-weight:700; text-shadow:0 2px 8px rgba(0,0,0,0.95);">
+       style="margin-top:4px; font-size:11px; color:#a9a9a9; font-weight:400; text-shadow:0 2px 8px rgba(0,0,0,0.95);">
   </div>
 
   <!-- ✅ 안내문(보스 대사 아래) -->
