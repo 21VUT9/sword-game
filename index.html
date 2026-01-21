@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.166)
+    (v4.167)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1919,7 +1919,16 @@ overflow: hidden;
      style="position:absolute; inset:0; pointer-events:none; z-index:20;"></div>
 
           <div id="bossBattleFadeOverlay"
-     style="position:absolute; inset:0; background:#000; opacity:0; pointer-events:none; z-index:40; transition: opacity 500ms ease;">
+     style="
+       position:fixed;
+       left:0; top:0;
+       width:100vw; height:100vh;
+       background:#000;
+       opacity:0;
+       pointer-events:none;
+       z-index:999999;
+       transition: opacity 220ms ease;
+     ">
 </div>
 
           <!-- ✅ 하단 안내/보스 대사(보스 발밑) -->
@@ -9613,6 +9622,8 @@ const BOSS_DEFS = [
     minSword: 24,
     applyCostGold: 50000000,
     durationHours: 72
+      imgIdle: "images/bosses/silvana_idle.png",
+  imgDead: "images/bosses/silvana_down.png",
   }
 ];
 
@@ -9860,7 +9871,25 @@ const SILVANA_LINES = [
   "숲은 내 편이다. 너희의 비명조차 삼켜주지."
 ];
 
-const SILVANA_DEAD_LINE = "…이 분노는… 내 것이 아니었는데…";
+// ✅ 보스 스프라이트(상태별) - 여기만 바꾸면 됨
+const BOSS_SPRITES = {
+  swamp_elf_queen: {
+    alive:  "images/boss/silvana_idle.png",  // 진행중
+    dead:   "images/boss/silvana_down.png",  // 토벌 성공(사망)
+    failed: "images/boss/silvana_idle.png"   // 토벌 실패(원하면 전용 이미지로 교체)
+  }
+};
+
+// ✅ 상태에 맞는 보스 이미지 src 반환
+function getBossSpriteSrc(bossId, status){
+  const sp = (BOSS_SPRITES || {})[String(bossId || "")] || {};
+  const st = String(status || "active");
+  if (st === "cleared") return sp.dead || sp.alive || "";
+  if (st === "failed")  return sp.failed || sp.alive || "";
+  return sp.alive || "";
+}
+  
+const SILVANA_DEAD_LINE = "…아아 미르엘… 이렇게 모든것이… 끝나는구나 … 미르엘…";
 const SILVANA_DEAD_SUBLINE = "마지막 엘프여왕, 릴리아네 미르엘 — 기록 종료";
 const SILVANA_FAIL_LINE = "도망쳐라. 늪은… 너희의 뼈를 기억한다.";
 
@@ -10149,12 +10178,25 @@ renderBossBattleLogs();
   const rewardBtn = document.getElementById("bossBattleRewardBtn");
   const bossImg = document.getElementById("bossBattleBossImg");
 
+  if (bossImg && getBossSpriteSrc(bossId, st)) bossImg.src = getBossSpriteSrc(bossId, st);
+
   // ✅ (추가) 상태 변화 감지 → 사망/실패 순간 연출 1회(깜빡임 방지)
 const prevSt = bossBattleLastStatus[bossId];
 if (prevSt !== st) {
   bossBattleLastStatus[bossId] = st;
 
-  // 사망/실패 진입 순간 1회만
+  // ✅ 다음 토벌(새 런) 대비: active로 돌아오면 1회 연출 플래그 리셋
+  if (st === "active") {
+    bossBattleDeathFxShown[bossId] = false;
+  }
+
+  // ✅ 상태가 바뀌는 '순간'에만 이미지 교체(깜빡임 방지)
+  if (bossImg) {
+    const nextSrc = getBossSpriteSrc(bossId, st);
+    if (nextSrc) bossImg.src = nextSrc;
+  }
+
+  // ✅ 사망/실패 진입 순간 1회만: 암전/페이드
   if ((st === "cleared" || st === "failed") && !bossBattleDeathFxShown[bossId]) {
     bossBattleDeathFxShown[bossId] = true;
 
@@ -10162,7 +10204,7 @@ if (prevSt !== st) {
     if (fade) {
       // 짧은 암전 → 복구
       fade.style.opacity = "0";
-      void fade.offsetHeight;
+      void fade.offsetHeight;       // 리플로우 강제
       fade.style.opacity = "0.55";
       setTimeout(() => { fade.style.opacity = "0.20"; }, 420);
       setTimeout(() => { fade.style.opacity = "0"; }, 980);
