@@ -9847,6 +9847,11 @@ const SILVANA_LINES = [
   "숲은 내 편이다. 너희의 비명조차 삼켜주지."
 ];
 
+const SILVANA_DEAD_LINE = "…이 분노는… 내 것이 아니었는데…";
+const SILVANA_DEAD_SUBLINE = "마지막 엘프여왕, 릴리아네 미르엘 — 기록 종료";
+const SILVANA_FAIL_LINE = "도망쳐라. 늪은… 너희의 뼈를 기억한다.";
+
+
 let bossBattleTickTimer = null;
   // ===============================
 // ✅ 보스전 전용 로그 (bossBattleLogs/{bossId})
@@ -10101,18 +10106,23 @@ renderBossBattleLogs();
   const hpText = document.getElementById("bossHpText");
   if (hpText) hpText.textContent = `${formatBossHpShort(hp)} / ${formatBossHpShort(maxHp)}`;
 
-  // 보스 랜덤 대사
+  // ✅ 보스 대사(진행중=랜덤 / 종료=고정)
 const lineEl = document.getElementById("bossBattleBossLine");
 if (lineEl) {
-  const t = (lineEl.textContent || "").trim();
+  const stNow = String(run.status || "");
 
-  // ✅ 처음(또는 placeholder)엔 무조건 1회 출력
-  if (t === "" || t === "-") {
-    lineEl.textContent = SILVANA_LINES[Math.floor(Math.random() * SILVANA_LINES.length)];
-  }
-  // ✅ 이후에는 12% 확률로만 갱신
-  else if (Math.random() < 0.12) {
-    lineEl.textContent = SILVANA_LINES[Math.floor(Math.random() * SILVANA_LINES.length)];
+  if (stNow === "cleared") {
+    lineEl.textContent = SILVANA_DEAD_LINE;      // ✅ 사망 고정 대사
+  } else if (stNow === "failed") {
+    lineEl.textContent = SILVANA_FAIL_LINE;      // ✅ 실패 고정 대사(원하면 제거 가능)
+  } else {
+    // ✅ 진행중(=active): 랜덤 대사
+    const t = (lineEl.textContent || "").trim();
+    if (t === "" || t === "-") {
+      lineEl.textContent = SILVANA_LINES[Math.floor(Math.random() * SILVANA_LINES.length)];
+    } else if (Math.random() < 0.12) {
+      lineEl.textContent = SILVANA_LINES[Math.floor(Math.random() * SILVANA_LINES.length)];
+    }
   }
 }
 
