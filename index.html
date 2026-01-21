@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.167)
+    (v4.168)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1846,7 +1846,7 @@ overflow: hidden;
   </div>
 
   <div style="display:flex; gap:8px;">
-    <button onclick="openBossBattleHelp()" style="padding:6px 10px; border-radius:10px;">?</button>
+    <button onclick="openBossBattleHelp()" style="padding:6px 10px; border-radius:10px;">능력치</button>
     <button onclick="closeBossBattle()" style="padding:6px 10px; border-radius:10px;">닫기</button>
   </div>
 </div>
@@ -10012,8 +10012,102 @@ function closeBossBattle(){
 }
 
 function openBossBattleHelp(){
-  // 기존 도움말(모험가길드 ? 버튼) 그대로 활용
-  openAdventureGuildHelp();
+  const bossId = String(activeBossId || "");
+  const run = (bossRunsActiveCache || {})[bossId];
+
+  if (!bossId || !run) {
+    showNpcMessage("확인할 보스전 정보가 없습니다.", LEON_IMG.focus, true, "능력치");
+    return;
+  }
+
+  const def = (BOSS_DEFS || []).find(b => String(b.id) === bossId) || {};
+  const bossTitle = String(def.bossTitle || run.bossTitle || "보스");
+  const bossName  = String(def.bossName  || run.bossName  || "");
+  const bossFull  = bossName ? `${bossTitle} ${bossName}` : bossTitle;
+
+  // 보스 스탯(0인 항목은 표시 안 함)
+  const stats = (typeof getBossBattleStats === "function") ? (getBossBattleStats(bossId) || {}) : {};
+  const hp    = Math.max(0, Number(run.hp || 0));
+  const maxHp = Math.max(1, Number(run.maxHp || 1));
+
+  const bossLines = [];
+  bossLines.push(`• 체력: <b>${formatBossHpShort(hp)}</b> / ${formatBossHpShort(maxHp)}`);
+
+  const evade = Number(stats.evade || 0);
+  const physDef = Number(stats.physDef || 0);
+  const magicRes = Number(stats.magicRes || 0);
+
+  if (evade > 0)    bossLines.push(`• 회피율: <b>${Math.round(evade * 100)}%</b>`);
+  if (physDef > 0)  bossLines.push(`• 물리 방어력: <b>${Math.round(physDef * 100)}%</b>`);
+  if (magicRes > 0) bossLines.push(`• 마법 저항력: <b>${Math.round(magicRes * 100)}%</b>`);
+
+  // (선택) 페이즈/스킬: BOSS_DEFS에 phases가 있으면만 표시
+  if (def.phases && Array.isArray(def.phases) && def.phases.length) {
+    const ptxt = def.phases.map(p => {
+      const name = p && p.name ? String(p.name) : "페이즈";
+      const skills = (p && Array.isArray(p.skills) && p.skills.length) ? `(${p.skills.join(", ")})` : "";
+      return `${name}${skills}`;
+    }).join("<br>");
+    bossLines.push(`• 페이즈/스킬:<br><span style="color:#bbb; font-size:12px; line-height:1.4;">${ptxt}</span>`);
+  }
+
+  // 내 정보(보정된 값 / 0인 항목은 표시 안 함)
+  const wp = (typeof getBossWeaponProfile === "function") ? (getBossWeaponProfile() || {}) : {};
+  const t = String(wp.t || weaponType || "sword");
+  const coef = Number(wp.coef || 1);
+  const ignoreDef = Number(wp.ignoreDef || 0);
+  const ignoreEvade = Number(wp.ignoreEvade || 0);
+  const critRate = Number(wp.critRate || 0);
+  const dmgLabel = String(wp.dmgLabel || (t === "staff" ? "주문력" : "공격력"));
+
+  let wName = "무기";
+  try {
+    if (typeof getWeaponInfo === "function") {
+      const info = getWeaponInfo(Number(sword || 0), String(weaponType || "sword"));
+      if (info && info.name) wName = String(info.name);
+    } else if (typeof weaponName !== "undefined" && weaponName) {
+      wName = String(weaponName);
+    }
+  } catch(e) {}
+
+  // “보정된 공격력/주문력” = (전투력 * 강화보정) * 무기계수 * (방어/저항 반영)  ※ 랜덤(85~100%) 제외
+  const rawPower = Number(power || 0);
+  const swordLv  = Number(sword || 0);
+  const powerMul = (typeof getBossPowerMultiplier === "function") ? Number(getBossPowerMultiplier(bossId, swordLv) || 1) : 1;
+  const adjPower = rawPower * powerMul;
+
+  const effPhysDef = Math.max(0, physDef - ignoreDef); // 창 관통 반영
+  const effMagicRes = Math.max(0, magicRes);
+
+  let base = adjPower * coef;
+  if (t === "staff") base = base * (1 - effMagicRes);
+  else base = base * (1 - effPhysDef);
+  base = Math.max(0, Math.floor(base));
+
+  const myLines = [];
+  myLines.push(`• 무기: <b>${wName}</b> +${swordLv}강`);
+  myLines.push(`• ${dmgLabel}: <b>${formatBossHpShort(base)}</b>`);
+
+  if (ignoreDef > 0)  myLines.push(`• 관통력: <b>${Math.round(ignoreDef * 100)}%</b>`);
+  if (ignoreEvade > 0) myLines.push(`• 회피 무시: <b>${Math.round(ignoreEvade * 100)}%</b>`);
+  if (critRate > 0) {
+    myLines.push(`• 치명타 확률: <b>${Math.round(critRate * 100)}%</b>`);
+    myLines.push(`• 치명타 데미지: <b>+20%</b>`);
+  }
+
+  const html = `
+    <div style="text-align:left; font-size:13px; line-height:1.6;">
+      <div style="font-weight:900; margin-bottom:6px;">[보스 정보] ${bossFull}</div>
+      <div style="color:#ddd;">${bossLines.join("<br>")}</div>
+
+      <div style="height:12px;"></div>
+
+      <div style="font-weight:900; margin-bottom:6px;">[나의 정보] ${getNickSafe()}</div>
+      <div style="color:#ddd;">${myLines.join("<br>")}</div>
+    </div>
+  `;
+
+  showNpcMessage(html, LEON_IMG.focus, true, "능력치");
 }
 
   function formatBossHpShort(v){
