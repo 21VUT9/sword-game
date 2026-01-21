@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.168)
+    (v4.169)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -10187,48 +10187,89 @@ const remain = Math.max(0, 20 - used);
 if (huntRemainEl) huntRemainEl.textContent = `사냥횟수: ${remain}/20`;
 if (headHunt) headHunt.textContent = `(사냥횟수 ${remain} / 20)`;
 
-  // ✅ 우측 토벌대 Top5 + 기여도 렌더(일단 dmg 기반)
-  const partyEl = document.getElementById("bossBattlePartyList");
-  if (partyEl) {
-    const members = run.members || {};
-    const totalDamage = Math.max(1, Number(run.maxHp || 0) - Number(run.hp || 0));
+  // ✅ 우측 토벌대 리스트 렌더(대장 최상단 고정 + 스크롤)
+const partyEl = document.getElementById("bossBattlePartyList");
+if (partyEl) {
+  // 5명 정도 보이게 높이 제한 + 스크롤
+  partyEl.style.maxHeight = "210px";
+  partyEl.style.overflowY = "auto";
 
-    const arr = Object.values(members).map(m => {
-      const dmg = Number(m && m.dmg ? m.dmg : 0);
-      const nick = (m && m.nick) ? String(m.nick) : "???";
-      const uid  = (m && m.uid) ? String(m.uid) : "";
-      return { uid, nick, dmg };
+  const members = run.members || {};
+  const totalDamage = Math.max(1, Number(run.maxHp || 0) - Number(run.hp || 0));
+
+  // 멤버 배열화
+  let arr = Object.values(members).map(m => {
+    const uid = String((m && m.uid) || "");
+    const nick = String((m && m.nick) || "???");
+    const dmg = Number((m && m.dmg) || 0);
+
+    // ✅ 새로 추가한 표기용 스냅샷(없을 수도 있으니 fallback)
+    const titleId = String((m && m.titleId) || "");
+    const wType = String((m && m.weaponType) || "sword");
+    const wLv = Number((m && m.weaponLv) || 0);
+
+    return { uid, nick, dmg, titleId, wType, wLv };
+  });
+
+  // 딜 순 정렬(기본)
+  arr.sort((a, b) => b.dmg - a.dmg);
+
+  // ✅ 대장은 무조건 최상단 고정
+  const leaderUid = String(run.leaderUid || "");
+  const leader = leaderUid ? arr.find(x => String(x.uid) === leaderUid) : null;
+  const others = leaderUid ? arr.filter(x => String(x.uid) !== leaderUid) : arr;
+
+  // 표시 순서: [대장] + 나머지(딜순)
+  const view = [];
+  if (leader) view.push({ ...leader, _isLeader: true });
+  others.forEach(x => view.push({ ...x, _isLeader: false }));
+
+  if (view.length === 0) {
+    partyEl.innerHTML = `<div style="color:#777;">참여자가 없습니다.</div>`;
+  } else {
+    // 무기분류 한글 라벨
+    const weaponKor = (t) => {
+      if (t === "spear") return "창";
+      if (t === "axe") return "도끼";
+      if (t === "bow") return "활";
+      if (t === "staff") return "스태프";
+      return "검";
+    };
+
+    let html = "";
+    view.forEach((m) => {
+      const pct = Math.floor((m.dmg / totalDamage) * 1000) / 10; // 0.1% 단위
+      const dmgTxt = formatBossHpShort(m.dmg || 0);
+
+      // 칭호 표기(0이면 숨김)
+      let titleTag = "";
+      if (m.titleId) {
+        // ✅ 4168.html에 이미 있는 함수 사용: getTitleNameById()
+        const tName = String(getTitleNameById(m.titleId) || "");
+        if (tName) titleTag = `<span style="color:#ffd54f;">[${tName}]</span>`;
+      }
+
+      const wTxt = `${weaponKor(m.wType)}+${Number(m.wLv || 0)}강`;
+
+      html += `
+        <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid #222;">
+          <div style="flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            ${m._isLeader ? `<span style="color:#ffd54f; font-weight:900;">대장</span> ` : ``}
+            ${titleTag}${titleTag ? "" : ""}${m.nick}
+            <span style="color:#aaa;">(${wTxt})</span>
+          </div>
+
+          <div style="white-space:nowrap; display:flex; gap:10px; align-items:center;">
+            <div style="color:#ddd; font-weight:900;">딜량 ${dmgTxt}</div>
+            <div style="color:#9fd3ff; font-weight:900;">기여도:${pct}%</div>
+          </div>
+        </div>
+      `;
     });
 
-    arr.sort((a,b) => b.dmg - a.dmg);
-
-    const view = arr; // ✅ 전원 표시
-
-if (view.length === 0) {
-  partyEl.innerHTML = `<div style="color:#777;">참여자가 없습니다.</div>`;
-} else {
-  let html = "";
-  view.forEach((m, idx) => {
-    const pct = Math.floor((m.dmg / totalDamage) * 1000) / 10; // 0.1% 단위
-    const dmgTxt = formatBossHpShort(m.dmg || 0);
-    const isLeader = (String(run.leaderUid || "") === String(m.uid || ""));
-    const leaderTag = isLeader ? "대장- " : "";
-
-    html += `
-  <div style="display:flex; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid #222;">
-    <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-      <b style="color:#fff;">${idx+1}.</b> ${leaderTag}${m.nick}
-    </div>
-    <div style="display:flex; gap:8px; align-items:center;">
-      <div style="color:#ddd; font-weight:900;">${dmgTxt}</div>
-      <div style="color:#9fd3ff; font-weight:900;">${pct}%</div>
-    </div>
-  </div>
-`;
-  });
-  partyEl.innerHTML = html;
-}
+    partyEl.innerHTML = html;
   }
+}
 
   ensureBossBattleLogsSubscription(bossId);
 renderBossBattleLogs();
@@ -10679,8 +10720,27 @@ if (result.isMiss) {
 
     // 멤버 누적
     if (!cur.members) cur.members = {};
-    if (!cur.members[userId]) cur.members[userId] = { uid:userId, nick:getNickSafe(), joinedAt:Date.now(), dmg:0 };
-    cur.members[userId].dmg = Number(cur.members[userId].dmg || 0) + dmg;
+    if (!cur.members[userId]) {
+  cur.members[userId] = {
+    uid: userId,
+    nick: getNickSafe(),
+    joinedAt: Date.now(),
+    dmg: 0,
+
+    // ✅ 표기용 스냅샷
+    titleId: String(equippedTitle || ""),
+    weaponType: String(weaponType || "sword"),
+    weaponLv: Number(sword || 0)
+  };
+}
+
+// ✅ 닉/칭호/무기표기는 바뀔 수 있으니(장비교체/칭호변경 등) 공격 때마다 최신화
+cur.members[userId].nick = getNickSafe();
+cur.members[userId].titleId = String(equippedTitle || "");
+cur.members[userId].weaponType = String(weaponType || "sword");
+cur.members[userId].weaponLv = Number(sword || 0);
+
+cur.members[userId].dmg = Number(cur.members[userId].dmg || 0) + dmg;
 
     // (토벌 성공 처리) - 다음 스텝에서 “승리 연출/보상/쿨타임”로 확장
     if (cur.hp <= 0) {
@@ -10765,11 +10825,16 @@ function joinBossRun(bossId) {
   // ✅ 이미 참여 기록이 있으면 절대 덮어쓰지 않음 (dmg 리셋 방지)
   if (cur) return;
 
-  return {
+    return {
     uid: userId,
     nick: getNickSafe(),
     joinedAt: Date.now(),
-    dmg: 0
+    dmg: 0,
+
+    // ✅ 표기용 스냅샷(우측 토벌대 리스트)
+    titleId: String(equippedTitle || ""),     // 없으면 "" (표기 안 함)
+    weaponType: String(weaponType || "sword"),// "sword/spear/axe/bow/staff"
+    weaponLv: Number(sword || 0)              // 현재 구조상 강화 수치는 sword로 통일
   };
 });
  
@@ -10844,8 +10909,18 @@ function createBossRun(bossId) {
         leaderNick: getNickSafe(),
 
         members: {
-          [userId]: { uid: userId, nick: getNickSafe(), joinedAt: now, dmg: 0 }
-        },
+  [userId]: {
+    uid: userId,
+    nick: getNickSafe(),
+    joinedAt: now,
+    dmg: 0,
+
+    // ✅ 표기용 스냅샷
+    titleId: String(equippedTitle || ""),
+    weaponType: String(weaponType || "sword"),
+    weaponLv: Number(sword || 0)
+  }
+},
 
         lastAttackAt: 0
       };
