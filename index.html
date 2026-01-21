@@ -1915,23 +1915,28 @@ overflow: hidden;
     <div id="bossFxLayer"
      style="position:absolute; inset:0; pointer-events:none; z-index:20;"></div>
 
+          <div id="bossBattleFadeOverlay"
+     style="position:absolute; inset:0; background:#000; opacity:0; pointer-events:none; z-index:40; transition: opacity 500ms ease;">
+</div>
+
           <!-- ✅ 하단 안내/보스 대사(보스 발밑) -->
 <div id="bossBattleBottomUi"
-     style="position:absolute; left:12px; right:12px; bottom:42px; z-index:30; text-align:center; pointer-events:none;">
+     style="position:absolute; left:12px; right:12px; bottom:26px; z-index:10; text-align:center; pointer-events:none;">
 
-  <!-- ✅ 보스 랜덤 대사(안내문 위) -->
-  <div id="bossBattleBossLine"
-       style="margin:0 0 6px 0; font-size:15px; color:#e6e6e6; font-weight:900;
-              text-shadow:0 2px 6px rgba(0,0,0,0.95);">
+  <!-- ✅ 보스 대사(안내문 위, 조금 더 큼) -->
+  <div id="bossBattleBossLineMain"
+       style="font-size:14px; color:#eee; font-weight:900; text-shadow:0 2px 8px rgba(0,0,0,0.95);">
+  </div>
+  <div id="bossBattleBossLineSub"
+       style="margin-top:4px; font-size:11px; color:#a9a9a9; font-weight:700; text-shadow:0 2px 8px rgba(0,0,0,0.95);">
   </div>
 
-  <!-- ✅ 안내 문구 -->
-  <div style="font-size:11px; color:#b5b5b5; text-shadow:0 2px 6px rgba(0,0,0,0.95);">
+  <!-- ✅ 안내문(보스 대사 아래) -->
+  <div style="margin-top:8px; font-size:11px; color:#aaa;">
     ※ 보스를 터치하면 사냥횟수를 소모하여 공격합니다.
   </div>
 
 </div>
-
         </div>
       </div>
       
@@ -9856,8 +9861,10 @@ const SILVANA_DEAD_LINE = "…이 분노는… 내 것이 아니었는데…";
 const SILVANA_DEAD_SUBLINE = "마지막 엘프여왕, 릴리아네 미르엘 — 기록 종료";
 const SILVANA_FAIL_LINE = "도망쳐라. 늪은… 너희의 뼈를 기억한다.";
 
-
 let bossBattleTickTimer = null;
+  let bossBattleDeathFxShown = {};   // { bossId: true } - 사망/실패 연출 1회만
+let bossBattleLastStatus = {};      // { bossId: "active"|"cleared"|"failed" }
+
   // ===============================
 // ✅ 보스전 전용 로그 (bossBattleLogs/{bossId})
 // ===============================
@@ -10144,6 +10151,27 @@ if (lineEl) {
   const bossImg = document.getElementById("bossBattleBossImg");
 
   const st = String(run.status || "");
+
+  // ✅ (추가) 상태 변화 감지 → 사망/실패 순간 연출 1회(깜빡임 방지)
+const prevSt = bossBattleLastStatus[bossId];
+if (prevSt !== st) {
+  bossBattleLastStatus[bossId] = st;
+
+  // 사망/실패 진입 순간 1회만
+  if ((st === "cleared" || st === "failed") && !bossBattleDeathFxShown[bossId]) {
+    bossBattleDeathFxShown[bossId] = true;
+
+    const fade = document.getElementById("bossBattleFadeOverlay");
+    if (fade) {
+      // 짧은 암전 → 복구
+      fade.style.opacity = "0";
+      void fade.offsetHeight;
+      fade.style.opacity = "0.55";
+      setTimeout(() => { fade.style.opacity = "0.20"; }, 420);
+      setTimeout(() => { fade.style.opacity = "0"; }, 980);
+    }
+  }
+}
   
   // ✅ (1) 보스 쿨다운 24h 확정 (토벌 종료 순간 1회만)
 (function ensureCooldownOnce() {
