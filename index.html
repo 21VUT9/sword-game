@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.170)
+    (v4.171)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -10673,19 +10673,28 @@ function spawnBossDamageFloatAt(clientX, clientY, valueOrText, kind){
     el.style.fontSize = (kind === "crit") ? "20px" : "18px";
   }
 
-  layer.appendChild(el);
+    layer.appendChild(el);
 
+  // ✅ 읽히게: 먼저 빠르게 떠오르고(타격감), 3초 유지 후 천천히 사라짐(가시성)
+  const HOLD_MS = 3000;
+  const FADE_MS = 1200;
+
+  // 1) 등장/상승(빠르게)
+  el.style.transition = "transform 280ms ease, opacity 280ms ease";
   requestAnimationFrame(() => {
     el.style.opacity = "1";
     el.style.transform = "translate(-50%, -70px)";
   });
 
+  // 2) 3초 유지 후 서서히 페이드아웃
   setTimeout(() => {
+    el.style.transition = `transform ${FADE_MS}ms ease, opacity ${FADE_MS}ms ease`;
     el.style.opacity = "0";
     el.style.transform = "translate(-50%, -110px)";
-  }, 420);
+  }, HOLD_MS);
 
-  setTimeout(() => el.remove(), 950);
+  // 3) 제거(페이드 끝난 뒤)
+  setTimeout(() => el.remove(), HOLD_MS + FADE_MS + 80);
 }
   
 function attackBossByClick(ev){
@@ -11101,9 +11110,18 @@ else if (!canApplyByCooldown) {
   const bossTitle = def ? def.bossTitle : "보스";
   const resultTxt = (st === "cleared") ? "✅ 토벌 성공" : "❌ 토벌 실패";
 
+    const myContribHtml = (myRank > 0)
+    ? `<div style="font-size:20px; font-weight:900; color:#ffd54f; letter-spacing:0.2px;">${myPct.toFixed(1)}% · ${myRank}위</div>`
+    : `<div style="font-size:14px; color:#bbb;">기록 없음</div>`;
+
   sumEl.innerHTML = `
     <div style="font-weight:900; color:#fff; margin-bottom:4px;">${bossTitle} · ${resultTxt}</div>
     <div style="color:#aaa;">총 피해량: <b style="color:#fff;">${formatGold(total)}</b></div>
+
+    <div style="margin-top:8px; padding:10px; border:1px solid rgba(255,255,255,0.14); border-radius:14px; background:rgba(255,255,255,0.06);">
+      <div style="font-size:12px; color:#aaa; margin-bottom:4px;">내 기여도</div>
+      ${myContribHtml}
+    </div>
   `;
 
   // 리스트(상위 20만 표시 — 스크롤)
@@ -11144,11 +11162,29 @@ else if (!canApplyByCooldown) {
     listEl.appendChild(row);
   }
 
-  // 레온 멘트
+    // 레온 멘트 (1등/하위권 특수)
   if (st === "cleared") {
-    lineEl.innerHTML = (myRank > 0)
-      ? `네 기여도는 <b style="color:#ffd54f;">${myPct.toFixed(1)}%</b>로 <b style="color:#ffd54f;">${myRank}위</b>다. 보상을 수령하겠나?`
-      : `집계에 네 기록이 보이지 않는군… 하지만 토벌은 끝났다.`;
+    const totalMembers = arr.length;
+    const isTop = (myRank === 1);
+    const isBottom = (myRank > 0 && myRank === totalMembers);
+
+    if (myRank <= 0) {
+      lineEl.innerHTML = `집계에 네 기록이 보이지 않는군… 하지만 토벌은 끝났다.`;
+    } else if (isTop) {
+      lineEl.innerHTML =
+        `이번 토벌작전에서 <b style="color:#ffd54f;">위대한 업적</b>을 남겼군. `
+        + `네 기여도는 <b style="color:#ffd54f; font-size:18px;">${myPct.toFixed(1)}%</b>, `
+        + `<b style="color:#ffd54f; font-size:18px;">${myRank}위</b>다. 보상을 수령하겠나?`;
+    } else if (isBottom) {
+      lineEl.innerHTML =
+        `자네의 기여가 <b style="color:#bbb;">큰 편은 아니지만</b>, 함께 끝까지 버텼다. `
+        + `네 기여도는 <b style="color:#ffd54f; font-size:18px;">${myPct.toFixed(1)}%</b>, `
+        + `<b style="color:#ffd54f; font-size:18px;">${myRank}위</b>다. 보상을 수령하겠나?`;
+    } else {
+      lineEl.innerHTML =
+        `네 기여도는 <b style="color:#ffd54f; font-size:18px;">${myPct.toFixed(1)}%</b>로 `
+        + `<b style="color:#ffd54f; font-size:18px;">${myRank}위</b>다. 보상을 수령하겠나?`;
+    }
   } else {
     lineEl.innerHTML = `완벽한 전략, 전술의 실패다. 적을 너무 과소평가했군. 포기하고 재정비하겠나?`;
   }
