@@ -10673,27 +10673,27 @@ function spawnBossDamageFloatAt(clientX, clientY, valueOrText, kind){
     el.style.fontSize = (kind === "crit") ? "20px" : "18px";
   }
 
-    layer.appendChild(el);
+     layer.appendChild(el);
 
-  // ✅ 읽히게: 먼저 빠르게 떠오르고(타격감), 3초 유지 후 천천히 사라짐(가시성)
-  const HOLD_MS = 2000;
-  const FADE_MS = 1200;
+  // ✅ 떠오르지 않게: 위치 고정 + 3초 유지 + 천천히 페이드아웃
+  const HOLD_MS = 1500;
+  const FADE_MS = 3000;
 
-  // 1) 등장/상승(빠르게)
-  el.style.transition = "transform 280ms ease, opacity 280ms ease";
-  requestAnimationFrame(() => {
-    el.style.opacity = "1";
-    el.style.transform = "translate(-50%, -35px)";
-  });
+  // 1) 등장
+  el.style.transform = "translate(-50%, 0) scale(0.95)";
+el.style.transition = "opacity 180ms ease, transform 180ms ease";
+requestAnimationFrame(() => {
+  el.style.opacity = "1";
+  el.style.transform = "translate(-50%, 0) scale(1)";
+});
 
-  // 2) 3초 유지 후 서서히 페이드아웃
+  // 2) 3초 유지 후 서서히 사라짐
   setTimeout(() => {
-    el.style.transition = `transform ${FADE_MS}ms ease, opacity ${FADE_MS}ms ease`;
+    el.style.transition = `opacity ${FADE_MS}ms ease`;
     el.style.opacity = "0";
-    el.style.transform = "translate(-50%, -70px)";
   }, HOLD_MS);
 
-  // 3) 제거(페이드 끝난 뒤)
+  // 3) 제거
   setTimeout(() => el.remove(), HOLD_MS + FADE_MS + 80);
 }
   
