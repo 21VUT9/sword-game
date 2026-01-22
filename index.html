@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.169)
+    (v4.170)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -4929,6 +4929,13 @@ function onTitleClick(titleId){
     <div class="actionTitle">[${def.name}]</div>
     ${popupBtn("장착하기", "equippedTitle='" + titleId + "'; save(); update(); renderTitleGrid(); hideActionPopup();")}
   `);
+}
+
+  // ✅ 칭호 ID → 칭호 이름 변환 (보스전 토벌대 리스트 표기용)
+function getTitleNameById(titleId){
+  titleId = String(titleId || "");
+  const def = TITLE_DEFS.find(t => String(t.id) === titleId);
+  return def ? String(def.name || "") : "";
 }
 
 // 오버레이: 바깥 클릭 닫기 + ESC 닫기
