@@ -10683,14 +10683,14 @@ function spawnBossDamageFloatAt(clientX, clientY, valueOrText, kind){
   el.style.transition = "transform 280ms ease, opacity 280ms ease";
   requestAnimationFrame(() => {
     el.style.opacity = "1";
-    el.style.transform = "translate(-50%, -70px)";
+    el.style.transform = "translate(-50%, -35px)";
   });
 
   // 2) 3초 유지 후 서서히 페이드아웃
   setTimeout(() => {
     el.style.transition = `transform ${FADE_MS}ms ease, opacity ${FADE_MS}ms ease`;
     el.style.opacity = "0";
-    el.style.transform = "translate(-50%, -110px)";
+    el.style.transform = "translate(-50%, -70px)";
   }, HOLD_MS);
 
   // 3) 제거(페이드 끝난 뒤)
