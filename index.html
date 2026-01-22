@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.174)
+    (v4.175)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -10248,21 +10248,12 @@ if (partyEl) {
       const pct = Math.floor((m.dmg / totalDamage) * 1000) / 10; // 0.1% 단위
       const dmgTxt = formatBossHpShort(m.dmg || 0);
 
-      // 칭호 표기(0이면 숨김)
-      let titleTag = "";
-      if (m.titleId) {
-        // ✅ 4168.html에 이미 있는 함수 사용: getTitleNameById()
-        const tName = String(getTitleNameById(m.titleId) || "");
-        if (tName) titleTag = `<span style="color:#ffd54f;">[${tName}]</span>`;
-      }
-
       const wTxt = `${weaponKor(m.wType)}+${Number(m.wLv || 0)}강`;
 
       html += `
         <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid #222;">
           <div style="flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-            ${m._isLeader ? `<span style="color:#ffd54f; font-weight:900;">대장</span> ` : ``}
-            ${titleTag}${titleTag ? "" : ""}${m.nick}
+            ${m._isLeader ? `<span style="margin-right:4px;">👑</span>` : ``}${m.nick}
             <span style="color:#aaa;">(${wTxt})</span>
           </div>
 
@@ -11182,6 +11173,8 @@ left.innerHTML = `${crown}<span style="color:#aaa;">${i+1}위</span> ${m.nick}`;
 
     // ✅ 색은 “나”만 더 강조(LoL처럼 눈에 띄게)
     fill.style.background = isMe ? "rgba(255,213,79,0.90)" : "rgba(160,200,255,0.75)";
+    fill.style.position = "relative";
+    fill.style.zIndex = "1";
 
     // 🏅 1등 MVP 뱃지 (막대 끝)
 if (i === 0) {
@@ -11198,6 +11191,7 @@ if (i === 0) {
   mvp.style.background = "rgba(255,213,79,0.95)";
   mvp.style.color = "#111";
   mvp.style.boxShadow = "0 0 10px rgba(255,213,79,0.35)";
+  mvp.style.zIndex = "3";
 
   // track에 absolute 올리려면 position 필요
   track.style.position = "relative";
