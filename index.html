@@ -9917,20 +9917,17 @@ if (!canKeep) activeBossId = "";
   if (!activeBossId) {
     let found = "";
     Object.entries(bossRunsActiveCache || {}).some(([bid, run]) => {
-      if (run && run.members && run.members[myUid]) {
-  const st2 = String(run.status || "");
-  const claimed2 = !!(run.claimed && run.claimed[myUid]);
+  if (run && run.members && run.members[myUid]) {
+    const st2 = String(run.status || "");
+    const claimed2 = !!(run.claimed && run.claimed[myUid]);
 
-  if (st2 === "active" || st2 === "failed" || (st2 === "cleared" && !claimed2)) {
-    found = String(bid);
-    return true;
+    if (st2 === "active" || st2 === "failed" || (st2 === "cleared" && !claimed2)) {
+      found = String(bid);
+      return true;
+    }
   }
-}
-        found = String(bid);
-        return true;
-      }
-      return false;
-    });
+  return false;
+});
 
     if (found) {
       activeBossId = found;
