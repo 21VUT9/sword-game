@@ -10531,7 +10531,10 @@ if (prevSt !== st) {
         bannerText.style.color = "#ff6b6b";
       }
     }
-    if (rewardBtn) rewardBtn.style.display = "inline-block";
+    if (rewardBtn) {
+  rewardBtn.style.display = "inline-block";
+  rewardBtn.innerHTML = (st === "cleared") ? "🎁 보상수령" : "🚪 포기하기";
+}
 
     // 공격 막기 + 연출(회색)
     if (bossImg) {
