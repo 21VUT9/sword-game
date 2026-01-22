@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.176)
+    (v4.177)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -10651,17 +10651,24 @@ function spawnBossDamageFloatAt(clientX, clientY, valueOrText, kind){
   el.style.transition = "transform 900ms ease, opacity 900ms ease";
 
   if (kind === "miss") {
-    el.textContent = "MISS";
-    el.style.color = "#bdbdbd";
-    el.style.fontSize = "18px";
-    el.style.letterSpacing = "1px";
-  } else {
-    const v = (typeof valueOrText === "number") ? formatDamageKoUnits(valueOrText) : String(valueOrText);
-    el.textContent = v;
-    el.style.color = (kind === "crit") ? "#ff3b3b" : "#ffd700";
-    el.style.fontSize = (kind === "crit") ? "20px" : "18px";
-  }
+  el.textContent = "MISS";
+  el.style.color = "#bdbdbd";
+  el.style.fontSize = "18px";
+  el.style.letterSpacing = "1px";
+} else {
+  const v = (typeof valueOrText === "number") ? formatDamageKoUnits(valueOrText) : String(valueOrText);
 
+  // ✅ 치명타면 느낌표 + 더 크게 + 빨간색 강조
+  if (kind === "crit") {
+    el.textContent = v + "!";
+    el.style.color = "#ff3b3b";
+    el.style.fontSize = "24px";
+  } else {
+    el.textContent = v;
+    el.style.color = "#ffd700";
+    el.style.fontSize = "18px";
+  }
+}
      layer.appendChild(el);
 
   // ✅ 떠오르지 않게: 위치 고정 + 3초 유지 + 천천히 페이드아웃
