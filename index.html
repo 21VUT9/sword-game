@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.175)
+    (v4.176)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1961,12 +1961,8 @@ overflow: hidden;
         <div style="padding:10px 12px; border-bottom:1px solid #2a2a2a;">
           <div style="font-weight:900; margin-bottom:8px;">토벌대 진행상황</div>
 
-          <div style="font-size:12px; color:#aaa; margin-bottom:6px;">
-  기여도 순
-</div>
-
           <div id="bossBattlePartyList"
-               style="background:#141414; border:1px solid #333; border-radius:12px; padding:10px; font-size:12px; color:#ddd; max-height:140px; overflow:auto;">
+     style="background:#141414; border:1px solid #333; border-radius:12px; padding:10px; font-size:12px; color:#ddd; max-height:140px; overflow:auto; text-align:left;">
             -
           </div>
         </div>
@@ -1976,7 +1972,7 @@ overflow: hidden;
           <div style="font-weight:900; margin-bottom:8px;">전투 진행 로그</div>
 
           <div id="bossBattleLogList"
-               style="flex:1; background:#141414; border:1px solid #333; border-radius:12px; padding:10px; font-size:12px; color:#bbb; overflow:auto; line-height:1.4;">
+     style="flex:1; background:#141414; border:1px solid #333; border-radius:12px; padding:10px; font-size:12px; color:#bbb; overflow:auto; line-height:1.4; text-align:left;">
             · 전용 로그는 다음 단계에서 Firebase로 분리 연결합니다.
           </div>
         </div>
@@ -10251,18 +10247,20 @@ if (partyEl) {
       const wTxt = `${weaponKor(m.wType)}+${Number(m.wLv || 0)}강`;
 
       html += `
-        <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid #222;">
-          <div style="flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-            ${m._isLeader ? `<span style="margin-right:4px;">👑</span>` : ``}${m.nick}
-            <span style="color:#aaa;">(${wTxt})</span>
-          </div>
+  <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid #222; align-items:center;">
+    <!-- ✅ 좌측: 닉네임/무기 (좌측정렬 고정) -->
+    <div style="flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:left;">
+      ${m._isLeader ? `<span style="margin-right:4px;">👑</span>` : ``}${m.nick}
+      <span style="color:#aaa;">(${wTxt})</span>
+    </div>
 
-          <div style="white-space:nowrap; display:flex; gap:10px; align-items:center;">
-            <div style="color:#ddd; font-weight:900;">딜량 ${dmgTxt}</div>
-            <div style="color:#9fd3ff; font-weight:900;">기여도:${pct}%</div>
-          </div>
-        </div>
-      `;
+    <!-- ✅ 우측: 딜/기여도 (우측정렬 고정) -->
+    <div style="white-space:nowrap; display:flex; gap:10px; align-items:center; margin-left:auto; justify-content:flex-end; text-align:right;">
+      <div style="color:#ddd; font-weight:900; text-align:right;">딜량 ${dmgTxt}</div>
+      <div style="color:#9fd3ff; font-weight:900; text-align:right;">기여도:${pct}%</div>
+    </div>
+  </div>
+`;
     });
 
     partyEl.innerHTML = html;
