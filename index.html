@@ -11225,7 +11225,7 @@ else if (!canApplyByCooldown) {
     const pct = (total > 0) ? (m.dmg / total * 100) : 0;
     const isMe = (m.uid === userId);
     const row = document.createElement("div");
-    const bossLeaderId = (bossRun && bossRun.leaderUid) ? bossRun.leaderUid : "";
+    const bossLeaderId = (run && run.leaderUid) ? run.leaderUid : "";
     const isLeader = (bossLeaderId && m.uid === bossLeaderId);
     row.style.display = "flex";
     row.style.alignItems = "center";
