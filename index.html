@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.171)
+    (v4.173)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -11127,37 +11127,97 @@ else if (!canApplyByCooldown) {
   // 리스트(상위 20만 표시 — 스크롤)
   listEl.innerHTML = "";
   const maxShow = Math.min(arr.length, 50);
+  const topDmg = (arr[0] && arr[0].dmg) ? arr[0].dmg : 1; // ✅ 1등 딜량 기준(LoL 그래프)
 
   for (let i=0; i<maxShow; i++){
     const m = arr[i];
     const pct = (total > 0) ? (m.dmg / total * 100) : 0;
     const isMe = (m.uid === userId);
-
     const row = document.createElement("div");
+    const bossLeaderId = (bossRun && bossRun.leaderUid) ? bossRun.leaderUid : "";
+    const isLeader = (bossLeaderId && m.uid === bossLeaderId);
     row.style.display = "flex";
-    row.style.justifyContent = "space-between";
     row.style.alignItems = "center";
+    row.style.gap = "10px";
     row.style.padding = "8px 8px";
     row.style.borderBottom = "1px solid rgba(255,255,255,0.08)";
 
     if (isMe) {
       row.style.background = "rgba(255,255,255,0.08)";
-      row.style.borderRadius = "10px";
+      row.style.borderRadius = "12px";
       row.style.margin = "4px 0";
       row.style.borderBottom = "none";
       row.style.fontWeight = "900";
     }
 
+    // ✅ 좌측: 랭크/닉네임
     const left = document.createElement("div");
+    left.style.width = "170px";
+    left.style.flex = "0 0 170px";
     left.style.fontSize = "13px";
-    left.innerHTML = `<span style="color:#aaa;">${i+1}위</span> ${m.title ? `<span style="color:#ffd54f;">[${m.title}]</span> ` : ""}${m.nick}`;
+    left.style.whiteSpace = "nowrap";
+    left.style.overflow = "hidden";
+    left.style.textOverflow = "ellipsis";
+    const crown = isLeader ? `<span style="margin-right:4px;">👑</span>` : "";
+left.innerHTML = `${crown}<span style="color:#aaa;">${i+1}위</span> ${m.nick}`;
 
+    // ✅ 가운데: LoL 느낌 딜량 그래프(1등 기준)
+    const mid = document.createElement("div");
+    mid.style.flex = "1";
+    mid.style.minWidth = "140px";
+
+    const track = document.createElement("div");
+    track.style.height = "12px";
+    track.style.borderRadius = "999px";
+    track.style.background = "rgba(255,255,255,0.10)";
+    track.style.border = "1px solid rgba(255,255,255,0.10)";
+    track.style.overflow = "hidden";
+
+    const fill = document.createElement("div");
+    const ratio = Math.max(0, Math.min(1, topDmg > 0 ? (m.dmg / topDmg) : 0));
+    fill.style.width = `${Math.max(2, Math.round(ratio * 100))}%`; // 최소 2% 보이게
+    fill.style.height = "100%";
+    fill.style.borderRadius = "999px";
+    fill.style.transition = "width 260ms ease";
+
+    // ✅ 색은 “나”만 더 강조(LoL처럼 눈에 띄게)
+    fill.style.background = isMe ? "rgba(255,213,79,0.90)" : "rgba(160,200,255,0.75)";
+
+    // 🏅 1등 MVP 뱃지 (막대 끝)
+if (i === 0) {
+  const mvp = document.createElement("div");
+  mvp.textContent = "MVP";
+  mvp.style.position = "absolute";
+  mvp.style.right = "6px";
+  mvp.style.top = "50%";
+  mvp.style.transform = "translateY(-50%)";
+  mvp.style.fontSize = "10px";
+  mvp.style.fontWeight = "900";
+  mvp.style.padding = "2px 6px";
+  mvp.style.borderRadius = "999px";
+  mvp.style.background = "rgba(255,213,79,0.95)";
+  mvp.style.color = "#111";
+  mvp.style.boxShadow = "0 0 10px rgba(255,213,79,0.35)";
+
+  // track에 absolute 올리려면 position 필요
+  track.style.position = "relative";
+  track.appendChild(mvp);
+}
+    
+    track.appendChild(fill);
+    mid.appendChild(track);
+
+    // ✅ 우측: % + 딜량 숫자(기존 유지)
     const right = document.createElement("div");
+    right.style.width = "140px";
+    right.style.flex = "0 0 140px";
+    right.style.textAlign = "right";
     right.style.fontSize = "12px";
     right.style.color = "#ddd";
-    right.innerHTML = `<b>${pct.toFixed(1)}%</b> · ${formatGold(m.dmg)}`;
+    right.innerHTML = `<b>${pct.toFixed(1)}%</b><div style="color:#aaa; font-size:11px;">${formatGold(m.dmg)}</div>`;
 
     row.appendChild(left);
+    row.appendChild(mid);
     row.appendChild(right);
     listEl.appendChild(row);
   }
