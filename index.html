@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.177)
+    (v4.178)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -9680,13 +9680,22 @@ function updateBossBattleBtn(){
   const bossId = String(activeBossId || "");
   if (!bossId) { btn.style.display = "none"; return; }
 
-  const run = (bossRunsActiveCache || {})[bossId];
-  if (!run || run.status !== "active") { btn.style.display = "none"; return; }
+    const run = (bossRunsActiveCache || {})[bossId];
+  if (!run) { btn.style.display = "none"; return; }
 
+  const st = String(run.status || "");
   const mem = run.members && run.members[userId];
   if (!mem) { btn.style.display = "none"; return; }
 
-  btn.style.display = "inline-block";
+  // ✅ 성공(cleared)인데 이미 보상 수령했으면 버튼 숨김
+  const alreadyClaimed = !!(run.claimed && run.claimed[userId]);
+
+  // ✅ 진행중/실패/성공(미수령) 상태에서는 버튼 유지
+  if (st === "active" || st === "failed" || (st === "cleared" && !alreadyClaimed)) {
+    btn.style.display = "inline-block";
+  } else {
+    btn.style.display = "none";
+  }
 }
 
   // ✅ (스텝3-3) 보스전 종료 24시간 전 지원요청(메인 로그 1회 + 전용 로그 1회)
@@ -9743,6 +9752,66 @@ function startBossRunWatchdog(){
       const bossName  = def ? def.bossName  : (run.bossName || "");
 
       maybeWarnBossRun24h(bossId, run, mapName, bossTitle, bossName);
+            // ✅ (핵심) 제한시간 만료 시: 실패로 확정 + 결과로그/쿨다운도 보장
+      if (Number(run?.endsAt || 0) > 0 && Date.now() >= Number(run.endsAt || 0) && String(run.status || "") === "active") {
+        const runRef = db.ref(`bossRunsActive/${bossId}`);
+        runRef.transaction((cur) => {
+          if (!cur || String(cur.status || "") !== "active") return;
+          if (Date.now() < Number(cur.endsAt || 0)) return;
+          cur.status = "failed";
+          cur.failedAt = Date.now();
+          return cur;
+        });
+      }
+
+      // ✅ (추가) 종료 상태(성공/실패)면: 쿨다운/메인로그 1회 보장 (보스전 화면 안 열어도 동작)
+      if (String(run.status || "") === "cleared" || String(run.status || "") === "failed") {
+        const runRef2 = db.ref(`bossRunsActive/${bossId}`);
+
+        // (1) 쿨다운 24h 1회 고정
+        runRef2.transaction((cur) => {
+          if (!cur) return;
+          const s = String(cur.status || "");
+          if (s !== "cleared" && s !== "failed") return;
+          if (cur.cooldownFixed) return;
+          cur.cooldownFixed = true;
+          cur.cooldownFixedAt = Date.now();
+          return cur;
+        }, (err, committed) => {
+          if (err || !committed) return;
+          const nextAt = Date.now() + 24 * 60 * 60 * 1000;
+          db.ref(`bossCooldown/${bossId}`).set({ nextAt });
+        });
+
+        // (2) 결과 메인로그 1회 고정
+        runRef2.transaction((cur) => {
+          if (!cur) return;
+          const s = String(cur.status || "");
+          if (s !== "cleared" && s !== "failed") return;
+          if (cur.resultAnnounced) return;
+          cur.resultAnnounced = true;
+          cur.resultAnnouncedAt = Date.now();
+          return cur;
+        }, (err, committed) => {
+          if (err || !committed) return;
+
+          const def2 = (typeof BOSS_DEFS !== "undefined")
+            ? (BOSS_DEFS.find(b => b.id === bossId) || null)
+            : null;
+
+          const mapName2   = def2 ? def2.mapName   : (run.mapName || "어딘가");
+          const bossTitle2 = def2 ? def2.bossTitle : (run.bossTitle || "보스");
+          const bossName2  = def2 ? def2.bossName  : (run.bossName || "");
+          const title2 = `${mapName2}의 주인 ${bossTitle2}${bossName2 ? " " + bossName2 : ""}`;
+          const leader2 = run.leaderNick || "누군가";
+
+          if (String(run.status || "") === "cleared") {
+            writeLog(`${leader2}님의 토벌대가 ${title2}를 토벌하는데 성공하였습니다. 잔혹한 사냥꾼의 몰락에 퍼그란트의 대장간이 환호합니다!`, false);
+          } else {
+            writeLog(`${leader2}님의 토벌대가 ${title2} 토벌에 실패하였습니다. 퍼그란트의 대장간이 좌절합니다…`, false);
+          }
+        });
+      }
     });
   }, 60 * 1000); // 1분마다 체크(가볍게)
 }
@@ -9827,7 +9896,20 @@ BOSS_RUNS_ACTIVE_REF.on("value", (snap) => {
   // 1) 현재 activeBossId가 있는데, 그 토벌이 없거나/종료됐거나/내 멤버 기록이 없으면 초기화
   if (curId) {
     const curRun = (bossRunsActiveCache || {})[curId];
-    const isMember = !!(curRun && curRun.status === "active" && curRun.members && curRun.members[myUid]);
+    const st = String(curRun && curRun.status ? curRun.status : "");
+const isMember = !!(curRun && curRun.members && curRun.members[myUid]);
+
+// ✅ 성공인데 이미 보상 수령한 상태면 복구 대상 아님
+const alreadyClaimed = !!(curRun && curRun.claimed && curRun.claimed[myUid]);
+
+const canKeep =
+  isMember && (
+    st === "active" ||
+    st === "failed" ||
+    (st === "cleared" && !alreadyClaimed)
+  );
+
+if (!canKeep) activeBossId = "";
     if (!isMember) activeBossId = "";
   }
 
@@ -9835,7 +9917,15 @@ BOSS_RUNS_ACTIVE_REF.on("value", (snap) => {
   if (!activeBossId) {
     let found = "";
     Object.entries(bossRunsActiveCache || {}).some(([bid, run]) => {
-      if (run && run.status === "active" && run.members && run.members[myUid]) {
+      if (run && run.members && run.members[myUid]) {
+  const st2 = String(run.status || "");
+  const claimed2 = !!(run.claimed && run.claimed[myUid]);
+
+  if (st2 === "active" || st2 === "failed" || (st2 === "cleared" && !claimed2)) {
+    found = String(bid);
+    return true;
+  }
+}
         found = String(bid);
         return true;
       }
@@ -10993,9 +11083,17 @@ function openBossApplyList() {
     const isActive = !!(run && run.status === "active");
 
     const cd = (bossCooldownCache || {})[def.id];
-    const nextAt = Number(cd && cd.nextAt ? cd.nextAt : 0);
-    const remainMs = Math.max(0, nextAt - Date.now());
-    const cooldownTxt = formatHMS(remainMs);
+    const nextAtRaw = cd ? cd.nextAt : 0;
+let nextAt = 0;
+
+if (typeof nextAtRaw === "number") nextAt = nextAtRaw;
+else if (typeof nextAtRaw === "string") nextAt = Number(nextAtRaw);
+else nextAt = 0;
+
+if (!Number.isFinite(nextAt)) nextAt = 0;
+
+const remainMs = Math.max(0, nextAt - Date.now());
+const cooldownTxt = formatHMS(remainMs);
     const canApplyBySword = (Number(sword || 0) >= def.minSword);
     const canApplyByCooldown = (remainMs <= 0);
     const canApply = canApplyBySword && canApplyByCooldown && !isActive;
