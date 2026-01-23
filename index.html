@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.181)
+    (v4.182)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1845,7 +1845,8 @@ overflow: hidden;
     <div id="bossBattleMapName" style="margin-top:2px; font-weight:900; font-size:14px; color:#ddd; text-align:left;">-</div>
   </div>
 
-  <div style="display:flex; gap:8px;">
+    <div style="display:flex; gap:8px;">
+    <button onclick="openBossBattleRewards()" style="padding:6px 10px; border-radius:10px;">보상</button>
     <button onclick="openBossBattleHelp()" style="padding:6px 10px; border-radius:10px;">능력치</button>
     <button onclick="closeBossBattle()" style="padding:6px 10px; border-radius:10px;">닫기</button>
   </div>
@@ -10120,6 +10121,37 @@ function closeBossBattle(){
   const ov = document.getElementById("bossBattleOverlay");
   if (ov) ov.style.display = "none";
   if (bossBattleTickTimer) { clearInterval(bossBattleTickTimer); bossBattleTickTimer = null; }
+}
+
+  function openBossBattleRewards(){
+  const bossId = String(activeBossId || "");
+  const run = (bossRunsActiveCache || {})[bossId];
+
+  if (!bossId || !run) {
+    showNpcMessage("확인할 보스전 정보가 없습니다.", LEON_IMG.focus, true, "보상");
+    return;
+  }
+
+  const def = (BOSS_DEFS || []).find(b => String(b.id) === bossId) || {};
+  const bossTitle = String(def.bossTitle || run.bossTitle || "보스");
+  const bossName  = String(def.bossName  || run.bossName  || "");
+  const bossFull  = bossName ? `${bossTitle} ${bossName}` : bossTitle;
+
+  // ✅ “구체 %별” 말고, 대충 무엇이 나오는지만 표시
+  const rewardTypes = [
+    "파괴방지 주문서",
+    "강등방지 주문서",
+    "15강 강화 주문서",
+    "21강 강화 주문서",
+    "마력의 정수",
+    "대장 보너스: 슈퍼강화 주문서"
+  ];
+
+  const msg =
+    `<b>${bossFull} 보상</b><br><br>` +
+    rewardTypes.map(x => `• ${x}`).join("<br>");
+
+  showNpcMessage(msg, LEON_IMG.focus, true, "보상");
 }
 
 function openBossBattleHelp(){
