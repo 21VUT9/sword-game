@@ -409,6 +409,15 @@ button {
   color:red;
   font-weight:bold;
 }
+  /* ✅ 보스 토벌 결과 로그 색상 */
+.toast-success {
+  color: #37ff63;
+  font-weight: 900;
+}
+.toast-fail {
+  color: #ff3b3b;
+  font-weight: 900;
+}
 
 /* 로그 */
 #logToggle {
@@ -1336,7 +1345,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.183)
+    (v4.184)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -9212,7 +9221,8 @@ logRef.limitToLast(50).on("child_added", s => {
 
   /* 👇 하단 토스트(5개 제한) */
   const toastEl = document.createElement("div");
-  toastEl.className = "toast-item" + (d.isDestroy ? " toast-destroy" : "");
+  const toneClass = (d.tone === "boss_success") ? " toast-success" : (d.tone === "boss_fail") ? " toast-fail" : "";
+  toastEl.className = "toast-item" + (d.isDestroy ? " toast-destroy" : "") + toneClass;
   toastEl.id = "toast-" + logId;   // 🔴 댓글 연결용 ID
 
   // 메인 한 줄
@@ -9256,7 +9266,7 @@ if (d.isReach30) {
 
   /* 👇 상단 로그 패널용 항목 */
   const panelItem = document.createElement("div");
-  panelItem.className = "toast-item" + (d.isDestroy ? " toast-destroy" : "");
+  panelItem.className = "toast-item" + (d.isDestroy ? " toast-destroy" : "") + toneClass;
   panelItem.id = "log-" + logId;   // 댓글 붙일 때 찾기용
 
   const mainLine = document.createElement("div");
@@ -9825,10 +9835,19 @@ function startBossRunWatchdog(){
           const leader2 = run.leaderNick || "누군가";
 
           if (String(run.status || "") === "cleared") {
-            writeLog(`${leader2}님의 토벌대가 ${title2}를 토벌하는데 성공하였습니다. 잔혹한 사냥꾼의 몰락에 퍼그란트의 대장간이 환호합니다!`, false);
-          } else {
-            writeLog(`${leader2}님의 토벌대가 ${title2} 토벌에 실패하였습니다. 퍼그란트의 대장간이 좌절합니다…`, false);
-          }
+  writeLog(
+    `${leader2}님의 토벌대가 ${title2}를 토벌하는데 성공하였습니다. 잔혹한 사냥꾼의 몰락에 퍼그란트의 대장간이 환호합니다!`,
+    false,
+    { tone: "boss_success" }
+  );
+} else {
+  writeLog(
+    `${leader2}님의 토벌대가 ${title2} 토벌에 실패하였습니다. 퍼그란트의 대장간이 좌절합니다…`,
+    false,
+    { tone: "boss_fail" }
+  );
+}
+
         });
       }
     });
