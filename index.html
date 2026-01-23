@@ -1730,27 +1730,13 @@ button {
 <div id="adventureGuildOverlay"
      style="position:fixed; inset:0; background:rgba(0,0,0,0.7);
             display:none; align-items:center; justify-content:center; z-index:2200;">
-/* ✅ 모바일에서 모험가길드 화면을 더 짧게(PC는 유지) */
-@media (max-width: 520px){
-  /* 오버레이 내부 카드(첫 번째 큰 박스)를 짧게 + 스크롤 */
-  #adventureGuildOverlay > div{
-    height: 84vh !important;        /* 전체 화면을 덜 차지 */
-    max-height: 84vh !important;
-    overflow: hidden !important;     /* 내부에서 스크롤 처리 */
-  }
-
-  /* 내부 콘텐츠 스크롤: 헤더 제외하고 리스트 영역이 스크롤되게 */
-  #adventureGuildOverlay > div > div[style*="flex:1"]{
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch;
-  }
-}
   
   <div id="adventureGuildPanel"
        style="position:relative; width:92%; max-width:720px; height:82%; max-height: 86vh;
 overflow: hidden;
               background:#1b1b1b; border:1px solid #555; border-radius:14px;
               box-shadow:0 0 18px rgba(0,0,0,0.9); padding:12px; overflow:hidden;">
+    
 
     <!-- 상단바 -->
     <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px;">
