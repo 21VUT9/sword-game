@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.182)
+    (v4.183)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -10589,11 +10589,11 @@ if (prevSt !== st) {
   rewardBtn.innerHTML = (st === "cleared") ? "🎁 보상수령" : "🚪 포기하기";
 }
 
-    // 공격 막기 + 연출(회색)
+        // 공격 막기 (회색 연출 제거)
     if (bossImg) {
       bossImg.style.pointerEvents = "none";
-      bossImg.style.filter = "grayscale(1)";
-      bossImg.style.opacity = "0.9";
+      bossImg.style.filter = "none";
+      bossImg.style.opacity = "1";
     }
   }
 }
