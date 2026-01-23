@@ -9590,6 +9590,28 @@ function setLeonLine(){
   el.textContent = line;
 }
 
+function isMobileLike(){
+  // ✅ viewport 설정/innerWidth가 애매해도, 터치 기기면 모바일로 간주
+  return (navigator.maxTouchPoints && navigator.maxTouchPoints > 1) || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+function applyAdventureGuildPanelSizing(){
+  const panel = document.getElementById("adventureGuildPanel");
+  if (!panel) return;
+
+  // 기본값(PC)로 되돌릴 값
+  if (!isMobileLike()){
+    panel.style.height = "82%";
+    panel.style.maxHeight = "86vh";
+    return;
+  }
+
+  // ✅ 모바일에서는 결투장 느낌으로 “세로 길이 고정”
+  // 숫자는 취향인데, 일단 확 줄이려면 이 정도가 체감 큼
+  panel.style.height = "62vh";
+  panel.style.maxHeight = "62vh";
+}
+  
 function openAdventureGuild(){
   const ov = document.getElementById("adventureGuildOverlay");
   const huntEl = document.getElementById("adventureGuildHuntRemain");
@@ -9597,6 +9619,8 @@ function openAdventureGuild(){
 
   if (huntEl) huntEl.textContent = getHuntRemainTextForToday();
   setLeonLine();
+
+    applyAdventureGuildPanelSizing(); // ✅ 모바일에서 모험가길드 패널 높이 고정
 
   ov.style.display = "flex";
     ensureBossRunsSubscription();
@@ -9616,6 +9640,15 @@ document.addEventListener("keydown", (e) => {
   if (ov.style.display !== "none") {
     closeAdventureGuild();
   }
+});
+
+  window.addEventListener("resize", () => {
+  const ov = document.getElementById("adventureGuildOverlay");
+  if (ov && ov.style.display !== "none") applyAdventureGuildPanelSizing();
+});
+window.addEventListener("orientationchange", () => {
+  const ov = document.getElementById("adventureGuildOverlay");
+  if (ov && ov.style.display !== "none") applyAdventureGuildPanelSizing();
 });
 
 function openAdventureGuildHelp(){
