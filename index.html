@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.179)
+    (v4.180)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -4546,6 +4546,8 @@ const TITLE_DEFS = [
 
   { id:"oldwater", name:"고인물",  how:"같은 무기로 30강 2회 달성", color:"gold" },
   { id:"stale",    name:"썩은물",  how:"같은 무기로 30강 3회 달성", color:"gold" },
+  { id: "boss_raider",  name: "토벌대", how:"보스전 토벌1회 성공" },
+
 ];
 
   // 🎨 칭호 색상 스타일
@@ -11458,6 +11460,9 @@ function claimBossReward(){
     itemSuper = Number(itemSuper || 0) + (rw.itemSuper || 0);
     save(); // ✅ 보상(아이템) 지급 저장 확정
 
+    // ✅ 보스 토벌 1회 성공 칭호 지급 (1회만)
+    grantTitleOnceNoSave("boss_raider")
+
     // ✅ 내 귀속 해제 (보상 수령 전엔 계속 귀속)
     activeBossId = "";
     save();
@@ -11506,7 +11511,7 @@ function giveUpBossRun(){
 
   // (선택) 대장이 포기하는 케이스면 대장ID도 비워두기(원하면 유지해도 됨)
   if (String(run.leaderId || "") === String(userId || "")) {
-    updates[`bossRunsActive/${bossId}/leaderId`] = "";
+    updates[`bossRunsActive/${bossId}/leaderUid`] = "";
   }
 
   db.ref().update(updates).then(() => {
