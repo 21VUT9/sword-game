@@ -1316,6 +1316,15 @@ button {
   filter: drop-shadow(0 6px 10px rgba(0,0,0,0.65));
   pointer-events: none;
 }
+
+  /* ✅ 모바일에서 모험가 길드 패널 높이 줄이기 (PC 유지) */
+@media (max-width: 520px){
+  #adventureGuildPanel{
+    height: 72% !important;     /* 기존 82%보다 짧게 */
+    max-height: 74vh !important;
+  }
+}
+
   
 </style>
 </head>
