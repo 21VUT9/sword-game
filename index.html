@@ -7619,6 +7619,9 @@ aweUsedGlobal30EventId: 0
 
     // ✅ 신규 계정 생성 직후에는 바로 화면 전환 + 저장으로 마무리
 startSession();
+ensureBossRunsSubscription();  // ✅ 로그인 직후에도 토벌 구독/복구 시작
+updateBossBattleBtn();         // ✅ 버튼 즉시 갱신(구독 데이터 들어오면 다시 갱신됨)
+
 
 try { localStorage.setItem("swordGameLastUser", userId); } catch(e) {}
 
@@ -7796,6 +7799,8 @@ subscribeGlobal30Events();
 
     // 🟢 여기까지 왔다는 건 실제로 이 탭이 접속을 가져가는 것 → 세션 시작
     startSession();
+    ensureBossRunsSubscription();  // ✅ 로그인 직후에도 토벌 구독/복구 시작
+    updateBossBattleBtn();         // ✅ 버튼 즉시 갱신(구독 데이터 들어오면 다시 갱신됨)
 
     // 화면 전환
     const loginScreen = document.getElementById("loginScreen");
@@ -8300,6 +8305,8 @@ document.getElementById("userListBtn").style.display = "block";
 
     // 🔐 자동로그인으로 들어온 경우에도 이 탭이 세션을 가져가도록
     startSession();
+    ensureBossRunsSubscription();  // ✅ 로그인 직후에도 토벌 구독/복구 시작
+    updateBossBattleBtn();         // ✅ 버튼 즉시 갱신(구독 데이터 들어오면 다시 갱신됨)
 
 // 🏷️ 칭호 자동 지급(자동로그인 로드 직후)
 const titleChanged = checkAndGrantTitles();
@@ -11479,6 +11486,7 @@ function claimBossReward(){
 }
 
 // 실패 시 포기(보상 없음) — 귀속만 해제
+// 실패 시 포기(보상 없음) — 귀속 해제(서버 멤버 기록까지 제거)
 function giveUpBossRun(){
   const bossId = String(activeBossId || "");
   const run = bossId ? (bossRunsActiveCache || {})[bossId] : null;
@@ -11490,15 +11498,38 @@ function giveUpBossRun(){
     return;
   }
 
-  activeBossId = "";
-  save();
-  update();
-  updateBossBattleBtn();
+  const myNick = (run.members && run.members[userId] && run.members[userId].nick) ? run.members[userId].nick : String(userId || "???");
 
-  closeBossRewardOverlay();
-  closeBossBattle();
+  // ✅ (중요) DB에서 멤버 기록 제거해야 새로고침 시 activeBossId가 다시 복구되지 않음
+  const updates = {};
+  updates[`bossRunsActive/${bossId}/members/${userId}`] = null;
 
-  showNpcMessage("철수 완료. 다음엔 더 단단히 준비해라.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+  // (선택) 대장이 포기하는 케이스면 대장ID도 비워두기(원하면 유지해도 됨)
+  if (String(run.leaderId || "") === String(userId || "")) {
+    updates[`bossRunsActive/${bossId}/leaderId`] = "";
+  }
+
+  db.ref().update(updates).then(() => {
+    // 전투로그(보스전 전용 로그)에 남기기
+    db.ref(`bossBattleLogs/${bossId}`).push({
+      time: Date.now(),
+      msg: `${myNick}님이 토벌대에서 철수했습니다.`
+    });
+
+    // 로컬 상태 정리
+    activeBossId = "";
+    save();
+    update();
+    updateBossBattleBtn();
+
+    closeBossRewardOverlay();
+    closeBossBattle();
+
+    showNpcMessage("철수 완료. 다음엔 더 단단히 준비해라.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+  }).catch((err) => {
+    console.error(err);
+    alert("포기 처리에 실패했습니다. 콘솔을 확인해주세요.");
+  });
 }
 
 // ✅ 신청 확인(레온하르트가 설명 → 도전/포기)
