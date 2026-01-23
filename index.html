@@ -1327,7 +1327,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.180)
+    (v4.181)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -10001,25 +10001,37 @@ let bossBattleLastStatus = {};      // { bossId: "active"|"cleared"|"failed" }
 // ===============================
 let bossBattleLogsCache = [];
 let bossBattleLogsUnsub = null;
-let bossBattleLogsBossId = "";
+let bossBattleLogsPath = "";
 
+//  토벌 “회차”별 로그방 경로 만들기
+function getBossBattleLogPath(bossId){
+  bossId = String(bossId || "");
+  const run = (bossRunsActiveCache || {})[bossId];
+  const logKey = run && run.logKey ? String(run.logKey) : "run_default";
+  return `bossBattleLogs/${bossId}_${logKey}`;
+}
+  
 // 로그 구독 시작(보스전 열 때/참여상태 복구 때 호출)
 function ensureBossBattleLogsSubscription(bossId) {
   bossId = String(bossId || "");
   if (!bossId) return;
 
-  // 같은 보스면 재구독 안함
-  if (bossBattleLogsUnsub && bossBattleLogsBossId === bossId) return;
+  // ✅ (방법B) bossId + logKey 조합 경로
+  const path = getBossBattleLogPath(bossId);
+
+  // 같은 “로그방(path)”이면 재구독 안함
+  if (bossBattleLogsUnsub && bossBattleLogsPath === path) return;
 
   // 이전 구독 해제
   if (bossBattleLogsUnsub) {
     try { bossBattleLogsUnsub(); } catch(e) {}
   }
   bossBattleLogsUnsub = null;
-  bossBattleLogsBossId = bossId;
+
+  bossBattleLogsPath = path;
   bossBattleLogsCache = [];
 
-  const ref = db.ref(`bossBattleLogs/${bossId}`).limitToLast(80);
+  const ref = db.ref(path).limitToLast(80);
 
   const onValue = (snap) => {
     const v = snap.val() || {};
@@ -10069,10 +10081,10 @@ function writeBossBattleLog(bossId, msg) {
   const text = String(msg || "").trim();
   if (!text) return;
 
-  db.ref(`bossBattleLogs/${bossId}`).push({
-    t: Date.now(),
-    msg: text
-  });
+  db.ref(getBossBattleLogPath(bossId)).push({
+  t: Date.now(),
+  msg: text
+});
 }
 
 function openBossBattle(){
@@ -11009,6 +11021,7 @@ function createBossRun(bossId) {
         desc: def.desc,
 
         status: "active",
+        logKey: "run_" + Date.now(),
         createdAt: now,
         endsAt: endsAt,
 
