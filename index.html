@@ -419,6 +419,12 @@ button {
   font-weight: 900;
 }
 
+/* ✅ 보스전 신청 알림 (파란색) */
+.toast-boss-apply {
+  color: #5bbcff;
+  font-weight: 900;
+}
+
 /* 로그 */
 #logToggle {
   position:fixed;
@@ -9227,7 +9233,10 @@ logRef.limitToLast(50).on("child_added", s => {
 
   /* 👇 하단 토스트(5개 제한) */
   const toastEl = document.createElement("div");
-  const toneClass = (d.tone === "boss_success") ? " toast-success" : (d.tone === "boss_fail") ? " toast-fail" : "";
+  const toneClass =
+  (d.tone === "boss_success") ? " toast-success" :
+  (d.tone === "boss_fail") ? " toast-fail" :
+  (d.tone === "boss_apply") ? " toast-boss-apply" : "";
   toastEl.className = "toast-item" + (d.isDestroy ? " toast-destroy" : "") + toneClass;
   toastEl.id = "toast-" + logId;   // 🔴 댓글 연결용 ID
 
@@ -11169,7 +11178,7 @@ function createBossRun(bossId) {
       save();
       updateBossBattleBtn();
 
-      writeLog(`${getNickSafe()}님이 ${def.bossTitle} 토벌을 시작하였습니다.`, false);
+      writeLog(`${userNick}님이 ${bossName} 토벌을 시작하였습니다.`, false, { tone: "boss_apply" });
       writeBossBattleLog(bossId, `토벌대가 결성되었습니다. (대장: ${getNickSafe()})`);
 
       showNpcMessage(
