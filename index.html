@@ -1351,7 +1351,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.187)
+    (v4.188)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2278,10 +2278,10 @@ button {
 
     <!-- 아이템 리스트 영역 -->
     <div id="scrollShopItemList"
-         style="border:1px solid #444; border-radius:6px; padding:4px;
-                style="height:220px; overflow-y:auto; margin-bottom:8px;">
-      <!-- JS로 한 줄씩 채울 예정 -->
-    </div>
+     style="border:1px solid #444; border-radius:6px; padding:4px;
+            height:220px; overflow-y:auto; margin-bottom:8px;">
+  <!-- JS로 한 줄씩 채울 예정 -->
+</div>
 
     <!-- 하단: 좌측 여유 / 우측 마법스크롤 상인 (결투장 레이아웃 느낌) -->
     <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:10px; margin-top:4px;">
@@ -3723,7 +3723,8 @@ function renderScrollShopItems() {
       <div
         class="scroll-shop-row"
         style="display:flex; align-items:center; padding:4px 6px;
-               border-bottom:1px solid #333; cursor:pointer;"
+       border-bottom:1px solid #333; cursor:pointer;
+       height:44px; box-sizing:border-box;"
         onclick="onClickScrollShopItem('${item.id}')"
       >
         <!-- 아이콘 (클릭시 설명) -->
