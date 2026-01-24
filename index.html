@@ -1345,7 +1345,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.184)
+    (v4.185)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -10122,7 +10122,7 @@ function renderBossBattleLogs() {
   }
 
   el.innerHTML = arr.map(x => {
-    const t = x.t ? new Date(x.t).toLocaleTimeString("ko-KR", { hour12:false }) : "";
+    const t = x.t ? formatTime(x.t) : "";
     const safeMsg = (x.msg || "").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
     return `
       <div style="margin-bottom:6px; font-size:12px; line-height:1.35;">
