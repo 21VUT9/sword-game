@@ -3539,13 +3539,23 @@ const scrollShopItems = [
     img: "images/items/scroll_super.png",
     desc: "강화 성공 시 한 번에 +2강이 되는 특별한 주문서입니다."
   },
-  {
+    {
     id: "rateUp5",
     name: "강화 확률 +5% 주문서",
     priceType: "honor",       // 명예의 훈장
     price: 50,
     img: "images/items/scroll_rateup_5.png",
     desc: "이번 강화 시 성공 확률이 5%p 증가합니다."
+  },
+
+  // 구매 즉시 사용: 사냥횟수 초기화
+  {
+    id: "huntReset",
+    name: "사냥횟수 초기화",
+    priceType: "honor",       // 명예의 훈장
+    price: 30,
+    img: "images/items/scroll_hunt_reset.png",
+    desc: "구매 즉시 오늘의 사냥횟수가 20/20으로 초기화됩니다."
   }
 ];
 
@@ -3889,6 +3899,13 @@ function grantScrollShopItem(item) {
 }
   if (item.id === "super")      itemSuper++;
   if (item.id === "rateUp5")    itemRateUp5++;
+
+    // 🆕 구매 즉시 사용: 사냥횟수 20/20 초기화
+  if (item.id === "huntReset") {
+    huntCountToday = 0;
+    huntStamina = 20;
+    lastHuntDate = getTodayDateString();
+  }
 
   updateScrollShopCurrency();   // 재화 표시 갱신
   updateUpgradeItemLabels();    // 기존 함수 (아이템 수량 라벨 갱신)
