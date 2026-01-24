@@ -1345,7 +1345,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.185)
+    (v4.186)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2262,6 +2262,11 @@ button {
         <img src="images/items/medal_honor.png" style="width:18px; height:18px;" alt="">
         <span>명예의 훈장 :</span>
         <span id="scrollShopHonorMedal">0</span>
+      </div>
+        <div style="display:flex; align-items:center; gap:4px;">
+        <img src="images/items/scroll_down_protect.png" style="width:18px; height:18px;" alt="">
+        <span>강등방지 주문서 :</span>
+        <span id="scrollShopDownProtect">0</span>
       </div>
     </div>
 
@@ -3603,9 +3608,11 @@ function closeScrollShop() {
 function updateScrollShopCurrency() {
   const starEl  = document.getElementById("scrollShopStarShard");
   const honorEl = document.getElementById("scrollShopHonorMedal");
+  const downEl  = document.getElementById("scrollShopDownProtect");
 
   if (starEl)  starEl.textContent  = starShard;
   if (honorEl) honorEl.textContent = itemHonorMedal;
+  if (downEl)  downEl.textContent  = itemDownProtect;
 }
 
 // 📜 상점 전용 NPC 확인 팝업 (예 / 아니요)
