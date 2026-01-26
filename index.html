@@ -869,65 +869,61 @@ button {
   margin-top:4px;
 }
 
-  /* 🧱 사냥터 이름 줄(좌) + MAP 아이콘(우) */
 .field-topbar{
-  position: sticky;     /* 스크롤해도 그 자리(상단)에 붙게 */
+  position: sticky;
   top: 0;
   z-index: 1500;
-
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-
-  padding-top: 2px;
-  margin-bottom: 8px;   /* 기존 current-field-info의 margin 역할 */
+  padding: 2px 12px 0 12px;
+  margin-bottom: 8px;
+  position: relative; /* ✅ absolute 기준 */
 }
 
-/* 기존 current-field-info는 가운데 정렬이었는데,
-   topbar 안에서는 좌측 정렬이 더 자연스러워서 덮어씀 */
+/* 텍스트는 “기존 위치 느낌” 유지: 가운데 고정 */
 .field-topbar .current-field-info{
-  text-align: left;
+  text-align: center;
   margin-bottom: 0;
-  flex: 1;
+
+  /* ✅ 아이콘이 우측에 있어도 텍스트가 밀리지 않게, 오른쪽 여백 확보 */
+  padding-right: 90px; /* 아이콘(1.5배) 영역 만큼 */
 }
 
-/* 🗺 MAP 아이콘 버튼 */
+/* 🗺 MAP 아이콘 버튼 (1.5배 크게, 우측 끝 고정) */
 .map-icon-btn{
-  display: none;            /* ✅ 로그인 후 JS가 mapBtn을 block으로 바꾸는 기존 로직 그대로 타게 */
-  width: 52px;
-  height: 52px;
+  display: none; /* ✅ 로그인 후 JS가 mapBtn을 보이게 하는 기존 로직 유지 :contentReference[oaicite:4]{index=4} */
+  width: 78px;   /* 52px * 1.5 */
+  height: 78px;
   padding: 0;
   border: 0;
   background: transparent;
   cursor: pointer;
-  position: relative;
 
-  /* ✅ 파란색 클릭 하이라이트 제거 */
+  position: absolute;
+  right: 10px;  /* field-topbar padding 고려해서 끝에 붙임 */
+  top: 0;
+
   -webkit-tap-highlight-color: rgba(0,0,0,0);
   outline: none;
-
   user-select: none;
   -webkit-user-select: none;
 }
 
 .map-icon-img{
-  width: 46px;              /* 1:1 아이콘 */
-  height: 46px;
+  width: 70px;   /* 46px * 1.5 ≈ 69 */
+  height: 70px;
   display: block;
+  margin: 0 auto;
 }
 
 /* 아이콘 하단에 살짝 겹치게 "지도" */
 .map-icon-label{
   position: absolute;
   left: 50%;
-  bottom: -10px;
+  bottom: -14px;         /* 크기 커진만큼 조금 더 아래 */
   transform: translateX(-50%);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
   color: #fff;
 
-  /* 흰글씨 + 검은 테두리(가독성) */
   text-shadow:
     -1px -1px 0 #000,
      1px -1px 0 #000,
@@ -1530,7 +1526,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.202)
+    (v4.203)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1564,13 +1560,12 @@ button {
 <div class="field-topbar">
   <div id="currentFieldInfo" class="current-field-info"></div>
 
-  <!-- 🗺 MAP 아이콘 버튼 (기능은 기존 toggleMap 유지) -->
-  <button id="mapBtn" class="map-icon-btn no-capture" onclick="toggleMap()" aria-label="지도">
-    <img class="map-icon-img" src="images/ui/icon_map_roll.png" alt="">
-    <div class="map-icon-label">지도</div>
+  <!-- 🗺 MAP 아이콘 버튼(기존 기능 유지: toggleMap) -->
+  <button id="mapBtn" class="map-icon-btn" onclick="toggleMap()">
+    <img class="map-icon-img" src="images/ui/icon_map_scroll.png" alt="MAP">
+    <span class="map-icon-label">지도</span>
   </button>
 </div>
-
 
 <!-- 🧾 유저 프로필 카드 -->
 <div id="userProfileArea">
