@@ -88,6 +88,16 @@ body {
   color: #f2f2f2;               /* 텍스트는 그대로 위에 */
   font-weight: 900;
   font-size: 16px;
+    /* ✅ 텍스트 가독성 강화: 흰색 + 검은 테두리 */
+  color: #ffffff;
+
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000,
+     0   2px  3px rgba(0,0,0,0.9);
+
   cursor: pointer;
 
   /* ✅ 이미지 깔기 */
