@@ -1532,7 +1532,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.205)
+    (v4.206)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -3437,6 +3437,49 @@ const WEAPON_INFO_STAFF = {
   30: { name: "태고의 에너지 「아르카나」", desc: "마법이 아니다 — 에너지의 원형(原形) 그 자체로 존재한다.",             img: "images/weapons/staff_30.png" }
 };
 
+  // 🗡️ 단검(암살자/어둠)
+const WEAPON_INFO_DAGGER = {
+  0: { name: "제련되지 않은 금속괴", desc: "아직 아무것도 되지 못했지만, 세상 어디에도 없는 가능성을 조용히 품고 있다.", img: "images/weapons/sword_00.png" },
+
+  1:  { name: "부러진 단검", desc: "끝이 부러진 단검. 급소를 노리기엔 불안정하다.", img: "images/weapons/dagger_01.png" },
+  2:  { name: "금이 간 단검", desc: "칼날에 실금이 퍼져 있다. 다음 충격이 마지막일지도 모른다.", img: "images/weapons/dagger_02.png" },
+  3:  { name: "녹슨 단검", desc: "오래 방치된 단검. 쇠 냄새가 먼저 난다.", img: "images/weapons/dagger_03.png" },
+  4:  { name: "무딘 단검", desc: "날이 죽어 있다. 정확하지 않으면 끝나지 않는다.", img: "images/weapons/dagger_04.png" },
+  5:  { name: "피가 굳은 단검", desc: "오래된 핏자국이 날에 엉겨 붙어 있다.", img: "images/weapons/dagger_05.png" },
+
+  6:  { name: "수리된 단검", desc: "금을 메우고 다시 벼려낸 단검.", img: "images/weapons/dagger_06.png" },
+  7:  { name: "잘 벼린 단검", desc: "짧지만 단단한 날.", img: "images/weapons/dagger_07.png" },
+  8:  { name: "균형 잡힌 단검", desc: "손끝에서 자연스럽게 돌아나간다.", img: "images/weapons/dagger_08.png" },
+  9:  { name: "소리 죽인 단검", desc: "뽑히는 소리조차 거의 없다.", img: "images/weapons/dagger_09.png" },
+  10: { name: "매복자의 단검", desc: "싸우기 위한 무기가 아니다. 은밀하게 상대를 제거하는 도구일뿐.", img: "images/weapons/dagger_10.png" },
+
+  11: { name: "그림자 손잡이", desc: "쥐는 순간, 손이 어둠에 잠긴다.", img: "images/weapons/dagger_11.png" },
+  12: { name: "검은 실", desc: "베고 난 자리엔 검은 실같은 여백만 남을 뿐.", img: "images/weapons/dagger_12.png" },
+  13: { name: "뒷골목의 맹세", desc: "말로 남기지 않는 약속.", img: "images/weapons/dagger_13.png" },
+  14: { name: "잊혀진 이름", desc: "누가 쥐었는지 기록이 없다. 이 검을 아는 세상에 존재하지 않으므로.", img: "images/weapons/dagger_14.png" },
+  15: { name: "影(영)", desc: "빛의 뒤에 붙는다.", img: "images/weapons/dagger_15.png" },
+
+  16: { name: "사일런트 딜(Silent Deal)", desc: "거래는 끝났다. 소리 없이.", img: "images/weapons/dagger_16.png" },
+  17: { name: "야행자의 이빨", desc: "밤에만 선명해지는 날.", img: "images/weapons/dagger_17.png" },
+  18: { name: "재의 첨단", desc: "불길 마저 갈라내어 재를 남긴다.", img: "images/weapons/dagger_18.png" },
+  19: { name: "용광의 송곳", desc: "강철용의 비늘을 뚫어낸 검.", img: "images/weapons/dagger_19.png" },
+  20: { name: "인페르노 스팅어(Inferno Stinger)", desc: "거대한 괴수는 한 순간으로 무너졌다.", img: "images/weapons/dagger_20.png" },
+
+  21: { name: "봉인 외곽", desc: "닿지 않아도 된다. 바깥에서부터 이미 균열이 시작된다.", img: "images/weapons/dagger_21.png" },
+  22: { name: "聖域破(성역파)", desc: "그 단검 앞에선, 성역이 안전하다는 믿음도 깨진다.", img: "images/weapons/dagger_22.png" },
+  23: { name: "성음 단절", desc: "위로 닿던 소리조차 베어냈다. 응답은 더 이상 내려오지 않는다.", img: "images/weapons/dagger_23.png" },
+  24: { name: "신좌의 사각", desc: "그 어둠은 신에게도 그림자를 만들어낸다.", img: "images/weapons/dagger_24.png" },
+
+  25: { name: "끝선", desc: "베어내는 행위가 아닌, 끝을 내는 행위로 설명할 수 있다.", img: "images/weapons/dagger_25.png" },
+  26: { name: "결(結)", desc: "물질만 베어낼 뿐 아닌, 개념마저 끊어내다.", img: "images/weapons/dagger_26.png" },
+  27: { name: "斷界(단계)", desc: "세계가 이어지는 경계를 긋다.", img: "images/weapons/dagger_27.png" },
+  28: { name: "블랙아웃", desc: "빛을 베어내 모든 감각이 꺼트린다.", img: "images/weapons/dagger_28.png" },
+  29: { name: "無(무)", desc: "베어냄으로써 존재가 사라진 자리.", img: "images/weapons/dagger_29.png" },
+
+  // 🌈 30강 : 최종
+  30: { name: "어둠의 계율 「녹스(Nox)」", desc: "태고의 어둠.\n이 이름은 곧 어둠의 법칙이다.", img: "images/weapons/dagger_30.png" }
+};
+
 // 현재 강화 수치 & 타입 기준으로 안전하게 정보 가져오기
 function getWeaponInfo(level, type) {
   const lv = Math.max(0, Math.min(30, level | 0));
@@ -3459,6 +3502,10 @@ function getWeaponInfo(level, type) {
   if (t === "staff") {
     return WEAPON_INFO_STAFF[lv] || WEAPON_INFO_STAFF[0];
   }
+
+  if (t === "dagger") {
+  return WEAPON_INFO_DAGGER[lv] || WEAPON_INFO_DAGGER[0];
+}
 
   // 기본: 검
   return WEAPON_INFO[lv] || WEAPON_INFO[0];
@@ -4739,6 +4786,7 @@ const TITLE_DEFS = [
   { id:"knight",   name:"기사",   how:"검으로 21강 달성" },
   { id:"warrior",  name:"전사",   how:"창으로 21강 달성" },
   { id:"viking",   name:"바이킹", how:"도끼로 21강 달성" },
+  { id:"assassin", name:"어쌔신", how:"단검으로 21강 달성" },
 
   { id:"destroy100", name:"파괴왕", how:"무기 파괴 횟수 100회" },
   { id:"destroy500", name:"파괴신", how:"무기 파괴 횟수 500회" },
@@ -4750,6 +4798,7 @@ const TITLE_DEFS = [
   { id:"end_sword", name:"검의 종착지",  how:"검으로 30강 달성",  color:"gold" },
   { id:"end_axe",   name:"도끼의 종착지",how:"도끼로 30강 달성", color:"gold" },
   { id:"end_spear", name:"창의 종착지",  how:"창으로 30강 달성",  color:"gold" },
+  { id:"end_dagger", name:"단검의 종착지", how:"단검으로 30강 달성", color:"gold" },
 
   // ✅ 역병쥐 (반짝 초록) + 방법 숨김
   { id:"plague", name:"역병쥐", how:"???", color:"plague" },
@@ -4949,6 +4998,7 @@ if (warGodWin) {
     if(weaponType === "sword") changed = grantTitleOnceNoSave("end_sword") || changed;
     if(weaponType === "axe")   changed = grantTitleOnceNoSave("end_axe")   || changed;
     if(weaponType === "spear") changed = grantTitleOnceNoSave("end_spear") || changed;
+    if(weaponType === "dagger") changed = grantTitleOnceNoSave("end_dagger") || changed;
   }
 
     // 🏹 활 전용 칭호
@@ -4969,6 +5019,11 @@ if (warGodWin) {
     if (grantTitleOnceNoSave("staff30")) changed = true;
   }
 
+  // 🗡 단검 전용 칭호
+if (weaponType === "dagger" && maxSwordLevel >= 21) {
+  if (grantTitleOnceNoSave("assassin")) changed = true;
+}
+ 
   return changed;
 }
   
@@ -10581,7 +10636,7 @@ function openBossBattleHelp(){
   if (ignoreEvade > 0) myLines.push(`• 회피 무시: <b>${Math.round(ignoreEvade * 100)}%</b>`);
   if (critRate > 0) {
     myLines.push(`• 치명타 확률: <b>${Math.round(critRate * 100)}%</b>`);
-    myLines.push(`• 치명타 데미지: <b>+20%</b>`);
+myLines.push(`• 치명타 데미지: <b>+${Math.round((0.20 + Number(critDmgBonus || 0)) * 100)}%</b>`);
   }
 
   const html = `
@@ -10722,6 +10777,7 @@ if (partyEl) {
       if (t === "axe") return "도끼";
       if (t === "bow") return "활";
       if (t === "staff") return "스태프";
+      if (t === "dagger") return "단검";
       return "검";
     };
 
@@ -10992,6 +11048,7 @@ function getBossWeaponProfile(){
   // 기본값(검)
   let coef = 1.0;
   let critRate = 0.0;
+  let critDmgBonus = 0.0; // 치명타 데미지 추가(+0.05 = +5%)
   let ignoreDef = 0.0;
   let ignoreEvade = 0.0;
   let dmgLabel = "공격력"; // 표시용(스태프는 주문력)
@@ -11000,8 +11057,9 @@ function getBossWeaponProfile(){
   else if (t === "spear") { coef = 0.9; ignoreDef = 0.10; }
   else if (t === "axe") { coef = 0.9; critRate = 0.10; }
   else if (t === "bow") { coef = 0.9; ignoreEvade = 0.10; }
+  else if (t === "dagger") { coef = 0.9; critRate = 0.05; critDmgBonus = 0.05; }
 
-  return { t, coef, critRate, ignoreDef, ignoreEvade, dmgLabel };
+  return { t, coef, critRate, critDmgBonus, ignoreDef, ignoreEvade, dmgLabel };
 }
 
 // ✅ 최종 공격 결과(한 번 클릭 시 결과)
@@ -11051,8 +11109,9 @@ function calcBossAttackResult(bossId){
   const isCrit = (Math.random() < critRate);
 
   if (isCrit) {
-    dmg = Math.floor(dmg * 1.20); // 치명 피해 +20%
-  }
+  const cd = 0.20 + Number(wp.critDmgBonus || 0); // 기본 +20% + 무기 보너스(단검 +5%)
+  dmg = Math.floor(dmg * (1 + cd));
+}
 
   if (dmg < 0) dmg = 0;
 
