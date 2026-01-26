@@ -72,6 +72,66 @@ body {
   white-space: nowrap;   /* 🔥 버튼 안에서 줄바꿈 금지 */
 }
 
+  /* =========================
+   🔨/⚔️/💰 버튼: 이미지 베이스 적용
+   ========================= */
+.action-buttons button{
+  position: relative;
+  width: 220px;                 /* ✅ 가로 크기(원하면 조절) */
+  aspect-ratio: 2.4 / 1;        /* ✅ 네 이미지 비율 */
+  height: auto;
+
+  padding: 0;                   /* ✅ 이미지 버튼이라 패딩 제거 */
+  border: 0;
+  border-radius: 12px;          /* (이미지 모서리 둥글면 맞춰) */
+  background: transparent;
+  color: #f2f2f2;               /* 텍스트는 그대로 위에 */
+  font-weight: 900;
+  font-size: 16px;
+  cursor: pointer;
+
+  /* ✅ 이미지 깔기 */
+  background-image: url("images/ui/btn_base_forge.png");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+
+  /* ✅ 파란색 클릭/탭 하이라이트 제거 */
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  outline: none;
+
+  /* ✅ 선택/드래그 방지 (텍스트 하이라이트 방지) */
+  user-select: none;
+  -webkit-user-select: none;
+
+  /* 살짝 입체감(원하면 제거 가능) */
+  box-shadow:
+    inset 0 1px 2px rgba(255,255,255,0.10),
+    inset 0 -2px 3px rgba(0,0,0,0.45),
+    0 6px 12px rgba(0,0,0,0.55);
+
+  transition: transform 0.08s ease, filter 0.12s ease;
+}
+
+/* 마우스 올리면 살짝 밝게 */
+.action-buttons button:hover{
+  filter: brightness(1.08);
+}
+
+/* 눌릴 때 살짝 내려가는 느낌 */
+.action-buttons button:active{
+  transform: translateY(2px);
+  filter: brightness(0.95);
+}
+
+/* 포커스 테두리도 제거 (키보드 포커스 원치 않으면) */
+.action-buttons button:focus{
+  outline: none;
+}
+.action-buttons button:focus-visible{
+  outline: none;
+}
+
 /* 📷 프로필 저장 캡쳐 모드 */
 .capture-mode * {
   visibility: hidden !important;
