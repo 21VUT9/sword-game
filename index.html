@@ -873,24 +873,30 @@ button {
   position: sticky;
   top: 0;
   z-index: 1500;
+
+  /* ✅ 화면 전체 폭으로 확장해서 우측 끝 기준을 "진짜 화면"으로 */
+  width: 100vw;
+  left: 50%;
+  transform: translateX(-50%);
+
   padding: 2px 12px 0 12px;
   margin-bottom: 8px;
-  position: relative; /* ✅ absolute 기준 */
+
+  position: relative; /* 아이콘 absolute 기준 */
 }
 
-/* 텍스트는 “기존 위치 느낌” 유지: 가운데 고정 */
+/* ✅ 맵 이름/정보는 가운데 유지 + 아이콘 영역만큼 겹침 방지 */
 .field-topbar .current-field-info{
+  width: min(430px, calc(100vw - 110px)); /* 아이콘 자리 확보 */
+  margin: 0 auto;
   text-align: center;
   margin-bottom: 0;
-
-  /* ✅ 아이콘이 우측에 있어도 텍스트가 밀리지 않게, 오른쪽 여백 확보 */
-  padding-right: 90px; /* 아이콘(1.5배) 영역 만큼 */
 }
 
-/* 🗺 MAP 아이콘 버튼 (1.5배 크게, 우측 끝 고정) */
+/* 🗺 MAP 아이콘 버튼 (우측 "화면 끝" 고정) */
 .map-icon-btn{
-  display: none; /* ✅ 로그인 후 JS가 mapBtn을 보이게 하는 기존 로직 유지 :contentReference[oaicite:4]{index=4} */
-  width: 78px;   /* 52px * 1.5 */
+  display: none; /* ✅ 로그인 후 기존 JS가 보여주는 로직 유지 */
+  width: 78px;
   height: 78px;
   padding: 0;
   border: 0;
@@ -898,7 +904,7 @@ button {
   cursor: pointer;
 
   position: absolute;
-  right: 10px;  /* field-topbar padding 고려해서 끝에 붙임 */
+  right: 10px; /* ✅ 이제 "화면 우측 끝" 기준 */
   top: 0;
 
   -webkit-tap-highlight-color: rgba(0,0,0,0);
@@ -908,7 +914,7 @@ button {
 }
 
 .map-icon-img{
-  width: 70px;   /* 46px * 1.5 ≈ 69 */
+  width: 70px;
   height: 70px;
   display: block;
   margin: 0 auto;
@@ -918,12 +924,11 @@ button {
 .map-icon-label{
   position: absolute;
   left: 50%;
-  bottom: -14px;         /* 크기 커진만큼 조금 더 아래 */
+  bottom: -14px;
   transform: translateX(-50%);
   font-size: 13px;
   font-weight: 900;
   color: #fff;
-
   text-shadow:
     -1px -1px 0 #000,
      1px -1px 0 #000,
@@ -1514,7 +1519,6 @@ button {
     max-height: 37vh !important;
   }
 }
-
   
 </style>
 </head>
@@ -1526,7 +1530,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.203)
+    (v4.204)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
