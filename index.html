@@ -703,6 +703,44 @@ button {
   padding:8px 16px;
 }
 
+  /* 🔴 모험가길드 신규 보스전 알림 뱃지 */
+#adventureGuildBtn{
+  position: fixed; /* (이미 있어도 OK) */
+}
+#adventureGuildBtn { 
+  overflow: visible;
+}
+.guild-alert-badge{
+  position:absolute;
+  top:-6px;
+  right:-6px;
+  width:18px;
+  height:18px;
+  border-radius:999px;
+  background:#ff3b3b;
+  color:#fff;
+  font-size:12px;
+  font-weight:900;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 0 10px rgba(255,59,59,0.55);
+}
+.guild-alert-inline{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:16px;
+  height:16px;
+  border-radius:999px;
+  background:#ff3b3b;
+  color:#fff;
+  font-size:11px;
+  font-weight:900;
+  margin-right:6px;
+  box-shadow:0 0 10px rgba(255,59,59,0.35);
+}
+
 /* 🎒 인벤토리 버튼 */
 #inventoryBtn{
   position:fixed;
@@ -1351,7 +1389,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.188)
+    (v4.201)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1612,7 +1650,10 @@ button {
   ⚔️ 결투장
 </button>
 
-<button id="adventureGuildBtn" class="side-menu-btn" onclick="openAdventureGuild()">🏛️ 모험가길드</button>
+<button id="adventureGuildBtn" class="side-menu-btn" onclick="openAdventureGuild()">
+  🏛️ 모험가길드
+  <span id="adventureGuildAlertBadge" class="guild-alert-badge" style="display:none;">!</span>
+</button>
   
   <!-- 🎒 인벤토리 버튼 (로그 버튼 위) -->
 <button id="inventoryBtn"
@@ -9644,6 +9685,64 @@ function applyAdventureGuildPanelSizing(){
   panel.style.height = "62vh";
   panel.style.maxHeight = "62vh";
 }
+
+  // ✅ 모험가길드 신규 보스전 '확인 여부' (로컬 저장)
+const SEEN_BOSS_RUNS_KEY = "seenBossRuns_v1";
+
+function loadSeenBossRuns(){
+  try { return JSON.parse(localStorage.getItem(SEEN_BOSS_RUNS_KEY) || "{}") || {}; }
+  catch(e){ return {}; }
+}
+
+function saveSeenBossRuns(map){
+  try { localStorage.setItem(SEEN_BOSS_RUNS_KEY, JSON.stringify(map || {})); } catch(e){}
+}
+
+function setAdventureGuildAlertVisible(visible){
+  const b = document.getElementById("adventureGuildAlertBadge");
+  if (!b) return;
+  b.style.display = visible ? "flex" : "none";
+}
+
+// ✅ 현재 열려있는(참여 가능한) 보스전 중 '내가 아직 확인 안 한 것'이 있으면 ! 표시
+function refreshAdventureGuildAlert(){
+  const seen = loadSeenBossRuns();
+  let hasNew = false;
+
+  Object.entries(bossRunsActiveCache || {}).some(([bossId, run]) => {
+    if (!run) return false;
+
+    const st = String(run.status || "");
+    // 모험가길드 리스트에 뜨는 상태만 대상으로 (현재 렌더가 active 기준이면 active만 보면 됨)
+    if (st !== "active") return false;
+
+    // 내가 이미 멤버인 토벌은 신규알림 대상 제외(원하면 포함해도 됨)
+    const isMember = !!(run.members && run.members[userId]);
+    if (isMember) return false;
+
+    if (!seen[bossId]) { hasNew = true; return true; }
+    return false;
+  });
+
+  setAdventureGuildAlertVisible(hasNew);
+}
+
+// ✅ 모험가길드 오버레이를 "닫는 순간" = 확인 완료 처리
+function markAllBossRunsSeenNow(){
+  const seen = loadSeenBossRuns();
+
+  Object.entries(bossRunsActiveCache || {}).forEach(([bossId, run]) => {
+    if (!run) return;
+    const st = String(run.status || "");
+    if (st !== "active") return;
+
+    // 내가 멤버인 건 굳이 저장 안 해도 되지만, 저장해도 문제 없음
+    seen[bossId] = true;
+  });
+
+  saveSeenBossRuns(seen);
+  refreshAdventureGuildAlert();
+}
   
 function openAdventureGuild(){
   const ov = document.getElementById("adventureGuildOverlay");
@@ -9663,6 +9762,9 @@ function openAdventureGuild(){
 function closeAdventureGuild(){
   const ov = document.getElementById("adventureGuildOverlay");
   if (ov) ov.style.display = "none";
+
+  // ✅ 오버레이를 닫는 순간 = 확인 완료 처리 → ! 제거
+  markAllBossRunsSeenNow();
 }
 
 // ✅ ESC로 모험가길드 닫기 (한 번만 바인딩)
@@ -9946,6 +10048,9 @@ function renderAdventureGuildBossRuns() {
     const bossTitle = def ? def.bossTitle : (run.bossTitle || "보스");
     const bossName  = def ? def.bossName : (run.bossName || "");
     const leaderNick = run.leaderNick || "알 수 없음";
+    const seen = loadSeenBossRuns();
+    const isNew = !seen[bossId];
+    const newMark = isNew ? `<span class="guild-alert-inline">!</span>` : ``;
 
     const remainMs = Math.max(0, Number(run.endsAt || 0) - Date.now());
 
@@ -9969,8 +10074,8 @@ if (Number(run.endsAt || 0) > 0 && Date.now() >= Number(run.endsAt || 0) && Stri
     html += `
       <div style="border:1px solid #444; border-radius:10px; padding:10px; margin-bottom:8px; background:rgba(0,0,0,0.35);">
         <div style="font-weight:bold; margin-bottom:4px;">
-          ${mapName} · ${bossTitle} <span style="color:#ddd;">${bossName}</span>
-        </div>
+  ${newMark}${mapName} · ${bossTitle} <span style="color:#ddd;">${bossName}</span>
+</div>
         <div style="font-size:12px; color:#aaa; margin-bottom:8px;">
           대장: <b style="color:#ddd;">${leaderNick}</b> · 남은시간: <b style="color:#ffd54f;">${remainTxt}</b>
         </div>
@@ -9992,6 +10097,8 @@ function ensureBossRunsSubscription() {
 BOSS_RUNS_ACTIVE_REF.on("value", (snap) => {
   bossRunsActiveCache = snap.val() || {};
   startBossRunWatchdog();
+
+ refreshAdventureGuildAlert(); // ✅ 신규 보스전 있으면 메인 버튼에 ! 표시
 
   // ✅ (핵심) 새로고침/재접속 시: 내가 이미 참여중인 토벌이 있으면 activeBossId 복구
   const myUid = String(userId || "");
