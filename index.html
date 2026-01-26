@@ -743,10 +743,6 @@ button {
 }
 
 /* 각 버튼의 세로 위치만 다르게 */
-#mapBtn {
-  top: 10px;
-}
-
 #scrollShopBtn {
   top: 50px;   
 }
@@ -873,7 +869,82 @@ button {
   margin-top:4px;
 }
 
- /* 🗺 프로필 카드 “밖” 상단 현재 사냥터 정보 */
+  /* 🧱 사냥터 이름 줄(좌) + MAP 아이콘(우) */
+.field-topbar{
+  position: sticky;     /* 스크롤해도 그 자리(상단)에 붙게 */
+  top: 0;
+  z-index: 1500;
+
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+
+  padding-top: 2px;
+  margin-bottom: 8px;   /* 기존 current-field-info의 margin 역할 */
+}
+
+/* 기존 current-field-info는 가운데 정렬이었는데,
+   topbar 안에서는 좌측 정렬이 더 자연스러워서 덮어씀 */
+.field-topbar .current-field-info{
+  text-align: left;
+  margin-bottom: 0;
+  flex: 1;
+}
+
+/* 🗺 MAP 아이콘 버튼 */
+.map-icon-btn{
+  display: none;            /* ✅ 로그인 후 JS가 mapBtn을 block으로 바꾸는 기존 로직 그대로 타게 */
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+
+  /* ✅ 파란색 클릭 하이라이트 제거 */
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  outline: none;
+
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.map-icon-img{
+  width: 46px;              /* 1:1 아이콘 */
+  height: 46px;
+  display: block;
+}
+
+/* 아이콘 하단에 살짝 겹치게 "지도" */
+.map-icon-label{
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: 900;
+  color: #fff;
+
+  /* 흰글씨 + 검은 테두리(가독성) */
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000;
+}
+
+/* 눌림 피드백(가벼운) */
+.map-icon-btn:active{
+  transform: translateY(1px);
+}
+.map-icon-btn:focus,
+.map-icon-btn:focus-visible{
+  outline: none;
+}
+
+   /* 🗺 프로필 카드 “밖” 상단 현재 사냥터 정보 */
 .current-field-info {
   font-size: 14px;
   color: #ffffff;        /* 기본 흰색 */
@@ -1459,7 +1530,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.201)
+    (v4.202)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1490,7 +1561,16 @@ button {
   <div id="fieldBg" class="field-bg">
 
   <!-- 🗺 현재 사냥터 정보 (프로필 카드 바깥 상단) -->
+<div class="field-topbar">
   <div id="currentFieldInfo" class="current-field-info"></div>
+
+  <!-- 🗺 MAP 아이콘 버튼 (기능은 기존 toggleMap 유지) -->
+  <button id="mapBtn" class="map-icon-btn no-capture" onclick="toggleMap()" aria-label="지도">
+    <img class="map-icon-img" src="images/ui/icon_map_roll.png" alt="">
+    <div class="map-icon-label">지도</div>
+  </button>
+</div>
+
 
 <!-- 🧾 유저 프로필 카드 -->
 <div id="userProfileArea">
@@ -1699,12 +1779,6 @@ button {
   
 <!-- 🔔 로그 -->
 <div id="toastLog"><div id="toastList"></div></div>
-
-<button id="mapBtn"
-        class="side-menu-btn"
-        onclick="toggleMap()">
-  🗺 MAP
-</button>
 
 <!-- 📜 스크롤 상점 버튼 (MAP과 결투장 사이) -->
 <button id="scrollShopBtn"
