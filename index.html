@@ -1716,7 +1716,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.212)
+    (v4.213)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -10262,7 +10262,8 @@ function refreshAdventureGuildAlert(){
     const isMember = !!(run.members && run.members[userId]);
     if (isMember) return false;
 
-    if (!seen[bossId]) { hasNew = true; return true; }
+    const seenKey = `${bossId}:${Number(run.createdAt || 0)}`;
+    if (!seen[seenKey]) { hasNew = true; return true; }
     return false;
   });
 
@@ -10279,7 +10280,8 @@ function markAllBossRunsSeenNow(){
     if (st !== "active") return;
 
     // 내가 멤버인 건 굳이 저장 안 해도 되지만, 저장해도 문제 없음
-    seen[bossId] = true;
+    const seenKey = `${bossId}:${Number(run.createdAt || 0)}`;
+    seen[seenKey] = true;
   });
 
   saveSeenBossRuns(seen);
@@ -10591,7 +10593,8 @@ function renderAdventureGuildBossRuns() {
     const bossName  = def ? def.bossName : (run.bossName || "");
     const leaderNick = run.leaderNick || "알 수 없음";
     const seen = loadSeenBossRuns();
-    const isNew = !seen[bossId];
+    const seenKey = `${bossId}:${Number(run.createdAt || 0)}`;
+    const isNew = !seen[seenKey];
     const newMark = isNew ? `<span class="guild-alert-inline">!</span>` : ``;
 
     const remainMs = Math.max(0, Number(run.endsAt || 0) - Date.now());
