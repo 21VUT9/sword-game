@@ -1623,7 +1623,7 @@ button {
   -webkit-user-select: none;
 }
 
-#poiYggdrasil img{
+  #poiYggdrasil img{
   width: 100%;
   height: 100%;
   display:block;
@@ -1631,6 +1631,33 @@ button {
 
 #poiYggdrasil:active{
   transform: translate(-50%, -50%) scale(1.06);
+}
+
+/* 🌳 이그드라실 텍스트 라벨 */
+#poiYggdrasil .poi-label{
+  position: absolute;
+  bottom: -6px;                 /* 🌱 뿌리 쪽에 겹치게 */
+  left: 50%;
+  transform: translateX(-50%);
+
+  font-size: 13px;
+  font-weight: 900;
+  color: #ffffff;
+
+  /* 검은 테두리 효과 (가독성 핵심) */
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000,
+     0  2px 4px rgba(0,0,0,0.8);
+
+  white-space: nowrap;
+  pointer-events: none;         /* ✅ 텍스트가 클릭을 막지 않게 */
+}
+  
+  #poiYggdrasil:hover .poi-label{
+  filter: brightness(1.15);
 }
 
 /* =========================
@@ -1689,7 +1716,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.211)
+    (v4.212)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1995,8 +2022,9 @@ button {
 
   <!-- 🌳 중앙 POI: 이그드라실 -->
   <button id="poiYggdrasil" onclick="openSkyMap(event)">
-    <img src="images/maps/poi_yggdrasil.png" alt="이그드라실">
-  </button>
+  <img src="images/maps/poi_yggdrasil.png" alt="이그드라실">
+  <span class="poi-label">이그드라실</span>
+</button>
 </div>
   </div>
 </div>
