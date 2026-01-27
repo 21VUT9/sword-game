@@ -1775,7 +1775,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.215)
+    (v4.216)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -6492,6 +6492,49 @@ function showMovePopup() {
   popup.style.display = "flex";
 }
 
+  // 🧭 월드맵 POI 이동 확인 팝업 (NPC 없음 / 네·아니오)
+function showWorldMapMoveConfirm(fieldId, fieldName) {
+  const popup     = document.getElementById("npcPopup");
+  const msgEl     = document.getElementById("npcPopupText");
+  const imgEl     = document.getElementById("npcPopupImg");
+  const okBtn     = document.getElementById("npcConfirmBtn");
+  const cancelBtn = document.getElementById("npcCancelBtn");
+  const nameEl    = document.getElementById("npcPopupName");
+
+  if (!popup || !msgEl || !imgEl || !okBtn || !cancelBtn) return;
+
+  // ✅ NPC 이름/이미지 없이
+  if (nameEl) nameEl.textContent = "";
+  imgEl.style.display = "none";
+
+  // ✅ 문구
+  msgEl.innerHTML = `
+    <div style="font-size:16px; font-weight:900; margin-bottom:8px;">
+      ${fieldName}로 이동하시겠습니까?
+    </div>
+    <div style="font-size:12px; color:#bbb; line-height:1.4;">
+      이동을 누르면 잠시 후 사냥터가 변경되고 지도가 닫힙니다.
+    </div>
+  `;
+
+  // ✅ 버튼 2개 사용
+  okBtn.style.display = "inline-block";
+  cancelBtn.style.display = "inline-block";
+
+  okBtn.textContent = "네";
+  cancelBtn.textContent = "아니오";
+
+  okBtn.onclick = function () {
+    closeNpcPopup();              // 확인창 닫기
+    moveToFieldFromWorldMap(fieldId); // ✅ 기존 ‘사냥터 선택’ 이동 로직 재사용
+  };
+
+  cancelBtn.onclick = function () {
+    closeNpcPopup();              // 그냥 닫기
+  };
+
+  popup.style.display = "flex";
+}
 
 // ⚔️ 사냥 결과 팝업 (NPC 이미지/버튼 X)
 function showHuntPopup(text, color = "#FFFFFF") {
@@ -8794,7 +8837,7 @@ function renderMap() {
   // 🍄 월드맵(양피지)에서: 평화로운 버섯마을로 이동
 function moveToMushroomVillageFromWorldMap(e){
   if (e) e.stopPropagation(); // ✅ 지도 바깥클릭으로 닫히는 것 방지
-  moveToFieldFromWorldMap(1); // ✅ LV1 = 평화로운 버섯마을로 가정
+  showWorldMapMoveConfirm(1, "평화로운 버섯마을");
 }
 
 // ✅ 월드맵 POI 공용 이동 함수 (기존 사냥터 선택 로직 그대로)
