@@ -1537,9 +1537,12 @@ button {
 
 #parchmentMapPanel{
   position: relative;
-  width: min(920px, 94vw);
-  height: min(660px, 92vh);
-  border-radius: 14px;
+
+  /* ✅ 월드맵을 예전처럼 화면 가득 */
+  width: 100vw;
+  height: 100vh;
+
+  border-radius: 0;     /* 꽉 차는 느낌 (원하면 14px로 다시) */
   overflow: hidden;
   background: transparent;
 }
@@ -1683,7 +1686,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.208)
+    (v4.209)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
