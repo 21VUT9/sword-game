@@ -6560,7 +6560,7 @@ function showMovePopup() {
 }
 
   // 🧭 월드맵 POI 이동 확인 팝업 (NPC 없음 / 네·아니오)
-function showWorldMapMoveConfirm(fieldId, fieldName) {
+function showWorldMapMoveConfirm(fieldId, fieldName, recommendLvText) {
   const popup     = document.getElementById("npcPopup");
   const msgEl     = document.getElementById("npcPopupText");
   const imgEl     = document.getElementById("npcPopupImg");
@@ -6568,34 +6568,38 @@ function showWorldMapMoveConfirm(fieldId, fieldName) {
   const cancelBtn = document.getElementById("npcCancelBtn");
   const nameEl    = document.getElementById("npcPopupName");
 
-  if (!popup || !msgEl || !imgEl || !okBtn || !cancelBtn) return;
+  if (!popup || !msgEl || !okBtn || !cancelBtn) return;
 
-  // ✅ NPC 이름/이미지 없이
+  // NPC 요소 숨김
   if (nameEl) nameEl.textContent = "";
-  imgEl.style.display = "none";
+  if (imgEl) imgEl.style.display = "none";
 
-  // ✅ 문구
+  // 안내 문구 (추천 강화수치가 있을 때만 표시)
+  const recommendHtml = recommendLvText
+    ? `<div style="margin-top:6px; font-size:12px; color:#aaa;">
+         / ${recommendLvText} /
+       </div>`
+    : "";
+
   msgEl.innerHTML = `
-    <div style="font-size:16px; font-weight:900; margin-bottom:8px;">
+    <div style="font-size:16px; font-weight:900; margin-bottom:4px;">
       ${fieldName}로 이동하시겠습니까?
     </div>
+    ${recommendHtml}
   `;
 
-  // ✅ 버튼 2개 사용
   okBtn.style.display = "inline-block";
   cancelBtn.style.display = "inline-block";
 
   okBtn.textContent = "네";
   cancelBtn.textContent = "아니오";
 
-  okBtn.onclick = function () {
-    closeNpcPopup();              // 확인창 닫기
-    moveToFieldFromWorldMap(fieldId); // ✅ 기존 ‘사냥터 선택’ 이동 로직 재사용
+  okBtn.onclick = () => {
+    closeNpcPopup();
+    moveToFieldFromWorldMap(fieldId);
   };
 
-  cancelBtn.onclick = function () {
-    closeNpcPopup();              // 그냥 닫기
-  };
+  cancelBtn.onclick = closeNpcPopup;
 
   popup.style.display = "flex";
 }
@@ -8900,15 +8904,23 @@ function renderMap() {
 
   // 🍄 월드맵(양피지)에서: 평화로운 버섯마을로 이동
 function moveToMushroomVillageFromWorldMap(e){
-  if (e) e.stopPropagation(); // ✅ 지도 바깥클릭으로 닫히는 것 방지
-  showWorldMapMoveConfirm(1, "평화로운 버섯마을");
+  if (e) e.stopPropagation();
+
+  showWorldMapMoveConfirm(
+    1,
+    "평화로운 버섯마을",
+    "+0강 이상 추천 사냥터"
+  );
 }
 
   function moveToSewerFromWorldMap(e){
   if (e) e.stopPropagation();
 
-  // ✅ 버섯마을과 동일 흐름: 확인창(네/아니오) → 이동중… → 지도 닫힘 → 사냥터 이동
-  showWorldMapMoveConfirm(2, "역병쥐가 들끓는 시궁창");
+  showWorldMapMoveConfirm(
+    2,
+    "역병쥐가 들끓는 시궁창",
+    "+3강 이상 추천 사냥터"
+  );
 }
 
 // ✅ 월드맵 POI 공용 이동 함수 (기존 사냥터 선택 로직 그대로)
