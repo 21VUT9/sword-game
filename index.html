@@ -1531,35 +1531,40 @@ button {
 #parchmentMapOverlay{
   position: fixed;
   inset: 0;
-  display: none;                 /* 열 때 block으로 */
+  display: none;                 /* 열 때 flex로 */
+  align-items: center;
+  justify-content: center;
+
+  /* 바깥 여백(여백 터치로 닫히는 영역) */
+  padding: 28px 14px;
+  box-sizing: border-box;
+
   background: rgba(0,0,0,0.72);
   z-index: 2500;
 }
 
-/* ✅ flex/센터링 없이, 패널 자체를 화면에 고정해서 100% 채움 */
 #parchmentMapPanel{
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-
-  border-radius: 0;
-  overflow: hidden;
+  position: relative;
+  width: min(96vw, 900px);       /* ✅ 가로 기준으로 크게 */
+  max-height: calc(100vh - 56px);
   background: transparent;
+  overflow: visible;
 }
 
-/* ✅ 이미지는 패널 안에서 최대한 크게(잘림 없이) */
+#parchmentMapStage{
+  position: relative;
+  width: 100%;
+}
+
 #parchmentMapImg{
   width: 100%;
-  height: 100%;
-  object-fit: contain;           /* 잘림 없이 꽉 (여백은 생길 수 있음) */
-  object-position: center center;
+  height: auto;                  /* ✅ 세로는 비율 유지 */
   display: block;
   user-select: none;
   -webkit-user-drag: none;
 }
 
-#parchmentMapCloseBtn{
+  #parchmentMapCloseBtn{
   position: absolute;
   right: 10px;
   top: 10px;
@@ -1596,19 +1601,6 @@ button {
   cursor:pointer;
   -webkit-tap-highlight-color: rgba(0,0,0,0);
   outline:none;
-}
-
-  /* ✅ 1번 지도 내부: 지도+POI를 올릴 무대 */
-#parchmentMapStage{
-  position: relative;
-  width: min(92vw, 520px);
-}
-
-/* 기존 #parchmentMapImg가 width:100%라면 그대로 사용 가능 */
-#parchmentMapImg{
-  width: 100%;
-  height: auto;
-  display:block;
 }
 
 /* 🌳 POI: 이그드라실 (중앙 배치) */
@@ -1689,7 +1681,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.209)
+    (v4.210)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -8507,7 +8499,7 @@ function openParchmentMap(){
   const ov = document.getElementById("parchmentMapOverlay");
   if(!ov) return;
 
-  ov.style.display = "block";
+  ov.style.display = "flex";
   // 뒤 스크롤 방지(모바일 포함)
   document.body.style.overflow = "hidden";
 }
