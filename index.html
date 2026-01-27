@@ -1659,6 +1659,60 @@ button {
   #poiYggdrasil:hover .poi-label{
   filter: brightness(1.15);
 }
+  /* 🍄 POI: 평화로운 버섯마을 (이그드라실 1/3 크기) */
+#poiMushroomVillage{
+  position: absolute;
+
+  /* ✅ 위치: 이그드라실(47.7%, 43.5%) 기준 "서쪽 + 호수 아래" */
+  left: 38.5%;
+  top: 58.0%;
+
+  transform: translate(-50%, -50%);
+  width: 32px;   /* ✅ 96px의 1/3 */
+  height: 32px;  /* ✅ 96px의 1/3 */
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 5;
+
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#poiMushroomVillage img{
+  width: 120%;
+  height: 120%;
+  display:block;
+}
+
+#poiMushroomVillage:active{
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+/* 🍄 버섯마을 텍스트 라벨 (이그드라실처럼 클릭 유도) */
+#poiMushroomVillage .poi-label{
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  font-size: 9px;
+  font-weight: 900;
+  color: #cfcfcf;
+
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000,
+     0  2px 4px rgba(0,0,0,0.8);
+
+  white-space: nowrap;
+  pointer-events: none;
+}
 
 /* =========================
    ☁️ 2번(하늘) 지도 오버레이 (1번 위에 겹침)
@@ -1716,7 +1770,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.213)
+    (v4.214)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2025,6 +2079,13 @@ button {
   <img src="images/maps/poi_yggdrasil.png" alt="이그드라실">
   <span class="poi-label">이그드라실</span>
 </button>
+
+        <!-- 🍄 POI: 평화로운 버섯마을 (이그드라실 서쪽/호수 아래) -->
+  <button id="poiMushroomVillage" onclick="moveToMushroomVillageFromWorldMap(event)">
+    <img src="images/maps/poi_mushroom_village.png" alt="평화로운 버섯마을">
+    <span class="poi-label">평화로운 버섯마을</span>
+  </button>
+      
 </div>
   </div>
 </div>
@@ -8723,6 +8784,50 @@ function renderMap() {
 
     listEl.appendChild(div);
   }
+}
+
+  // 🍄 월드맵(양피지)에서: 평화로운 버섯마을로 이동
+function moveToMushroomVillageFromWorldMap(e){
+  if (e) e.stopPropagation(); // ✅ 지도 바깥클릭으로 닫히는 것 방지
+  moveToFieldFromWorldMap(1); // ✅ LV1 = 평화로운 버섯마을로 가정
+}
+
+// ✅ 월드맵 POI 공용 이동 함수 (기존 사냥터 선택 로직 그대로)
+function moveToFieldFromWorldMap(fieldId){
+  // 대상 필드가 없으면 중단
+  if (!HUNT_FIELDS || !HUNT_FIELDS[fieldId]) return;
+
+  // 이미 이동 중이면 무시
+  if (isMoving) return;
+  isMoving = true;
+
+  // "사냥터 이동 중..." 팝업 표시 (기존 함수 재사용)
+  showMovePopup();
+
+  const delay = 1000 + Math.random() * 1000; // 1~2초 랜덤
+
+  setTimeout(() => {
+    // 실제 사냥터 변경
+    currentField = fieldId;
+
+    applyFieldBackground();
+
+    // UI 갱신 + 저장
+    update();
+    save();
+
+    // ✅ (구버전) 사냥터 선택 패널이 떠있으면 닫기
+    const mapPanel = document.getElementById("mapPanel");
+    if (mapPanel) mapPanel.style.display = "none";
+
+    // ✅ 양피지 월드맵 닫기
+    closeParchmentMap();
+
+    // 이동 팝업 닫기
+    closeMovePopup();
+
+    isMoving = false;
+  }, delay);
 }
 
 // 🧱 패널 바깥 클릭 시 닫기 (MAP / 인벤토리 / 로그 공통)
