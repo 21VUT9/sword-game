@@ -1689,7 +1689,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.210)
+    (v4.211)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1987,7 +1987,7 @@ button {
     <button id="parchmentMapCloseBtn" onclick="closeParchmentMap()">X</button>
 
     <!-- ✅ 기존 사냥터 선택(예전 MAP 팝업)도 유지 -->
-    <button id="parchmentMapLegacyBtn" onclick="closeParchmentMap(); toggleMap();">사냥터 선택</button>
+    <button id="parchmentMapLegacyBtn" onclick="openMapPanelNearParchmentBtn(event)">사냥터 선택</button>
 
     <!-- ✅ 여기 src만 네가 저장한 양피지 지도 경로로 바꿔주면 됨 -->
     <div id="parchmentMapStage">
@@ -8572,6 +8572,47 @@ function toggleMap() {
   }
 }
 
+  function openMapPanelNearParchmentBtn(ev){
+  if (ev) ev.stopPropagation();
+
+  const panel = document.getElementById("mapPanel");
+  const btn   = document.getElementById("parchmentMapLegacyBtn");
+  if(!panel || !btn) return;
+
+  // 1) 열기 (토글 느낌)
+  const isOpen = (panel.style.display === "block");
+  if (isOpen) {
+    panel.style.display = "none";
+    return;
+  }
+
+  panel.style.display = "block";
+
+  // 2) 버튼 근처로 위치 이동 (월드맵 위에 떠야 함)
+  // mapPanel이 원래 fixed 기반이므로 그대로 fixed 좌표로 잡는다.
+  panel.style.position = "fixed";
+  panel.style.right = "auto"; // ✅ right 고정 풀기 (중요)
+
+  const r = btn.getBoundingClientRect();
+
+  // 버튼의 "오른쪽 위" 근처에 띄우고 싶으면 이렇게:
+  let x = r.left;                 // 버튼 좌측 기준
+  let y = r.top - 10;             // 버튼보다 살짝 위
+
+  // panel 크기 얻어서 화면 밖으로 나가지 않게 보정
+  const pr = panel.getBoundingClientRect();
+  if (x + pr.width > window.innerWidth - 8) x = window.innerWidth - pr.width - 8;
+  if (y + pr.height > window.innerHeight - 8) y = window.innerHeight - pr.height - 8;
+  if (x < 8) x = 8;
+  if (y < 8) y = 8;
+
+  panel.style.left = x + "px";
+  panel.style.top  = y + "px";
+
+  // 월드맵 위에 뜨도록 z-index 보장
+  panel.style.zIndex = 2605;
+}
+
 // 🗺 MAP 내용 렌더링
 function renderMap() {
   const listEl = document.getElementById("mapList");
@@ -8645,6 +8686,14 @@ function closeIfClickOutside(event, panelId, buttonId) {
 
   // 해당 패널의 토글 버튼을 클릭한 경우 → 토글 로직에 맡김
   if (btn && btn.contains(target)) return;
+
+  // (예시) panel 바깥 클릭이면 닫기
+if (panelOpen && !panel.contains(e.target)
+    && !mapBtn.contains(e.target)
+    && !document.getElementById("parchmentMapLegacyBtn")?.contains(e.target)
+) {
+  panel.style.display = "none";
+}
 
   // 그 외 영역 클릭 시 패널 닫기
   panel.style.display = "none";
