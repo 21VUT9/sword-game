@@ -1521,6 +1521,76 @@ button {
     max-height: 37vh !important;
   }
 }
+
+/* =========================
+   🗺 양피지 지도 오버레이
+   ========================= */
+#parchmentMapOverlay{
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.72);
+  z-index: 2500;
+}
+
+#parchmentMapPanel{
+  position: relative;
+  width: min(920px, 94vw);
+  height: min(660px, 92vh);
+  border-radius: 14px;
+  overflow: hidden;
+  background: transparent;
+}
+
+#parchmentMapImg{
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+#parchmentMapCloseBtn{
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 2;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.22);
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  font-weight: 900;
+  font-size: 18px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  outline: none;
+}
+
+#parchmentMapCloseBtn:active{
+  transform: translateY(1px);
+}
+
+#parchmentMapLegacyBtn{
+  position:absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 2;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(0,0,0,0.45);
+  color:#fff;
+  font-weight:900;
+  font-size: 13px;
+  cursor:pointer;
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  outline:none;
+}
   
 </style>
 </head>
@@ -1532,7 +1602,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.206)
+    (v4.207)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -1567,7 +1637,7 @@ button {
   <div id="currentFieldInfo" class="current-field-info"></div>
 
   <!-- 🗺 MAP 아이콘 버튼(기존 기능 유지: toggleMap) -->
-  <button id="mapBtn" class="map-icon-btn" onclick="toggleMap()">
+  <button id="mapBtn" class="map-icon-btn" onclick="openParchmentMap()">
     <img class="map-icon-img" src="images/ui/icon_map_roll.png" alt="MAP">
     <span class="map-icon-label">지도</span>
   </button>
@@ -1823,10 +1893,18 @@ button {
   📜 로그
 </button>
 
-<!-- 🗺 MAP 패널 -->
-<div id="mapPanel">
-  <h3>🗺 사냥터 선택</h3>
-  <div id="mapList"></div>
+<!-- 🗺 (신규) 양피지 지도 오버레이 -->
+<div id="parchmentMapOverlay" onclick="if(event.target===this) closeParchmentMap();">
+  <div id="parchmentMapPanel" onclick="event.stopPropagation();">
+
+    <button id="parchmentMapCloseBtn" onclick="closeParchmentMap()">X</button>
+
+    <!-- ✅ 기존 사냥터 선택(예전 MAP 팝업)도 유지 -->
+    <button id="parchmentMapLegacyBtn" onclick="closeParchmentMap(); toggleMap();">사냥터 선택</button>
+
+    <!-- ✅ 여기 src만 네가 저장한 양피지 지도 경로로 바꿔주면 됨 -->
+    <img id="parchmentMapImg" src="images/maps/parchment_world.png" alt="지도">
+  </div>
 </div>
   
 <!-- 🎒 인벤토리 패널 -->
@@ -8320,6 +8398,35 @@ function coloredWeaponName(level, baseName) {
   return `<span style="color:${cssColor};font-weight:bold;">${baseName}</span>`;
 }
 
+  // =========================
+// 🗺 양피지 지도 오버레이
+// =========================
+function openParchmentMap(){
+  const ov = document.getElementById("parchmentMapOverlay");
+  if(!ov) return;
+
+  ov.style.display = "flex";
+  // 뒤 스크롤 방지(모바일 포함)
+  document.body.style.overflow = "hidden";
+}
+
+function closeParchmentMap(){
+  const ov = document.getElementById("parchmentMapOverlay");
+  if(!ov) return;
+
+  ov.style.display = "none";
+  document.body.style.overflow = "";
+}
+
+// ESC로 닫기
+document.addEventListener("keydown", (e) => {
+  if(e.key === "Escape"){
+    const ov = document.getElementById("parchmentMapOverlay");
+    if(ov && ov.style.display !== "none"){
+      closeParchmentMap();
+    }
+  }
+});
 
 // 🗺 MAP 토글
 function toggleMap() {
