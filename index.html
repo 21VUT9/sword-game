@@ -1586,23 +1586,6 @@ button {
   transform: translateY(1px);
 }
 
-#parchmentMapLegacyBtn{
-  position:absolute;
-  left: 10px;
-  bottom: 10px;
-  z-index: 2;
-  padding: 8px 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.18);
-  background: rgba(0,0,0,0.45);
-  color:#fff;
-  font-weight:900;
-  font-size: 13px;
-  cursor:pointer;
-  -webkit-tap-highlight-color: rgba(0,0,0,0);
-  outline:none;
-}
-
 /* 🌳 POI: 이그드라실 (중앙 배치) */
 #poiYggdrasil{
   position: absolute;
@@ -2159,7 +2142,7 @@ button {
 #poiArchangelCradle .poi-label{
   position:absolute;
   top:100%;
-  left:50%;
+  left:55%;
   transform:translateX(-50%);
   margin-top:-8px;
 
@@ -2207,7 +2190,7 @@ button {
 #poiGodSanctum .poi-label{
   position:absolute;
   top:100%;
-  left:55%;
+  left:56%;
   transform:translateX(-50%);
   margin-top:-8px;
 
@@ -2582,10 +2565,7 @@ button {
 
     <button id="parchmentMapCloseBtn" onclick="closeParchmentMap()">X</button>
 
-    <!-- ✅ 기존 사냥터 선택(예전 MAP 팝업)도 유지 -->
-    <button id="parchmentMapLegacyBtn" onclick="openMapPanelNearParchmentBtn(event)">사냥터 선택</button>
-
-    <!-- ✅ 여기 src만 네가 저장한 양피지 지도 경로로 바꿔주면 됨 -->
+      <!-- ✅ 여기 src만 네가 저장한 양피지 지도 경로로 바꿔주면 됨 -->
     <div id="parchmentMapStage">
   <img id="parchmentMapImg" src="images/maps/parchment_world.png" />
 
@@ -2664,15 +2644,8 @@ button {
   <img src="images/maps/poi_dimensional_rift.png" alt="">
   <span class="poi-label">차원의 틈새</span>
 </button>
-
     
   </div>
-</div>
-
-  <!-- 🗺 (구버전) 사냥터 선택 패널 -->
-<div id="mapPanel">
-  <h3>🗺 사냥터 선택</h3>
-  <div id="mapList"></div>
 </div>
   
 <!-- 🎒 인벤토리 패널 -->
