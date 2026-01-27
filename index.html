@@ -1719,6 +1719,67 @@ button {
   filter: brightness(1.15); /* ✅ 이그드라실 느낌 그대로 */
 }
 
+  /* 🐀 POI: 역병쥐가 들끓는 시궁창 (대륙 남서쪽 끝단 강하류) */
+#poiSewer{
+  position: absolute;
+
+  /* ✅ 위치: “남서쪽 끝단 + 강하류” 느낌으로 시작값 */
+  left: 18.5%;
+  top: 80.5%;
+
+  transform: translate(-50%, -50%);
+  width: 54px;     /* 버섯마을과 동일 크기 시작 */
+  height: 36px;
+
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 5;
+
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#poiSewer img{
+  width: 120%;
+  height: 120%;
+  display: block;
+}
+
+#poiSewer:active{
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+/* 🐀 시궁창 텍스트 라벨 (버섯마을과 동일: 회색 → 흰색) */
+#poiSewer .poi-label{
+  position: absolute;
+  bottom: -8px;
+  left: 52%;
+  transform: translateX(-50%);
+
+  font-size: 9px;
+  font-weight: 900;
+  color: #cfcfcf;
+
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000,
+     0  2px 4px rgba(0,0,0,0.8);
+
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+#poiSewer:hover .poi-label{
+  color: #fff;
+  filter: brightness(1.15);
+}
+
 /* =========================
    ☁️ 2번(하늘) 지도 오버레이 (1번 위에 겹침)
    ========================= */
@@ -1775,7 +1836,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.216)
+    (v4.217)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2090,6 +2151,12 @@ button {
     <img src="images/maps/poi_mushroom_village.png" alt="평화로운 버섯마을">
     <span class="poi-label">평화로운 버섯마을</span>
   </button>
+
+      <!-- 🐀 POI: 역병쥐가 들끓는 시궁창 (대륙 남서쪽 끝단 강하류) -->
+<button id="poiSewer" onclick="moveToSewerFromWorldMap(event)">
+  <img src="images/maps/poi_sewer.png" alt="역병쥐가 들끓는 시궁창">
+  <span class="poi-label">역병쥐가 들끓는 시궁창</span>
+</button>
       
 </div>
   </div>
@@ -8835,6 +8902,13 @@ function renderMap() {
 function moveToMushroomVillageFromWorldMap(e){
   if (e) e.stopPropagation(); // ✅ 지도 바깥클릭으로 닫히는 것 방지
   showWorldMapMoveConfirm(1, "평화로운 버섯마을");
+}
+
+  function moveToSewerFromWorldMap(e){
+  if (e) e.stopPropagation();
+
+  // ✅ 버섯마을과 동일 흐름: 확인창(네/아니오) → 이동중… → 지도 닫힘 → 사냥터 이동
+  showWorldMapMoveConfirm(2, "역병쥐가 들끓는 시궁창");
 }
 
 // ✅ 월드맵 POI 공용 이동 함수 (기존 사냥터 선택 로직 그대로)
