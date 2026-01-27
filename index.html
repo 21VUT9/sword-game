@@ -1842,6 +1842,68 @@ button {
   filter: brightness(1.15);
 }
 
+/* 🌿 POI: 늪엘프의 숲 (이그드라실 바로 밑) */
+#poiSwampElfForest{
+  position:absolute;
+
+  /* ✅ 위치: 이그드라실 바로 아래(시작값) */
+  left: 47.7%;
+  top: 56.5%;
+
+  transform: translate(-50%, -50%);
+  width: 57px;   /* 다른 소형 POI와 동일 시작 */
+  height: 38px;
+
+  border:0;
+  padding:0;
+  background:transparent;
+  cursor:pointer;
+  z-index:5;
+
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  outline:none;
+  user-select:none;
+  -webkit-user-select:none;
+}
+
+#poiSwampElfForest img{
+  width:100%;
+  height:100%;
+  display:block;
+}
+
+#poiSwampElfForest:active{
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+/* 🌿 늪엘프의 숲 텍스트 라벨 */
+#poiSwampElfForest .poi-label{
+  position:absolute;
+  bottom:-8px;
+  left:52%;
+  transform:translateX(-50%);
+
+  font-size:9px;
+  font-weight:900;
+  color:#cfcfcf;
+
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000,
+     0  2px 4px rgba(0,0,0,0.8);
+
+  white-space:nowrap;
+  pointer-events:none;
+}
+
+/* ✅ 마우스 올리면: 회색 → 흰색 (이그드라실/버섯마을과 동일) */
+#poiSwampElfForest:hover .poi-label{
+  color:#fff;
+  filter: brightness(1.15);
+}
+  
 /* =========================
    ☁️ 2번(하늘) 지도 오버레이 (1번 위에 겹침)
    ========================= */
@@ -1898,7 +1960,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.218)
+    (v4.219)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2224,6 +2286,12 @@ button {
 <button id="poiOutlawWasteland" onclick="moveToOutlawWastelandFromWorldMap(event)">
   <img src="images/maps/poi_outlaw_wasteland.png" alt="무법자들의 황야">
   <span class="poi-label">무법자들의 황야</span>
+</button>
+
+      <!-- 🌿 POI: 늪엘프의 숲 (이그드라실 바로 밑) -->
+<button id="poiSwampElfForest" onclick="moveToSwampElfForestFromWorldMap(event)">
+  <img src="images/maps/poi_swamp_elf_forest.png" alt="늪엘프의 숲">
+  <span class="poi-label">늪엘프의 숲</span>
 </button>
       
 </div>
@@ -8998,6 +9066,16 @@ function moveToMushroomVillageFromWorldMap(e){
     3,
     "무법자들의 황야",
     "+6강 이상 추천 사냥터"
+  );
+}
+
+  function moveToSwampElfForestFromWorldMap(e){
+  if (e) e.stopPropagation();
+
+  showWorldMapMoveConfirm(
+    4,
+    "늪엘프의 숲",
+    "+9강 이상 추천 사냥터"
   );
 }
 
