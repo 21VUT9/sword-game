@@ -1780,6 +1780,68 @@ button {
   filter: brightness(1.15);
 }
 
+  /* 🏜️ POI: 무법자들의 황야 (이그드라실 하단 평야) */
+#poiOutlawWasteland{
+  position: absolute;
+
+  /* ✅ 위치: 이그드라실 하단 평야 */
+  left: 47.5%;
+  top: 62.5%;
+
+  transform: translate(-50%, -50%);
+  width: 54px;
+  height: 36px;
+
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 5;
+
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#poiOutlawWasteland img{
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+#poiOutlawWasteland:active{
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+/* 🏜️ 무법자들의 황야 라벨 */
+#poiOutlawWasteland .poi-label{
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  font-size: 9px;
+  font-weight: 900;
+  color: #cfcfcf;
+
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000,
+     0  2px 4px rgba(0,0,0,0.8);
+
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+#poiOutlawWasteland:hover .poi-label{
+  color: #fff;
+  filter: brightness(1.15);
+}
+
 /* =========================
    ☁️ 2번(하늘) 지도 오버레이 (1번 위에 겹침)
    ========================= */
@@ -1836,7 +1898,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.217)
+    (v4.218)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2156,6 +2218,12 @@ button {
 <button id="poiSewer" onclick="moveToSewerFromWorldMap(event)">
   <img src="images/maps/poi_sewer.png" alt="역병쥐가 들끓는 시궁창">
   <span class="poi-label">역병쥐가 들끓는 시궁창</span>
+</button>
+
+      <!-- 🏜️ POI: 무법자들의 황야 (이그드라실 하단 평야) -->
+<button id="poiOutlawWasteland" onclick="moveToOutlawWastelandFromWorldMap(event)">
+  <img src="images/maps/poi_outlaw_wasteland.png" alt="무법자들의 황야">
+  <span class="poi-label">무법자들의 황야</span>
 </button>
       
 </div>
@@ -8920,6 +8988,16 @@ function moveToMushroomVillageFromWorldMap(e){
     2,
     "역병쥐가 들끓는 시궁창",
     "+3강 이상 추천 사냥터"
+  );
+}
+
+  function moveToOutlawWastelandFromWorldMap(e){
+  if (e) e.stopPropagation();
+
+  showWorldMapMoveConfirm(
+    3,
+    "무법자들의 황야",
+    "+6강 이상 추천 사냥터"
   );
 }
 
