@@ -1648,13 +1648,21 @@ button {
 
 #parchmentSkyPanel{
   position: relative;
-  width: min(92vw, 520px);
+
+  /* 🌍 월드맵 대비 90% 크기 */
+  width: min(86vw, 810px);          /* ← 월드맵(900px)의 약 90% */
+  max-height: calc(100vh - 72px);
+
+  background: transparent;
+  overflow: visible;
 }
 
 #parchmentSkyImg{
   width: 100%;
   height: auto;
   display: block;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 #parchmentSkyCloseBtn{
