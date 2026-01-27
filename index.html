@@ -8620,6 +8620,26 @@ function toggleMap() {
   panel.style.zIndex = 2605;
 }
 
+// ✅ mapPanel: 바깥(패널/버튼 제외) 클릭하면 닫기
+function closeMapPanelIfOutside(e){
+  const panel = document.getElementById("mapPanel");
+  if (!panel) return;
+  if (panel.style.display !== "block") return;
+
+  const btn = document.getElementById("parchmentMapLegacyBtn");
+
+  // 패널 내부 클릭 or '사냥터 선택' 버튼 클릭이면 닫지 않음
+  if (panel.contains(e.target)) return;
+  if (btn && btn.contains(e.target)) return;
+
+  panel.style.display = "none";
+}
+
+// PC 클릭
+document.addEventListener("mousedown", closeMapPanelIfOutside);
+// 모바일 터치
+document.addEventListener("touchstart", closeMapPanelIfOutside, { passive: true });
+
 // 🗺 MAP 내용 렌더링
 function renderMap() {
   const listEl = document.getElementById("mapList");
