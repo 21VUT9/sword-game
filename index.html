@@ -2135,6 +2135,40 @@ button {
   padding: 8px 10px;
   cursor: pointer;
 }
+
+  /* ✅ (추가) 하늘맵 POI: 대천사의 요람 */
+#poiArchangelCradle{
+  position:absolute;
+  left:58%;
+  top:42%;
+  transform:translate(-50%,-50%);
+  width:72px;
+  height:72px;
+  background:transparent;
+  border:0;
+  padding:0;
+  cursor:pointer;
+  z-index:2;
+}
+#poiArchangelCradle img{
+  width:100%;
+  height:100%;
+  image-rendering:auto;
+}
+#poiArchangelCradle .poi-label{
+  position:absolute;
+  left:50%;
+  top:100%;
+  transform:translateX(-50%);
+  margin-top:2px;
+  color:#bdbdbd;
+  font-size:12px;
+  white-space:nowrap;
+  text-shadow:0 1px 2px rgba(0,0,0,.75);
+}
+#poiArchangelCradle:hover .poi-label{
+  color:#fff;
+}
   
 </style>
 </head>
@@ -2146,7 +2180,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.223)
+    (v4.224)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2507,6 +2541,14 @@ button {
   <div id="parchmentSkyPanel" onclick="event.stopPropagation()">
     <button id="parchmentSkyCloseBtn" onclick="closeSkyMap()">X</button>
     <img id="parchmentSkyImg" src="images/maps/parchment_sky.png">
+
+    <!-- ✅ (추가) 하늘맵 POI: 대천사의 요람 -->
+<button id="poiArchangelCradle" class="poi-btn" onclick="moveToArchangelCradleFromSkyMap(event)">
+  <img src="images/ui/poi_archangel_cradle.png" alt="">
+  <span class="poi-label">대천사의 요람</span>
+</button>
+
+    
   </div>
 </div>
 
@@ -6944,6 +6986,51 @@ function showWorldMapMoveConfirm(fieldId, fieldName, recommendLvText) {
   popup.style.display = "flex";
 }
 
+  // ✅ 하늘맵 이동 확인창 (OK 시 하늘맵 닫고 이동)
+function showSkyMapMoveConfirm(fieldId){
+  const f = HUNT_FIELDS[fieldId];
+  if (!f) return;
+
+  // 기존과 동일한 문구 규칙:
+  // "000으로 이동하겠습니까?"
+  // 아래 작은 글씨: "/ +n강 이상 추천 사냥터 /"
+  const recTxt = `/ +${Number(f.recLevel || 0)}강 이상 추천 사냥터 /`;
+
+  const html = `
+    <div style="font-size:16px; font-weight:700; margin-bottom:6px;">
+      ${f.name}로 이동하겠습니까?
+    </div>
+    <div style="font-size:12px; color:#bdbdbd;">
+      ${recTxt}
+    </div>
+  `;
+
+  // ✅ npc이미지/이름 없는 팝업 형태 유지 (너가 이미 쓰고 있는 showNpcMessage 그대로 사용)
+  showNpcMessage(html, "", true);
+
+  // showNpcMessage가 만들어둔 버튼 id를 그대로 쓰는 기존 패턴을 유지
+  const okBtn = document.getElementById("npcOkBtn");
+  const cancelBtn = document.getElementById("npcCancelBtn");
+
+  if (okBtn){
+    okBtn.textContent = "네";
+    okBtn.onclick = () => {
+      closeNpcPopup();
+
+      // ✅ 하늘맵 닫기
+      closeParchmentSky();
+
+      // ✅ 이동 + (moveToFieldFromWorldMap 내부에서 "이동중..." + 지도 닫기 등 기존 동작 유지)
+      moveToFieldFromWorldMap(fieldId);
+    };
+  }
+
+  if (cancelBtn){
+    cancelBtn.textContent = "아니오";
+    cancelBtn.onclick = () => closeNpcPopup();
+  }
+}
+
 // ⚔️ 사냥 결과 팝업 (NPC 이미지/버튼 X)
 function showHuntPopup(text, color = "#FFFFFF") {
   const popup     = document.getElementById("npcPopup");
@@ -9312,6 +9399,12 @@ function moveToMushroomVillageFromWorldMap(e){
     "베히모스의 불구덩이",
     "+18강 이상 추천 사냥터"
   );
+}
+
+  // ✅ 하늘맵 POI → 대천사의 요람
+function moveToArchangelCradleFromSkyMap(e){
+  if (e) e.stopPropagation();
+  showSkyMapMoveConfirm(8); // 8 = 대천사의 요람
 }
 
 // ✅ 월드맵 POI 공용 이동 함수 (기존 사냥터 선택 로직 그대로)
