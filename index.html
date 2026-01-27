@@ -7103,49 +7103,58 @@ function showWorldMapMoveConfirm(fieldId, fieldName, recommendLvText) {
   popup.style.display = "flex";
 }
 
-  // ✅ 하늘맵 이동 확인창 (OK 시 하늘맵 닫고 이동)
+  // ✅ 하늘맵 이동 확인창 (월드맵과 동일 UI/버튼 체계로 통일)
 function showSkyMapMoveConfirm(fieldId){
-  const f = HUNT_FIELDS[fieldId];
+  const f = HUNT_FIELDS?.[fieldId];
   if (!f) return;
 
-  // 기존과 동일한 문구 규칙:
-  // "000으로 이동하겠습니까?"
-  // 아래 작은 글씨: "/ +n강 이상 추천 사냥터 /"
-  const recTxt = `/ +${Number(f.recLevel || 0)}강 이상 추천 사냥터 /`;
+  const popup     = document.getElementById("npcPopup");
+  const msgEl     = document.getElementById("npcPopupText");
+  const imgEl     = document.getElementById("npcPopupImg");
+  const okBtn     = document.getElementById("npcConfirmBtn");   // ✅ 월드맵과 동일
+  const cancelBtn = document.getElementById("npcCancelBtn");    // ✅ 월드맵과 동일
+  const nameEl    = document.getElementById("npcPopupName");
 
-  const html = `
-    <div style="font-size:16px; font-weight:700; margin-bottom:6px;">
-      ${f.name}로 이동하겠습니까?
-    </div>
-    <div style="font-size:12px; color:#bdbdbd;">
-      ${recTxt}
+  if (!popup || !msgEl || !okBtn || !cancelBtn) return;
+
+  // NPC 요소 숨김(월드맵과 동일)
+  if (nameEl) nameEl.textContent = "";
+  if (imgEl) imgEl.style.display = "none";
+
+  const recommendLvText = `+${Number(f.recLevel || 0)}강 이상 추천 사냥터`;
+  const recommendHtml = `
+    <div style="margin-top:6px; font-size:12px; color:#aaa;">
+      / ${recommendLvText} /
     </div>
   `;
 
-  // ✅ npc이미지/이름 없는 팝업 형태 유지 (너가 이미 쓰고 있는 showNpcMessage 그대로 사용)
-  showNpcMessage(html, "", true);
+  msgEl.innerHTML = `
+    <div style="font-size:16px; font-weight:600; margin-bottom:4px;">
+      ${f.name}로 이동하시겠습니까?
+    </div>
+    ${recommendHtml}
+  `;
 
-  // showNpcMessage가 만들어둔 버튼 id를 그대로 쓰는 기존 패턴을 유지
-  const okBtn = document.getElementById("npcOkBtn");
-  const cancelBtn = document.getElementById("npcCancelBtn");
+  okBtn.style.display = "inline-block";
+  cancelBtn.style.display = "inline-block";
 
-  if (okBtn){
-    okBtn.textContent = "네";
-    okBtn.onclick = () => {
-      closeNpcPopup();
+  okBtn.textContent = "네";
+  cancelBtn.textContent = "아니오";
 
-      // ✅ 하늘맵 닫기
-      closeParchmentSky();
+  okBtn.onclick = () => {
+    closeNpcPopup();
 
-      // ✅ 이동 + (moveToFieldFromWorldMap 내부에서 "이동중..." + 지도 닫기 등 기존 동작 유지)
-      moveToFieldFromWorldMap(fieldId);
-    };
-  }
+    // ✅ 하늘맵 닫기 (함수명이 프로젝트마다 달라질 수 있어서 안전 처리)
+    if (typeof closeSkyMap === "function") closeSkyMap();
+    else if (typeof closeParchmentSky === "function") closeParchmentSky();
 
-  if (cancelBtn){
-    cancelBtn.textContent = "아니오";
-    cancelBtn.onclick = () => closeNpcPopup();
-  }
+    // ✅ 이동(이동중...팝업/저장/갱신 등 기존 로직 그대로 재사용)
+    moveToFieldFromWorldMap(fieldId);
+  };
+
+  cancelBtn.onclick = closeNpcPopup;
+
+  popup.style.display = "flex";
 }
 
 // ⚔️ 사냥 결과 팝업 (NPC 이미지/버튼 X)
