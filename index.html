@@ -2184,6 +2184,96 @@ button {
   color:#fff;
   filter: brightness(1.15);
 }
+
+/* ✅ (추가) 하늘맵 POI: 신의 처소 */
+#poiGodSanctum{
+  position:absolute;
+  left:50%;
+  top:12%;
+  transform:translate(-50%,-50%);
+  width:150px;
+  height:100px;
+  background:transparent;
+  border:0;
+  padding:0;
+  cursor:pointer;
+  z-index:2;
+}
+#poiGodSanctum img{
+  width:100%;
+  height:100%;
+  image-rendering:auto;
+}
+#poiGodSanctum .poi-label{
+  position:absolute;
+  top:100%;
+  left:50%;
+  transform:translateX(-50%);
+  margin-top:4px;
+
+  font-size:11px;
+  font-weight:900;
+  color:#cfcfcf;
+
+  white-space:nowrap;
+  pointer-events:none;
+
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000,
+     0  2px 4px rgba(0,0,0,0.8);
+}
+#poiGodSanctum:hover .poi-label{
+  color:#fff;
+  filter: brightness(1.15);
+}
+
+/* ✅ (추가) 하늘맵 POI: 차원의 틈새 (우측상단 모서리, 작게) */
+#poiDimensionalRift{
+  position:absolute;
+  left:92%;
+  top:10%;
+  transform:translate(-50%,-50%);
+  width:110px;   /* 작게 */
+  height:80px;   /* 작게 */
+  background:transparent;
+  border:0;
+  padding:0;
+  cursor:pointer;
+  z-index:2;
+}
+#poiDimensionalRift img{
+  width:100%;
+  height:100%;
+  image-rendering:auto;
+}
+#poiDimensionalRift .poi-label{
+  position:absolute;
+  top:100%;
+  left:50%;
+  transform:translateX(-50%);
+  margin-top:4px;
+
+  font-size:11px;
+  font-weight:900;
+  color:#cfcfcf;
+
+  white-space:nowrap;
+  pointer-events:none;
+
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000,
+     0  2px 4px rgba(0,0,0,0.8);
+}
+#poiDimensionalRift:hover .poi-label{
+  color:#fff;
+  filter: brightness(1.15);
+}
   
 </style>
 </head>
@@ -2195,7 +2285,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.224)
+    (v4.225)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2561,6 +2651,18 @@ button {
 <button id="poiArchangelCradle" class="poi-btn" onclick="moveToArchangelCradleFromSkyMap(event)">
   <img src="images/maps/poi_archangel_cradle.png" alt="">
   <span class="poi-label">대천사의 요람</span>
+</button>
+
+    <!-- ✅ (추가) 하늘맵 POI: 신의 처소 -->
+<button id="poiGodSanctum" class="poi-btn" onclick="moveToGodSanctumFromSkyMap(event)">
+  <img src="images/maps/poi_divine_sanctum.png" alt="">
+  <span class="poi-label">신의 처소</span>
+</button>
+
+<!-- ✅ (추가) 하늘맵 POI: 차원의 틈새 -->
+<button id="poiDimensionalRift" class="poi-btn" onclick="moveToDimensionalRiftFromSkyMap(event)">
+  <img src="images/maps/poi_dimensional_rift.png" alt="">
+  <span class="poi-label">차원의 틈새</span>
 </button>
 
     
@@ -9420,6 +9522,16 @@ function moveToMushroomVillageFromWorldMap(e){
 function moveToArchangelCradleFromSkyMap(e){
   if (e) e.stopPropagation();
   showSkyMapMoveConfirm(8); // 8 = 대천사의 요람
+}
+
+  function moveToGodSanctumFromSkyMap(e){
+  if (e) e.stopPropagation();
+  showSkyMapMoveConfirm(9); // 9 = 신의 처소
+}
+
+function moveToDimensionalRiftFromSkyMap(e){
+  if (e) e.stopPropagation();
+  showSkyMapMoveConfirm(10); // 10 = 차원의 틈새
 }
 
 // ✅ 월드맵 POI 공용 이동 함수 (기존 사냥터 선택 로직 그대로)
