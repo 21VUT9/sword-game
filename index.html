@@ -1965,6 +1965,68 @@ button {
   color:#fff;
   filter: brightness(1.15);
 }
+
+  /* 👻 POI: 망령왕의 죽음세계 (서리여왕의 동굴보다 더 동쪽) */
+#poiDeathWorld{
+  position:absolute;
+
+  /* ✅ 위치: 이그드라실 동쪽, 서리여왕의 동굴보다 더 동쪽 (시작값) */
+  left: 67.5%;
+  top: 33%;
+
+  transform: translate(-50%, -50%);
+  width: 72px;
+  height: 48px;
+
+  border:0;
+  padding:0;
+  background:transparent;
+  cursor:pointer;
+  z-index:5;
+
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  outline:none;
+  user-select:none;
+  -webkit-user-select:none;
+}
+
+#poiDeathWorld img{
+  width:100%;
+  height:100%;
+  display:block;
+}
+
+#poiDeathWorld:active{
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+/* 👻 망령왕의 죽음세계 라벨 */
+#poiDeathWorld .poi-label{
+  position:absolute;
+  bottom:-8px;
+  left:50%;
+  transform:translateX(-50%);
+
+  font-size:9px;
+  font-weight:900;
+  color:#cfcfcf;
+
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000,
+     0  2px 4px rgba(0,0,0,0.8);
+
+  white-space:nowrap;
+  pointer-events:none;
+}
+
+/* ✅ 마우스 올리면: 회색 → 흰색 (기존 POI들과 동일) */
+#poiDeathWorld:hover .poi-label{
+  color:#fff;
+  filter: brightness(1.15);
+}
   
 /* =========================
    ☁️ 2번(하늘) 지도 오버레이 (1번 위에 겹침)
@@ -2022,7 +2084,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.220)
+    (v4.221)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2360,6 +2422,12 @@ button {
 <button id="poiFrostQueenCave" onclick="moveToFrostQueenCaveFromWorldMap(event)">
   <img src="images/maps/poi_frost_queen_cave.png" alt="서리여왕의 동굴">
   <span class="poi-label">서리여왕의 동굴</span>
+</button>
+
+      <!-- 👻 POI: 망령왕의 죽음세계 (이그드라실 동쪽 / 서리여왕 동굴보다 더 동쪽) -->
+<button id="poiDeathWorld" onclick="moveToDeathWorldFromWorldMap(event)">
+  <img src="images/maps/poi_death_world.png" alt="망령왕의 죽음세계">
+  <span class="poi-label">망령왕의 죽음세계</span>
 </button>
       
 </div>
@@ -9154,6 +9222,17 @@ function moveToMushroomVillageFromWorldMap(e){
     5,
     "서리여왕의 동굴",
     "+12강 이상 추천 사냥터"
+  );
+}
+
+  function moveToDeathWorldFromWorldMap(e){
+  if (e) e.stopPropagation();
+
+  // ✅ (같은 방식) 이동 확인창
+  showWorldMapMoveConfirm(
+    6,
+    "망령왕의 죽음세계",
+    "+15강 이상 추천 사냥터"
   );
 }
 
