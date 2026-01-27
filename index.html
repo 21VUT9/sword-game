@@ -2027,6 +2027,68 @@ button {
   color:#fff;
   filter: brightness(1.15);
 }
+
+  /* 🔥 POI: 베히모스의 불구덩이 (이그드라실 북쪽 / 서리여왕보다 더 북쪽) */
+#poiBehemothPit{
+  position:absolute;
+
+  /* ✅ 위치 시작값: 이그드라실 북쪽, 서리여왕보다 더 위 */
+  left: 47.5%;
+  top: 26.0%;
+
+  transform: translate(-50%, -50%);
+  width: 76px;
+  height: 50px;
+
+  border:0;
+  padding:0;
+  background:transparent;
+  cursor:pointer;
+  z-index:5;
+
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  outline:none;
+  user-select:none;
+  -webkit-user-select:none;
+}
+
+#poiBehemothPit img{
+  width:100%;
+  height:100%;
+  display:block;
+}
+
+#poiBehemothPit:active{
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+/* 🔥 베히모스의 불구덩이 라벨 */
+#poiBehemothPit .poi-label{
+  position:absolute;
+  bottom:-8px;
+  left:50%;
+  transform:translateX(-50%);
+
+  font-size:9px;
+  font-weight:900;
+  color:#cfcfcf;
+
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000,
+     0  2px 4px rgba(0,0,0,0.8);
+
+  white-space:nowrap;
+  pointer-events:none;
+}
+
+/* ✅ hover 시 회색 → 흰색 */
+#poiBehemothPit:hover .poi-label{
+  color:#fff;
+  filter: brightness(1.15);
+}
   
 /* =========================
    ☁️ 2번(하늘) 지도 오버레이 (1번 위에 겹침)
@@ -2084,7 +2146,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.221)
+    (v4.222)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2429,7 +2491,13 @@ button {
   <img src="images/maps/poi_death_world.png" alt="망령왕의 죽음세계">
   <span class="poi-label">망령왕의 죽음세계</span>
 </button>
-      
+
+      <!-- 🔥 POI: 베히모스의 불구덩이 -->
+<button id="poiBehemothPit" onclick="moveToBehemothPitFromWorldMap(event)">
+  <img src="images/maps/poi_behemoth_pit.png" alt="베히모스의 불구덩이">
+  <span class="poi-label">베히모스의 불구덩이</span>
+</button>
+
 </div>
   </div>
 </div>
@@ -9233,6 +9301,16 @@ function moveToMushroomVillageFromWorldMap(e){
     6,
     "망령왕의 죽음세계",
     "+15강 이상 추천 사냥터"
+  );
+}
+
+  function moveToBehemothPitFromWorldMap(e){
+  if (e) e.stopPropagation();
+
+  showWorldMapMoveConfirm(
+    7,
+    "베히모스의 불구덩이",
+    "+18강 이상 추천 사냥터"
   );
 }
 
