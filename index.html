@@ -8842,7 +8842,8 @@ equippedTitle: "",
 lastSeenGlobal30EventId: lastSeenGlobal30EventId,
 aweUsedGlobal30EventId: 0
 });
-
+         
+currentField = 0; // ✅ (중요) 로컬 메모리도 0으로 맞춰서 update/save가 덮어쓰지 않게
     // ✅ 신규 계정 생성 직후에는 바로 화면 전환 + 저장으로 마무리
 startSession();
 ensureBossRunsSubscription();  // ✅ 로그인 직후에도 토벌 구독/복구 시작
