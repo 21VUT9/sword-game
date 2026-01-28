@@ -2275,7 +2275,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.233)
+    (v4.235)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2746,14 +2746,15 @@ button {
 
     <!-- 리스트 본문 -->
     <div id="userListBody"
-         style="
-           flex:1;
-           border:1px solid #333;
-           border-radius:6px;
-           padding:6px;
-           overflow-y:auto;
-           font-size:13px;
-         ">
+     style="
+       height:360px;
+       max-height:min(360px, 55vh);
+       border:1px solid #333;
+       border-radius:6px;
+       padding:6px;
+       overflow-y:auto;
+       font-size:13px;
+     ">
       <!-- JS로 채워짐 -->
       <div style="padding:8px 0; text-align:center; color:#999; font-size:12px;">
         잠시만 기다려 주세요...
