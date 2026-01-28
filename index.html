@@ -828,9 +828,6 @@ button {
   position: sticky;
   top: 0;
   z-index: 1500;
-  padding: 2px 12px 0 12px;
-  margin-bottom: 8px;
-}
 
   /* ✅ 화면 전체 폭으로 확장해서 우측 끝 기준을 "진짜 화면"으로 */
   width: 100vw;
@@ -861,9 +858,9 @@ button {
   background: transparent;
   cursor: pointer;
 
-  position: fixed;
-  right: 10px; /* ✅ 이제 "화면 우측 끝" 기준 */
-  top: 90px;
+  position: absolute;
+  right: 22px; /* ✅ 이제 "화면 우측 끝" 기준 */
+  top: 0;
 
   -webkit-tap-highlight-color: rgba(0,0,0,0);
   outline: none;
@@ -915,8 +912,8 @@ button {
   background:transparent;
   cursor:pointer;
 
-  position: fixed;
-  right:10px;            /* ✅ mapBtn과 같은 우측 정렬 */
+  position:absolute;
+  right:22px;            /* ✅ mapBtn과 같은 우측 정렬 */
   -webkit-tap-highlight-color: rgba(0,0,0,0);
   outline:none;
   user-select:none;
@@ -927,9 +924,9 @@ button {
 }
 
 /* 📍 세로 배치(지도 아래로) */
-#duelIconBtn{     top: 170px; }
-#guildIconBtn{    top: 250px; }
-#userListIconBtn{ top: 330px; }
+#duelIconBtn{     top: 86px;  }
+#guildIconBtn{    top: 164px; }
+#userListIconBtn{ top: 242px; }
 
 /* 길드 뱃지가 아이콘 밖으로 나가도 보이게 */
 #guildIconBtn{ overflow: visible; }
@@ -939,29 +936,6 @@ button {
   display:none !important;
 }
 
-.map-sub-icon-img{
-  width: 70px;
-  height: 70px;
-  display:block;
-  margin: 0 auto;
-}
-
-.map-sub-icon-label{
-  position: absolute;
-  left: 50%;
-  bottom: 2px;
-  transform: translateX(-50%);
-  font-size: 13px;
-  font-weight: 900;
-  color: #fff;
-  text-shadow:
-    -1px -1px 0 #000,
-     1px -1px 0 #000,
-    -1px  1px 0 #000,
-     1px  1px 0 #000;
-  pointer-events:none;
-}
-  
    /* 🗺 프로필 카드 “밖” 상단 현재 사냥터 정보 */
 .current-field-info {
   font-size: 14px;
@@ -983,6 +957,7 @@ button {
   height: auto;
   image-rendering: auto;
 }
+
 
 .current-field-info-sub {
   font-size: 14px;
@@ -2320,7 +2295,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.231)
+    (v4.230)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2360,9 +2335,9 @@ button {
     <span class="map-icon-label">지도</span>
   </button>
 
-  <button id="duelIconBtn" class="map-sub-icon-btn" onclick="openDuelArena()">
-  <img class="map-sub-icon-img" src="images/ui/icon_duel.png" alt="결투장">
-  <span class="map-sub-icon-label">결투장</span>
+  <!-- ⚔️ 결투장 아이콘 -->
+<button id="duelIconBtn" class="map-sub-icon-btn" onclick="openDuelPanel()">
+  <img src="images/ui/icon_duel.png" alt="결투장">
 </button>
 
 <!-- 🏛️ 모험가길드 아이콘 -->
