@@ -5,23 +5,11 @@
 <title>퍼그란트의 대장간</title>
 
 <style>
-body{
-  margin:0;
-  background:#0b0b0b;   /* PC 좌우 여백 배경 */
+body {
+  background:#111;
   color:white;
   text-align:center;
   font-family:Arial;
-}
-
-  /* 📱 PC에서도 모바일처럼 보이는 "게임 프레임" */
-#game-frame{
-  position: relative;
-  width: 100%;
-  max-width: 1000px;     /* ✅ PC에서 살짝 넉넉 */
-  min-height: 100vh;
-  margin: 0 auto;
-  background: #111;     /* 게임 바탕 */
-  overflow: hidden;     /* 프레임 밖 삐져나옴 방지 */
 }
 
 /* 🎯 강화 아이템 체크박스 줄 정리 */
@@ -842,9 +830,9 @@ button {
   z-index: 1500;
 
   /* ✅ 화면 전체 폭으로 확장해서 우측 끝 기준을 "진짜 화면"으로 */
-  width: 100%;
-  left: auto;
-  transform: none;
+  width: 100vw;
+  left: 50%;
+  transform: translateX(-50%);
 
   padding: 2px 12px 0 12px;
   margin-bottom: 8px;
@@ -1205,9 +1193,9 @@ button {
   content: "";
   position: absolute;
   top: 0;
-  left: 0;
-  transform: none;
-  width: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100vw;
   height: 100%;
   background-image: var(--field-bg-image, none);
   background-size: cover;
@@ -2281,14 +2269,13 @@ button {
 </head>
 
 <body>
- <div id="game-frame">
 
 <!-- 🔐 로그인 -->
 <div id="loginScreen">
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.237)
+    (v4.236)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -14227,6 +14214,6 @@ async function recalcUserPower(userIdToFix) {
   </div>
 </div>
 
-  </div>
+  
 </body>
 </html>
