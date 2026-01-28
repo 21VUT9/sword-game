@@ -5,27 +5,11 @@
 <title>퍼그란트의 대장간</title>
 
 <style>
-
 body {
   background:#111;
   color:white;
   text-align:center;
   font-family:Arial;
-}
-
-  /* =========================
-   🖥 PC 프레임(최대 1100px)
-   ========================= */
-:root{
-  --frame-max: 1100px;
-  --frame-pad: max((100vw - var(--frame-max)) / 2, 0px);
-}
-
-#appFrame{
-  max-width: var(--frame-max);
-  margin: 0 auto;
-  position: relative;
-  min-height: 100vh;
 }
 
 /* 🎯 강화 아이템 체크박스 줄 정리 */
@@ -345,7 +329,7 @@ body {
 #attendanceBtn {
   position:fixed;
   top:40px;          /* ⬅️ 10 → 40 으로 변경 */
-  left: calc(var(--frame-pad) + 10px);
+  left:10px;
   z-index:1100;
   display:none;
   font-size:14px;
@@ -356,7 +340,7 @@ body {
 #couponBtn {
   position:fixed;
   top:80px;       /* 출석(40px) 아래 */
-  left: calc(var(--frame-pad) + 10px);
+  left:10px;
   z-index:1100;
   display:none;
   font-size:14px;
@@ -372,7 +356,7 @@ body {
 #achievementBtn{
   position:fixed;
   top:120px;      /* 쿠폰(80px) 아래 */
-  left: calc(var(--frame-pad) + 10px);
+  left:10px;
   z-index:1200;
   display:none;   /* ✅ 로그인 전에는 숨김 */
   font-size:14px;
@@ -515,13 +499,13 @@ button {
 #logToggle {
   position:fixed;
   bottom:80px;
-  right: calc(max(0px, (100vw - var(--frame-max)) / 2) + 10px);
+  right:10px;
   z-index:1001;
 }
 #logPanel {
   position:fixed;
   top:60px;
-  right: calc(max(0px, (100vw - var(--frame-max)) / 2) + 10px);
+  right:10px;
   width:90%;
   max-width:400px;
   height:60%;
@@ -798,7 +782,7 @@ button {
 #inventoryBtn{
   position:fixed;
   top:170px;
-  right: 10px;
+  right:10px;
   z-index:1200;
   display:none;
   font-size:14px;
@@ -809,7 +793,7 @@ button {
 #mapPanel {
   position:fixed;
   top:60px;
-  right: 10px;
+  right:10px;
   width:260px;
   max-height:70%;
   background:rgba(0,0,0,0.95);
@@ -845,7 +829,10 @@ button {
   top: 0;
   z-index: 1500;
 
-  width: 100%;
+  /* ✅ 화면 전체 폭으로 확장해서 우측 끝 기준을 "진짜 화면"으로 */
+  width: 100vw;
+  left: 50%;
+  transform: translateX(-50%);
 
   padding: 2px 12px 0 12px;
   margin-bottom: 8px;
@@ -861,7 +848,7 @@ button {
   margin-bottom: 0;
 }
 
-/* 🗺 MAP 아이콘 버튼 (프레임 우측 끝에 고정 + 스크롤 비고정) */
+/* 🗺 MAP 아이콘 버튼 (우측 "화면 끝" 고정) */
 .map-icon-btn{
   display: none; /* ✅ 로그인 후 기존 JS가 보여주는 로직 유지 */
   width: 94px;
@@ -871,14 +858,9 @@ button {
   background: transparent;
   cursor: pointer;
 
-  /* ✅ 핵심: 스크롤 따라가지 않게 fixed */
-  position: fixed;
-
-  /* ✅ 핵심: "브라우저 우측"이 아니라 "프레임 우측" 기준 */
-  right: calc(max(0px, (100vw - var(--frame-max)) / 2) + 22px);
-
+  position: absolute;
+  right: 22px; /* ✅ 이제 "화면 우측 끝" 기준 */
   top: 0;
-  z-index: 1200;
 
   -webkit-tap-highlight-color: rgba(0,0,0,0);
   outline: none;
@@ -1203,37 +1185,24 @@ button {
   max-width: 430px;
   margin: 0 auto 20px auto;
   position: relative;
-  z-index: 0;
-
-  /* ✅ 화면보다 내용이 짧아도 배경이 '세로 꽉' 차도록 */
-  min-height: 0;
+  z-index: 0;                     /* 스택 기준 */
 }
 
-/* 진짜 배경은 가상 요소로 */
+/* 진짜 배경은 가상 요소로: 가로는 화면 전체, 세로는 fieldBg 높이까지만 */
 .field-bg::before {
   content: "";
   position: absolute;
   top: 0;
   left: 50%;
   transform: translateX(-50%);
-
-  width: min(100vw, var(--frame-max));
-  height: max(100%, 100vh);
-
+  width: 100vw;
+  height: 100%;
   background-image: var(--field-bg-image, none);
-  background-size: cover;          /* ✅ 세로를 꽉 채우고 가로는 자연스럽게 잘림 */
-  background-position: center;
+  background-size: cover;
+  background-position: center top;
   background-repeat: no-repeat;
-  z-index: -1;
-}
-
-/* ✅ PC(넓은 화면)에서는 "프레임 폭(1100)"에 맞추고, 잘림 없이 보여주기 */
-@media (min-width: 900px){
-  .field-bg::before{
-    width: min(100vw, var(--frame-max));
-    background-size: contain;   /* 🔥 잘림(크롭) 방지 */
-    background-position: center top;
-  }
+  filter: brightness(0.6);
+  z-index: -1;                    /* 👈 내용 뒤로 확실하게 보내기 */
 }
 
 /* 🎒 인벤토리 그리드 */
@@ -2300,14 +2269,13 @@ button {
 </head>
 
 <body>
-  <div id="appFrame">
 
 <!-- 🔐 로그인 -->
 <div id="loginScreen">
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.239)
+    (v4.241)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2563,7 +2531,7 @@ button {
   <button id="logoutBtn" onclick="logout()" style="
   position:fixed;
   top:10px;
-  left: calc(var(--frame-pad) + 10px);
+  left:10px;
   z-index:1101;
   display:none;
   font-size:14px;
@@ -14245,7 +14213,7 @@ async function recalcUserPower(userIdToFix) {
     <button class="global30-btn" onclick="closeGlobal30Overlay()">확인</button>
   </div>
 </div>
+
   
- </div>
-  </body>
+</body>
 </html>
