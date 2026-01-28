@@ -2275,7 +2275,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.235)
+    (v4.236)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -5051,6 +5051,7 @@ function onClickScrollShopYes() {
 // 사냥터 정보 (추천 레벨 / 이름)
 const HUNT_FIELDS = [
   null, // 인덱스 0 비움 (1부터 시작)
+  { id:0, name:"퍼그란트의 대장간", recLevel:0 },
   { id:1, name:"평화로운 버섯마을",   recLevel:0  },
   { id:2, name:"역병쥐가 들끓는 시궁창", recLevel:3  },
   { id:3, name:"무법자들의 황야",     recLevel:6  },
@@ -5064,6 +5065,7 @@ const HUNT_FIELDS = [
 ];
   // 각 사냥터별 배경 이미지 (파일명은 예시)
 const FIELD_BACKGROUNDS = {
+  0: "images/fields/field0_forge_pugrant.png",
   1: "images/fields/field1_mushroom_heinesis.png",    // 평화로운 버섯마을
   2: "images/fields/field2_sewer_zaun.png",           // 역병쥐가 들끓는 시궁창
   3: "images/fields/field3_outlaw_west.png",          // 무법자들의 황야
@@ -8556,6 +8558,16 @@ function sell() {
 
 /* 사냥 */
 function hunt(){
+
+     // ✅ 튜토리얼 시작 맵(0번)에서는 사냥 불가
+if (currentField === 0) {
+  showHuntPopup(
+    "여긴 사냥감이 없어.<br>오른쪽 위 <b>지도</b>를 눌러 사냥터로 이동해야 해.",
+    "#FFD27D"
+  );
+  return;
+}
+    
   if (!userRef || !userId) {
     alert("로그인 후 이용 가능합니다.");
     return;
@@ -8787,7 +8799,7 @@ function initNewUserGlobal30Seen() {
         lastAttendanceDate: "",
         attendanceStreak: 0,      
         lastAttendanceDay: "",    
-        currentField: 1,
+        currentField: 0, // ✅ 신규 계정은 "퍼그란트의 대장간"에서 시작
         huntCountToday: 0,
         plagueRatHuntCount: 0,
         dopamineTried: false,
