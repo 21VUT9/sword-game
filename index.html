@@ -5,11 +5,27 @@
 <title>퍼그란트의 대장간</title>
 
 <style>
+
 body {
   background:#111;
   color:white;
   text-align:center;
   font-family:Arial;
+}
+
+  /* =========================
+   🖥 PC 프레임(최대 1100px)
+   ========================= */
+:root{
+  --frame-max: 1100px;
+  --frame-pad: max((100vw - var(--frame-max)) / 2, 0px);
+}
+
+#appFrame{
+  max-width: var(--frame-max);
+  margin: 0 auto;
+  position: relative;
+  min-height: 100vh;
 }
 
 /* 🎯 강화 아이템 체크박스 줄 정리 */
@@ -329,7 +345,7 @@ body {
 #attendanceBtn {
   position:fixed;
   top:40px;          /* ⬅️ 10 → 40 으로 변경 */
-  left:10px;
+  left: calc(var(--frame-pad) + 10px);
   z-index:1100;
   display:none;
   font-size:14px;
@@ -340,7 +356,7 @@ body {
 #couponBtn {
   position:fixed;
   top:80px;       /* 출석(40px) 아래 */
-  left:10px;
+  left: calc(var(--frame-pad) + 10px);
   z-index:1100;
   display:none;
   font-size:14px;
@@ -356,7 +372,7 @@ body {
 #achievementBtn{
   position:fixed;
   top:120px;      /* 쿠폰(80px) 아래 */
-  left:10px;
+  left: calc(var(--frame-pad) + 10px);
   z-index:1200;
   display:none;   /* ✅ 로그인 전에는 숨김 */
   font-size:14px;
@@ -499,13 +515,13 @@ button {
 #logToggle {
   position:fixed;
   bottom:80px;
-  right:10px;
+  right: calc(var(--frame-pad) + 10px);
   z-index:1001;
 }
 #logPanel {
   position:fixed;
   top:60px;
-  right:10px;
+  right: calc(var(--frame-pad) + 10px);
   width:90%;
   max-width:400px;
   height:60%;
@@ -734,7 +750,7 @@ button {
 /* 🔘 우측 상단 메뉴 버튼 공통 스타일 (MAP / 결투 / 인벤토리) */
 .side-menu-btn {
   position: fixed;
-  right: 10px;
+  right: calc(var(--frame-pad) + 10px);
   z-index: 1100;
   font-size: 14px;
   padding: 8px 16px;
@@ -782,7 +798,7 @@ button {
 #inventoryBtn{
   position:fixed;
   top:170px;
-  right:10px;
+  right: calc(var(--frame-pad) + 10px);
   z-index:1200;
   display:none;
   font-size:14px;
@@ -793,7 +809,7 @@ button {
 #mapPanel {
   position:fixed;
   top:60px;
-  right:10px;
+  right: calc(var(--frame-pad) + 10px);
   width:260px;
   max-height:70%;
   background:rgba(0,0,0,0.95);
@@ -829,10 +845,7 @@ button {
   top: 0;
   z-index: 1500;
 
-  /* ✅ 화면 전체 폭으로 확장해서 우측 끝 기준을 "진짜 화면"으로 */
-  width: 100vw;
-  left: 50%;
-  transform: translateX(-50%);
+  width: 100%;
 
   padding: 2px 12px 0 12px;
   margin-bottom: 8px;
@@ -1193,9 +1206,9 @@ button {
   content: "";
   position: absolute;
   top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100vw;
+  left: 0;
+  transform: none;
+  width: 100%;
   height: 100%;
   background-image: var(--field-bg-image, none);
   background-size: cover;
@@ -2269,13 +2282,14 @@ button {
 </head>
 
 <body>
+  <div id="appFrame">
 
 <!-- 🔐 로그인 -->
 <div id="loginScreen">
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.236)
+    (v4.237)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2531,7 +2545,7 @@ button {
   <button id="logoutBtn" onclick="logout()" style="
   position:fixed;
   top:10px;
-  left:10px;
+  left: calc(var(--frame-pad) + 10px);
   z-index:1101;
   display:none;
   font-size:14px;
@@ -14213,7 +14227,7 @@ async function recalcUserPower(userIdToFix) {
     <button class="global30-btn" onclick="closeGlobal30Overlay()">확인</button>
   </div>
 </div>
-
   
-</body>
+ </div>
+  </body>
 </html>
