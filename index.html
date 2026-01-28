@@ -746,36 +746,7 @@ button {
 #scrollShopBtn {
   top: 50px;   
 }
-  
-/* ⚔️ 결투장 버튼 */
-#duelBtn {
-  position:fixed;
-  top:90px;
-  right:10px;
-  z-index:1200;
-  display:none;
-  font-size:14px;
-  padding:8px 16px;
-}
 
-/* 🏛️ 모험가길드 버튼 (결투장 아래) */
-#adventureGuildBtn{
-  position:fixed;
-  top:130px;
-  right:10px;
-  z-index:1200;
-  display:none; /* ✅ 로그인 전 숨김 */
-  font-size:14px;
-  padding:8px 16px;
-}
-
-  /* 🔴 모험가길드 신규 보스전 알림 뱃지 */
-#adventureGuildBtn{
-  position: fixed; /* (이미 있어도 OK) */
-}
-#adventureGuildBtn { 
-  overflow: visible;
-}
 .guild-alert-badge{
   position:absolute;
   top:-6px;
@@ -816,22 +787,6 @@ button {
   display:none;
   font-size:14px;
   padding:8px 16px;
-}
-
-/* 👥 전체유저 버튼 */
-#userListBtn{
-  position:fixed;
-  top:210px;
-  right:10px;
-  z-index:1200;
-  display:none;
-  font-size:14px;
-  padding:8px 16px;
-}
-
-/* 캡처 모드에서 숨기기 */
-.capture-mode #adventureGuildBtn{
-  display:none !important;
 }
 
 /* 🗺 MAP 패널 */
@@ -945,6 +900,40 @@ button {
 .map-icon-btn:focus,
 .map-icon-btn:focus-visible{
   outline: none;
+}
+
+  /* 🧭 지도 아래 서브 아이콘 (결투장/길드/전체유저) */
+.map-sub-icon-btn{
+  display:none;          /* ✅ 로그인 후 JS가 켜줌(기존 방식 유지) */
+  width:78px;
+  height:78px;
+  padding:0;
+  border:0;
+  background:transparent;
+  cursor:pointer;
+
+  position:absolute;
+  right:22px;            /* ✅ mapBtn과 같은 우측 정렬 */
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  outline:none;
+  user-select:none;
+  -webkit-user-select:none;
+}
+.map-sub-icon-btn:active{
+  transform: translateY(1px);
+}
+
+/* 📍 세로 배치(지도 아래로) */
+#duelIconBtn{     top: 86px;  }
+#guildIconBtn{    top: 164px; }
+#userListIconBtn{ top: 242px; }
+
+/* 길드 뱃지가 아이콘 밖으로 나가도 보이게 */
+#guildIconBtn{ overflow: visible; }
+
+/* 캡처 모드에서는 길드 아이콘 숨김(기존 룰 대체) */
+.capture-mode #guildIconBtn{
+  display:none !important;
 }
 
    /* 🗺 프로필 카드 “밖” 상단 현재 사냥터 정보 */
@@ -2306,7 +2295,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.228)
+    (v4.229)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2346,6 +2335,21 @@ button {
     <span class="map-icon-label">지도</span>
   </button>
 </div>
+
+    <!-- ⚔️ 결투장 아이콘 -->
+<button id="duelIconBtn" class="map-sub-icon-btn" onclick="openDuelPanel()">
+  <img src="images/ui/icon_duel.png" alt="결투장">
+</button>
+
+<!-- 🏛️ 모험가길드 아이콘 -->
+<button id="guildIconBtn" class="map-sub-icon-btn" onclick="openAdventureGuild()">
+  <img src="images/ui/icon_guild.png" alt="모험가길드">
+</button>
+
+<!-- 👥 전체유저 아이콘 -->
+<button id="userListIconBtn" class="map-sub-icon-btn" onclick="openUserList()">
+  <img src="images/ui/icon_users.png" alt="전체유저">
+</button>
 
 <!-- 🧾 유저 프로필 카드 -->
 <div id="userProfileArea">
@@ -2561,30 +2565,12 @@ button {
         onclick="openScrollShop()">
   📜 스크롤 상점
 </button>
-  
-<!-- ⚔️ 결투장 버튼 (MAP과 인벤토리 사이) -->
-<button id="duelBtn"
-        class="side-menu-btn"
-        onclick="openDuelArena()">
-  ⚔️ 결투장
-</button>
-
-<button id="adventureGuildBtn" class="side-menu-btn" onclick="openAdventureGuild()">
-  🏛️ 모험가길드
-  <span id="adventureGuildAlertBadge" class="guild-alert-badge" style="display:none;">!</span>
-</button>
-  
+    
   <!-- 🎒 인벤토리 버튼 (로그 버튼 위) -->
 <button id="inventoryBtn"
         class="side-menu-btn"
         onclick="toggleInventory()">
   🎒 인벤토리
-</button>
-
-  <button id="userListBtn"
-        class="side-menu-btn"
-        onclick="openUserListOverlay()">
-  👥 전체 유저
 </button>
   
 <button id="logToggle" onclick="toggleLog()" style="
@@ -4564,7 +4550,7 @@ function updateHuntUI() {
 
 // ⚔️ 결투 버튼 UI 갱신
 function updateDuelUI() {
-  const btn = document.getElementById("duelBtn");
+  const btn = document.getElementById("duelIconBtn");
   const remainTextEl = document.getElementById("duelRemainText");
 
   ensureDuelDate(); // 날짜 바뀌면 결투횟수 리셋
@@ -5236,13 +5222,13 @@ destroyCount  = 0;
   document.getElementById("inventoryBtn").style.display = "none";
   document.getElementById("logToggle").style.display    = "none";
   document.getElementById("logoutBtn").style.display    = "none";
-  document.getElementById("duelBtn").style.display      = "none";
-  document.getElementById("adventureGuildBtn").style.display = "none";
+  document.getElementById("duelIconBtn").style.display      = "none";
+  document.getElementById("guildIconBtn").style.display = "none";
   document.getElementById("bossBattleBtn").style.display = "none";
   document.getElementById("scrollShopBtn").style.display = "none";
   document.getElementById("mapBtn").style.display       = "none";
   document.getElementById("couponBtn").style.display    = "none";
-  document.getElementById("userListBtn").style.display  = "none";
+  document.getElementById("userListIconBtn").style.display  = "none";
   document.getElementById("achievementBtn").style.display = "none";
 
   titlesOwned = {};
@@ -8882,11 +8868,11 @@ document.getElementById("attendanceBtn").style.display = "block";
 document.getElementById("inventoryBtn").style.display  = "block";
 document.getElementById("logToggle").style.display     = "block";
 document.getElementById("logoutBtn").style.display     = "block";
-document.getElementById("duelBtn").style.display       = "block";
+document.getElementById("duelIconBtn").style.display       = "block";
 document.getElementById("scrollShopBtn").style.display = "block";
 document.getElementById("mapBtn").style.display        = "block";
 document.getElementById("couponBtn").style.display     = "block";
-document.getElementById("userListBtn").style.display   = "block";
+document.getElementById("userListIconBtn").style.display   = "block";
 document.getElementById("achievementBtn").style.display = "block";
 
 startAutoRefreshTimer();
@@ -9061,12 +9047,12 @@ subscribeGlobal30Events();
     document.getElementById("inventoryBtn").style.display = "block";
     document.getElementById("logToggle").style.display = "block";
     document.getElementById("logoutBtn").style.display = "block";
-    document.getElementById("duelBtn").style.display = "block";
-    document.getElementById("adventureGuildBtn").style.display = "block";
+    document.getElementById("duelIconBtn").style.display = "block";
+    document.getElementById("guildIconBtn").style.display = "block";
     document.getElementById("scrollShopBtn").style.display = "block";
     document.getElementById("mapBtn").style.display = "block";
     document.getElementById("couponBtn").style.display = "block";
-    document.getElementById("userListBtn").style.display = "block";
+    document.getElementById("userListIconBtn").style.display = "block";
     document.getElementById("achievementBtn").style.display = "block";
     
         // ✅ 여기에서 자동 새로고침 타이머 시작
@@ -9626,7 +9612,7 @@ document.addEventListener("mousedown", function (e) {
   closeIfClickOutside(e, "mapPanel", "mapBtn");             // MAP
   closeIfClickOutside(e, "inventoryPanel", "inventoryBtn"); // 인벤토리
   closeIfClickOutside(e, "logPanel", "logToggle");          // 로그
-  closeIfClickOutside(e, "duelPanel", "duelBtn");           // 결투
+  closeIfClickOutside(e, "duelPanel", "duelIconBtn");       // 결투
 });
 
 // 🧷 새로고침 시 자동 로그인
@@ -9791,12 +9777,12 @@ document.getElementById("attendanceBtn").style.display = "block";
 document.getElementById("inventoryBtn").style.display = "block";
 document.getElementById("logToggle").style.display = "block";
 document.getElementById("logoutBtn").style.display = "block";
-document.getElementById("duelBtn").style.display = "block";
-document.getElementById("adventureGuildBtn").style.display = "block";
+document.getElementById("duelIconBtn").style.display = "block";
+document.getElementById("guildIconBtn").style.display = "block";
 document.getElementById("scrollShopBtn").style.display = "block";
 document.getElementById("mapBtn").style.display = "block";
 document.getElementById("couponBtn").style.display = "block";
-document.getElementById("userListBtn").style.display = "block";
+document.getElementById("userListIconBtn").style.display = "block";
  document.getElementById("achievementBtn").style.display = "block";
 
         // ✅ 여기에서 자동 새로고침 타이머 시작
