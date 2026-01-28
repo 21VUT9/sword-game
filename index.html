@@ -515,13 +515,13 @@ button {
 #logToggle {
   position:fixed;
   bottom:80px;
-  right: calc(var(--frame-pad) + 10px);
+  right: 10px;
   z-index:1001;
 }
 #logPanel {
   position:fixed;
   top:60px;
-  right: calc(var(--frame-pad) + 10px);
+  right: 10px;
   width:90%;
   max-width:400px;
   height:60%;
@@ -750,7 +750,7 @@ button {
 /* 🔘 우측 상단 메뉴 버튼 공통 스타일 (MAP / 결투 / 인벤토리) */
 .side-menu-btn {
   position: fixed;
-  right: calc(var(--frame-pad) + 10px);
+  right: 10px;
   z-index: 1100;
   font-size: 14px;
   padding: 8px 16px;
@@ -798,7 +798,7 @@ button {
 #inventoryBtn{
   position:fixed;
   top:170px;
-  right: calc(var(--frame-pad) + 10px);
+  right: 10px;
   z-index:1200;
   display:none;
   font-size:14px;
@@ -809,7 +809,7 @@ button {
 #mapPanel {
   position:fixed;
   top:60px;
-  right: calc(var(--frame-pad) + 10px);
+  right: 10px;
   width:260px;
   max-height:70%;
   background:rgba(0,0,0,0.95);
@@ -871,8 +871,8 @@ button {
   background: transparent;
   cursor: pointer;
 
-  position: absolute;
-  right: 22px; /* ✅ 이제 "화면 우측 끝" 기준 */
+  position: fixed;
+  right: 10px;
   top: 0;
 
   -webkit-tap-highlight-color: rgba(0,0,0,0);
@@ -1198,10 +1198,13 @@ button {
   max-width: 430px;
   margin: 0 auto 20px auto;
   position: relative;
-  z-index: 0;                     /* 스택 기준 */
+  z-index: 0;
+
+  /* ✅ 화면보다 내용이 짧아도 배경이 '세로 꽉' 차도록 */
+  min-height: 100vh;
 }
 
-/* 진짜 배경은 가상 요소로: 가로는 화면 전체, 세로는 fieldBg 높이까지만 */
+/* 진짜 배경은 가상 요소로 */
 .field-bg::before {
   content: "";
   position: absolute;
@@ -1209,19 +1212,13 @@ button {
   left: 50%;
   transform: translateX(-50%);
 
-  /* ✅ 기본(모바일 포함): 기존처럼 전체 폭, 꽉 채우기 */
   width: 100vw;
   height: 100%;
 
   background-image: var(--field-bg-image, none);
-  background-size: cover;
-  background-position: center top;
+  background-size: cover;          /* ✅ 세로를 꽉 채우고 가로는 자연스럽게 잘림 */
+  background-position: center;
   background-repeat: no-repeat;
-
-  /* 빈 공간 대비용 */
-  background-color: #000;
-
-  filter: brightness(0.6);
   z-index: -1;
 }
 
@@ -2305,7 +2302,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.238)
+    (v4.239)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
