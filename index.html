@@ -1206,16 +1206,32 @@ button {
   content: "";
   position: absolute;
   top: 0;
-  left: 0;
-  transform: none;
-  width: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+
+  /* ✅ 기본(모바일 포함): 기존처럼 전체 폭, 꽉 채우기 */
+  width: 100vw;
   height: 100%;
+
   background-image: var(--field-bg-image, none);
   background-size: cover;
   background-position: center top;
   background-repeat: no-repeat;
+
+  /* 빈 공간 대비용 */
+  background-color: #000;
+
   filter: brightness(0.6);
-  z-index: -1;                    /* 👈 내용 뒤로 확실하게 보내기 */
+  z-index: -1;
+}
+
+/* ✅ PC(넓은 화면)에서는 "프레임 폭(1100)"에 맞추고, 잘림 없이 보여주기 */
+@media (min-width: 900px){
+  .field-bg::before{
+    width: min(100vw, var(--frame-max));
+    background-size: contain;   /* 🔥 잘림(크롭) 방지 */
+    background-position: center top;
+  }
 }
 
 /* 🎒 인벤토리 그리드 */
@@ -2289,7 +2305,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.237)
+    (v4.238)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
