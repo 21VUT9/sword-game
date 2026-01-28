@@ -8844,6 +8844,30 @@ aweUsedGlobal30EventId: 0
 });
          
 currentField = 0; // ✅ (중요) 로컬 메모리도 0으로 맞춰서 update/save가 덮어쓰지 않게
+         // ✅ (중요) 신규 계정 생성 직후: 로컬 메모리 초기화(이전 계정 잔상 방지)
+currentField = 0;
+
+weaponType = null;
+maxSwordLevel = 0;
+destroyCount = 0;
+
+// ⚔️ 결투 관련 로컬 초기화 (A 계정 잔상 차단)
+duelPoint = 0;
+duelWin = 0;
+duelLose = 0;
+duelCountToday = 0;
+lastDuelDate = "";
+duelTargetsToday = {};
+duelUpdated = 0;
+duelLastWeekPoint = 0;
+duelLastWeekRank = 0;
+duelLastWeekUpdated = 0;
+duelLastWeekRewardClaimed = false;
+duelPointWeekKey = getKstWeekKey();  // ✅ 신규는 "이번 주"로 시작
+
+titlesOwned = {};
+equippedTitle = "";
+
     // ✅ 신규 계정 생성 직후에는 바로 화면 전환 + 저장으로 마무리
 startSession();
 ensureBossRunsSubscription();  // ✅ 로그인 직후에도 토벌 구독/복구 시작
@@ -8883,16 +8907,6 @@ save();
 return;
  });
       
-// ✅ (중요) 신규 계정 생성 직후: 로컬 메모리도 초기화
-// ✅ 신규 계정은 다른 스탯도 확실히 초기화(이전 계정 잔상 방지)
-weaponType = null;
-maxSwordLevel = 0;
-destroyCount = 0;
-duelPoint = 0;
-duelWin = 0; duelLose = 0;
-titlesOwned = {};
-equippedTitle = "";
-
     } else {
       // ⭐ 기존 계정 로그인 시
       const data = s.val();
