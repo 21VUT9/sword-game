@@ -515,13 +515,13 @@ button {
 #logToggle {
   position:fixed;
   bottom:80px;
-  right: 10px;
+  right: calc(max(0px, (100vw - var(--frame-max)) / 2) + 10px);
   z-index:1001;
 }
 #logPanel {
   position:fixed;
   top:60px;
-  right: 10px;
+  right: calc(max(0px, (100vw - var(--frame-max)) / 2) + 10px);
   width:90%;
   max-width:400px;
   height:60%;
@@ -861,7 +861,7 @@ button {
   margin-bottom: 0;
 }
 
-/* 🗺 MAP 아이콘 버튼 (우측 "화면 끝" 고정) */
+/* 🗺 MAP 아이콘 버튼 (프레임 우측 끝에 고정 + 스크롤 비고정) */
 .map-icon-btn{
   display: none; /* ✅ 로그인 후 기존 JS가 보여주는 로직 유지 */
   width: 94px;
@@ -871,9 +871,14 @@ button {
   background: transparent;
   cursor: pointer;
 
+  /* ✅ 핵심: 스크롤 따라가지 않게 fixed */
   position: fixed;
-  right: 10px;
+
+  /* ✅ 핵심: "브라우저 우측"이 아니라 "프레임 우측" 기준 */
+  right: calc(max(0px, (100vw - var(--frame-max)) / 2) + 22px);
+
   top: 0;
+  z-index: 1200;
 
   -webkit-tap-highlight-color: rgba(0,0,0,0);
   outline: none;
@@ -1201,7 +1206,7 @@ button {
   z-index: 0;
 
   /* ✅ 화면보다 내용이 짧아도 배경이 '세로 꽉' 차도록 */
-  min-height: 100vh;
+  min-height: 0;
 }
 
 /* 진짜 배경은 가상 요소로 */
@@ -1212,8 +1217,8 @@ button {
   left: 50%;
   transform: translateX(-50%);
 
-  width: 100vw;
-  height: 100%;
+  width: min(100vw, var(--frame-max));
+  height: max(100%, 100vh);
 
   background-image: var(--field-bg-image, none);
   background-size: cover;          /* ✅ 세로를 꽉 채우고 가로는 자연스럽게 잘림 */
