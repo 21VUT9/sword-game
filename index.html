@@ -496,12 +496,16 @@ button {
 }
   /* 🔔 로그 접기/펼치기 버튼 */
 .toastLog-controls{
-  position:absolute;
-  top:6px;
-  right:6px;
-  display:flex;
-  gap:6px;
-  z-index:5;
+  position: absolute;
+
+  bottom: 100%;        /* ✅ 로그 박스 바로 위 */
+  margin-bottom: 2px;  /* ✅ 로그와 2px 간격 */
+
+  right: 4px;          /* 우측 정렬 (미세조정 가능) */
+
+  display: flex;
+  gap: 6px;
+  z-index: 5;
 }
 
 .toastLog-controls button{
@@ -509,7 +513,7 @@ button {
   padding:2px 8px;
   border-radius:6px;
   border:1px solid rgba(255,255,255,0.25);
-  background: rgba(0,0,0,0.45);
+  background: rgba(0,0,0,0.35);
   color:#fff;
   cursor:pointer;
 }
@@ -517,8 +521,7 @@ button {
 /* 버튼 때문에 상단 여백 살짝 확보(필요시 숫자만 조절) */
 #toastLog{
   position: fixed; /* 기존 fixed면 그대로 두고, 아니면 이 줄은 빼도 됨 */
-  padding-top: 26px;
-}
+ }
 
 /* ✅ 모드별 표시 줄수 제어 */
 #toastLog.log-view-one  #toastList .toast-item:nth-child(n+2){ display:none; }
