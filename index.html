@@ -504,7 +504,7 @@ button {
   right: 0.5px;          /* 우측 정렬 (미세조정 가능) */
 
   display: flex;
-  gap: 2px;
+  gap: 0.5px;
   z-index: 5;
 }
 
@@ -516,6 +516,7 @@ button {
   background: rgba(0,0,0,0.35);
   color:#fff;
   cursor:pointer;
+  margin: 0;
 }
 
 /* 버튼 때문에 상단 여백 살짝 확보(필요시 숫자만 조절) */
@@ -529,8 +530,8 @@ button {
 
   /* ✅ panel 모드: 12~13줄 정도만 보이고 내부 스크롤 */
 #toastLog.log-view-panel{
-  max-height: 320px;     /* ✅ 대략 12~13줄 (원하면 300~360 사이로 조절) */
-  overflow: hidden;      /* 바깥은 고정 */
+  max-height: 540px;     /* ✅ 대략 12~13줄 (원하면 300~360 사이로 조절) */
+  overflow: visible;      /* 바깥은 고정 */
 }
 
 /* panel 모드에서는 리스트만 스크롤 */
