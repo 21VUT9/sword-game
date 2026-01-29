@@ -16,13 +16,13 @@ body {
 :root{
   --frame-max: 1000px;
   --frame-pad: 0px; /* 기본(모바일/좁은 화면) */
+  --workbench-h: 100px; /* ✅ 작업대 높이: 항상 100px 고정 */
 }
 
 @media (min-width: 1001px){
   :root{
     /* 화면이 프레임보다 넓어질 때 좌우 여백(양쪽) 계산 */
     --frame-pad: max((100vw - var(--frame-max)) / 2, 0px);
-    --workbench-h: 250px; /* ✅ 작업대 높이 */
   }
 }
 
