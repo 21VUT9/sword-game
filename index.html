@@ -14,12 +14,12 @@ body {
 
   /* ✅ PC 과도한 가로 확장 방지용 프레임 (모바일 영향 없음) */
 :root{
-  --frame-max: 1000px;
+  --frame-max: 700px;
   --frame-pad: 0px; /* 기본(모바일/좁은 화면) */
   --workbench-h: 200px; /* ✅ 작업대 높이 */
 }
 
-@media (min-width: 1001px){
+@media (min-width: 701px){
   :root{
     /* 화면이 프레임보다 넓어질 때 좌우 여백(양쪽) 계산 */
     --frame-pad: max((100vw - var(--frame-max)) / 2, 0px);
