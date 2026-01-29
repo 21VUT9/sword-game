@@ -793,7 +793,9 @@ button {
 .guild-alert-badge{
   position:absolute;
   top:-6px;
-  right:-6px;
+  left:-6px;     /* ✅ 좌측상단 */
+  right:auto;    /* ✅ 기존 right 무력화 */
+
   width:18px;
   height:18px;
   border-radius:999px;
@@ -801,11 +803,14 @@ button {
   color:#fff;
   font-size:12px;
   font-weight:900;
-  display:flex;
+
+  display:none;              /* ✅ 기본은 숨김 */
   align-items:center;
   justify-content:center;
+
   box-shadow:0 0 10px rgba(255,59,59,0.55);
 }
+
 .guild-alert-inline{
   display:inline-flex;
   align-items:center;
@@ -2324,7 +2329,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.245)
+    (v4.246)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2371,11 +2376,12 @@ button {
   </button>
 
   <!-- 🏛️ 모험가길드 (지도 스타일) -->
-  <button id="guildIconBtn" class="map-icon-btn" onclick="openAdventureGuild()">
-    <img class="map-icon-img" src="images/ui/icon_guild.png" alt="모험가길드">
-    <span class="map-icon-label">모험가<br>길드</span>
-  </button>
-
+  <button id="guildIconBtn" class="map-icon-btn" onclick="openAdventureGuild()" style="right:46px; display:none;">
+  <span id="adventureGuildAlertBadge" class="guild-alert-badge">!</span>
+  <img src="images/icons/icon_guild.png" alt="모험가길드">
+  <div class="map-icon-label">모험가<br>길드</div>
+</button>
+  
   <!-- 👥 전체유저 (지도 스타일) -->
   <button id="userListIconBtn" class="map-icon-btn" onclick="openUserListOverlay()">
     <img class="map-icon-img" src="images/ui/icon_users.png" alt="전체유저">
