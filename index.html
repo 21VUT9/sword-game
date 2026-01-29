@@ -2307,7 +2307,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.242)
+    (v4.243)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2563,7 +2563,7 @@ button {
   <button id="logoutBtn" onclick="logout()" style="
   position:fixed;
   top:10px;
-  left:10px;
+  left: calc(var(--frame-pad) + 10px);
   z-index:1101;
   display:none;
   font-size:14px;
@@ -5257,14 +5257,21 @@ equippedTitle = "";
 
 // 🖼 사냥터 배경 이미지 적용
 function applyFieldBackground() {
-  const bgEl = document.getElementById("fieldBg");
-  if (!bgEl) return;
+  const fieldBgEl = document.getElementById("fieldBg");
+  const gameScreenEl = document.getElementById("gameScreen");
+  if (!gameScreenEl) return;
 
   // 이미 위에서 선언한 FIELD_BACKGROUNDS 사용
   const url = FIELD_BACKGROUNDS[currentField] || FIELD_BACKGROUNDS[1];
 
-  // CSS ::before가 쓸 커스텀 속성에 주입
-  bgEl.style.setProperty("--field-bg-image", `url('${url}')`);
+  // ✅ CSS가 #gameScreen::before에서 var(--field-bg-image)를 읽으므로
+  //    변수를 #gameScreen에 세팅해야 배경이 뜸
+  gameScreenEl.style.setProperty("--field-bg-image", `url('${url}')`);
+
+  // (옵션) 혹시 다른 곳에서 fieldBg 기준으로 읽는 코드가 남아있을 수 있어서 같이 세팅
+  if (fieldBgEl) {
+    fieldBgEl.style.setProperty("--field-bg-image", `url('${url}')`);
+  }
 }
 
 function setNpcName(name) {
