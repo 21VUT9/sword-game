@@ -1201,7 +1201,15 @@ button {
    padding-bottom: 300px;   /* 🔹 토스트 로그 높이만큼 아래 여백 추가 */
 }
 
-/* ✅ fieldBg 영역에만 배경 깔기 (구분선 아래 ~ 랭킹 위까지) */
+/* fieldBg 안의 내용은 그대로, 배경만 ::before로 깔기 */
+.field-bg {
+  max-width: 430px;
+  margin: 0 auto 20px auto;
+  position: relative;
+  z-index: 0;                     /* 스택 기준 */
+}
+
+  /* ✅ fieldBg 영역에만 배경 깔기 (구분선 아래 ~ 랭킹 위까지) */
 .field-bg::before{
   content:"";
   position:absolute;
@@ -2294,7 +2302,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.244)
+    (v4.243)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
