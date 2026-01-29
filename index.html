@@ -22,6 +22,7 @@ body {
   :root{
     /* 화면이 프레임보다 넓어질 때 좌우 여백(양쪽) 계산 */
     --frame-pad: max((100vw - var(--frame-max)) / 2, 0px);
+    --workbench-h: 250px; /* ✅ 작업대 높이 */
   }
 }
 
@@ -481,7 +482,7 @@ button {
 /* 🔔 토스트 */
 #toastLog {
   position:fixed;
-  bottom:10px;
+  bottom: calc(var(--workbench-h) + 10px);
   left:50%;
   transform:translateX(-50%);
   width:90%;
@@ -516,10 +517,30 @@ button {
   font-weight: 900;
 }
 
+/* 🧰 하단 작업대 바 (1000x250) */
+#workbenchDock{
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: var(--frame-max);
+  height: var(--workbench-h);
+  z-index: 900; /* 토스트(1000)보다 아래 */
+  pointer-events: none; /* 지금은 장식만. 나중에 버튼 넣을 땐 none 제거 */
+}
+
+#workbenchDock img{
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain; /* 원본 비율 유지 */
+}
+  
 /* 로그 */
 #logToggle {
   position:fixed;
-  bottom:80px;
+  bottom: calc(var(--workbench-h) + 80px);
   right: calc(var(--frame-pad) + 10px);
   z-index:1001;
 }
@@ -1198,7 +1219,7 @@ button {
 /* 🎨 사냥터 배경 레이어 */
 #gameScreen {
   position: relative;
-   padding-bottom: 300px;   /* 🔹 토스트 로그 높이만큼 아래 여백 추가 */
+  padding-bottom: calc(300px + var(--workbench-h));
 }
 
 /* fieldBg 안의 내용은 그대로, 배경만 ::before로 깔기 */
@@ -2302,7 +2323,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.243)
+    (v4.245)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2569,6 +2590,10 @@ button {
   
 <!-- 🔔 로그 -->
 <div id="toastLog"><div id="toastList"></div></div>
+
+  <div id="workbenchDock">
+  <img src="images/ui/workbench_1000x250.png" alt="">
+</div>
 
 <!-- 📜 스크롤 상점 버튼 (MAP과 결투장 사이) -->
 <button id="scrollShopBtn"
