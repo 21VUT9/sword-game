@@ -2417,7 +2417,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.252)
+    (v4.255)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2690,8 +2690,20 @@ button {
 </div>
 
   <div id="workbenchDockUI">
-  <div class="dock-slot"></div>
-  <div class="dock-slot"></div>
+    
+  <div class="dock-slot">
+  <button id="shopDockBtn" class="dock-btn">
+    <img src="images/ui/icon_shop.png" alt="상점">
+  </button>
+  <span class="map-icon-label one-line">상점</span>
+</div>
+
+  <div class="dock-slot">
+  <button id="inventoryDockBtn" class="dock-btn">
+    <img src="images/ui/icon_inventory.png" alt="인벤토리">
+  </button>
+  <span class="map-icon-label one-line">인벤토리</span>
+</div>
 
   <!-- ⭐ 중앙: 내 능력치 -->
   <div class="dock-slot">
@@ -2702,8 +2714,22 @@ button {
     <span class="map-icon-label one-line">능력치</span>
   </div>
 
-  <div class="dock-slot"></div>
-  <div class="dock-slot"></div>
+  <div class="dock-slot">
+  <button id="runeDockBtn" class="dock-btn locked">
+    <img src="images/ui/icon_rune.png" alt="룬">
+    <span class="dock-lock">🔒</span>
+  </button>
+  <span class="map-icon-label one-line">룬</span>
+</div>
+
+  <div class="dock-slot">
+  <button id="beastDockBtn" class="dock-btn locked">
+    <img src="images/ui/icon_beast.png" alt="신수">
+    <span class="dock-lock">🔒</span>
+  </button>
+  <span class="map-icon-label one-line">신수</span>
+</div>
+
 </div>
 
 <!-- 📜 스크롤 상점 버튼 (MAP과 결투장 사이) -->
