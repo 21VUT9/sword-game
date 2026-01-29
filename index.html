@@ -494,6 +494,41 @@ button {
   font-size:14px;
   z-index:1000;
 }
+  /* 🔔 로그 접기/펼치기 버튼 */
+.toastLog-controls{
+  position:absolute;
+  top:6px;
+  right:6px;
+  display:flex;
+  gap:6px;
+  z-index:5;
+}
+
+.toastLog-controls button{
+  font-size:12px;
+  padding:2px 8px;
+  border-radius:6px;
+  border:1px solid rgba(255,255,255,0.25);
+  background: rgba(0,0,0,0.45);
+  color:#fff;
+  cursor:pointer;
+}
+
+/* 버튼 때문에 상단 여백 살짝 확보(필요시 숫자만 조절) */
+#toastLog{
+  position: fixed; /* 기존 fixed면 그대로 두고, 아니면 이 줄은 빼도 됨 */
+  padding-top: 26px;
+}
+
+/* ✅ 모드별 표시 줄수 제어 */
+#toastLog.log-view-one  #toastList .toast-item:nth-child(n+2){ display:none; }
+#toastLog.log-view-five #toastList .toast-item:nth-child(n+6){ display:none; }
+
+/* panel 모드에서는 하단은 그냥 5줄로 둬도 되고(선호),
+   혹시 숨기고 싶으면 아래 주석 해제
+#toastLog.log-view-panel{ display:none; }
+*/
+
 .toast-item {
   padding:4px 0;
   border-bottom:1px solid #333;
@@ -2818,7 +2853,14 @@ button {
 </button>
   
 <!-- 🔔 로그 -->
-<div id="toastLog"><div id="toastList"></div></div>
+<div id="toastLog" class="log-view-five">
+  <div class="toastLog-controls">
+    <button id="toastFoldBtn" type="button">접기</button>
+    <button id="toastExpandBtn" type="button">펼치기</button>
+  </div>
+
+  <div id="toastList"></div>
+</div>
 
   <div id="workbenchDock">
   <img src="images/ui/workbench_1000x250.png" alt="">
@@ -2867,16 +2909,6 @@ button {
 
 </div>
       
-<button id="logToggle" onclick="toggleLog()" style="
-  position:fixed;
-  bottom:80px;
-  right:10px;
-  z-index:1001;
-  display:none;
-">
-  📜 로그
-</button>
-
 <!-- 🗺 (신규) 양피지 지도 오버레이 -->
 <div id="parchmentMapOverlay" onclick="if(event.target===this) closeParchmentMap();">
   <div id="parchmentMapPanel" onclick="event.stopPropagation();">
@@ -3784,27 +3816,27 @@ function subscribeGlobal30Events() {
   });
 }
 
-// ✅ (필수) 시스템 토스트 푸시 함수: 3958의 토스트/로그 방식에 맞춰 “한 줄” 추가
+// ✅ (필수) 시스템 토스트 푸시 함수: 항상 #toastList에 쌓기
 function pushSystemToast(text, extraClass) {
-  const toastLog = document.getElementById("toastLog");
-  if (!toastLog) return;
+  const toastList = document.getElementById("toastList");
+  if (!toastList) return;
 
   const div = document.createElement("div");
   div.className = `toast-item ${extraClass || ""}`;
   div.textContent = text;
 
-  toastLog.prepend(div);
+  toastList.prepend(div);
 
   // 너무 길어지면 위에서 잘라내기
-  while (toastLog.children.length > 50) {
-    toastLog.removeChild(toastLog.lastChild);
+  while (toastList.children.length > 50) {
+    toastList.removeChild(toastList.lastChild);
   }
 }
 
 // ✅ 경외하기 버튼 토스트(1인 1회)
 function pushAweToast(eventId, winnerNick) {
-  const toastLog = document.getElementById("toastLog");
-  if (!toastLog) return;
+  const toastList = document.getElementById("toastList"); // ✅ 여기로 변경
+  if (!toastList) return;
 
   const row = document.createElement("div");
   row.className = "toast-item toast-awe";
@@ -3825,6 +3857,7 @@ function pushAweToast(eventId, winnerNick) {
 
     // 랜덤 문구
     const msg = AWE_MESSAGES[Math.floor(Math.random() * AWE_MESSAGES.length)];
+
     // 로그에 한 줄 추가(시스템 토스트)
     pushSystemToast(`★ 경외: ${msg}`, "toast-awe-msg");
 
@@ -3834,9 +3867,15 @@ function pushAweToast(eventId, winnerNick) {
 
   row.appendChild(left);
   row.appendChild(btn);
-  toastLog.prepend(row);
-}
 
+  // ✅ 컨트롤바(#toastLog) 말고, 리스트(#toastList)에만 쌓는다
+  toastList.prepend(row);
+
+  // ✅ 최대 50개 유지 (원하면 숫자만 조절)
+  while (toastList.children.length > 50) {
+    toastList.removeChild(toastList.lastChild);
+  }
+}
 
   
 function getTutorialKeyForUser(id) {
@@ -5519,7 +5558,6 @@ destroyCount  = 0;
   document.getElementById("gameScreen").style.display   = "none";
   document.getElementById("loginScreen").style.display  = "block";
   document.getElementById("attendanceBtn").style.display = "none";
-  document.getElementById("logToggle").style.display    = "none";
   document.getElementById("logoutBtn").style.display    = "none";
   document.getElementById("duelIconBtn").style.display      = "none";
   document.getElementById("guildIconBtn").style.display = "none";
@@ -9372,7 +9410,6 @@ subscribeGlobal30Events();
     gameScreen.style.display   = "block";
 
     document.getElementById("attendanceBtn").style.display = "block";
-    document.getElementById("logToggle").style.display = "block";
     document.getElementById("logoutBtn").style.display = "block";
     document.getElementById("duelIconBtn").style.display = "block";
     document.getElementById("guildIconBtn").style.display = "block";
@@ -10100,7 +10137,6 @@ const gameScreen  = document.getElementById("gameScreen");
 loginScreen.style.display  = "none";
 gameScreen.style.display   = "block";
 document.getElementById("attendanceBtn").style.display = "block";
-document.getElementById("logToggle").style.display = "block";
 document.getElementById("logoutBtn").style.display = "block";
 document.getElementById("duelIconBtn").style.display = "block";
 document.getElementById("guildIconBtn").style.display = "block";
@@ -11061,7 +11097,7 @@ if (d.isReach30) {
   toastEl.appendChild(toastComments);
 
   toastListEl.prepend(toastEl);
-  while (toastListEl.children.length > 5) toastListEl.lastChild.remove();
+  while (toastListEl.children.length > 50) toastListEl.lastChild.remove();
 
   /* 👇 상단 로그 패널용 항목 */
   const panelItem = document.createElement("div");
@@ -14033,10 +14069,96 @@ function toggleLog(){
   const panel = document.getElementById("logPanel");
   if (!panel) return;
 
-  panel.style.display = (panel.style.display === "none" || panel.style.display === "")
-    ? "block"
-    : "none";
+  const willOpen = (panel.style.display === "none" || panel.style.display === "");
+  panel.style.display = willOpen ? "block" : "none";
+
+  // ✅ 하단 버튼/모드 싱크
+  setToastLogMode(willOpen ? "panel" : "five");
 }
+
+  // 🔔 하단 로그(토스트) 접기/펼치기 상태
+let toastLogMode = "five"; // "one" | "five" | "panel"
+
+function setToastLogMode(mode){
+  toastLogMode = mode;
+
+  const wrap = document.getElementById("toastLog");
+  const foldBtn = document.getElementById("toastFoldBtn");
+  const expBtn  = document.getElementById("toastExpandBtn");
+  if (!wrap || !foldBtn || !expBtn) return;
+
+  wrap.classList.remove("log-view-one","log-view-five","log-view-panel");
+  if (mode === "one")  wrap.classList.add("log-view-one");
+  if (mode === "five") wrap.classList.add("log-view-five");
+  if (mode === "panel")wrap.classList.add("log-view-panel");
+
+  // 버튼 노출 규칙:
+  // five : 접기/펼치기 둘다
+  // one  : 펼치기만
+  // panel: 접기만
+  if (mode === "one") {
+    foldBtn.style.display = "none";
+    expBtn.style.display  = "inline-block";
+  } else if (mode === "five") {
+    foldBtn.style.display = "inline-block";
+    expBtn.style.display  = "inline-block";
+  } else { // panel
+    foldBtn.style.display = "inline-block";
+    expBtn.style.display  = "none";
+  }
+}
+
+function openLogPanelOnly(){
+  const panel = document.getElementById("logPanel");
+  if (!panel) return;
+  panel.style.display = "block";
+}
+
+function closeLogPanelOnly(){
+  const panel = document.getElementById("logPanel");
+  if (!panel) return;
+  panel.style.display = "none";
+}
+
+// ✅ 하단 "접기" 버튼 동작
+function onToastFold(){
+  // panel 상태에서 접기 → 5줄로
+  if (toastLogMode === "panel") {
+    closeLogPanelOnly();
+    setToastLogMode("five");
+    return;
+  }
+
+  // 기본(5줄)에서 접기 → 1줄로
+  setToastLogMode("one");
+}
+
+// ✅ 하단 "펼치기" 버튼 동작
+function onToastExpand(){
+  // 1줄에서 펼치기 → 5줄
+  if (toastLogMode === "one") {
+    setToastLogMode("five");
+    return;
+  }
+
+  // 5줄에서 펼치기 → (기존 로그버튼 누른 것처럼) 패널 전체 열기
+  if (toastLogMode === "five") {
+    openLogPanelOnly();
+    setToastLogMode("panel");
+    return;
+  }
+}
+
+// ✅ 버튼 이벤트 바인딩 (DOM 로드 후 1회)
+(function bindToastLogButtons(){
+  const foldBtn = document.getElementById("toastFoldBtn");
+  const expBtn  = document.getElementById("toastExpandBtn");
+  if (foldBtn) foldBtn.onclick = onToastFold;
+  if (expBtn)  expBtn.onclick  = onToastExpand;
+
+  // 초기 상태: 5줄
+  setToastLogMode("five");
+})();
 
 // 🎒 인벤토리
 function setInventoryDockActive(on){
