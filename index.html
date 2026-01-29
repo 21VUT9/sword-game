@@ -925,13 +925,27 @@ button {
 }
 
 .invCloseBtn{
-  width:34px;
-  height:34px;
-  border-radius:10px;
-  border:1px solid rgba(255,255,255,0.18);
-  background:rgba(0,0,0,0.25);
-  color:#fff;
-  cursor:pointer;
+  position: absolute;     /* ✅ 구석으로 보내기 */
+  top: 8px;
+  right: 8px;
+
+  background: none;       /* ✅ 박스 제거 */
+  border: none;
+
+  padding: 0;
+  margin: 0;
+
+  font-size: 20px;        /* X 크기 */
+  font-weight: 900;
+  color: rgba(255,255,255,0.75);
+
+  cursor: pointer;
+  line-height: 1;
+}
+
+  .invCloseBtn:hover{
+  color: #fff;
+  transform: scale(1.1);
 }
 
 #inventoryScrollArea{
@@ -2537,7 +2551,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.258)
+    (v4.259)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
