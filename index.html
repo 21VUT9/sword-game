@@ -566,8 +566,8 @@ button {
 
 /* 버튼 공통 */
 .dock-btn{
-  width: 80px;
-  height: 80px;
+  width: 110px;
+  height: 110px;
   border-radius: 50%;
   background: none;
   border: none;
@@ -579,9 +579,13 @@ button {
 
 /* 아이콘 */
 .dock-btn img{
-  width: 100%;
-  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
   display: block;
+  margin: auto;
+  object-fit: contain; /* 🔥 비율 절대 유지 */
   filter: grayscale(1) brightness(0.6);
 }
 
@@ -14150,21 +14154,22 @@ async function recalcUserPower(userIdToFix) {
   el.style.display = "block";
 }
   
-    // 🔒 미구현 버튼 공용 안내
-  function showLockedFeaturePopup(){
-  openSystemPopup(
+// 🔒 미구현 버튼 공용 안내 (맵 이동 팝업 스타일)
+function showLockedFeaturePopup(){
+  openConfirmPopup(
     "미구현 기능",
-    "아직 봉인된 기능입니다.<br>추후 업데이트 예정입니다."
+    "아직 봉인된 기능입니다.\n추후 업데이트 예정입니다.",
+    null
   );
 }
 
-  // 🔒 능력치(미구현) 버튼 클릭 연결
-  const statDockBtn = document.getElementById("statDockBtn");
-  if (statDockBtn) {
-    statDockBtn.addEventListener("click", () => {
-      showLockedFeaturePopup();
-    });
-  }
+// 🔒 능력치(미구현) 버튼 클릭 연결
+const statDockBtn = document.getElementById("statDockBtn");
+if (statDockBtn) {
+  statDockBtn.addEventListener("click", () => {
+    showLockedFeaturePopup();
+  });
+}
   
 </script>
 
