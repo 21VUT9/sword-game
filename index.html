@@ -558,9 +558,8 @@ button {
 /* 각 슬롯 */
 .dock-slot{
   width: 80px;
-  height: 80px;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
   overflow: visible;
   padding-top: -60px; /* ⬇️ 아이콘 전체를 살짝 하단으로 */
@@ -2683,10 +2682,10 @@ button {
   <!-- ⭐ 중앙: 내 능력치 -->
   <div class="dock-slot">
     <button id="statDockBtn" class="dock-btn locked">
-      <img src="images/ui/icon_stat.png" alt="능력치">
-      <span class="map-icon-label">능력치</span>
-      <span class="dock-lock">🔒</span>
+    <img src="images/ui/icon_stat.png" alt="능력치">
+    <span class="dock-lock">🔒</span>
     </button>
+    <span class="map-icon-label one-line">능력치</span>
   </div>
 
   <div class="dock-slot"></div>
