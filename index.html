@@ -3473,7 +3473,7 @@ button {
     <!-- 상단 헤더 -->
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
       <div style="font-weight:bold; font-size:16px;">
-        📜 마법스크롤 상점
+        마법스크롤 상점
       </div>
       <button onclick="closeScrollShop()"
               style="background:#333; border:1px solid #555; color:#fff;
@@ -4887,6 +4887,7 @@ function closeScrollShop() {
   if (!overlay) return;
 
   overlay.style.display = "none";
+  setScrollShopDockActive(false);
   
   scrollShopSelectedItem = null;
   scrollShopIsProcessing = false;
