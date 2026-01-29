@@ -537,6 +537,67 @@ button {
   display: block;
   object-fit: contain; /* 원본 비율 유지 */
 }
+
+  /* 🧭 하단 작업대 도크 UI */
+#workbenchDockUI{
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: var(--frame-max);
+  height: var(--workbench-h);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  z-index: 950;
+  pointer-events: auto;
+}
+
+/* 각 슬롯 */
+.dock-slot{
+  width: 80px;
+  height: 80px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 버튼 공통 */
+.dock-btn{
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: none;
+  border: none;
+  padding: 0;
+  position: relative;
+  cursor: pointer;
+  transition: transform 180ms ease, filter 180ms ease;
+}
+
+/* 아이콘 */
+.dock-btn img{
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: grayscale(1) brightness(0.6);
+}
+
+/* 🔒 잠금 상태 */
+.dock-btn.locked img{
+  filter: grayscale(1) brightness(0.45);
+}
+
+/* 자물쇠 */
+.dock-lock{
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  font-size: 18px;
+  pointer-events: none;
+}
   
 /* 로그 */
 #logToggle {
@@ -2329,7 +2390,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.246)
+    (v4.247)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2600,6 +2661,22 @@ button {
 
   <div id="workbenchDock">
   <img src="images/ui/workbench_1000x250.png" alt="">
+</div>
+
+  <div id="workbenchDockUI">
+  <div class="dock-slot"></div>
+  <div class="dock-slot"></div>
+
+  <!-- ⭐ 중앙: 내 능력치 -->
+  <div class="dock-slot">
+    <button id="statDockBtn" class="dock-btn locked">
+      <img src="images/ui/icon_stat.png" alt="능력치">
+      <span class="dock-lock">🔒</span>
+    </button>
+  </div>
+
+  <div class="dock-slot"></div>
+  <div class="dock-slot"></div>
 </div>
 
 <!-- 📜 스크롤 상점 버튼 (MAP과 결투장 사이) -->
@@ -6971,7 +7048,6 @@ function saveProfileCard() {
     setProfileSaveStatus("저장 실패...", 2000);
   });
 }
-
 
   // ⚠️ 25강 이상 세이프존 삭제 안내 팝업
 function showUpgradeWarning25() {
@@ -14063,6 +14139,34 @@ async function recalcUserPower(userIdToFix) {
   console.log(`✅ 전투력 재계산 완료 → ${userIdToFix}:`, power);
 }
 
+  function openSystemPopup(title, html){
+  const el = document.getElementById("systemPopup");
+  if (!el) {
+    alert(title + "\n\n" + html.replace(/<br>/g, "\n"));
+    return;
+  }
+
+  el.querySelector(".title").innerHTML = title;
+  el.querySelector(".content").innerHTML = html;
+  el.style.display = "block";
+}
+  
+    // 🔒 미구현 버튼 공용 안내
+  function showLockedFeaturePopup(){
+  openSystemPopup(
+    "미구현 기능",
+    "아직 봉인된 기능입니다.<br>추후 업데이트 예정입니다."
+  );
+}
+
+  // 🔒 능력치(미구현) 버튼 클릭 연결
+  const statDockBtn = document.getElementById("statDockBtn");
+  if (statDockBtn) {
+    statDockBtn.addEventListener("click", () => {
+      showLockedFeaturePopup();
+    });
+  }
+  
 </script>
 
 <!-- 📘 처음 접속 튜토리얼 (NPC 버전) -->
