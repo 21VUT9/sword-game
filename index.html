@@ -566,8 +566,8 @@ button {
 
 /* 버튼 공통 */
 .dock-btn{
-  width: 110px;
-  height: 110px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   background: none;
   border: none;
@@ -575,18 +575,18 @@ button {
   position: relative;
   cursor: pointer;
   transition: transform 180ms ease, filter 180ms ease;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
 }
 
 /* 아이콘 */
 .dock-btn img{
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
-  display: block;
-  margin: auto;
-  object-fit: contain; /* 🔥 비율 절대 유지 */
-  filter: grayscale(1) brightness(0.6);
+  width:100%;
+  height:100%;
+  object-fit:contain;     /* ✅ 1:1 유지 + 안 짤리게 */
+  display:block;
+  filter: saturate(0.25) brightness(0.65);
+  transition: filter .15s ease, transform .15s ease;
 }
 
 /* 🔒 잠금 상태 */
@@ -14159,7 +14159,7 @@ function showLockedFeaturePopup(){
   openConfirmPopup(
     "미구현 기능",
     "아직 봉인된 기능입니다.\n추후 업데이트 예정입니다.",
-    null
+    () => {} 
   );
 }
 
