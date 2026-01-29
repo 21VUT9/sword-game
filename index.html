@@ -524,6 +524,19 @@ button {
 #toastLog.log-view-one  #toastList .toast-item:nth-child(n+2){ display:none; }
 #toastLog.log-view-five #toastList .toast-item:nth-child(n+6){ display:none; }
 
+  /* ✅ panel 모드: 12~13줄 정도만 보이고 내부 스크롤 */
+#toastLog.log-view-panel{
+  max-height: 320px;     /* ✅ 대략 12~13줄 (원하면 300~360 사이로 조절) */
+  overflow: hidden;      /* 바깥은 고정 */
+}
+
+/* panel 모드에서는 리스트만 스크롤 */
+#toastLog.log-view-panel #toastList{
+  max-height: 270px;     /* 컨트롤 버튼 영역 제외한 높이 */
+  overflow-y: auto;
+  padding-right: 6px;    /* 스크롤바 공간 */
+}
+
 /* panel 모드에서는 하단은 그냥 5줄로 둬도 되고(선호),
    혹시 숨기고 싶으면 아래 주석 해제
 #toastLog.log-view-panel{ display:none; }
@@ -686,29 +699,6 @@ button {
   transform: scale(1.08);
 }
   
-/* 로그 */
-#logToggle {
-  position:fixed;
-  bottom: calc(var(--workbench-h) + 80px);
-  right: calc(var(--frame-pad) + 10px);
-  z-index:1001;
-}
-#logPanel {
-  position:fixed;
-  top:60px;
-  bottom: calc(var(--workbench-h) + 20px);
-  right: calc(var(--frame-pad) + 10px);
-  width:90%;
-  max-width:400px;
-  height: auto;
-  background:rgba(0,0,0,0.9);
-  border:1px solid #555;
-  padding:10px;
-  overflow-y:auto;
-  z-index:1002;
-  display:none;
-}
-
 .userListName {
   color:#fff;             /* 기본 흰색 유지 */
   cursor:pointer;         /* 손가락 모양 커서 */
@@ -3565,11 +3555,6 @@ button {
 
 </div>
   
-<div id="logPanel">
-  <h3>📢 강화 로그</h3>
-  <div id="logPanelList"></div>
-</div>
-
   <!-- 📜 마법스크롤 상점 오버레이 -->
 <div id="scrollShopOverlay"
      style="
@@ -11047,9 +11032,8 @@ logRef.limitToLast(50).on("child_added", s => {
   const logId = s.key;          // 이 로그의 고유 ID
   const ts = formatTime(d.time || Date.now());
 
-  const toastListEl    = document.getElementById("toastList");
-  const logPanelListEl = document.getElementById("logPanelList");
-  if (!toastListEl || !logPanelListEl) return;
+  const toastListEl = document.getElementById("toastList");
+if (!toastListEl) return;
 
   /* 👇 하단 토스트(5개 제한) */
   const toastEl = document.createElement("div");
@@ -14122,32 +14106,32 @@ function closeLogPanelOnly(){
 
 // ✅ 하단 "접기" 버튼 동작
 function onToastFold(){
-  // panel 상태에서 접기 → 5줄로
-  if (toastLogMode === "panel") {
-    closeLogPanelOnly();
+  if (toastLogMode === "panel"){
     setToastLogMode("five");
     return;
   }
-
-  // 기본(5줄)에서 접기 → 1줄로
-  setToastLogMode("one");
+  if (toastLogMode === "five"){
+    setToastLogMode("one");
+    return;
+  }
+  // one 상태에서 "접기"는 더 할 게 없으니 무시
 }
+
 
 // ✅ 하단 "펼치기" 버튼 동작
 function onToastExpand(){
-  // 1줄에서 펼치기 → 5줄
-  if (toastLogMode === "one") {
+  if (toastLogMode === "one"){
     setToastLogMode("five");
     return;
   }
-
-  // 5줄에서 펼치기 → (기존 로그버튼 누른 것처럼) 패널 전체 열기
-  if (toastLogMode === "five") {
-    openLogPanelOnly();
+  if (toastLogMode === "five"){
+    // ✅ 이제 panel은 '실시간 로그창(#toastLog) 자체'만 확장한다 (옛날 #logPanel 절대 안씀)
     setToastLogMode("panel");
     return;
   }
+  // panel 상태에서 "펼치기"는 더 할 게 없으니 무시
 }
+
 
 // ✅ 버튼 이벤트 바인딩 (DOM 로드 후 1회)
 (function bindToastLogButtons(){
