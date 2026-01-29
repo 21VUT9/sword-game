@@ -566,6 +566,8 @@ button {
 
   margin-top: 18px;      /* 아이콘 아래 간격(원하면 -값으로 더 올릴 수도 있음) */
   line-height: 1;
+  white-space: nowrap;
+  text-align: center;
   pointer-events: none;
 }
 
@@ -588,6 +590,11 @@ button {
   padding: 0;
   position: relative;
   cursor: pointer;
+  
+  display: flex;             
+  align-items: center;        
+  justify-content: center;    
+  
   transition: transform 180ms ease, filter 180ms ease;
   -webkit-tap-highlight-color: transparent;
   outline: none;
@@ -595,8 +602,8 @@ button {
 
 /* 아이콘 */
 .dock-btn img{
-  width:100%;
-  height:100%;
+  width:74%;
+  height:74%;
   object-fit:contain;     /* ✅ 1:1 유지 + 안 짤리게 */
   display:block;
   filter: saturate(0.25) brightness(0.65);
