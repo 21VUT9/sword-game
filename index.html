@@ -601,7 +601,7 @@ button {
 }
 
 /* 아이콘 */
-.dock-btn img{
+.dock-btn img {
   width: 90%;
   height: 90%;
   object-fit:contain;     /* ✅ 1:1 유지 + 안 짤리게 */
@@ -624,6 +624,31 @@ button {
   right: -2px;
   font-size: 18px;
   pointer-events: none;
+}
+
+/* ✅ 도크 활성 상태(오버레이 열림 상태) */
+.dock-btn.active{
+  transform: translateY(-6px) scale(1.12);
+}
+
+/* 기존 이미지 아이콘용(인벤 등) */
+.dock-btn.active img{
+  filter: saturate(1) brightness(1);
+}
+
+/* ✅ 이모지 아이콘(스크롤상점)용 */
+.dock-emoji{
+  display:inline-block;
+  font-size:34px;
+  line-height:1;
+  filter: saturate(0.35) brightness(0.65);
+  transition: transform 0.15s ease, filter 0.15s ease;
+  transform: scale(1.0);
+}
+
+.dock-btn.active .dock-emoji{
+  filter: saturate(1) brightness(1);
+  transform: scale(1.08);
 }
   
 /* 로그 */
@@ -2697,8 +2722,8 @@ button {
   <div id="workbenchDockUI">
     
   <div class="dock-slot">
-  <button id="shopDockBtn" class="dock-btn">
-    <img src="images/ui/icon_shop.png" alt="상점">
+  <button id="scrollShopDockBtn" class="dock-btn">
+    <img src="images/ui/icon_shop.png" alt="스크롤상점">
   </button>
   <span class="map-icon-label one-line">스크롤상점</span>
 </div>
@@ -2736,13 +2761,6 @@ button {
 </div>
 
 </div>
-
-<!-- 📜 스크롤 상점 버튼 (MAP과 결투장 사이) -->
-<button id="scrollShopBtn"
-        class="side-menu-btn"
-        onclick="openScrollShop()">
-  📜 스크롤 상점
-</button>
     
   <!-- 🎒 인벤토리 버튼 (로그 버튼 위) -->
 <button id="inventoryBtn"
@@ -4839,6 +4857,12 @@ const scrollShopNpcIdleLines = [
 let scrollShopSelectedItem = null;
 let scrollShopIsProcessing = false;
 
+  // ✅ 스크롤상점 도크 활성 토글
+function setScrollShopDockActive(on){
+  const b = document.getElementById("scrollShopDockBtn");
+  if (b) b.classList.toggle("active", !!on);
+}
+
   // 📜 상점 열기
 function openScrollShop() {
   if (!userRef || !userId) {
@@ -4854,6 +4878,7 @@ function openScrollShop() {
   setScrollShopNpcIdle();      // 랜덤 멘트
 
   overlay.style.display = "block";
+  setScrollShopDockActive(true);
 }
 
 // 📜 상점 닫기
@@ -4862,6 +4887,7 @@ function closeScrollShop() {
   if (!overlay) return;
 
   overlay.style.display = "none";
+  
   scrollShopSelectedItem = null;
   scrollShopIsProcessing = false;
 
@@ -5400,7 +5426,6 @@ destroyCount  = 0;
   document.getElementById("duelIconBtn").style.display      = "none";
   document.getElementById("guildIconBtn").style.display = "none";
   document.getElementById("bossBattleBtn").style.display = "none";
-  document.getElementById("scrollShopBtn").style.display = "none";
   document.getElementById("mapBtn").style.display       = "none";
   document.getElementById("couponBtn").style.display    = "none";
   document.getElementById("userListIconBtn").style.display  = "none";
@@ -9086,7 +9111,6 @@ document.getElementById("logToggle").style.display     = "block";
 document.getElementById("logoutBtn").style.display     = "block";
 document.getElementById("duelIconBtn").style.display       = "block";
 document.getElementById("guildIconBtn").style.display      = "block";
-document.getElementById("scrollShopBtn").style.display = "block";
 document.getElementById("mapBtn").style.display        = "block";
 document.getElementById("couponBtn").style.display     = "block";
 document.getElementById("userListIconBtn").style.display   = "block";
@@ -9256,7 +9280,6 @@ subscribeGlobal30Events();
     document.getElementById("logoutBtn").style.display = "block";
     document.getElementById("duelIconBtn").style.display = "block";
     document.getElementById("guildIconBtn").style.display = "block";
-    document.getElementById("scrollShopBtn").style.display = "block";
     document.getElementById("mapBtn").style.display = "block";
     document.getElementById("couponBtn").style.display = "block";
     document.getElementById("userListIconBtn").style.display = "block";
@@ -9986,7 +10009,6 @@ document.getElementById("logToggle").style.display = "block";
 document.getElementById("logoutBtn").style.display = "block";
 document.getElementById("duelIconBtn").style.display = "block";
 document.getElementById("guildIconBtn").style.display = "block";
-document.getElementById("scrollShopBtn").style.display = "block";
 document.getElementById("mapBtn").style.display = "block";
 document.getElementById("couponBtn").style.display = "block";
 document.getElementById("userListIconBtn").style.display = "block";
@@ -14248,6 +14270,14 @@ const beastDockBtn = document.getElementById("beastDockBtn");
 if (beastDockBtn) {
   beastDockBtn.addEventListener("click", () => {
     showLockedFeaturePopup();
+  });
+}
+
+  // 📜 스크롤상점(구현) 버튼 클릭 연결
+const scrollShopDockBtn = document.getElementById("scrollShopDockBtn");
+if (scrollShopDockBtn) {
+  scrollShopDockBtn.addEventListener("click", () => {
+    openScrollShop();
   });
 }
   
