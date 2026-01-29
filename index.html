@@ -1027,6 +1027,10 @@ button {
   outline: none;
 }
 
+.map-icon-label.one-line{
+  white-space: nowrap;
+}
+
 /* 길드 뱃지가 아이콘 밖으로 나가도 보이게 */
 #guildIconBtn{ overflow: visible; }
 
@@ -2400,7 +2404,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.251)
+    (v4.252)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2680,6 +2684,7 @@ button {
   <div class="dock-slot">
     <button id="statDockBtn" class="dock-btn locked">
       <img src="images/ui/icon_stat.png" alt="능력치">
+      <span class="map-icon-label">능력치</span>
       <span class="dock-lock">🔒</span>
     </button>
   </div>
