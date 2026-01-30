@@ -348,28 +348,6 @@ body {
   display:none !important;
 }
   
-  /* 🎫 출석 버튼 */
-#attendanceIconBtn {
-  position:fixed;
-  top:40px;          /* ⬅️ 10 → 40 으로 변경 */
-  left: calc(var(--frame-pad) + 10px);
-  z-index:1100;
-  display:none;
-  font-size:14px;
-  padding:8px 16px;
-}
-
-  /* 🎟 쿠폰 버튼 (출석 버튼 아래) */
-#couponBtn {
-  position:fixed;
-  top:80px;       /* 출석(40px) 아래 */
-  left: calc(var(--frame-pad) + 10px);
-  z-index:1100;
-  display:none;
-  font-size:14px;
-  padding:8px 16px;
-}
-
 /* 캡처 모드에서 숨기기 */
 .capture-mode #couponBtn {
   display: none !important;
@@ -465,17 +443,6 @@ body {
 
 #hamburgerMenu .hm-item:hover{
   background: rgba(255,255,255,0.10);
-}
-
-/* 🏅 업적 버튼 (쿠폰 버튼 아래) */
-#achievementIconBtn{
-  position:fixed;
-  top:120px;      /* 쿠폰(80px) 아래 */
-  left: calc(var(--frame-pad) + 10px);
-  z-index:1200;
-  display:none;   /* ✅ 로그인 전에는 숨김 */
-  font-size:14px;
-  padding:8px 16px;
 }
 
 /* 캡처 모드에서 숨기기 */
