@@ -493,6 +493,7 @@ button {
   padding:8px;
   font-size:14px;
   z-index:1000;
+  display: none;
 }
   /* 🔔 로그 접기/펼치기 버튼 */
 .toastLog-controls{
@@ -581,6 +582,7 @@ button {
   height: var(--workbench-h);
   z-index: 900; /* 토스트(1000)보다 아래 */
   pointer-events: none; /* 지금은 장식만. 나중에 버튼 넣을 땐 none 제거 */
+  display: none; /* ✅ 로그인 전 숨김 */
 }
 
 #workbenchDock img{
@@ -606,6 +608,7 @@ button {
   gap: 40px;
   z-index: 950;
   pointer-events: auto;
+  display: none; /* ✅ 로그인 전 숨김 (로그인 후 JS에서 flex로 켬) */
 }
   
 /* ✅ 작업대 도크 안의 라벨은 "지도/결투장" 라벨 규칙(absolute)을 무시하고
@@ -5555,6 +5558,10 @@ destroyCount  = 0;
   document.getElementById("couponBtn").style.display    = "none";
   document.getElementById("userListIconBtn").style.display  = "none";
   document.getElementById("achievementBtn").style.display = "none";
+  document.getElementById("toastLog").style.display = "none";
+  document.getElementById("workbenchDock").style.display = "none";
+  document.getElementById("workbenchDockUI").style.display = "none";
+
 
   titlesOwned = {};
 equippedTitle = "";
@@ -9239,6 +9246,9 @@ document.getElementById("mapBtn").style.display        = "block";
 document.getElementById("couponBtn").style.display     = "block";
 document.getElementById("userListIconBtn").style.display   = "block";
 document.getElementById("achievementBtn").style.display = "block";
+document.getElementById("toastLog").style.display = "block";
+document.getElementById("workbenchDock").style.display = "block";
+document.getElementById("workbenchDockUI").style.display = "flex";
 
 startAutoRefreshTimer();
 subscribeGlobalDestroyEvents();
@@ -9406,6 +9416,9 @@ subscribeGlobal30Events();
     document.getElementById("couponBtn").style.display = "block";
     document.getElementById("userListIconBtn").style.display = "block";
     document.getElementById("achievementBtn").style.display = "block";
+    document.getElementById("toastLog").style.display = "block";
+    document.getElementById("workbenchDock").style.display = "block";
+    document.getElementById("workbenchDockUI").style.display = "flex";
     
         // ✅ 여기에서 자동 새로고침 타이머 시작
     startAutoRefreshTimer();
@@ -10132,7 +10145,10 @@ document.getElementById("guildIconBtn").style.display = "block";
 document.getElementById("mapBtn").style.display = "block";
 document.getElementById("couponBtn").style.display = "block";
 document.getElementById("userListIconBtn").style.display = "block";
- document.getElementById("achievementBtn").style.display = "block";
+document.getElementById("achievementBtn").style.display = "block";
+document.getElementById("toastLog").style.display = "block";
+document.getElementById("workbenchDock").style.display = "block";
+document.getElementById("workbenchDockUI").style.display = "flex";
 
         // ✅ 여기에서 자동 새로고침 타이머 시작
     startAutoRefreshTimer();
