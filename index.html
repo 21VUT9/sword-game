@@ -1315,17 +1315,27 @@ button {
 
  /* 🎮 게임 타이틀 영역 여백 제거 */
 .game-title{
-  margin: 0;          /* ✅ h1 기본 여백 제거 */
+  margin: 6px 0 2px 0;   /* 기존보다 확 줄임 */
   padding: 0;
-  text-align: center;
+  line-height: 1;
 }
 
 /* 🎮 게임 타이틀 이미지 */
 .game-title-logo{
-  display: block;     /* ✅ inline baseline 제거 */
-  width: 70%;         /* ✅ 크기 축소 */
-  max-width: 420px;   /* (선택) 너무 커지는 것 방지 */
-  margin: 4px auto;   /* ✅ 위아래 여백 최소화 */
+  display: block;
+  width: 70%;           /* ✅ 로고 자체를 70%로 */
+  max-width: 220px;     /* ✅ 너무 커지지 않게 상한 */
+  height: auto;
+  margin: 0 auto;       /* 가운데 정렬 */
+}
+
+  #updateNoticeBar{
+  margin-top: 0 !important;     /* inline margin-top:4px 덮어씀 */
+  margin-bottom: 2px;           /* 살짝만 */
+}
+
+hr.section-divider{
+  margin: 6px auto 8px auto;    /* 기본 hr 여백이 큰 경우가 많아서 줄임 */
 }
 
 .current-field-info-sub {
