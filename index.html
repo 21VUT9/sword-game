@@ -375,6 +375,72 @@ body {
   display: none !important;
 }
 
+  /* 🍔 햄버거 버튼 */
+#hamburgerBtn{
+  position: fixed;
+  top: 10px;
+  right: calc(var(--frame-pad) + 10px);
+  z-index: 1105;
+  width: 42px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(20,20,20,0.72);
+  backdrop-filter: blur(3px);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0;
+}
+
+#hamburgerBtn:hover{
+  background: rgba(30,30,30,0.82);
+}
+
+/* 햄버거 3줄 */
+#hamburgerBtn .hb-line{
+  display:block;
+  width: 18px;
+  height: 2px;
+  background: rgba(220,220,220,0.95);
+  border-radius: 2px;
+}
+
+/* 🍔 메뉴 패널 */
+#hamburgerMenu{
+  position: fixed;
+  top: 48px; /* 버튼 아래 */
+  right: calc(var(--frame-pad) + 10px);
+  z-index: 1106;
+  min-width: 140px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(20,20,20,0.92);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+}
+
+#hamburgerMenu .hm-item{
+  width: 100%;
+  text-align: left;
+  font-size: 14px;
+  padding: 10px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  color: #e8e8e8;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+#hamburgerMenu .hm-item:last-child{ margin-bottom: 0; }
+
+#hamburgerMenu .hm-item:hover{
+  background: rgba(255,255,255,0.10);
+}
+
 /* 🏅 업적 버튼 (쿠폰 버튼 아래) */
 #achievementBtn{
   position:fixed;
@@ -2584,7 +2650,7 @@ button {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.259)
+    (v4.264)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2848,6 +2914,19 @@ button {
 ">
   로그아웃
 </button>
+
+  <!-- 🍔 햄버거 메뉴 버튼 (프레임 내부 우측상단) -->
+<button id="hamburgerBtn" type="button" aria-label="메뉴" onclick="toggleHamburgerMenu(event)" style="display:none;">
+  <span class="hb-line"></span>
+  <span class="hb-line"></span>
+  <span class="hb-line"></span>
+</button>
+
+<!-- 🍔 햄버거 메뉴 패널 -->
+<div id="hamburgerMenu" style="display:none;">
+  <button type="button" class="hm-item" onclick="openCouponPopup(); closeHamburgerMenu();">쿠폰입력</button>
+  <button type="button" class="hm-item" onclick="logout(); closeHamburgerMenu();">로그아웃</button>
+</div>
   
 <!-- 🔔 로그 -->
 <div id="toastLog" class="log-view-five">
@@ -5561,7 +5640,8 @@ destroyCount  = 0;
   document.getElementById("toastLog").style.display = "none";
   document.getElementById("workbenchDock").style.display = "none";
   document.getElementById("workbenchDockUI").style.display = "none";
-
+  document.getElementById("hamburgerBtn").style.display = "none";
+closeHamburgerMenu();
 
   titlesOwned = {};
 equippedTitle = "";
@@ -9409,11 +9489,12 @@ subscribeGlobal30Events();
     gameScreen.style.display   = "block";
 
     document.getElementById("attendanceBtn").style.display = "block";
-    document.getElementById("logoutBtn").style.display = "block";
+    document.getElementById("logoutBtn").style.display = "none";
+    document.getElementById("couponBtn").style.display = "none";
+    document.getElementById("hamburgerBtn").style.display = "block";
     document.getElementById("duelIconBtn").style.display = "block";
     document.getElementById("guildIconBtn").style.display = "block";
     document.getElementById("mapBtn").style.display = "block";
-    document.getElementById("couponBtn").style.display = "block";
     document.getElementById("userListIconBtn").style.display = "block";
     document.getElementById("achievementBtn").style.display = "block";
     document.getElementById("toastLog").style.display = "block";
@@ -9697,6 +9778,42 @@ function toggleMap() {
     panel.style.display = "none";
   }
 }
+
+  // =====================
+// 🍔 햄버거 메뉴
+// =====================
+function closeHamburgerMenu(){
+  const menu = document.getElementById("hamburgerMenu");
+  if (menu) menu.style.display = "none";
+}
+
+function toggleHamburgerMenu(ev){
+  if (ev) ev.stopPropagation();
+
+  const menu = document.getElementById("hamburgerMenu");
+  if (!menu) return;
+
+  const isOpen = (menu.style.display === "block");
+  if (isOpen) {
+    menu.style.display = "none";
+  } else {
+    menu.style.display = "block";
+  }
+}
+
+// 바깥 클릭 닫기 + ESC 닫기
+document.addEventListener("click", () => closeHamburgerMenu());
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeHamburgerMenu();
+});
+
+// 메뉴 내부 클릭은 버블 막기(바깥 클릭 닫힘 방지)
+document.addEventListener("DOMContentLoaded", () => {
+  const menu = document.getElementById("hamburgerMenu");
+  const btn  = document.getElementById("hamburgerBtn");
+  if (menu) menu.addEventListener("click", (e) => e.stopPropagation());
+  if (btn)  btn.addEventListener("click", (e) => e.stopPropagation());
+});
 
   function openMapPanelNearParchmentBtn(ev){
   if (ev) ev.stopPropagation();
@@ -10139,11 +10256,12 @@ const gameScreen  = document.getElementById("gameScreen");
 loginScreen.style.display  = "none";
 gameScreen.style.display   = "block";
 document.getElementById("attendanceBtn").style.display = "block";
-document.getElementById("logoutBtn").style.display = "block";
+document.getElementById("logoutBtn").style.display = "none";
+document.getElementById("couponBtn").style.display = "none";
+document.getElementById("hamburgerBtn").style.display = "block";
 document.getElementById("duelIconBtn").style.display = "block";
 document.getElementById("guildIconBtn").style.display = "block";
 document.getElementById("mapBtn").style.display = "block";
-document.getElementById("couponBtn").style.display = "block";
 document.getElementById("userListIconBtn").style.display = "block";
 document.getElementById("achievementBtn").style.display = "block";
 document.getElementById("toastLog").style.display = "block";
