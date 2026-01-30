@@ -375,7 +375,7 @@ body {
   display: none !important;
 }
 
-/* 🍔 햄버거 버튼 (1번 사진처럼 박스 + 명확한 三) */
+/* 🍔 햄버거 버튼 (더 정갈하게: 얇은 선, 넓은 간격, 중앙정렬, 라운드 축소) */
 #hamburgerBtn{
   position: fixed;
   top: 10px;
@@ -384,41 +384,54 @@ body {
 
   width: 56px;
   height: 56px;
+  box-sizing: border-box;
 
-  border-radius: 10px;
-  border: 3px solid rgba(70,70,70,0.95);   /* ✅ 진한 그레이 테두리 */
-  background: rgba(25,25,25,0.92);         /* ✅ 그레이톤 박스 */
-  box-shadow:
-    inset 0 0 0 2px rgba(0,0,0,0.55),
-    0 6px 14px rgba(0,0,0,0.55);
+  /* 4) 라운드 안 어울림 → 거의 각진 느낌 */
+  border-radius: 4px;
+
+  /* 박스는 존재하되 과하지 않게 */
+  border: 2px solid rgba(80,80,80,0.9);
+  background: rgba(22,22,22,0.78);
+
+  /* 투박한 그림자 줄이기 */
+  box-shadow: 0 6px 14px rgba(0,0,0,0.45);
 
   cursor: pointer;
   padding: 0;
+  outline: none;
 
-  display: flex;
-  flex-direction: column;                 /* ✅ 세로로 3줄 쌓기 */
-  align-items: center;
-  justify-content: center;
-  gap: 7px;                               /* ✅ 3줄 간격 */
+  /* 2) 중앙 정렬 확실하게 (flex보다 흔들림 적음) */
+  display: grid;
+  place-items: center;
 }
 
-/* 호버/활성(살짝 밝아지고 눌림 느낌) */
-#hamburgerBtn:hover{
-  background: rgba(35,35,35,0.95);
-  transform: translateY(-1px);
-}
-#hamburgerBtn:active{
-  transform: translateY(0px) scale(0.98);
-}
-
-/* 햄버거 3줄(명확한 三) */
+/* 햄버거 3줄 래퍼처럼 보이게: span 3개를 세로로 배치 */
 #hamburgerBtn .hb-line{
   display: block;
-  width: 30px;                            /* ✅ 길게 */
-  height: 4px;                            /* ✅ 두껍게 */
-  background: rgba(235,235,235,0.95);     /* ✅ 밝은 회색 */
-  border-radius: 3px;
-  box-shadow: 0 1px 0 rgba(0,0,0,0.6);
+  width: 28px;
+
+  /* 3) 두께 얇게 */
+  height: 3px;
+
+  background: rgba(235,235,235,0.92);
+  border-radius: 2px;
+  margin: 0;
+
+  /* 과한 입체감 제거 */
+  box-shadow: none;
+}
+
+/* 1) 줄 간격 훨씬 넓게 → span 간격은 margin으로 */
+#hamburgerBtn .hb-line + .hb-line{
+  margin-top: 9px; /* ✅ 9~12 사이 취향대로 */
+}
+
+/* 살짝만 반응 */
+#hamburgerBtn:hover{
+  background: rgba(30,30,30,0.82);
+}
+#hamburgerBtn:active{
+  transform: scale(0.98);
 }
 
 /* 🍔 메뉴 패널 */
