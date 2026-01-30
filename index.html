@@ -9168,6 +9168,13 @@ function getHuntReward(fieldId) {
   return Math.floor(baseCost * mul * 0.4);
 }
 
+// ✅ (추가) 요소가 없어도 크래시 안 나게 display 토글
+function setDisplay(id, displayValue) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = displayValue;
+}
+
 function login() {
     
   // 1️⃣ DOM에서 직접 입력창 가져오기
@@ -9485,24 +9492,35 @@ subscribeGlobal30Events();
     ensureBossRunsSubscription();  // ✅ 로그인 직후에도 토벌 구독/복구 시작
     updateBossBattleBtn();         // ✅ 버튼 즉시 갱신(구독 데이터 들어오면 다시 갱신됨)
 
-    // 화면 전환
-    const loginScreen = document.getElementById("loginScreen");
-    const gameScreen  = document.getElementById("gameScreen");
-    loginScreen.style.display  = "none";
-    gameScreen.style.display   = "block";
+    // ✅ (추가) 구형 로그패널 변수 참조로 인한 크래시 방지용 (toastList를 대신 씀)
+    let logPanelListEl = null;
 
-    document.getElementById("attendanceBtn").style.display = "block";
-    document.getElementById("logoutBtn").style.display = "none";
-    document.getElementById("couponBtn").style.display = "none";
-    document.getElementById("hamburgerBtn").style.display = "block";
-    document.getElementById("duelIconBtn").style.display = "block";
-    document.getElementById("guildIconBtn").style.display = "block";
-    document.getElementById("mapBtn").style.display = "block";
-    document.getElementById("userListIconBtn").style.display = "block";
-    document.getElementById("achievementBtn").style.display = "block";
-    document.getElementById("toastLog").style.display = "block";
-    document.getElementById("workbenchDock").style.display = "block";
-    document.getElementById("workbenchDockUI").style.display = "flex";
+    window.addEventListener("DOMContentLoaded", () => {
+    logPanelListEl = document.getElementById("toastList");
+    });
+
+        // 화면 전환
+const loginScreen = document.getElementById("loginScreen");
+const gameScreen  = document.getElementById("gameScreen");
+
+if (loginScreen) loginScreen.style.display = "none";
+if (gameScreen)  gameScreen.style.display  = "block";
+
+// ✅ 버튼/패널들(없어도 크래시 X)
+setDisplay("attendanceBtn",   "block");
+setDisplay("logoutBtn",       "none");
+setDisplay("couponBtn",       "none");
+setDisplay("hamburgerBtn",    "block");
+
+setDisplay("duelIconBtn",     "block");
+setDisplay("guildIconBtn",    "block");
+setDisplay("mapBtn",          "block");
+setDisplay("userListIconBtn", "block");
+setDisplay("achievementBtn",  "block");
+
+setDisplay("toastLog",        "block");
+setDisplay("workbenchDock",   "block");
+setDisplay("workbenchDockUI", "flex");
     
         // ✅ 여기에서 자동 새로고침 타이머 시작
     startAutoRefreshTimer();
@@ -10251,25 +10269,36 @@ if (!power || power <= 20) {
     ensureDuelWeek();
     // 🏆 지난주 보상 체크 & 지급
     checkWeeklyDuelReward();
-    
+
+    // ✅ (추가) 구형 로그패널 변수 참조로 인한 크래시 방지용 (toastList를 대신 씀)
+let logPanelListEl = null;
+
+window.addEventListener("DOMContentLoaded", () => {
+  logPanelListEl = document.getElementById("toastList");
+});
+
 // 화면 전환
 const loginScreen = document.getElementById("loginScreen");
 const gameScreen  = document.getElementById("gameScreen");
 
-loginScreen.style.display  = "none";
-gameScreen.style.display   = "block";
-document.getElementById("attendanceBtn").style.display = "block";
-document.getElementById("logoutBtn").style.display = "none";
-document.getElementById("couponBtn").style.display = "none";
-document.getElementById("hamburgerBtn").style.display = "block";
-document.getElementById("duelIconBtn").style.display = "block";
-document.getElementById("guildIconBtn").style.display = "block";
-document.getElementById("mapBtn").style.display = "block";
-document.getElementById("userListIconBtn").style.display = "block";
-document.getElementById("achievementBtn").style.display = "block";
-document.getElementById("toastLog").style.display = "block";
-document.getElementById("workbenchDock").style.display = "block";
-document.getElementById("workbenchDockUI").style.display = "flex";
+if (loginScreen) loginScreen.style.display = "none";
+if (gameScreen)  gameScreen.style.display  = "block";
+
+// ✅ 버튼/패널들(없어도 크래시 X)
+setDisplay("attendanceBtn",   "block");
+setDisplay("logoutBtn",       "none");
+setDisplay("couponBtn",       "none");
+setDisplay("hamburgerBtn",    "block");
+
+setDisplay("duelIconBtn",     "block");
+setDisplay("guildIconBtn",    "block");
+setDisplay("mapBtn",          "block");
+setDisplay("userListIconBtn", "block");
+setDisplay("achievementBtn",  "block");
+
+setDisplay("toastLog",        "block");
+setDisplay("workbenchDock",   "block");
+setDisplay("workbenchDockUI", "flex");
 
         // ✅ 여기에서 자동 새로고침 타이머 시작
     startAutoRefreshTimer();
