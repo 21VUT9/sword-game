@@ -1251,11 +1251,27 @@ button {
   position: absolute;
   right: calc(var(--frame-pad) + 22px);
   top: 0;
-
+  
   -webkit-tap-highlight-color: rgba(0,0,0,0);
   outline: none;
   user-select: none;
   -webkit-user-select: none;
+}
+
+  /* ✅ 아이콘/텍스트 중앙 정렬 */
+.map-icon-btn{
+  text-align: center;
+}
+
+.map-icon-btn .map-icon-img{
+  display: block;
+  margin: 0 auto;
+}
+
+.map-icon-btn .map-icon-label{
+  display: block;
+  width: 100%;
+  text-align: center;
 }
 
   /* ⬅️ 좌측 아이콘 전용 배치 */
