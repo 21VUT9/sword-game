@@ -1313,19 +1313,20 @@ button {
   line-height: 1.4;
 }
 
-  /* 🎨 게임 타이틀 로고 */
-.game-title {
-  margin: 16px 0 8px 0;
+ /* 🎮 게임 타이틀 영역 여백 제거 */
+.game-title{
+  margin: 0;          /* ✅ h1 기본 여백 제거 */
+  padding: 0;
   text-align: center;
 }
 
-.game-title-logo {
-  max-width: 320px;   /* PC에서 너무 커지지 않게 */
-  width: 80%;         /* 모바일에서는 화면 기준으로 줄어듦 */
-  height: auto;
-  image-rendering: auto;
+/* 🎮 게임 타이틀 이미지 */
+.game-title-logo{
+  display: block;     /* ✅ inline baseline 제거 */
+  width: 70%;         /* ✅ 크기 축소 */
+  max-width: 420px;   /* (선택) 너무 커지는 것 방지 */
+  margin: 4px auto;   /* ✅ 위아래 여백 최소화 */
 }
-
 
 .current-field-info-sub {
   font-size: 14px;
