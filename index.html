@@ -375,28 +375,31 @@ body {
   display: none !important;
 }
 
-  /* 🍔 햄버거 버튼 */
+/* 🍔 햄버거 버튼 (박스 제거, 햄버거만 보이게) */
 #hamburgerBtn{
   position: fixed;
   top: 10px;
   right: calc(var(--frame-pad) + 10px);
   z-index: 1105;
-  width: 42px;
+
+  width: 34px;      /* 클릭 영역은 유지 */
   height: 34px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.18);
-  background: rgba(20,20,20,0.72);
-  backdrop-filter: blur(3px);
+
+  border: none;     /* ✅ 박스 제거 */
+  background: none; /* ✅ 박스 제거 */
+  box-shadow: none; /* ✅ 혹시 남아있을 경우 */
+  padding: 0;
   cursor: pointer;
+
   display: flex;
+  flex-direction: column; /* ✅ 핵심: 3줄 세로로 쌓기 */
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 0;
+  gap: 4px;               /* 줄 간격 */
 }
 
-#hamburgerBtn:hover{
-  background: rgba(30,30,30,0.82);
+#hamburgerBtn:hover .hb-line{
+  background: rgba(245,245,245,0.95);
 }
 
 /* 햄버거 3줄 */
