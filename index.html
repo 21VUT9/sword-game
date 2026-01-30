@@ -9323,22 +9323,36 @@ updateBossBattleBtn();         // ✅ 버튼 즉시 갱신(구독 데이터 들�
 
 try { localStorage.setItem("swordGameLastUser", userId); } catch(e) {}
 
+// 화면 전환(신규 계정) - ✅ 없는 요소 접근해도 안 터지게 안전 처리
 const loginScreen = document.getElementById("loginScreen");
 const gameScreen  = document.getElementById("gameScreen");
-loginScreen.style.display = "none";
-gameScreen.style.display  = "block";
-document.getElementById("attendanceBtn").style.display = "block";
-document.getElementById("logToggle").style.display     = "block";
-document.getElementById("logoutBtn").style.display     = "block";
-document.getElementById("duelIconBtn").style.display       = "block";
-document.getElementById("guildIconBtn").style.display      = "block";
-document.getElementById("mapBtn").style.display        = "block";
-document.getElementById("couponBtn").style.display     = "block";
-document.getElementById("userListIconBtn").style.display   = "block";
-document.getElementById("achievementBtn").style.display = "block";
-document.getElementById("toastLog").style.display = "block";
-document.getElementById("workbenchDock").style.display = "block";
-document.getElementById("workbenchDockUI").style.display = "flex";
+if (loginScreen) loginScreen.style.display = "none";
+if (gameScreen)  gameScreen.style.display  = "block";
+
+// ✅ show/hide 유틸 (이 블록 안에서만 사용)
+const setDisp = (id, disp) => {
+  const el = document.getElementById(id);
+  if (el) el.style.display = disp;
+};
+
+// ✅ 로그인 후 보여야 하는 것들
+setDisp("attendanceBtn", "block");
+setDisp("hamburgerBtn", "block");
+
+setDisp("duelIconBtn", "block");
+setDisp("guildIconBtn", "block");
+setDisp("mapBtn", "block");
+setDisp("userListIconBtn", "block");
+setDisp("achievementBtn", "block");
+
+setDisp("toastLog", "block");
+setDisp("workbenchDock", "block");
+setDisp("workbenchDockUI", "flex");
+
+// ✅ (구버전 요소가 남아있을 수도 있으니) 있으면 숨김 처리
+setDisp("logToggle", "none");
+setDisp("logoutBtn", "none");
+setDisp("couponBtn", "none");
 
 startAutoRefreshTimer();
 subscribeGlobalDestroyEvents();
