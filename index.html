@@ -9554,13 +9554,6 @@ subscribeGlobal30Events();
     ensureBossRunsSubscription();  // ✅ 로그인 직후에도 토벌 구독/복구 시작
     updateBossBattleBtn();         // ✅ 버튼 즉시 갱신(구독 데이터 들어오면 다시 갱신됨)
 
-    // ✅ (추가) 구형 로그패널 변수 참조로 인한 크래시 방지용 (toastList를 대신 씀)
-    let logPanelListEl = null;
-
-    window.addEventListener("DOMContentLoaded", () => {
-    logPanelListEl = document.getElementById("toastList");
-    });
-
         // 화면 전환
 const loginScreen = document.getElementById("loginScreen");
 const gameScreen  = document.getElementById("gameScreen");
@@ -10331,13 +10324,6 @@ if (!power || power <= 20) {
     ensureDuelWeek();
     // 🏆 지난주 보상 체크 & 지급
     checkWeeklyDuelReward();
-
-    // ✅ (추가) 구형 로그패널 변수 참조로 인한 크래시 방지용 (toastList를 대신 씀)
-let logPanelListEl = null;
-
-window.addEventListener("DOMContentLoaded", () => {
-  logPanelListEl = document.getElementById("toastList");
-});
 
 // 화면 전환
 const loginScreen = document.getElementById("loginScreen");
@@ -11352,8 +11338,6 @@ if (d.isReach30) {
   commentsBox.style.marginLeft = "18px";
   commentsBox.style.marginTop  = "2px";
   panelItem.appendChild(commentsBox);
-
-  logPanelListEl.prepend(panelItem);
 
   // 이후에 달리는 댓글도 실시간으로 반영
   logRef.child(logId).child("comments").on("child_added", snap => {
