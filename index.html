@@ -17,6 +17,7 @@ body {
   --frame-max: 1000px;
   --frame-pad: 0px; /* 기본(모바일/좁은 화면) */
   --workbench-h: 200px; /* ✅ 작업대 높이 */
+  --field-top-offset: 23px;
 }
 
 @media (min-width: 1001px){
@@ -1191,7 +1192,7 @@ button {
   left: 50%;
   transform: translateX(-50%);
 
-  padding: 25px 12px 0 12px;
+  padding-top: calc(2px + var(--field-top-offset));
   margin-bottom: 8px;
 
   position: relative; /* 아이콘 absolute 기준 */
@@ -1248,15 +1249,15 @@ button {
 }
 
 /* 좌측 아이콘 세로 위치 */
-#attendanceIconBtn{ top: 0; }
-#achievementIconBtn{ top: 120px; }
+#attendanceIconBtn{ top: var(--field-top-offset); }
+#achievementIconBtn{ top: calc(120px + var(--field-top-offset)); }
 
 
   /* ✅ 지도 버튼 아래로 같은 규격으로 쌓기 (지도 스타일 유지) */
-#mapBtn{ top: 0; }              /* 지도는 그대로 */
-#duelIconBtn{ top: 120px; }
-#guildIconBtn{ top: 240px; }
-#userListIconBtn{ top: 360px; }
+#mapBtn{ top: var(--field-top-offset) }              /* 지도는 그대로 */
+#duelIconBtn{ top: calc(120px + var(--field-top-offset)); }
+#guildIconBtn{ top: calc(240px + var(--field-top-offset)); }
+#userListIconBtn{ top: calc(360px + var(--field-top-offset)); }
 
 .map-icon-img{
   width: 94px;
