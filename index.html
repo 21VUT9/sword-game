@@ -5655,23 +5655,37 @@ destroyCount  = 0;
   lastDuelDate = "";
   duelTargetsToday = {};
 
-  // 화면 전환
-  document.getElementById("gameScreen").style.display   = "none";
-  document.getElementById("loginScreen").style.display  = "block";
-  document.getElementById("attendanceIconBtn").style.display = "none";
-  document.getElementById("logoutBtn").style.display    = "none";
-  document.getElementById("duelIconBtn").style.display      = "none";
-  document.getElementById("guildIconBtn").style.display = "none";
-  document.getElementById("bossBattleBtn").style.display = "none";
-  document.getElementById("mapBtn").style.display       = "none";
-  document.getElementById("couponBtn").style.display    = "none";
-  document.getElementById("userListIconBtn").style.display  = "none";
-  document.getElementById("achievementIconBtn").style.display = "none";
-  document.getElementById("toastLog").style.display = "none";
-  document.getElementById("workbenchDock").style.display = "none";
-  document.getElementById("workbenchDockUI").style.display = "none";
-  document.getElementById("hamburgerBtn").style.display = "none";
-closeHamburgerMenu();
+   // 화면 전환 (✅ 없는 요소가 있어도 절대 안 터지게)
+  const setDisp = (id, disp) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = disp;
+  };
+
+  setDisp("gameScreen", "none");
+  setDisp("loginScreen", "block");
+
+  // ✅ 좌/우 아이콘들
+  setDisp("attendanceIconBtn", "none");
+  setDisp("achievementIconBtn", "none");
+
+  setDisp("duelIconBtn", "none");
+  setDisp("guildIconBtn", "none");
+  setDisp("mapBtn", "none");
+  setDisp("userListIconBtn", "none");
+
+  // ✅ 로그/작업대
+  setDisp("toastLog", "none");
+  setDisp("workbenchDock", "none");
+  setDisp("workbenchDockUI", "none");
+
+  // ✅ 햄버거 버튼/메뉴
+  setDisp("hamburgerBtn", "none");
+  if (typeof closeHamburgerMenu === "function") closeHamburgerMenu();
+
+  // ✅ (구버전 버튼이 남아있을 수도 있으니) 있으면 숨김
+  setDisp("logoutBtn", "none");
+  setDisp("couponBtn", "none");
+  setDisp("bossBattleBtn", "none");
 
   titlesOwned = {};
 equippedTitle = "";
