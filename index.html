@@ -330,7 +330,7 @@ body {
 
 /* 🔻 출석 / 로그 / 맵 버튼 / 인벤토리 등 UI 버튼 */
 .capture-mode .side-menu-btn,
-.capture-mode #attendanceBtn,
+.capture-mode #attendanceIconBtn,
 .capture-mode #logoutBtn,
 .capture-mode #logToggle {
   display: none !important;
@@ -349,7 +349,7 @@ body {
 }
   
   /* 🎫 출석 버튼 */
-#attendanceBtn {
+#attendanceIconBtn {
   position:fixed;
   top:40px;          /* ⬅️ 10 → 40 으로 변경 */
   left: calc(var(--frame-pad) + 10px);
@@ -468,7 +468,7 @@ body {
 }
 
 /* 🏅 업적 버튼 (쿠폰 버튼 아래) */
-#achievementBtn{
+#achievementIconBtn{
   position:fixed;
   top:120px;      /* 쿠폰(80px) 아래 */
   left: calc(var(--frame-pad) + 10px);
@@ -479,7 +479,7 @@ body {
 }
 
 /* 캡처 모드에서 숨기기 */
-.capture-mode #achievementBtn{
+.capture-mode #achievementIconBtn{
   display:none !important;
 }
 
@@ -1257,6 +1257,17 @@ button {
   user-select: none;
   -webkit-user-select: none;
 }
+
+  /* ⬅️ 좌측 아이콘 전용 배치 */
+.left-icon-btn{
+  right: auto;
+  left: calc(var(--frame-pad) + 22px);
+}
+
+/* 좌측 아이콘 세로 위치 */
+#attendanceIconBtn{ top: 0; }
+#achievementIconBtn{ top: 120px; }
+
 
   /* ✅ 지도 버튼 아래로 같은 규격으로 쌓기 (지도 스타일 유지) */
 #mapBtn{ top: 0; }              /* 지도는 그대로 */
@@ -2733,6 +2744,22 @@ button {
     <img class="map-icon-img" src="images/ui/icon_users.png" alt="전체유저">
     <span class="map-icon-label one-line">유저검색</span>
   </button>
+
+  <!-- 📅 출석 (좌측 아이콘) -->
+<button id="attendanceIconBtn"
+        class="map-icon-btn left-icon-btn"
+        onclick="openAttendancePopup()">
+  <img class="map-icon-img" src="images/ui/icon_attendance.png" alt="출석">
+  <span class="map-icon-label">출석</span>
+</button>
+
+<!-- 🏆 업적 (좌측 아이콘) -->
+<button id="achievementIconBtn"
+        class="map-icon-btn left-icon-btn"
+        onclick="openAchievementPanel()">
+  <img class="map-icon-img" src="images/ui/icon_achievement.png" alt="업적">
+  <span class="map-icon-label">업적</span>
+</button>
   
 </div>
 
@@ -2922,24 +2949,6 @@ button {
 </div>
   
 </div> <!-- 🔚 gameScreen -->
-
-<button id="attendanceBtn" onclick="checkAttendance()">출석</button>
-
-  <button id="couponBtn" onclick="openCouponPopup()">쿠폰</button>
-
-  <button id="achievementBtn" onclick="openTitleOverlay()">업적</button>
-
-  <button id="logoutBtn" onclick="logout()" style="
-  position:fixed;
-  top:10px;
-  left: calc(var(--frame-pad) + 10px);
-  z-index:1101;
-  display:none;
-  font-size:14px;
-  padding:6px 14px;
-">
-  로그아웃
-</button>
 
   <!-- 🍔 햄버거 메뉴 버튼 (프레임 내부 우측상단) -->
 <button id="hamburgerBtn" type="button" aria-label="메뉴" onclick="toggleHamburgerMenu(event)" style="display:none;">
@@ -5654,7 +5663,7 @@ destroyCount  = 0;
   // 화면 전환
   document.getElementById("gameScreen").style.display   = "none";
   document.getElementById("loginScreen").style.display  = "block";
-  document.getElementById("attendanceBtn").style.display = "none";
+  document.getElementById("attendanceIconBtn").style.display = "none";
   document.getElementById("logoutBtn").style.display    = "none";
   document.getElementById("duelIconBtn").style.display      = "none";
   document.getElementById("guildIconBtn").style.display = "none";
@@ -5662,7 +5671,7 @@ destroyCount  = 0;
   document.getElementById("mapBtn").style.display       = "none";
   document.getElementById("couponBtn").style.display    = "none";
   document.getElementById("userListIconBtn").style.display  = "none";
-  document.getElementById("achievementBtn").style.display = "none";
+  document.getElementById("achievementIconBtn").style.display = "none";
   document.getElementById("toastLog").style.display = "none";
   document.getElementById("workbenchDock").style.display = "none";
   document.getElementById("workbenchDockUI").style.display = "none";
@@ -9359,14 +9368,14 @@ const setDisp = (id, disp) => {
 };
 
 // ✅ 로그인 후 보여야 하는 것들
-setDisp("attendanceBtn", "block");
+setDisp("attendanceIconBtn", "block");
 setDisp("hamburgerBtn", "block");
 
 setDisp("duelIconBtn", "block");
 setDisp("guildIconBtn", "block");
 setDisp("mapBtn", "block");
 setDisp("userListIconBtn", "block");
-setDisp("achievementBtn", "block");
+setDisp("achievementIconBtn", "block");
 
 setDisp("toastLog", "block");
 setDisp("workbenchDock", "block");
@@ -9544,7 +9553,7 @@ if (loginScreen) loginScreen.style.display = "none";
 if (gameScreen)  gameScreen.style.display  = "block";
 
 // ✅ 버튼/패널들(없어도 크래시 X)
-setDisplay("attendanceBtn",   "block");
+setDisplay("attendanceIconBtn",   "block");
 setDisplay("logoutBtn",       "none");
 setDisplay("couponBtn",       "none");
 setDisplay("hamburgerBtn",    "block");
@@ -9553,7 +9562,7 @@ setDisplay("duelIconBtn",     "block");
 setDisplay("guildIconBtn",    "block");
 setDisplay("mapBtn",          "block");
 setDisplay("userListIconBtn", "block");
-setDisplay("achievementBtn",  "block");
+setDisplay("achievementIconBtn",  "block");
 
 setDisplay("toastLog",        "block");
 setDisplay("workbenchDock",   "block");
@@ -10322,7 +10331,7 @@ if (loginScreen) loginScreen.style.display = "none";
 if (gameScreen)  gameScreen.style.display  = "block";
 
 // ✅ 버튼/패널들(없어도 크래시 X)
-setDisplay("attendanceBtn",   "block");
+setDisplay("attendanceIconBtn",   "block");
 setDisplay("logoutBtn",       "none");
 setDisplay("couponBtn",       "none");
 setDisplay("hamburgerBtn",    "block");
@@ -10331,7 +10340,7 @@ setDisplay("duelIconBtn",     "block");
 setDisplay("guildIconBtn",    "block");
 setDisplay("mapBtn",          "block");
 setDisplay("userListIconBtn", "block");
-setDisplay("achievementBtn",  "block");
+setDisplay("achievementIconBtn",  "block");
 
 setDisplay("toastLog",        "block");
 setDisplay("workbenchDock",   "block");
