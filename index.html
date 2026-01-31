@@ -12350,15 +12350,14 @@ function openBossBattle(){
 }
 
   function showSimpleMessage(text, title){
-  const popup = document.getElementById("npcPopup");
-  popup.innerHTML = `
-    <div class="npc-popup-inner">
-      <div class="npc-popup-text"><b>${title}</b></div>
-      <div class="npc-popup-text">${text}</div>
-      <button class="npc-popup-btn" onclick="closeNpcPopup()">확인</button>
+  const html = `
+    <div style="text-align:center; font-size:14px; line-height:1.6;">
+      <div style="font-weight:900; margin-bottom:6px;">${title || ""}</div>
+      <div style="color:#ddd;">${text || ""}</div>
     </div>
   `;
-  popup.style.display = "flex";
+  // ✅ npcPopup을 갈아엎지 말고 showNpcMessage 사용
+  showNpcMessage(html, null, true, "");
 }
 
   function startBossBattleMove(){
@@ -14793,21 +14792,17 @@ async function recalcUserPower(userIdToFix) {
   
 // 🔒 미구현 버튼 공용 안내 (기존 시스템 팝업 스타일)
 function showLockedFeaturePopup(){
-  const overlay = document.getElementById("npcPopup");
-  if(!overlay) return;
-
-  overlay.innerHTML = `
-    <div class="npc-popup-inner">
-      <div class="actionTitle">미구현 기능</div>
-      <div class="actionText">
+  const html = `
+    <div style="text-align:center; font-size:14px; line-height:1.6;">
+      <div style="font-weight:900; margin-bottom:6px;">미구현 기능</div>
+      <div style="color:#aaa;">
         아직 봉인된 기능입니다.<br>
         추후 업데이트 예정입니다.
       </div>
-      <button class="actionBtn" onclick="closeNpcPopup()">확인</button>
     </div>
   `;
-
-  overlay.style.display = "flex";
+  // ✅ npcPopup DOM 구조를 절대 파괴하지 않고, 기존 showNpcMessage를 사용
+  showNpcMessage(html, null, true, "");
 }
 
 // 🔒 능력치(미구현) 버튼 클릭 연결
