@@ -1258,6 +1258,9 @@ button {
 #duelIconBtn{ top: calc(120px + var(--field-top-offset)); }
 #guildIconBtn{ top: calc(240px + var(--field-top-offset)); }
 #userListIconBtn{ top: calc(360px + var(--field-top-offset)); }
+  #bossBattleIconBtn{
+  top: calc(480px + var(--field-top-offset));
+}
 
 .map-icon-img{
   width: 94px;
@@ -2682,7 +2685,7 @@ hr.section-divider{
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.264)
+    (v4.272)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2739,6 +2742,13 @@ hr.section-divider{
     <img class="map-icon-img" src="images/ui/icon_users.png" alt="전체유저">
     <span class="map-icon-label one-line">유저검색</span>
   </button>
+
+  <button id="bossBattleIconBtn"
+        class="map-icon-btn"
+        onclick="onBossBattleIconClick()">
+  <img src="images/ui/icon_boss.png" class="map-icon-img">
+  <span class="map-icon-label">보스전</span>
+</button>
 
   <!-- 📅 출석 (좌측 아이콘) -->
 <button id="attendanceIconBtn"
@@ -10129,6 +10139,38 @@ function moveToFieldFromWorldMap(fieldId){
   }, delay);
 }
 
+// ✅ 보스전 아이콘 → 이동한다 눌렀을 때
+function startBossBattleMove(){
+  closeNpcPopup();
+
+  // 이미 이동 중이면 무시 (월드맵 이동 로직과 동일한 안전장치)
+  if (isMoving) return;
+  isMoving = true;
+
+  // "사냥터 이동 중..." 팝업 (기존 함수 재사용)
+  showMovePopup();
+
+  setTimeout(() => {
+    moveToBossField();
+  }, 900);
+}
+
+// ✅ 실제 보스전 필드로 이동 (실바나 릴리아네 -> 늪엘프의 숲)
+function moveToBossField(){
+  // 늪엘프의 숲 = 4 (파일에 이미 월드맵 이동 confirm에서 4로 쓰고 있음)
+  currentField = 4;
+
+  applyFieldBackground();
+  update();
+  save();
+
+  closeMovePopup();
+  isMoving = false;
+
+  // ✅ 이동 완료되면 보스전 오버레이 즉시 오픈 (기존 그대로)
+  openBossBattle();
+}
+
 // 🧱 패널 바깥 클릭 시 닫기 (MAP / 인벤토리 / 로그 공통)
 function closeIfClickOutside(event, panelId, buttonId) {
   const panel = document.getElementById(panelId);
@@ -12273,6 +12315,40 @@ function openBossBattle(){
     if (!ov2 || ov2.style.display === "none") return;
     renderBossBattle();
   }, 1000);
+}
+
+  function onBossBattleIconClick(){
+  if (!currentBossBattle) {
+    // ❌ 참여 중인 보스전 없음
+    showSimpleMessage(
+      "현재 참여중인 보스전이 없습니다",
+      "보스전"
+    );
+    return;
+  }
+
+  // ✅ 참여 중인 보스전 있음
+  showNpcMessage(
+    "보스 토벌로 이동하겠나?",
+    "images/npc/leonhardt.png",
+    true,
+    [
+      { text: "이동한다", onClick: startBossBattleMove },
+      { text: "잠시만...", onClick: closeNpcPopup }
+    ]
+  );
+}
+
+  function showSimpleMessage(text, title){
+  const popup = document.getElementById("npcPopup");
+  popup.innerHTML = `
+    <div class="npc-popup-inner">
+      <div class="npc-popup-text"><b>${title}</b></div>
+      <div class="npc-popup-text">${text}</div>
+      <button class="npc-popup-btn" onclick="closeNpcPopup()">확인</button>
+    </div>
+  `;
+  popup.style.display = "flex";
 }
 
 function closeBossBattle(){
