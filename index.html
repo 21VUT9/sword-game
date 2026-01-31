@@ -12338,15 +12338,15 @@ function openBossBattle(){
   }
 
   // ✅ 참여신청한 유저: 레온하르트 NPC 확인 팝업
-  showNpcMessage(
-    "보스 토벌로 이동하겠나?",
-    "images/npc/leonhardt.png",
-    true,
-    [
-      { text: "이동한다", onClick: startBossBattleMove },
-      { text: "잠시만...", onClick: closeNpcPopup }
-    ]
-  );
+  showConfirmPopup(
+  "보스 토벌로 이동하겠나?",
+  "images/npc/leonhardt_apply.png",
+  "길드마스터 – 레온하르트 발렌",
+  "이동한다",
+  startBossBattleMove,
+  "잠시만...",
+  closeNpcPopup
+);
 }
 
   function showSimpleMessage(text, title){
@@ -12358,6 +12358,48 @@ function openBossBattle(){
   `;
   // ✅ npcPopup을 갈아엎지 말고 showNpcMessage 사용
   showNpcMessage(html, null, true, "");
+}
+
+  function showConfirmPopup(msg, imgPath, npcName, okText, okFn, cancelText, cancelFn){
+  const popup     = document.getElementById("npcPopup");
+  const msgEl     = document.getElementById("npcPopupText");
+  const imgEl     = document.getElementById("npcPopupImg");
+  const okBtn     = document.getElementById("npcConfirmBtn");
+  const cancelBtn = document.getElementById("npcCancelBtn");
+  const nameEl    = document.getElementById("npcPopupName");
+
+  if (!popup || !msgEl || !imgEl || !okBtn || !cancelBtn) return;
+
+  // 내용
+  msgEl.innerHTML = String(msg || "");
+
+  // NPC 이름
+  if (nameEl) nameEl.textContent = String(npcName || "");
+
+  // 이미지
+  if (imgPath) {
+    imgEl.src = imgPath;
+    imgEl.style.display = "block";
+  } else {
+    imgEl.style.display = "none";
+  }
+
+  // OK 버튼
+  okBtn.style.display = "inline-block";
+  okBtn.textContent = okText || "확인";
+  okBtn.onclick = (typeof okFn === "function") ? okFn : closeNpcPopup;
+
+  // Cancel 버튼
+  if (cancelText) {
+    cancelBtn.style.display = "inline-block";
+    cancelBtn.textContent = cancelText;
+    cancelBtn.onclick = (typeof cancelFn === "function") ? cancelFn : closeNpcPopup;
+  } else {
+    cancelBtn.style.display = "none";
+    cancelBtn.onclick = null;
+  }
+
+  popup.style.display = "flex";
 }
 
   function startBossBattleMove(){
