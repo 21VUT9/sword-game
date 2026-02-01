@@ -2685,7 +2685,7 @@ hr.section-divider{
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.272)
+    (v4.276)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -10141,6 +10141,15 @@ function moveToFieldFromWorldMap(fieldId){
   }, delay);
 }
 
+  // 🗺️ 보스별 사냥터 매핑 (확장용)
+const BOSS_FIELD_MAP = {
+  // bossId : fieldId
+  "swamp_elf_queen": 4,   // 실바나 릴리아네 → 늪엘프의 숲
+  // 이후 추가 예시
+  // "frost_queen": 5,    // 서리여왕 → 서리여왕의 동굴
+  // "death_king": 6,     // 망령왕 → 죽음세계
+};
+
 // ✅ 보스전 아이콘 → 이동한다 눌렀을 때
 function startBossBattleMove(){
   closeNpcPopup();
@@ -10159,8 +10168,20 @@ function startBossBattleMove(){
 
 // ✅ 실제 보스전 필드로 이동 (실바나 릴리아네 -> 늪엘프의 숲)
 function moveToBossField(){
-  // 늪엘프의 숲 = 4 (파일에 이미 월드맵 이동 confirm에서 4로 쓰고 있음)
-  currentField = 4;
+  const bossId = String(activeBossId || "");
+  const targetField = BOSS_FIELD_MAP[bossId];
+
+  // 매핑 안 된 보스면 이동 중단 (안전장치)
+  if (!targetField) {
+    console.warn("보스 필드 매핑 없음:", bossId);
+    closeMovePopup();
+    isMoving = false;
+    openBossBattle(); // 그래도 보스전은 열어줌
+    return;
+  }
+
+  // ✅ 실제 사냥터 이동
+  currentField = targetField;
 
   applyFieldBackground();
   update();
@@ -10169,7 +10190,7 @@ function moveToBossField(){
   closeMovePopup();
   isMoving = false;
 
-  // ✅ 이동 완료되면 보스전 오버레이 즉시 오픈 (기존 그대로)
+  // ✅ 이동 완료 → 보스전 오버레이
   openBossBattle();
 }
 
