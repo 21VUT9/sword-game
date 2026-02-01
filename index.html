@@ -2876,11 +2876,6 @@ hr.section-divider{
       </div>
 
       <div class="profile-row">
-        <span class="profile-label">골드</span>
-        <span class="profile-value" id="profileGold">0</span>
-      </div>
-
-      <div class="profile-row">
         <span class="profile-label">무기가치</span>
         <span class="profile-value" id="profileWeaponValue">0</span>
       </div>
@@ -6625,7 +6620,6 @@ function updateTopCurrencyBar(){
   const weaponDescEl  = document.getElementById("profileWeaponDesc");
   const maxInfoEl     = document.getElementById("profileMaxInfo");
   const powerEl  = document.getElementById("profilePower");
-  const goldEl   = document.getElementById("profileGold");
   const huntEl   = document.getElementById("profileHuntCount");
   const weaponValueEl = document.getElementById("profileWeaponValue");
   const recordEl = document.getElementById("profileRecord");
@@ -6659,9 +6653,6 @@ function updateTopCurrencyBar(){
 
   if (powerEl) {
     powerEl.textContent = formatGold(power);
-  }
-  if (goldEl) {
-    goldEl.textContent  = formatGold(gold);
   }
   if (weaponValueEl) {
     const avgValue = getSellRewardAverage(sword); // 평균 판매가
