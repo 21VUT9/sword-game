@@ -10125,6 +10125,14 @@ function renderMap() {
   }
 }
 
+  // ✅ 퍼그란트의 대장간 POI 이동 (fieldId: 0)
+function moveToFulgurantForgeFromWorldMap(e){
+  if (e) e.stopPropagation(); // POI 클릭이 맵 패널 닫기 등에 먹히는 것 방지
+
+  // ✅ 기존 POI들과 동일: "이동할래?" 확인팝업 → 확인 누르면 moveToFieldFromWorldMap 흐름
+  showWorldMapMoveConfirm(0);
+}
+
   // 🍄 월드맵(양피지)에서: 평화로운 버섯마을로 이동
 function moveToMushroomVillageFromWorldMap(e){
   if (e) e.stopPropagation();
