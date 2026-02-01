@@ -1198,6 +1198,40 @@ button {
   position: relative; /* 아이콘 absolute 기준 */
 }
 
+  /* ✅ 상단 재화바 */
+.top-currency-bar{
+  position:absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  display:flex;
+  gap:10px;
+  align-items:center;
+  padding:6px 10px;
+  border:1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.35);
+  border-radius:10px;
+  backdrop-filter: blur(2px);
+  pointer-events: none; /* 상단 버튼 클릭 방해 방지 */
+}
+
+.top-currency-item{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:13px;
+  color:#f2f2f2;
+  font-weight:700;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.65);
+  white-space: nowrap;
+}
+
+.top-currency-item img{
+  width:18px;
+  height:18px;
+  image-rendering: auto;
+}
+
 /* ✅ 맵 이름/정보는 가운데 유지 + 아이콘 영역만큼 겹침 방지 */
 .field-topbar .current-field-info{
   width: min(430px, calc(100vw - 110px)); /* 아이콘 자리 확보 */
@@ -2685,7 +2719,7 @@ hr.section-divider{
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.276)
+    (v4.280)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -2718,6 +2752,24 @@ hr.section-divider{
   <!-- 🗺 현재 사냥터 정보 (프로필 카드 바깥 상단) -->
 <div class="field-topbar">
   <div id="currentFieldInfo" class="current-field-info"></div>
+
+  <!-- ✅ 상단 재화바 -->
+<div id="topCurrencyBar" class="top-currency-bar">
+  <div class="top-currency-item" title="골드">
+    <img src="images/items/gold.png" alt="골드">
+    <span id="topGoldText">0</span>
+  </div>
+
+  <div class="top-currency-item" title="빛나지 못할 별의조각">
+    <img src="images/items/star_shard.png" alt="별의조각">
+    <span id="topStarShardText">0</span>
+  </div>
+
+  <div class="top-currency-item" title="명예의훈장">
+    <img src="images/items/medal_honor.png" alt="명예의훈장">
+    <span id="topHonorMedalText">0</span>
+  </div>
+</div>
 
   <!-- 🗺 MAP 아이콘 버튼(기존 기능 유지: toggleMap) -->
   <button id="mapBtn" class="map-icon-btn" onclick="openParchmentMap()">
@@ -6562,6 +6614,17 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+  // ✅ 상단 재화바 갱신
+function updateTopCurrencyBar(){
+  const goldEl  = document.getElementById("topGoldText");
+  const starEl  = document.getElementById("topStarShardText");
+  const honorEl = document.getElementById("topHonorMedalText");
+
+  if (goldEl)  goldEl.textContent  = formatGold(Number(gold || 0));
+  if (starEl)  starEl.textContent  = Number(starShard || 0).toLocaleString("ko-KR");
+  if (honorEl) honorEl.textContent = Number(itemHonorMedal || 0).toLocaleString("ko-KR");
+}
+
   function update() {
 
    /* 🧾 유저 프로필 영역 갱신 */
@@ -6731,7 +6794,7 @@ if (descEl) {
 
   const fieldInfoEl = document.getElementById("currentFieldInfo"); // 카드 위 텍스트
   const huntBtnEl   = document.getElementById("huntBtn");
-
+    
   // 🗺 카드 위에 현재 사냥터 + 레벨 + 성공확률 표시
   if (field && fieldInfoEl) {
     const huntSuccess = getHuntSuccessChance(sword, currentField);
@@ -6749,6 +6812,8 @@ if (descEl) {
       </div>
     `;
   }
+
+    updateTopCurrencyBar();
 
   // 🆕 사냥 스태미나 UI 갱신
   updateHuntUI();
