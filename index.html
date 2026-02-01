@@ -10161,29 +10161,31 @@ function moveToBossFieldByBossId(bossId){
   return true;
 }
   
-// ✅ 보스전 아이콘 → 이동한다 눌렀을 때
+// ✅ 보스전 아이콘 → "이동한다" 눌렀을 때
 function startBossBattleMove(){
   closeNpcPopup();
 
-  const bossId = String(activeBossId || "");
-  const targetFieldId = BOSS_FIELD_MAP[bossId];
+  // 이미 이동 중이면 무시 (월드맵 이동과 동일)
+  if (isMoving) return;
+  isMoving = true;
 
-  // ✅ 매핑 없으면: 이동은 못 하지만 보스전은 열어준다(안전)
-  if (!targetFieldId) {
-    console.warn("보스 필드 매핑 없음:", bossId);
-    openBossBattle();
-    return;
-  }
+  // ✅ "이동중..." 팝업 (기존 월드맵 이동 팝업 재사용)
+  showMovePopup();
 
-  // ✅ '월드맵 이동 표준 루트'로 실제 사냥터 이동 처리
-  moveToFieldFromWorldMap(targetFieldId);
+  // 월드맵 이동과 비슷한 템포로 (원하면 900 고정도 OK)
+  const delay = 900;
 
-  // ✅ 이동 완료 타이밍은 moveToFieldFromWorldMap 내부 setTimeout 뒤임.
-  //    그래서 동일한 딜레이(1~2초 랜덤) 후에 보스전 오버레이를 연다.
-  const delay = 1000 + Math.random() * 1000;
   setTimeout(() => {
+    // ✅ 실제 사냥터 이동(배경 변경)
+    const moved = moveToBossFieldByBossId(activeBossId);
+
+    // 이동 팝업 닫기
+    closeMovePopup();
+    isMoving = false;
+
+    // ✅ 이동 완료 → 보스전 오버레이
     openBossBattle();
-  }, delay + 30);
+  }, delay);
 }
 
 // ✅ 실제 보스전 필드로 이동 (실바나 릴리아네 -> 늪엘프의 숲)
