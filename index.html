@@ -10127,10 +10127,13 @@ function renderMap() {
 
   // ✅ 퍼그란트의 대장간 POI 이동 (fieldId: 0)
 function moveToFulgurantForgeFromWorldMap(e){
-  if (e) e.stopPropagation(); // POI 클릭이 맵 패널 닫기 등에 먹히는 것 방지
+  if (e) e.stopPropagation();
 
-  // ✅ 기존 POI들과 동일: "이동할래?" 확인팝업 → 확인 누르면 moveToFieldFromWorldMap 흐름
-  showWorldMapMoveConfirm(0);
+  showWorldMapMoveConfirm(
+    0,                // ← 너가 만든 퍼그란트 대장간 fieldId (지금 대화 흐름상 0으로 쓰는 중)
+    "퍼그란트 대장간",
+    "사냥불가, 강화가능" // ← 원하면 숫자/문구 조정
+  );
 }
 
   // 🍄 월드맵(양피지)에서: 평화로운 버섯마을로 이동
