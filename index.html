@@ -2071,6 +2071,69 @@ hr.section-divider{
   #poiYggdrasil:hover .poi-label{
   filter: brightness(1.15);
 }
+
+  /* 🏛️ POI: 퍼그란트의 대장간 (이그드라실 북서쪽 / 버섯마을 북쪽 약간 동쪽) */
+#poiFulgurantForge{
+  position:absolute;
+
+  /* ✅ 시작 좌표(원하는 위치로 미세조정) */
+  left: 41.0%;
+  top: 30.5%;
+
+  transform: translate(-50%, -50%);
+  width: 66px;
+  height: 44px;
+
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 5;
+
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#poiFulgurantForge img{
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+#poiFulgurantForge:active{
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+/* 🏛️ 퍼그란트의 대장간 라벨 (다른 POI 라벨과 동일 톤) */
+#poiFulgurantForge .poi-label{
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  font-size: 9px;
+  font-weight: 900;
+  color: #cfcfcf;
+
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000,
+     0  2px 4px rgba(0,0,0,0.8);
+
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+#poiFulgurantForge:hover .poi-label{
+  color: #fff;
+  filter: brightness(1.15);
+}
+
   /* 🍄 POI: 평화로운 버섯마을 (이그드라실 1/3 크기) */
 #poiMushroomVillage{
   position: absolute;
@@ -3077,6 +3140,12 @@ hr.section-divider{
   <button id="poiYggdrasil" onclick="openSkyMap(event)">
   <img src="images/maps/poi_yggdrasil.png" alt="이그드라실">
   <span class="poi-label">이그드라실</span>
+</button>
+
+      <!-- 월드맵 POI: 퍼그란트의 대장간 -->
+<button id="poiFulgurantForge" class="poi-btn" onclick="moveToFulgurantForgeFromWorldMap(event)">
+  <img src="images/maps/poi_fulgurant_forge.png" alt="">
+  <span class="poi-label">퍼그란트 대장간</span>
 </button>
 
         <!-- 🍄 POI: 평화로운 버섯마을 (이그드라실 서쪽/호수 아래) -->
