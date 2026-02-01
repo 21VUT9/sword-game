@@ -10141,29 +10141,49 @@ function moveToFieldFromWorldMap(fieldId){
   }, delay);
 }
 
-  // 🗺️ 보스별 사냥터 매핑 (확장용)
+// ✅ 보스ID → 이동할 사냥터(fieldId) 매핑 (추후 보스 추가되면 여기만 늘리면 됨)
 const BOSS_FIELD_MAP = {
-  // bossId : fieldId
-  "swamp_elf_queen": 4,   // 실바나 릴리아네 → 늪엘프의 숲
-  // 이후 추가 예시
-  // "frost_queen": 5,    // 서리여왕 → 서리여왕의 동굴
-  // "death_king": 6,     // 망령왕 → 죽음세계
+  "swamp_elf_queen": 4, // 실바나 릴리아네 → 늪엘프의 숲
 };
 
+// ✅ 보스전 이동 시 실제 사냥터(배경) 변경
+function moveToBossFieldByBossId(bossId){
+  const id = String(bossId || "");
+  const fieldId = BOSS_FIELD_MAP[id];
+
+  // 매핑이 없으면 이동 없음(추후 보스 추가 시 여기만 확장)
+  if (!fieldId) return false;
+
+  currentField = fieldId;
+  applyFieldBackground(); // 배경 적용
+  update();               // UI 갱신
+  save();                 // 저장
+  return true;
+}
+  
 // ✅ 보스전 아이콘 → 이동한다 눌렀을 때
 function startBossBattleMove(){
   closeNpcPopup();
 
-  // 이미 이동 중이면 무시 (월드맵 이동 로직과 동일한 안전장치)
-  if (isMoving) return;
-  isMoving = true;
+  const bossId = String(activeBossId || "");
+  const targetFieldId = BOSS_FIELD_MAP[bossId];
 
-  // "사냥터 이동 중..." 팝업 (기존 함수 재사용)
-  showMovePopup();
+  // ✅ 매핑 없으면: 이동은 못 하지만 보스전은 열어준다(안전)
+  if (!targetFieldId) {
+    console.warn("보스 필드 매핑 없음:", bossId);
+    openBossBattle();
+    return;
+  }
 
+  // ✅ '월드맵 이동 표준 루트'로 실제 사냥터 이동 처리
+  moveToFieldFromWorldMap(targetFieldId);
+
+  // ✅ 이동 완료 타이밍은 moveToFieldFromWorldMap 내부 setTimeout 뒤임.
+  //    그래서 동일한 딜레이(1~2초 랜덤) 후에 보스전 오버레이를 연다.
+  const delay = 1000 + Math.random() * 1000;
   setTimeout(() => {
-    moveToBossField();
-  }, 900);
+    openBossBattle();
+  }, delay + 30);
 }
 
 // ✅ 실제 보스전 필드로 이동 (실바나 릴리아네 -> 늪엘프의 숲)
@@ -12427,7 +12447,7 @@ function openBossBattle(){
   // 1) 레온하르트 팝업 닫기
   closeNpcPopup();
 
-  // 2) [이동중...] 연출 (기존 맵 이동 팝업 대신, 파일에 이미 있는 페이드 오버레이 활용)
+  // 2) [이동중...] 연출
   const fade = document.getElementById("bossBattleFadeOverlay");
   if (fade) {
     fade.innerHTML = `
@@ -12442,15 +12462,20 @@ function openBossBattle(){
     fade.style.opacity = "0.85";
   }
 
-  // 3) 약간 딜레이 후 보스전 오버레이 오픈(기존 만들어둔 openBossBattle 그대로 활용)
+  // 3) 약간 딜레이 후 → 사냥터 이동(배경 변경) → 보스전 오버레이 오픈
   setTimeout(() => {
+    // ✅ 여기서 실제 사냥터 이동(늪엘프의 숲 등)
+    moveToBossFieldByBossId(activeBossId);
+
+    // 페이드 정리
     if (fade) {
       fade.style.opacity = "0";
       fade.style.pointerEvents = "none";
-      // 텍스트는 페이드 끝나고 정리
       setTimeout(() => { fade.innerHTML = ""; }, 250);
     }
-    openBossBattle(); // ✅ 기존 보스전 오버레이 열기 로직 재사용 :contentReference[oaicite:4]{index=4}
+
+    // ✅ 기존 보스전 오버레이 열기 로직 재사용
+    openBossBattle();
   }, 650);
 }
 
