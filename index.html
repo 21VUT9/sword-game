@@ -10102,14 +10102,14 @@ function moveToDimensionalRiftFromSkyMap(e){
   if (e) e.stopPropagation();
   showSkyMapMoveConfirm(10); // 10 = 차원의 틈새
 }
-
-// ✅ 월드맵 POI 공용 이동 함수 (기존 사냥터 선택 로직 그대로)
-function moveToFieldFromWorldMap(fieldId){
+  
+// ✅ 월드맵 POI 공용 이동 함수 (콜백 확장 버전)
+function moveToFieldFromWorldMap(fieldId, onArrive){
   // 대상 필드가 없으면 중단
-  if (!HUNT_FIELDS || !HUNT_FIELDS[fieldId]) return;
+  if (!HUNT_FIELDS || !HUNT_FIELDS[fieldId]) return false;
 
   // 이미 이동 중이면 무시
-  if (isMoving) return;
+  if (isMoving) return false;
   isMoving = true;
 
   // "사냥터 이동 중..." 팝업 표시 (기존 함수 재사용)
@@ -10138,28 +10138,20 @@ function moveToFieldFromWorldMap(fieldId){
     closeMovePopup();
 
     isMoving = false;
+
+    // ✅ 도착 후 후속처리(보스전/기타)
+    if (typeof onArrive === "function") {
+      try { onArrive(); } catch (e) { console.warn("onArrive error", e); }
+    }
   }, delay);
+
+  return true;
 }
 
 // ✅ 보스ID → 이동할 사냥터(fieldId) 매핑 (추후 보스 추가되면 여기만 늘리면 됨)
 const BOSS_FIELD_MAP = {
   "swamp_elf_queen": 4, // 실바나 릴리아네 → 늪엘프의 숲
 };
-
-// ✅ 보스전 이동 시 실제 사냥터(배경) 변경
-function moveToBossFieldByBossId(bossId){
-  const id = String(bossId || "");
-  const fieldId = BOSS_FIELD_MAP[id];
-
-  // 매핑이 없으면 이동 없음(추후 보스 추가 시 여기만 확장)
-  if (!fieldId) return false;
-
-  currentField = fieldId;
-  applyFieldBackground(); // 배경 적용
-  update();               // UI 갱신
-  save();                 // 저장
-  return true;
-}
   
 // ✅ 보스전 아이콘 → "이동한다" 눌렀을 때
 function startBossBattleMove(){
@@ -10186,34 +10178,6 @@ function startBossBattleMove(){
     // ✅ 이동 완료 → 보스전 오버레이
     openBossBattle();
   }, delay);
-}
-
-// ✅ 실제 보스전 필드로 이동 (실바나 릴리아네 -> 늪엘프의 숲)
-function moveToBossField(){
-  const bossId = String(activeBossId || "");
-  const targetField = BOSS_FIELD_MAP[bossId];
-
-  // 매핑 안 된 보스면 이동 중단 (안전장치)
-  if (!targetField) {
-    console.warn("보스 필드 매핑 없음:", bossId);
-    closeMovePopup();
-    isMoving = false;
-    openBossBattle(); // 그래도 보스전은 열어줌
-    return;
-  }
-
-  // ✅ 실제 사냥터 이동
-  currentField = targetField;
-
-  applyFieldBackground();
-  update();
-  save();
-
-  closeMovePopup();
-  isMoving = false;
-
-  // ✅ 이동 완료 → 보스전 오버레이
-  openBossBattle();
 }
 
 // 🧱 패널 바깥 클릭 시 닫기 (MAP / 인벤토리 / 로그 공통)
@@ -12445,40 +12409,24 @@ function openBossBattle(){
   popup.style.display = "flex";
 }
 
-  function startBossBattleMove(){
-  // 1) 레온하르트 팝업 닫기
+function startBossBattleMove(){
   closeNpcPopup();
 
-  // 2) [이동중...] 연출
-  const fade = document.getElementById("bossBattleFadeOverlay");
-  if (fade) {
-    fade.innerHTML = `
-      <div style="
-        position:absolute; inset:0;
-        display:flex; align-items:center; justify-content:center;
-        font-size:22px; font-weight:900; color:#fff;
-        text-shadow:0 4px 12px rgba(0,0,0,0.9);
-      ">[ 이동중 ... ]</div>
-    `;
-    fade.style.pointerEvents = "auto";
-    fade.style.opacity = "0.85";
+  const bossId = String(activeBossId || "");
+  const targetFieldId = BOSS_FIELD_MAP[bossId];
+
+  // 매핑이 없으면 이동 없이 보스전만 열어준다(안전장치)
+  if (!targetFieldId) {
+    console.warn("보스 필드 매핑 없음:", bossId);
+    openBossBattle();
+    return;
   }
 
-  // 3) 약간 딜레이 후 → 사냥터 이동(배경 변경) → 보스전 오버레이 오픈
-  setTimeout(() => {
-    // ✅ 여기서 실제 사냥터 이동(늪엘프의 숲 등)
-    moveToBossFieldByBossId(activeBossId);
-
-    // 페이드 정리
-    if (fade) {
-      fade.style.opacity = "0";
-      fade.style.pointerEvents = "none";
-      setTimeout(() => { fade.innerHTML = ""; }, 250);
-    }
-
-    // ✅ 기존 보스전 오버레이 열기 로직 재사용
+  // ✅ 이동/팝업/isMoving/배경적용/저장 = 전부 moveToFieldFromWorldMap가 담당
+  moveToFieldFromWorldMap(targetFieldId, () => {
+    // ✅ 도착 후 보스전 오버레이 오픈만 담당
     openBossBattle();
-  }, 650);
+  });
 }
 
 function closeBossBattle(){
