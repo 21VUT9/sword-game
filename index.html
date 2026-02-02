@@ -13219,29 +13219,82 @@ function openScrollSynthesizeConfirm(id){
   const max = getSynMaxCraftable(meta);
   synPendingQty = (max > 0 ? 1 : 0);
 
+    // ✅ 수량 보정(0~MAX)
+  const chosen = Math.max(0, Math.min(Number(synPendingQty || 1), max));
+  synPendingQty = chosen;
+
+  const needPaper   = meta.paper   * chosen;
+  const needEssence = meta.essence * chosen;
+  const needGold    = meta.gold    * chosen;
+
+  // 버튼(구매/분해와 동일 스타일)
+  const qtyBtn = (n, label) => {
+    const disabled = (n > max);
+    const active = (synPendingQty === n);
+    return `
+      <button
+        style="
+          padding:8px 10px; border-radius:10px;
+          border:1px solid ${active ? "rgba(255,215,64,0.65)" : "rgba(255,255,255,0.18)"};
+          background:${active ? "rgba(255,215,64,0.18)" : "rgba(0,0,0,0.35)"};
+          color:${disabled ? "rgba(255,255,255,0.25)" : "#fff"};
+          cursor:${disabled ? "not-allowed" : "pointer"};
+          min-width:56px;
+        "
+        ${disabled ? "disabled" : ""}
+        onclick="setSynQty(${n});"
+      >${label}</button>
+    `;
+  };
+
+  const msg = `
+    <div style="font-weight:900;font-size:18px;margin-bottom:8px;">주문서 합성</div>
+    <div style="color:#aaa;margin-bottom:10px;">${meta.name}</div>
+
+    <div style="text-align:left; font-size:13px; color:#ddd; line-height:1.7; margin-bottom:10px;">
+      필요 재료(1개 기준)<br>
+      - 마력이 깃든 종이: <b>${meta.paper}</b>개<br>
+      - 마력의정수: <b>${meta.essence}</b>개<br>
+      - 골드: <b>${formatGold(meta.gold)}</b><br><br>
+
+      현재 보유<br>
+      - 마력이 깃든 종이: <b>${Number(itemMagicPaper||0)}</b>개<br>
+      - 마력의정수: <b>${Number(itemEssence||0)}</b>개<br>
+      - 골드: <b>${formatGold(Number(gold||0))}</b><br>
+    </div>
+
+    <div style="color:#aaa; text-align:center; margin-bottom:10px;">
+      몇 개 합성할래? (가능 최대: ${max}개)
+    </div>
+
+    <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:10px;">
+      ${qtyBtn(1,"1")}
+      ${qtyBtn(5,"5")}
+      ${qtyBtn(20,"20")}
+      ${qtyBtn(max,"MAX")}
+    </div>
+
+    <div style="text-align:center; font-size:13px; color:#ddd; line-height:1.6;">
+      선택 수량: <b>${chosen}</b>개<br>
+      총 소모: 
+      <span style="color:#ffd54f;">종이 ${needPaper}개</span>, 
+      <span style="color:#ffd54f;">정수 ${needEssence}개</span>, 
+      <span style="color:#ffd54f;">골드 ${formatGold(needGold)}</span>
+    </div>
+  `;
+
   showConfirmPopup(
-    "주문서 합성",
-    `${meta.name}\n\n` +
-    `필요 재료(1개 기준)\n` +
-    `- 마력이 깃든 종이: ${meta.paper}개\n` +
-    `- 마력의정수: ${meta.essence}개\n` +
-    `- 골드: ${formatGold(meta.gold)}\n\n` +
-    `현재 보유\n` +
-    `- 마력이 깃든 종이: ${Number(itemMagicPaper||0)}개\n` +
-    `- 마력의정수: ${Number(itemEssence||0)}개\n` +
-    `- 골드: ${formatGold(Number(gold||0))}\n\n` +
-    `몇 개 합성할래?\n(가능 최대: ${max}개)`,
-    meta.img,
-    true,
-    "에델린",
-    [
-      { text:"1",   onClick: () => setSynQty(1) },
-      { text:"5",   onClick: () => setSynQty(5) },
-      { text:"20",  onClick: () => setSynQty(20) },
-      { text:"MAX", onClick: () => { const m=getSynMetaById(synTargetId); setSynQty(getSynMaxCraftable(m)); } },
-      { text:"합성확정", onClick: () => confirmSynthesize() },
-      { text:"취소", onClick: () => closeConfirmPopup() }
-    ]
+    msg,
+    meta.img,                 // ✅ 결과 주문서 이미지(기존 경로 그대로 사용)
+    "세레나 에델린",           // ✅ NPC 이름(문자열로!)
+    "합성확정",
+    () => confirmSynthesize(),
+    "취소",
+    () => {
+      synTargetId = "";
+      synPendingQty = 1;
+      closeNpcPopup();
+    }
   );
 }
 
@@ -13294,7 +13347,7 @@ function confirmSynthesize(){
   renderScrollShopItems(); // ✅ 합성 탭 리스트 갱신
 
   alert(`${meta.name} ${qty}개 합성 완료!`);
-  closeConfirmPopup();
+  closeNpcPopup();
 }
 
 function startBossBattleMove(){
