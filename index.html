@@ -2923,7 +2923,7 @@ hr.section-divider{
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.280)
+    (v4.301)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -5358,6 +5358,8 @@ const scrollShopNpcIdleLines = [
 // 선택된 아이템 / 처리 중 여부
 let scrollShopSelectedItem = null;
 let scrollShopIsProcessing = false;
+let scrollShopPendingQty = 1;          // ✅ 선택된 구매 수량
+let scrollShopPendingItem = null;      // ✅ 수량 선택 중인 아이템
 
   // ✅ 스크롤상점 도크 활성 토글
 function setScrollShopDockActive(on){
@@ -5411,57 +5413,174 @@ function updateScrollShopCurrency() {
 
 // 📜 상점 전용 NPC 확인 팝업 (예 / 아니요)
 function showScrollShopConfirmPopup(item) {
-  const popup     = document.getElementById("npcPopup");
-  const msgEl     = document.getElementById("npcPopupText");
-  const imgEl     = document.getElementById("npcPopupImg");
-  const okBtn     = document.getElementById("npcConfirmBtn");
-  const cancelBtn = document.getElementById("npcCancelBtn");
-  const nameEl    = document.getElementById("npcPopupName");
+  if (!item) return;
 
-  if (!popup || !msgEl || !imgEl || !okBtn || !cancelBtn) {
-    // 혹시라도 엘리먼트를 못 찾으면 그냥 alert로 대체
-    alert(`이건 '${item.name}'이야. 구매할래?`);
+  scrollShopPendingItem = item;
+  scrollShopPendingQty = 1;
+
+  // 가격 라벨
+  const currencyLabel =
+    item.priceType === "starShard" ? "별조각" :
+    item.priceType === "honor" ? "명예메달" :
+    item.priceType === "downProtect" ? "파괴방지주문서" : "";
+
+  const maxBuy = getScrollShopMaxBuyable(item);
+
+  const msg =
+    `
+    <div style="font-size:16px; font-weight:bold; margin-bottom:6px;">
+      ${item.name}
+    </div>
+    <div style="font-size:13px; line-height:1.6;">
+      ${item.desc || ""}
+    </div>
+    <div style="margin-top:10px; font-size:13px; color:#ddd;">
+      가격: <b>${item.price}</b> ${currencyLabel}
+      <span style="color:#888;">(최대 ${maxBuy}개)</span>
+    </div>
+    <div style="margin-top:8px; font-size:13px; color:#aaa;">
+      이걸 살래?
+    </div>
+    `;
+
+  showConfirmPopup(
+    msg,
+    "images/npc/npc_scrollshop.png",
+    "세레나 에델린",
+    "산다",
+    () => {
+      // ✅ 1단계: 산다 클릭 → 수량 선택 단계로
+      openScrollShopQtyStep();
+    },
+    "그만둘래",
+    () => {
+      scrollShopPendingItem = null;
+      scrollShopPendingQty = 1;
+      scrollShopSelectedItem = null;
+      closeNpcPopup();
+      setScrollShopNpcIdle();
+    }
+  );
+}
+
+// ✅ 수량 선택 단계 렌더
+function openScrollShopQtyStep(){
+  const item = scrollShopPendingItem;
+  if (!item) { closeNpcPopup(); return; }
+
+  const maxBuy = getScrollShopMaxBuyable(item);
+  if (maxBuy <= 0) {
+    showNpcMessage(
+      `
+      <div style="font-size:15px; margin-bottom:4px;">
+        조급하게 굴다간 더 힘들어질 수도 있어.
+      </div>
+      <div style="font-size:13px;">
+        조금만 더 모아서 오자.
+      </div>
+      `,
+      "images/npc/npc_scrollshop_calm.png",
+      true,
+      "세레나 에델린"
+    );
+    scrollShopPendingItem = null;
+    scrollShopPendingQty = 1;
+    scrollShopSelectedItem = null;
     return;
   }
 
-  // 상점 NPC 세팅
-  setNpcName("세레나 에델린");
-  imgEl.style.display = "block";
-  imgEl.src = "images/npc/npc_scrollshop_talk.png";
+  // ✅ 현재 선택 수량 보정
+  if (scrollShopPendingQty > maxBuy) scrollShopPendingQty = maxBuy;
+  if (scrollShopPendingQty < 1) scrollShopPendingQty = 1;
 
   const currencyLabel =
-  item.priceType === "starShard"
-    ? "빛나지 못한 별의 조각"
-    : item.priceType === "honor"
-      ? "명예의 훈장"
-      : "강등방지 주문서";
+    item.priceType === "starShard" ? "별조각" :
+    item.priceType === "honor" ? "명예메달" :
+    item.priceType === "downProtect" ? "파괴방지주문서" : "";
 
-  msgEl.innerHTML = `
-    <div style="font-size:16px; font-weight:bold; margin-bottom:6px;">
-      이건 '<b>${item.name}</b>'이야.
-    </div>
-    <div style="font-size:13px; line-height:1.5;">
-      <span style="color:#ffd27f;">${currencyLabel} ${item.price}개</span>로 살래?
-    </div>
+  const totalCost = Number(item.price || 0) * Number(scrollShopPendingQty || 0);
+
+  // 버튼(1/5/20/MAX)
+  const mkBtn = (n, label) => {
+    const disabled = (n > maxBuy);
+    const active = (scrollShopPendingQty === n);
+    return `
+      <button
+        style="
+          padding:8px 10px; border-radius:10px;
+          border:1px solid ${active ? "#f7d37a" : "rgba(255,255,255,0.18)"};
+          background:${active ? "rgba(247,211,122,0.18)" : "rgba(0,0,0,0.35)"};
+          color:${disabled ? "rgba(255,255,255,0.25)" : "#fff"};
+          cursor:${disabled ? "not-allowed" : "pointer"};
+          min-width:56px;
+        "
+        ${disabled ? "disabled" : ""}
+        onclick="setScrollShopPendingQty(${n});"
+      >${label}</button>
+    `;
+  };
+
+  // MAX는 “최대 구매 가능 수량”을 선택하게
+  const maxBtnHtml = `
+    <button
+      style="
+        padding:8px 10px; border-radius:10px;
+        border:1px solid ${scrollShopPendingQty === maxBuy ? "#f7d37a" : "rgba(255,255,255,0.18)"};
+        background:${scrollShopPendingQty === maxBuy ? "rgba(247,211,122,0.18)" : "rgba(0,0,0,0.35)"};
+        color:#fff;
+        cursor:pointer;
+        min-width:56px;
+      "
+      onclick="setScrollShopPendingQty(${maxBuy});"
+    >MAX</button>
   `;
 
-  okBtn.style.display = "inline-block";
-  cancelBtn.style.display = "inline-block";
-  okBtn.textContent = "산다";
-  cancelBtn.textContent = "그만둘래";
+  const msg =
+    `
+    <div style="font-size:16px; font-weight:bold; margin-bottom:6px;">
+      ${item.name}
+    </div>
+    <div style="font-size:13px; color:#aaa; margin-bottom:10px;">
+      수량을 선택해줘. (최대 ${maxBuy}개)
+    </div>
 
-  okBtn.onclick = function () {
-    popup.style.display = "none";
-    proceedScrollShopPurchase(item);
-  };
+    <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:10px;">
+      ${mkBtn(1, "1")}
+      ${mkBtn(5, "5")}
+      ${mkBtn(20, "20")}
+      ${maxBtnHtml}
+    </div>
 
-  cancelBtn.onclick = function () {
-    popup.style.display = "none";
-    // 취소하면 그냥 상점 NPC는 기존 랜덤 멘트 유지
-  };
+    <div style="text-align:center; font-size:13px; color:#ddd; line-height:1.6;">
+      선택 수량: <b>${scrollShopPendingQty}</b>개<br>
+      총 가격: <b>${totalCost}</b> ${currencyLabel}
+    </div>
+    `;
 
-  popup.style.display = "flex";
+  showConfirmPopup(
+    msg,
+    "images/npc/npc_scrollshop.png",
+    "세레나 에델린",
+    "구매확정",
+    () => {
+      const chosen = Number(scrollShopPendingQty || 1);
+      proceedScrollShopPurchase(item, chosen); // ✅ 수량 포함
+      scrollShopPendingItem = null;
+      scrollShopPendingQty = 1;
+    },
+    "뒤로",
+    () => {
+      // ✅ 뒤로: 1단계(살래?) 화면으로 복귀
+      showScrollShopConfirmPopup(item);
+    }
+  );
 }
+
+// ✅ 전역에서 호출되도록 window에 바인딩(인라인 onclick 때문)
+window.setScrollShopPendingQty = function(n){
+  scrollShopPendingQty = Number(n || 1);
+  openScrollShopQtyStep();
+};
   
 // 1. 랜덤 출력 : 기본 NPC 멘트
 function setScrollShopNpcIdle() {
@@ -5579,12 +5698,69 @@ function checkScrollShopCurrency(item) {
   return false;
 }
 
-  // 📜 상점 구매 진행 (재화 부족 / 구매중 / 성공 모두 팝업 처리)
-function proceedScrollShopPurchase(item) {
-  if (scrollShopIsProcessing) return;
+  function getScrollShopCurrencyAmount(item){
+  if (item.priceType === "starShard") return Number(starShard || 0);
+  if (item.priceType === "honor") return Number(itemHonorMedal || 0);
+  if (item.priceType === "downProtect") return Number(itemDownProtect || 0);
+  return 0;
+}
 
-  // 먼저 재화 부족 체크
-  if (!checkScrollShopCurrency(item)) {
+function deductScrollShopCurrency(item, totalCost){
+  totalCost = Number(totalCost || 0);
+  if (totalCost <= 0) return;
+
+  if (item.priceType === "starShard") {
+    starShard = Math.max(0, Number(starShard || 0) - totalCost);
+  } else if (item.priceType === "honor") {
+    itemHonorMedal = Math.max(0, Number(itemHonorMedal || 0) - totalCost);
+  } else if (item.priceType === "downProtect") {
+    itemDownProtect = Math.max(0, Number(itemDownProtect || 0) - totalCost);
+  }
+}
+
+function getScrollShopMaxBuyable(item){
+  const price = Number(item?.price || 0);
+  if (price <= 0) return 0;
+
+  // ✅ huntReset은 여러 개 사도 의미가 없어서 1개로 제한(현재 grant에서 즉시사용 처리)
+  if (item.id === "huntReset") return (getScrollShopCurrencyAmount(item) >= price) ? 1 : 0;
+
+  const have = getScrollShopCurrencyAmount(item);
+  return Math.floor(have / price);
+}
+
+  // 📜 상점 구매 진행 (재화 부족 / 구매중 / 성공 모두 팝업 처리)
+function proceedScrollShopPurchase(item, qty) {
+  if (scrollShopIsProcessing) return;
+  if (!item) return;
+
+  qty = Number(qty || 1);
+  if (!Number.isFinite(qty) || qty < 1) qty = 1;
+
+  // ✅ MAX/현재재화에 맞춰 상한 보정
+  const maxBuy = getScrollShopMaxBuyable(item);
+  if (maxBuy <= 0) {
+    showNpcMessage(
+      `
+      <div style="font-size:15px; margin-bottom:4px;">
+        조급하게 굴다간 더 힘들어질 수도 있어.
+      </div>
+      <div style="font-size:13px;">
+        조금만 더 모아서 오자.
+      </div>
+      `,
+      "images/npc/npc_scrollshop_calm.png",
+      true,
+      "세레나 에델린"
+    );
+    return;
+  }
+  if (qty > maxBuy) qty = maxBuy;
+
+  const totalCost = Number(item.price || 0) * qty;
+
+  // 먼저 재화 부족 체크(수량 기준)
+  if (getScrollShopCurrencyAmount(item) < totalCost) {
     showNpcMessage(
       `
       <div style="font-size:15px; margin-bottom:4px;">
@@ -5603,17 +5779,18 @@ function proceedScrollShopPurchase(item) {
 
   scrollShopIsProcessing = true;
 
-  // 4. “잠깐만, 확인하고 있어.” – 시스템 팝업 (NPC 없이)
+  // “잠깐만, 확인하고 있어.” – 시스템 팝업 (NPC 없이)
   showNpcMessage(
     `<div style="font-size:14px;">잠깐만, 확인하고 있어.</div>`,
-    null,   // imgPath = null → NPC 없이 사용
-    false,  // showButton = false → 버튼 숨김
+    null,
+    false,
     ""
   );
 
   setTimeout(() => {
-    // 다시 한 번 재화 체크 (중간에 값 바뀌었을 수도 있으니)
-    if (!checkScrollShopCurrency(item)) {
+    // ✅ 중간에 재화가 바뀌었을 수도 있으니 다시 계산/보정
+    const maxBuy2 = getScrollShopMaxBuyable(item);
+    if (maxBuy2 <= 0) {
       showNpcMessage(
         `
         <div style="font-size:15px; margin-bottom:4px;">
@@ -5631,22 +5808,35 @@ function proceedScrollShopPurchase(item) {
       return;
     }
 
-    // 실제 재화 차감
-if (item.priceType === "starShard") {
-  starShard -= item.price;
-  if (starShard < 0) starShard = 0;
-} else if (item.priceType === "honor") {
-  itemHonorMedal -= item.price;
-  if (itemHonorMedal < 0) itemHonorMedal = 0;
-} else if (item.priceType === "downProtect") {
-  itemDownProtect -= item.price;
-  if (itemDownProtect < 0) itemDownProtect = 0;
-}
+    let qty2 = qty;
+    if (qty2 > maxBuy2) qty2 = maxBuy2;
 
-    // 아이템 지급 + 로그/저장/인벤토리 갱신
-    grantScrollShopItem(item);
+    const totalCost2 = Number(item.price || 0) * qty2;
+    if (getScrollShopCurrencyAmount(item) < totalCost2) {
+      showNpcMessage(
+        `
+        <div style="font-size:15px; margin-bottom:4px;">
+          조급하게 굴다간 더 힘들어질 수도 있어.
+        </div>
+        <div style="font-size:13px;">
+          조금만 더 모아서 오자.
+        </div>
+        `,
+        "images/npc/npc_scrollshop_calm.png",
+        true,
+        "세레나 에델린"
+      );
+      scrollShopIsProcessing = false;
+      return;
+    }
 
-    // 5. 구매 성공 멘트
+    // ✅ 실제 재화 차감(수량 반영)
+    deductScrollShopCurrency(item, totalCost2);
+
+    // ✅ 아이템 지급(수량 반영)
+    grantScrollShopItem(item, qty2);
+
+    // 구매 성공 멘트
     showNpcMessage(
       `
       <div style="font-size:15px; margin-bottom:4px;">
@@ -5661,36 +5851,44 @@ if (item.priceType === "starShard") {
       "세레나 에델린"
     );
 
-    // 하단 NPC 대사도 다시 랜덤으로 되돌려주면 자연스러움
     setScrollShopNpcIdle();
 
     scrollShopIsProcessing = false;
     scrollShopSelectedItem = null;
-  }, 1000);  // 1초 딜레이
+  }, 1000);
 }
 
 // 실제 아이템 지급 처리
-function grantScrollShopItem(item) {
-  if (item.id === "scroll21")   itemScroll21++;
-  if (item.id === "protect")    itemProtect++;
-  else if (item.id === "protect_trade_down10") {
-  itemProtect += 1;
-}
-  if (item.id === "super")      itemSuper++;
-  if (item.id === "rateUp5")    itemRateUp5++;
+function grantScrollShopItem(item, qty) {
+  qty = Number(qty || 1);
+  if (!Number.isFinite(qty) || qty < 1) qty = 1;
 
-    // 🆕 구매 즉시 사용: 사냥횟수 20/20 초기화
+  // ✅ huntReset은 즉시사용형이라 1로 제한
+  if (item.id === "huntReset") qty = 1;
+
+  // 수량 지급(기존 if 구조 유지 + qty만 반영)
+  if (item.id === "scroll21")   itemScroll21 += qty;
+
+  if (item.id === "protect")    itemProtect += qty;
+  else if (item.id === "protect_trade_down10") {
+    itemProtect += qty;
+  }
+
+  if (item.id === "super")      itemSuper += qty;
+  if (item.id === "rateUp5")    itemRateUp5 += qty;
+
+  // 구매 즉시 사용: 사냥횟수 20/20 초기화
   if (item.id === "huntReset") {
     huntCountToday = 0;
     huntStamina = 20;
     lastHuntDate = getTodayDateString();
   }
 
-  updateScrollShopCurrency();   // 재화 표시 갱신
-  updateUpgradeItemLabels();    // 기존 함수 (아이템 수량 라벨 갱신)
-  renderInventory();            // 인벤토리 갱신
-  update();                     // 메인 UI 갱신
-  save();                       // Firebase 저장
+  updateScrollShopCurrency();
+  updateUpgradeItemLabels();
+  renderInventory();
+  update();
+  save();
 }
 
 // "예" 클릭
