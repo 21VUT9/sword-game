@@ -2934,6 +2934,45 @@ hr.section-divider{
   35%  { opacity:1; transform:translate(-50%,-50%) scale(1.05); }
   100% { opacity:0; transform:translate(-50%,-50%) scale(1.2); }
 }
+
+  /* =========================
+   👆 화면 터치/클릭 위치 표시(리플)
+   - pointer-events:none 이라 게임 클릭 방해 안 함
+   ========================= */
+.touchRipple {
+  position: fixed;
+  left: 0; top: 0;
+  width: 16px; height: 16px;
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: 500000; /* 팝업 위로 보여도 클릭은 안 먹음 */
+
+  /* “대장간/스크롤” 느낌: 따뜻한 금빛 링 + 은은한 광 */
+  background: radial-gradient(circle,
+    rgba(255, 220, 120, 0.35) 0%,
+    rgba(255, 220, 120, 0.10) 45%,
+    rgba(255, 220, 120, 0.00) 70%);
+  border: 1px solid rgba(255, 215, 120, 0.55);
+  box-shadow:
+    0 0 10px rgba(255, 210, 120, 0.25),
+    0 0 18px rgba(255, 210, 120, 0.12);
+
+  transform: translate(-50%, -50%) scale(0.6);
+  opacity: 0.95;
+  animation: touchRippleAnim 520ms ease-out forwards;
+  will-change: transform, opacity, filter;
+}
+
+@keyframes touchRippleAnim {
+  0%   { transform: translate(-50%, -50%) scale(0.55); opacity: 0.90; filter: blur(0px); }
+  55%  { transform: translate(-50%, -50%) scale(2.35); opacity: 0.55; filter: blur(0.2px); }
+  100% { transform: translate(-50%, -50%) scale(3.10); opacity: 0.00; filter: blur(0.6px); }
+}
+
+/* (선택) 모바일 길게눌러 생기는 하이라이트/컨텍스트 방지 강화 */
+html, body {
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+}
   
 </style>
 </head>
@@ -7345,6 +7384,34 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+
+    // ===============================
+  // 👆 화면 터치/클릭 위치 리플 이펙트
+  // ===============================
+  function spawnTouchRipple(x, y){
+    const d = document.createElement("div");
+    d.className = "touchRipple";
+    d.style.left = x + "px";
+    d.style.top  = y + "px";
+    document.body.appendChild(d);
+
+    // 애니 끝나면 제거
+    d.addEventListener("animationend", () => d.remove());
+    // 안전장치(혹시 animationend 누락 시)
+    setTimeout(() => { if(d && d.remove) d.remove(); }, 800);
+  }
+
+  // pointerdown: 모바일 터치/PC 클릭 모두 커버
+  document.addEventListener("pointerdown", (e) => {
+    // 입력창/버튼 등 UI 조작은 굳이 안 띄우고 싶으면 제외
+    const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
+    if (tag === "input" || tag === "textarea") return;
+
+    // 우클릭 제외(PC)
+    if (e.button === 2) return;
+
+    spawnTouchRipple(e.clientX, e.clientY);
+  }, { passive: true });
 
   // ✅ 상단 재화바 갱신
 function updateTopCurrencyBar(){
