@@ -765,6 +765,29 @@ button {
   filter: saturate(1) brightness(1);
   transform: scale(1.08);
 }
+
+  #scrollShopTabs{
+  display:flex;
+  gap:8px;
+  margin: 6px 0 10px 0;
+}
+
+.scrollShopTab{
+  flex:1;
+  padding:10px 8px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.35);
+  color:#ddd;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.scrollShopTab.active{
+  background: rgba(255,215,64,0.18);
+  border:1px solid rgba(255,215,64,0.45);
+  color:#ffd54f;
+}
   
 .userListName {
   color:#fff;             /* 기본 흰색 유지 */
@@ -3996,6 +4019,13 @@ hr.section-divider{
       </div>
     </div>
 
+    <!-- 🆕 스크롤상점 탭 -->
+<div id="scrollShopTabs">
+  <button class="scrollShopTab active" id="tabShopBuy" onclick="setScrollShopTab('buy')">구매</button>
+  <button class="scrollShopTab" id="tabShopDis" onclick="setScrollShopTab('dis')">주문서분해</button>
+  <button class="scrollShopTab" id="tabShopSyn" onclick="setScrollShopTab('syn')">주문서합성</button>
+</div>
+    
     <!-- 아이템 리스트 영역 -->
     <div id="scrollShopItemList"
      style="border:1px solid #444; border-radius:6px; padding:4px;
@@ -5265,11 +5295,12 @@ function updateDuelUI() {
 let itemScroll15 = 0;   // 15강 강화 주문서
 let itemProtect  = 0;   // 파괴방지 주문서
 let itemSuper    = 0;   // 슈퍼강화 주문서
-let itemDownProtect = 0;  // 🆕 강등방지 주문서
+let itemDownProtect = 0;  //  강등방지 주문서
 let starShard = 0;      // ⭐ 빛나지 못한 별의 조각
 let itemEssence = 0; // 🟣 마력의 정수
 let itemScroll21 = 0;     // 21강 강화 주문서
 let itemRateUp5  = 0;   // 강화 확률 +5% 주문서
+let itemMagicPaper = 0; // 🆕 마력이 깃든 종이
 
 // 📜 마법 스크롤 상점 판매 아이템
 const scrollShopItems = [
@@ -5606,6 +5637,36 @@ function renderScrollShopItems() {
   const listEl = document.getElementById("scrollShopItemList");
   if (!listEl) return;
 
+   // 🆕 주문서분해 탭
+  if (scrollShopTabMode === "dis") {
+    const disList = [
+      { id:"itemDownProtect", name:"강등방지주문서", img:"images/items/down_protect.png",  count:Number(itemDownProtect||0), paper:1 },
+      { id:"itemScroll15",    name:"15강강화주문서", img:"images/items/scroll_15.png",     count:Number(itemScroll15||0),    paper:2 },
+      { id:"itemScroll21",    name:"21강강화주문서", img:"images/items/scroll_21.png",     count:Number(itemScroll21||0),    paper:5 },
+      { id:"itemProtect",     name:"파괴방지주문서", img:"images/items/protect.png",       count:Number(itemProtect||0),     paper:10 },
+      { id:"itemSuper",       name:"슈퍼강화주문서", img:"images/items/super.png",         count:Number(itemSuper||0),       paper:15 },
+      { id:"itemRateUp5",     name:"강화확률5%주문서", img:"images/items/rateup5.png",     count:Number(itemRateUp5||0),     paper:5 },
+    ].filter(x => x.count > 0);
+
+    if (disList.length === 0) {
+      listEl.innerHTML = `<div style="padding:10px;color:#aaa;">분해할 주문서가 없습니다.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = disList.map(it => `
+      <div class="scroll-shop-row" onclick="openScrollDisassembleConfirm('${it.id}')">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <img src="${it.img}" style="width:44px;height:44px;image-rendering:pixelated;">
+          <div>
+            <div style="font-weight:800;">${it.name}</div>
+            <div style="font-size:12px;color:#aaa;">보유: ${it.count}개 · 1개 분해 → 종이 ${it.paper}개</div>
+          </div>
+        </div>
+      </div>
+    `).join("");
+    return;
+  }
+
   let html = "";
 
   scrollShopItems.forEach((item) => {
@@ -5651,6 +5712,28 @@ function renderScrollShopItems() {
   });
 
   listEl.innerHTML = html;
+}
+
+  let scrollShopTabMode = "buy"; // "buy" | "dis" | "syn"
+
+function setScrollShopTab(mode){
+  scrollShopTabMode = mode;
+
+  const b = document.getElementById("tabShopBuy");
+  const d = document.getElementById("tabShopDis");
+  const s = document.getElementById("tabShopSyn");
+  if (b) b.classList.toggle("active", mode === "buy");
+  if (d) d.classList.toggle("active", mode === "dis");
+  if (s) s.classList.toggle("active", mode === "syn");
+
+  // 합성은 아직 UI만: 클릭 시 안내만
+  if (mode === "syn") {
+    const listEl = document.getElementById("scrollShopItemList");
+    if (listEl) listEl.innerHTML = `<div style="padding:10px;color:#aaa;">주문서합성은 준비중입니다.</div>`;
+    return;
+  }
+
+  renderScrollShopItems(); // buy/dis 공통 렌더
 }
 
 // 아이콘 클릭 → 인벤토리와 같은 아이템 상세 팝업 사용
@@ -5857,6 +5940,157 @@ function proceedScrollShopPurchase(item, qty) {
     scrollShopSelectedItem = null;
   }, 1000);
 }
+
+  // ===============================
+// 🧾 주문서 분해(수량 선택) 상태
+// ===============================
+let disTargetId = "";
+let disQty = 1;
+
+function getDisMetaById(id){
+  const map = {
+    itemDownProtect: { name:"강등방지주문서", count: () => Number(itemDownProtect||0), paper:1 },
+    itemScroll15:    { name:"15강강화주문서", count: () => Number(itemScroll15||0),    paper:2 },
+    itemScroll21:    { name:"21강강화주문서", count: () => Number(itemScroll21||0),    paper:5 },
+    itemProtect:     { name:"파괴방지주문서", count: () => Number(itemProtect||0),     paper:10 },
+    itemSuper:       { name:"슈퍼강화주문서", count: () => Number(itemSuper||0),       paper:15 },
+    itemRateUp5:     { name:"강화확률5%주문서", count: () => Number(itemRateUp5||0),   paper:5 },
+  };
+  return map[id] || null;
+}
+
+// ✅ 분해 리스트에서 클릭 시 호출
+function openScrollDisassembleConfirm(id){
+  const meta = getDisMetaById(id);
+  if(!meta) return;
+
+  disTargetId = id;
+  disQty = 1;
+
+  const owned = meta.count();
+  if (owned <= 0) {
+    showNpcMessage("분해할 수량이 없습니다.", null, true, ""); // NPC 없음
+    return;
+  }
+
+  renderDisassemblePopup(); // 수량 선택 팝업 오픈
+}
+
+// ✅ 수량 선택 팝업(1/5/20/MAX) + 분해/취소
+function renderDisassemblePopup(){
+  const meta = getDisMetaById(disTargetId);
+  if(!meta) return;
+
+  const owned = meta.count();
+  if (owned <= 0) {
+    closeNpcPopup();
+    return;
+  }
+
+  // 수량 보정
+  disQty = Math.max(1, Math.min(Number(disQty||1), owned));
+  const max = owned;
+  const paperGet = meta.paper * disQty;
+
+  // 버튼 활성/비활성 (보유량 초과면 비활성)
+  const qtyBtn = (n, label) => {
+    const disabled = (n > max);
+    const active = (disQty === n);
+    return `
+      <button
+        style="
+          padding:8px 10px; border-radius:10px;
+          border:1px solid ${active ? "rgba(255,215,64,0.65)" : "rgba(255,255,255,0.18)"};
+          background:${active ? "rgba(255,215,64,0.18)" : "rgba(0,0,0,0.35)"};
+          color:${disabled ? "rgba(255,255,255,0.25)" : "#fff"};
+          cursor:${disabled ? "not-allowed" : "pointer"};
+          min-width:56px;
+        "
+        ${disabled ? "disabled" : ""}
+        onclick="setDisQty(${n});"
+      >${label}</button>
+    `;
+  };
+
+  const msg = `
+    <div style="font-weight:900;font-size:18px;margin-bottom:8px;">주문서분해</div>
+    <div style="color:#aaa;margin-bottom:10px;">${meta.name} (보유: ${owned}개)</div>
+
+    <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:10px;">
+      ${qtyBtn(1,"1")}
+      ${qtyBtn(5,"5")}
+      ${qtyBtn(20,"20")}
+      ${qtyBtn(max,"MAX")}
+    </div>
+
+    <div style="text-align:center; font-size:13px; color:#ddd; line-height:1.6;">
+      선택 수량: <b>${disQty}</b>개<br>
+      획득: <span style="color:#ffd54f;">마력이 깃든 종이 ${paperGet}개</span>
+    </div>
+  `;
+
+  // ✅ NPC 없이(이미지/이름 숨김), 버튼 2개만 사용
+  showConfirmPopup(
+    msg,
+    null,
+    "",
+    "분해한다",
+    () => { confirmDisassemble(); },
+    "취소한다",
+    () => {
+      disTargetId = "";
+      disQty = 1;
+      closeNpcPopup();
+    }
+  );
+}
+
+// ✅ 수량 버튼 클릭용 (팝업 다시 렌더)
+function setDisQty(q){
+  disQty = Number(q || 1);
+  renderDisassemblePopup();
+}
+
+// ✅ 실제 분해 처리
+function confirmDisassemble(){
+  const meta = getDisMetaById(disTargetId);
+  if(!meta) return;
+
+  const owned = meta.count();
+  disQty = Math.max(1, Math.min(Number(disQty||1), owned));
+
+  // 1) 주문서 차감
+  if (disTargetId === "itemDownProtect") itemDownProtect = Math.max(0, Number(itemDownProtect||0) - disQty);
+  if (disTargetId === "itemScroll15")    itemScroll15    = Math.max(0, Number(itemScroll15||0) - disQty);
+  if (disTargetId === "itemScroll21")    itemScroll21    = Math.max(0, Number(itemScroll21||0) - disQty);
+  if (disTargetId === "itemProtect")     itemProtect     = Math.max(0, Number(itemProtect||0) - disQty);
+  if (disTargetId === "itemSuper")       itemSuper       = Math.max(0, Number(itemSuper||0) - disQty);
+  if (disTargetId === "itemRateUp5")     itemRateUp5     = Math.max(0, Number(itemRateUp5||0) - disQty);
+
+  // 2) 종이 지급
+  itemMagicPaper = Number(itemMagicPaper||0) + (meta.paper * disQty);
+
+  // 3) 저장/갱신
+  save();
+  update();
+  renderInventory();
+  renderScrollShopItems();
+
+  // 4) 팝업 닫고 완료 메시지
+  closeNpcPopup();
+  showNpcMessage(
+    `분해 완료!<br><span style="color:#ffd54f;">마력이 깃든 종이 ${meta.paper * disQty}개</span> 획득`,
+    null, true, ""
+  );
+
+  // 상태 초기화
+  disTargetId = "";
+  disQty = 1;
+}
+
+// ✅ 인라인 onclick을 쓰는 경우 대비(안전)
+window.openScrollDisassembleConfirm = openScrollDisassembleConfirm;
+window.setDisQty = setDisQty;
 
 // 실제 아이템 지급 처리
 function grantScrollShopItem(item, qty) {
@@ -6102,7 +6336,7 @@ currentSessionId = null;
 weaponType   = null;
 maxSwordLevel = 0;
 destroyCount  = 0;
-
+  
   attendanceCount    = 0;
   lastAttendanceDate = "";
   currentField       = 1;
@@ -6112,6 +6346,7 @@ destroyCount  = 0;
   itemProtect        = 0;
   itemSuper          = 0;
   itemDownProtect    = 0;
+  itemMagicPaper = 0;
   starShard          = 0;
   duelWin = 0;
   duelLose = 0;
@@ -9989,6 +10224,7 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
       itemDownProtect    = data.itemDownProtect ?? 0;
       starShard          = data.starShard ?? 0;
       itemEssence = Number(data.itemEssence || 0);
+      itemMagicPaper = Number(data.itemMagicPaper || 0);
       couponUsedMap = data.couponUsed || {};
       // ✅ 명예의전당(30강) / 글로벌 30강 이벤트 상태 로드
       hofDeadline = Number(data.hofDeadline || 0);
@@ -10121,6 +10357,7 @@ function save() {
     itemDownProtect: Number(itemDownProtect),
     starShard: Number(starShard),
     itemEssence: Number(itemEssence || 0),
+    itemMagicPaper: Number(itemMagicPaper || 0), 
     huntStamina: Number(huntStamina),
     lastStaminaUpdate: Number(lastStaminaUpdate),
     duelWin: Number(duelWin),
@@ -10839,6 +11076,7 @@ if (!power || power <= 20) {
     itemHonorMedal = data.itemHonorMedal ?? 0;
     starShard = data.starShard ?? 0;
     itemEssence = Number(data.itemEssence || 0);
+    itemMagicPaper = Number(data.itemMagicPaper || 0);
     couponUsedMap = data.couponUsed || {};
     // ✅ 명예의전당(30강) / 글로벌 30강 이벤트 상태 로드
     hofDeadline = Number(data.hofDeadline || 0);
@@ -15155,11 +15393,19 @@ if (starShard > 0) {
     id: "essence",
     name: "마력의 정수",
     count: Number(itemEssence || 0),
-    img: "images/items/essence.png", // ✅ 이미지 추후 업로드 (현재는 임시 경로)
+    img: "images/items/essence.png", // 
     desc: "응축된 마력의 결정. 불길한 마력을 머금고있다."
   });
 }
-
+    if (Number(itemMagicPaper || 0) > 0) {
+    items.push({
+      id: "magicPaper",
+      name: "마력이 깃든 종이",
+      count: Number(itemMagicPaper || 0),
+      img: "images/items/magic_paper.png",
+      desc: "주문서제작에 사용되는 종이. 마력이 은은하게 남아있다."
+    });
+  }
   
   const title = document.createElement("p");
   title.textContent = "보유 아이템";
