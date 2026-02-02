@@ -13248,7 +13248,14 @@ function openScrollSynthesizeConfirm(id){
 
   synTargetId = id;
   const max = getSynMaxCraftable(meta);
-  synPendingQty = (max > 0 ? 1 : 0);
+    // ✅ 기존 선택 수량을 유지하되, 1~max 범위로만 보정
+  // (setSynQty()가 다시 호출해도 리셋되지 않게)
+  if (max <= 0) {
+    synPendingQty = 0;
+  } else {
+    const cur = Number(synPendingQty || 1);
+    synPendingQty = Math.max(1, Math.min(cur, max));
+  }
 
     // ✅ 수량 보정(0~MAX)
   const chosen = Math.max(0, Math.min(Number(synPendingQty || 1), max));
