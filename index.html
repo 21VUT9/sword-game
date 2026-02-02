@@ -2935,41 +2935,55 @@ hr.section-divider{
   100% { opacity:0; transform:translate(-50%,-50%) scale(1.2); }
 }
 
-  /* =========================
-   👆 화면 터치/클릭 위치 표시(리플)
-   - pointer-events:none 이라 게임 클릭 방해 안 함
+/* =========================
+   👆 화면 터치/클릭 위치 표시(리플) - 강화 버전
    ========================= */
 .touchRipple {
   position: fixed;
   left: 0; top: 0;
-  width: 16px; height: 16px;
+  width: 22px; height: 22px;          /* ⬅ 기본 크기 증가 */
   border-radius: 999px;
   pointer-events: none;
-  z-index: 500000; /* 팝업 위로 보여도 클릭은 안 먹음 */
+  z-index: 500000;
 
-  /* “대장간/스크롤” 느낌: 따뜻한 금빛 링 + 은은한 광 */
+  /* 중심이 더 또렷한 금빛 마력 링 */
   background: radial-gradient(circle,
-    rgba(255, 220, 120, 0.35) 0%,
-    rgba(255, 220, 120, 0.10) 45%,
-    rgba(255, 220, 120, 0.00) 70%);
-  border: 1px solid rgba(255, 215, 120, 0.55);
+    rgba(255, 235, 170, 0.55) 0%,
+    rgba(255, 215, 120, 0.28) 40%,
+    rgba(255, 215, 120, 0.10) 55%,
+    rgba(255, 215, 120, 0.00) 75%);
+  
+  border: 2px solid rgba(255, 225, 150, 0.85); /* ⬅ 테두리 선명 */
   box-shadow:
-    0 0 10px rgba(255, 210, 120, 0.25),
-    0 0 18px rgba(255, 210, 120, 0.12);
+    0 0 12px rgba(255, 225, 150, 0.55),
+    0 0 24px rgba(255, 210, 120, 0.30),
+    inset 0 0 6px rgba(255, 255, 255, 0.35);
 
-  transform: translate(-50%, -50%) scale(0.6);
-  opacity: 0.95;
-  animation: touchRippleAnim 520ms ease-out forwards;
+  transform: translate(-50%, -50%) scale(0.55);
+  opacity: 1;
+  animation: touchRippleAnim 560ms ease-out forwards;
   will-change: transform, opacity, filter;
 }
 
 @keyframes touchRippleAnim {
-  0%   { transform: translate(-50%, -50%) scale(0.55); opacity: 0.90; filter: blur(0px); }
-  55%  { transform: translate(-50%, -50%) scale(2.35); opacity: 0.55; filter: blur(0.2px); }
-  100% { transform: translate(-50%, -50%) scale(3.10); opacity: 0.00; filter: blur(0.6px); }
+  0% {
+    transform: translate(-50%, -50%) scale(0.55);
+    opacity: 1;
+    filter: blur(0px);
+  }
+  45% {
+    transform: translate(-50%, -50%) scale(2.8); /* ⬅ 퍼짐 증가 */
+    opacity: 0.75;
+    filter: blur(0.3px);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(3.8); /* ⬅ 최종 크기 증가 */
+    opacity: 0;
+    filter: blur(0.9px);
+  }
 }
 
-/* (선택) 모바일 길게눌러 생기는 하이라이트/컨텍스트 방지 강화 */
+/* 모바일 기본 터치 하이라이트 제거 */
 html, body {
   -webkit-tap-highlight-color: rgba(0,0,0,0);
 }
