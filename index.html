@@ -5654,16 +5654,31 @@ function renderScrollShopItems() {
     }
 
     listEl.innerHTML = disList.map(it => `
-      <div class="scroll-shop-row" onclick="openScrollDisassembleConfirm('${it.id}')">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <img src="${it.img}" style="width:44px;height:44px;image-rendering:pixelated;">
-          <div>
-            <div style="font-weight:800;">${it.name}</div>
-            <div style="font-size:12px;color:#aaa;">보유: ${it.count}개 · 1개 분해 → 종이 ${it.paper}개</div>
-          </div>
-        </div>
-      </div>
-    `).join("");
+  <div
+    class="scroll-shop-row"
+    style="display:flex; align-items:center; padding:4px 6px;
+           border-bottom:1px solid #333; cursor:pointer;
+           height:44px; box-sizing:border-box;"
+    onclick="openScrollDisassembleConfirm('${it.id}')"
+  >
+    <!-- 아이콘 -->
+    <div style="width:36px; height:36px; margin-right:8px; flex-shrink:0;">
+      <img src="${it.img}" alt="" style="max-width:100%; max-height:100%; image-rendering:pixelated;">
+    </div>
+
+    <!-- 이름 + 설명 -->
+    <div style="flex:1; text-align:left; line-height:1.15;">
+      <div style="font-weight:800;">${it.name}</div>
+      <div style="font-size:12px;color:#aaa;">보유: ${it.count}개 · 1개 분해 → 종이 ${it.paper}개</div>
+    </div>
+
+    <!-- 우측(간단 표기) -->
+    <div style="display:flex; align-items:center; gap:4px; flex-shrink:0;">
+      <span style="font-size:12px;color:#aaa;">→</span>
+      <span style="font-weight:800;">${it.paper}</span>
+    </div>
+  </div>
+`).join("");
     return;
   }
 
@@ -5695,17 +5710,33 @@ function renderScrollShopItems() {
       const max = Math.max(0, Math.min(maxByPaper, maxByEssence, maxByGold));
 
       html += `
-        <div class="scrollShopItemRow" onclick="openScrollSynthesizeConfirm('${it.id}')">
-          <img class="scrollShopItemImg" src="${it.img}" alt="">
-          <div class="scrollShopItemInfo">
-            <div class="scrollShopItemName">${it.name}</div>
-            <div class="scrollShopItemDesc">
-              필요: 마력이 깃든 종이 ${it.paper}개 / 마력의정수 ${it.essence}개 / 골드 ${formatGold(it.gold)}
-              <br>현재 합성 가능: ${max}개
-            </div>
-          </div>
-        </div>
-      `;
+  <div
+    class="scroll-shop-row"
+    style="display:flex; align-items:center; padding:4px 6px;
+           border-bottom:1px solid #333; cursor:pointer;
+           height:44px; box-sizing:border-box;"
+    onclick="openScrollSynthesizeConfirm('${it.id}')"
+  >
+    <!-- 아이콘 -->
+    <div style="width:36px; height:36px; margin-right:8px; flex-shrink:0;">
+      <img src="${it.img}" alt="" style="max-width:100%; max-height:100%; image-rendering:pixelated;">
+    </div>
+
+    <!-- 이름 + 필요재료 -->
+    <div style="flex:1; text-align:left; line-height:1.15;">
+      <div style="font-weight:800;">${it.name}</div>
+      <div style="font-size:12px;color:#aaa;">
+        필요: 종이 ${it.paper} / 정수 ${it.essence} / 골드 ${formatGold(it.gold)}
+      </div>
+    </div>
+
+    <!-- 우측: 합성 가능 -->
+    <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+      <span style="font-size:12px;color:#aaa;">가능</span>
+      <span style="font-weight:800;">${max}</span>
+    </div>
+  </div>
+`;
     });
 
     listEl.innerHTML = html;
