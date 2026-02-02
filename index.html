@@ -2789,6 +2789,16 @@ hr.section-divider{
   100% { transform: translate(-50%,-50%) scale(1); }    /* 날숨 */
 }
 
+  /* ✅ (필수) wrap이 pseudo(::after) 기준점이 되도록 */
+#bossBattleBossWrap{
+  position:absolute;
+  inset:0;
+  pointer-events:none; /* wrap은 통과 */
+}
+#bossBattleBossWrap > #bossBattleBossImg{
+  pointer-events:auto; /* 보스 이미지는 클릭 가능 */
+}
+  
   /* =========================
    💥 보스 피격 연출 (wrap이 흔들리고, 빛/글로우가 번쩍)
    ========================= */
@@ -13386,7 +13396,27 @@ requestAnimationFrame(() => {
   // 3) 제거
   setTimeout(() => el.remove(), HOLD_MS + FADE_MS + 80);
 }
-  
+
+  // ✅ (추가) 보스 자체 흔들림/번쩍/스파크(클래스 토글)
+function playBossHitFx(){
+  const wrap = document.getElementById("bossBattleBossWrap");
+  const img  = document.getElementById("bossBattleBossImg");
+  if (!wrap || !img) return;
+
+  // 같은 클래스를 연타해도 매번 애니메이션 재생되게 리셋
+  wrap.classList.remove("hit", "hit-spark");
+  img.classList.remove("hit-flash");
+  void wrap.offsetWidth; // reflow 강제
+
+  wrap.classList.add("hit", "hit-spark");
+  img.classList.add("hit-flash");
+
+  setTimeout(() => {
+    wrap.classList.remove("hit", "hit-spark");
+    img.classList.remove("hit-flash");
+  }, 220);
+}
+
 function attackBossByClick(ev){
   const bossId = String(activeBossId || "");
   const run = (bossRunsActiveCache || {})[bossId];
@@ -13405,6 +13435,8 @@ const dmg = Number(result.damage || 0);
 // ✅ (신규 FX) 보스 화면 내부 전용 레이어에 이펙트/숫자 생성
 const isMagic = (weaponType === "staff");
 const kind = result.isMiss ? "miss" : (result.isCrit ? "crit" : "hit");
+
+  playBossHitFx(); // ✅ 보스 흔들림/번쩍/스파크
 
 // 타격 이미지
 spawnBossHitEffectAt(ev.clientX, ev.clientY, kind, isMagic);
