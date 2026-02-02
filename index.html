@@ -2770,6 +2770,24 @@ hr.section-divider{
   color:#fff;
   filter: brightness(1.15);
 }
+
+  /* =========================
+   🫁 보스 호흡(들숨/날숨) 애니메이션
+   - 대상: #bossBattleBossImg
+   - 인라인 transform(translate) 유지해야 해서 keyframes에 translate 포함
+   ========================= */
+
+#bossBattleBossImg.boss-breathe {
+  transform-origin: 50% 70%;
+  animation: bossBreath 2.8s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes bossBreath {
+  0%   { transform: translate(-50%,-50%) scale(1); }
+  45%  { transform: translate(-50%,-50%) scale(1.02); } /* 들숨 */
+  100% { transform: translate(-50%,-50%) scale(1); }    /* 날숨 */
+}
   
 </style>
 </head>
@@ -12464,6 +12482,7 @@ function openBossBattle(){
   if (!ov) return;
 
   ov.style.display = "flex";
+  document.getElementById("bossBattleBossImg")?.classList.add("boss-breathe");
   ensureBossBattleLogsSubscription(bossId);
   renderBossBattle();
 
@@ -12580,6 +12599,7 @@ function startBossBattleMove(){
 function closeBossBattle(){
   const ov = document.getElementById("bossBattleOverlay");
   if (ov) ov.style.display = "none";
+  document.getElementById("bossBattleBossImg")?.classList.remove("boss-breathe");
   if (bossBattleTickTimer) { clearInterval(bossBattleTickTimer); bossBattleTickTimer = null; }
 }
 
