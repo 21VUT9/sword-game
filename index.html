@@ -7427,6 +7427,97 @@ document.addEventListener("DOMContentLoaded", () => {
     spawnTouchRipple(e.clientX, e.clientY);
   }, { passive: true });
 
+  // ===============================
+// 🔊 파일 없는 UI 클릭 사운드 (WebAudio)
+// - 모바일 자동재생 제한 때문에 "첫 사용자 입력"에서 context가 열리도록 처리
+// ===============================
+let uiAudioCtx = null;
+
+function ensureUiAudio(){
+  if (!uiAudioCtx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    uiAudioCtx = new AC();
+  }
+  // iOS 등 suspended 상태면 resume 필요
+  if (uiAudioCtx.state === "suspended"){
+    uiAudioCtx.resume().catch(()=>{});
+  }
+  return uiAudioCtx;
+}
+
+// 아주 짧은 "틱" (체크박스용)
+function playUiTick(){
+  const ctx = ensureUiAudio();
+  if (!ctx) return;
+
+  const t0 = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = "square";
+  osc.frequency.setValueAtTime(820, t0);
+
+  // 볼륨 엔벨로프(짧고 선명)
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.exponentialRampToValueAtTime(0.06, t0 + 0.005);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.05);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start(t0);
+  osc.stop(t0 + 0.055);
+}
+
+  // ===============================
+// 🔊 강화 체크박스(주문서 사용) 터치 사운드
+// ===============================
+document.addEventListener("DOMContentLoaded", () => {
+  const wrap = document.getElementById("upgradeItems");
+  if (!wrap) return;
+
+  // change가 제일 안정적(라벨 눌러도 체크 변경이면 확실히 들어옴)
+  wrap.addEventListener("change", (e) => {
+    const t = e.target;
+    if (t && t.matches && t.matches('input[type="checkbox"]')){
+      playUiTick();
+    }
+  });
+});
+
+// 조금 더 "톡" (버튼용)
+function playUiClick(){
+  const ctx = ensureUiAudio();
+  if (!ctx) return;
+
+  const t0 = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = "triangle";
+  osc.frequency.setValueAtTime(520, t0);
+  osc.frequency.exponentialRampToValueAtTime(260, t0 + 0.06);
+
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.exponentialRampToValueAtTime(0.09, t0 + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.08);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start(t0);
+  osc.stop(t0 + 0.085);
+}
+
+// ✅ 첫 사용자 입력에서 오디오 컨텍스트 활성화(모바일 대응)
+// (이미 열려있으면 아무 일도 안 함)
+document.addEventListener("pointerdown", () => {
+  ensureUiAudio();
+}, { once: true });
+
   // ✅ 상단 재화바 갱신
 function updateTopCurrencyBar(){
   const goldEl  = document.getElementById("topGoldText");
@@ -11564,6 +11655,7 @@ let lastRankProfileUserId = null;
   // 2) "프로필 보기" 버튼 클릭 시 팝업 열기
   if (viewBtn && menuEl) {
     viewBtn.addEventListener("click", function(e) {
+      playUiClick();
       e.stopPropagation();
       if (!lastRankProfileUserId) return;
       menuEl.style.display = "none";
