@@ -7461,7 +7461,7 @@ function playUiTick(){
 
   // 볼륨 엔벨로프(짧고 선명)
   gain.gain.setValueAtTime(0.0001, t0);
-  gain.gain.exponentialRampToValueAtTime(0.06, t0 + 0.005);
+  gain.gain.exponentialRampToValueAtTime(0.085, t0 + 0.005);
   gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.05);
 
   osc.connect(gain);
@@ -7502,7 +7502,7 @@ function playUiClick(){
   osc.frequency.exponentialRampToValueAtTime(260, t0 + 0.06);
 
   gain.gain.setValueAtTime(0.0001, t0);
-  gain.gain.exponentialRampToValueAtTime(0.09, t0 + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.12, t0 + 0.006);
   gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.08);
 
   osc.connect(gain);
