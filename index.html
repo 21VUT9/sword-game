@@ -5834,6 +5834,17 @@ function applyFieldBackground() {
   }
 }
 
+  function isInFulgurantForge(){
+  return Number(currentField) === FORGE_FIELD_ID;
+}
+
+  function showGoToForgeMessage(){
+  showSimpleMessage(
+    "퍼그란트 대장간으로 복귀하자.",
+    "안내"
+  );
+}
+
 function setNpcName(name) {
   const nameEl = document.getElementById("npcPopupName");
   if (nameEl) nameEl.textContent = name;
@@ -8338,6 +8349,13 @@ function checkAttendance() {
   
 /* 강화 */
 function upgrade() {
+
+  // ❌ 대장간이 아니면 강화 불가
+if (!isInFulgurantForge()) {
+  showGoToForgeMessage();
+  return;
+}
+
   if (sword >= 30) {
     alert("최대 강화");
     return;
@@ -9144,6 +9162,13 @@ function showMerchantSellPopup(beforeLevel, rewardGold) {
 }
   
 function sell() {
+
+  // ❌ 대장간이 아니면 판매 불가
+if (!isInFulgurantForge()) {
+  showGoToForgeMessage();
+  return;
+}
+
   if (!userRef || !userId) {
     alert("로그인 후 이용 가능합니다.");
     return;
