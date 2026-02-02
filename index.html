@@ -6128,6 +6128,8 @@ function confirmDisassemble(){
   const owned = meta.count();
   disQty = Math.max(1, Math.min(Number(disQty||1), owned));
 
+   runWithShortDelay("잠깐만 주문서를 해체 중이야…", () => {
+
   // 1) 주문서 차감
   if (disTargetId === "itemDownProtect") itemDownProtect = Math.max(0, Number(itemDownProtect||0) - disQty);
   if (disTargetId === "itemScroll15")    itemScroll15    = Math.max(0, Number(itemScroll15||0) - disQty);
@@ -6155,6 +6157,20 @@ function confirmDisassemble(){
   // 상태 초기화
   disTargetId = "";
   disQty = 1;
+  });
+}
+
+  // ===============================
+// ⏳ 짧은 연출용 딜레이 (1~1.5초)
+// ===============================
+function runWithShortDelay(message, callback){
+  showNpcMessage(message, null, false, "세레나 에델린");
+
+  const delay = 1000 + Math.random() * 500; // 1.0 ~ 1.5초
+  setTimeout(() => {
+    closeNpcPopup();
+    callback();
+  }, delay);
 }
 
 // ✅ 인라인 onclick을 쓰는 경우 대비(안전)
@@ -13355,7 +13371,7 @@ function confirmSynthesize(){
 
   const qty = Number(synPendingQty || 0);
   if (qty <= 0){
-    alert("합성할 수량이 없습니다.");
+    showNpcMessage("합성할 수량이 없습니다.", null, true, "");
     return;
   }
 
@@ -13363,29 +13379,52 @@ function confirmSynthesize(){
   const needEssence = meta.essence * qty;
   const needGold    = meta.gold    * qty;
 
-  if (Number(itemMagicPaper||0) < needPaper)   { alert("마력이 깃든 종이가 부족합니다."); return; }
-  if (Number(itemEssence||0) < needEssence)    { alert("마력의정수가 부족합니다."); return; }
-  if (Number(gold||0) < needGold)              { alert("골드가 부족합니다."); return; }
+  // ✅ 부족 체크는 딜레이 전에 먼저!
+  if (Number(itemMagicPaper||0) < needPaper) {
+    showNpcMessage("마력이 깃든 종이가 부족합니다.", null, true, "");
+    return;
+  }
+  if (Number(itemEssence||0) < needEssence) {
+    showNpcMessage("마력의정수가 부족합니다.", null, true, "");
+    return;
+  }
+  if (Number(gold||0) < needGold) {
+    showNpcMessage("골드가 부족합니다.", null, true, "");
+    return;
+  }
 
-  // 차감
-  itemMagicPaper = Number(itemMagicPaper||0) - needPaper;
-  itemEssence    = Number(itemEssence||0) - needEssence;
-  gold           = Number(gold||0) - needGold;
+  runWithShortDelay("잠깐만, 금방 만들어줄게…", () => {
 
-  // 지급(네 변수명 그대로)
-  if (meta.give === "itemDownProtect") itemDownProtect = Number(itemDownProtect||0) + qty;
-  if (meta.give === "itemProtect")     itemProtect     = Number(itemProtect||0) + qty;
-  if (meta.give === "itemSuper")       itemSuper       = Number(itemSuper||0) + qty;
-  if (meta.give === "itemScroll15")    itemScroll15    = Number(itemScroll15||0) + qty;
-  if (meta.give === "itemScroll21")    itemScroll21    = Number(itemScroll21||0) + qty;
-  if (meta.give === "itemRateUp5")     itemRateUp5     = Number(itemRateUp5||0) + qty;
+    // ✅ 차감
+    itemMagicPaper = Number(itemMagicPaper||0) - needPaper;
+    itemEssence    = Number(itemEssence||0) - needEssence;
+    gold           = Number(gold||0) - needGold;
 
-  save();              // ✅ 기존 세이브 사용
-  renderInventory();   // ✅ 인벤 갱신(네 프로젝트에 이미 존재하는 렌더 호출 패턴 유지)
-  renderScrollShopItems(); // ✅ 합성 탭 리스트 갱신
+    // ✅ 지급(변수명 그대로)
+    if (meta.give === "itemDownProtect") itemDownProtect = Number(itemDownProtect||0) + qty;
+    if (meta.give === "itemProtect")     itemProtect     = Number(itemProtect||0) + qty;
+    if (meta.give === "itemSuper")       itemSuper       = Number(itemSuper||0) + qty;
+    if (meta.give === "itemScroll15")    itemScroll15    = Number(itemScroll15||0) + qty;
+    if (meta.give === "itemScroll21")    itemScroll21    = Number(itemScroll21||0) + qty;
+    if (meta.give === "itemRateUp5")     itemRateUp5     = Number(itemRateUp5||0) + qty;
 
-  alert(`${meta.name} ${qty}개 합성 완료!`);
-  closeNpcPopup();
+    save();
+    update();
+    renderInventory();
+    renderScrollShopItems();
+
+    // ✅ 분해와 동일한 구조로 결과 메시지
+    showNpcMessage(
+      `합성 완료!<br><span style="color:#ffd54f;">${meta.name} ${qty}개</span> 획득`,
+      meta.img,
+      true,
+      ""
+    );
+
+    // 상태 초기화
+    synTargetId = "";
+    synPendingQty = 1;
+  });
 }
 
 function startBossBattleMove(){
