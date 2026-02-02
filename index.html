@@ -2946,7 +2946,7 @@ hr.section-divider{
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.301)
+    (v4.302)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -5667,6 +5667,51 @@ function renderScrollShopItems() {
     return;
   }
 
+    // =========================
+  // ✅ 주문서 합성(syn) 탭 렌더
+  // =========================
+  if (scrollShopTabMode === "syn") {
+    const listEl = document.getElementById("scrollShopItemList");
+    if (!listEl) return;
+
+    const synList = [
+      { id:"itemDownProtect", name:"강등방지주문서", img:"images/items/scroll_down_protect.png", paper:2,  essence:5,  gold:10000000 },
+      { id:"itemProtect",     name:"파괴방지주문서", img:"images/items/scroll_protect.png",      paper:20, essence:40, gold:1000000000 },
+      { id:"itemSuper",       name:"슈퍼강화주문서", img:"images/items/scroll_super.png",        paper:30, essence:60, gold:3000000000 },
+      { id:"itemScroll15",    name:"15강강화주문서", img:"images/items/scroll_15.png",           paper:3,  essence:6,  gold:10000000 },
+      { id:"itemScroll21",    name:"21강강화주문서", img:"images/items/scroll_21.png",           paper:7,  essence:13, gold:300000000 },
+      { id:"itemRateUp5",     name:"강화확률5%주문서", img:"images/items/scroll_rateup_5.png",   paper:10, essence:20, gold:2000000000 }
+    ];
+
+    const havePaper   = Number(itemMagicPaper || 0);
+    const haveEssence = Number(itemEssence || 0);
+    const haveGold    = Number(gold || 0);
+
+    let html = "";
+    synList.forEach((it) => {
+      const maxByPaper   = it.paper   > 0 ? Math.floor(havePaper / it.paper) : 999999;
+      const maxByEssence = it.essence > 0 ? Math.floor(haveEssence / it.essence) : 999999;
+      const maxByGold    = it.gold    > 0 ? Math.floor(haveGold / it.gold) : 999999;
+      const max = Math.max(0, Math.min(maxByPaper, maxByEssence, maxByGold));
+
+      html += `
+        <div class="scrollShopItemRow" onclick="openScrollSynthesizeConfirm('${it.id}')">
+          <img class="scrollShopItemImg" src="${it.img}" alt="">
+          <div class="scrollShopItemInfo">
+            <div class="scrollShopItemName">${it.name}</div>
+            <div class="scrollShopItemDesc">
+              필요: 마력이 깃든 종이 ${it.paper}개 / 마력의정수 ${it.essence}개 / 골드 ${formatGold(it.gold)}
+              <br>현재 합성 가능: ${max}개
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    listEl.innerHTML = html;
+    return;
+  }
+
   let html = "";
 
   scrollShopItems.forEach((item) => {
@@ -5725,13 +5770,6 @@ function setScrollShopTab(mode){
   if (b) b.classList.toggle("active", mode === "buy");
   if (d) d.classList.toggle("active", mode === "dis");
   if (s) s.classList.toggle("active", mode === "syn");
-
-  // 합성은 아직 UI만: 클릭 시 안내만
-  if (mode === "syn") {
-    const listEl = document.getElementById("scrollShopItemList");
-    if (listEl) listEl.innerHTML = `<div style="padding:10px;color:#aaa;">주문서합성은 준비중입니다.</div>`;
-    return;
-  }
 
   renderScrollShopItems(); // buy/dis 공통 렌더
 }
@@ -13139,6 +13177,124 @@ function openBossBattle(){
   }
 
   popup.style.display = "flex";
+}
+
+// =========================
+// ✅ 주문서 합성 상태
+// =========================
+let synTargetId = "";
+let synPendingQty = 1;
+
+// 합성 레시피 메타
+function getSynMetaById(id){
+  const map = {
+    itemDownProtect: { name:"강등방지주문서", img:"images/items/scroll_down_protect.png", paper:2,  essence:5,  gold:10000000,  give:"itemDownProtect" },
+    itemProtect:     { name:"파괴방지주문서", img:"images/items/scroll_protect.png",      paper:20, essence:40, gold:1000000000, give:"itemProtect" },
+    itemSuper:       { name:"슈퍼강화주문서", img:"images/items/scroll_super.png",        paper:30, essence:60, gold:3000000000, give:"itemSuper" },
+    itemScroll15:    { name:"15강강화주문서", img:"images/items/scroll_15.png",           paper:3,  essence:6,  gold:10000000,  give:"itemScroll15" },
+    itemScroll21:    { name:"21강강화주문서", img:"images/items/scroll_21.png",           paper:7,  essence:13, gold:300000000, give:"itemScroll21" },
+    itemRateUp5:     { name:"강화확률5%주문서", img:"images/items/scroll_rateup_5.png",   paper:10, essence:20, gold:2000000000, give:"itemRateUp5" }
+  };
+  return map[id] || null;
+}
+
+function getSynMaxCraftable(meta){
+  const havePaper   = Number(itemMagicPaper || 0);
+  const haveEssence = Number(itemEssence || 0);
+  const haveGold    = Number(gold || 0);
+
+  const maxByPaper   = meta.paper   > 0 ? Math.floor(havePaper / meta.paper) : 999999;
+  const maxByEssence = meta.essence > 0 ? Math.floor(haveEssence / meta.essence) : 999999;
+  const maxByGold    = meta.gold    > 0 ? Math.floor(haveGold / meta.gold) : 999999;
+
+  return Math.max(0, Math.min(maxByPaper, maxByEssence, maxByGold));
+}
+
+// 1) 합성 시작(수량 선택 단계)
+function openScrollSynthesizeConfirm(id){
+  const meta = getSynMetaById(id);
+  if (!meta) return;
+
+  synTargetId = id;
+  const max = getSynMaxCraftable(meta);
+  synPendingQty = (max > 0 ? 1 : 0);
+
+  showConfirmPopup(
+    "주문서 합성",
+    `${meta.name}\n\n` +
+    `필요 재료(1개 기준)\n` +
+    `- 마력이 깃든 종이: ${meta.paper}개\n` +
+    `- 마력의정수: ${meta.essence}개\n` +
+    `- 골드: ${formatGold(meta.gold)}\n\n` +
+    `현재 보유\n` +
+    `- 마력이 깃든 종이: ${Number(itemMagicPaper||0)}개\n` +
+    `- 마력의정수: ${Number(itemEssence||0)}개\n` +
+    `- 골드: ${formatGold(Number(gold||0))}\n\n` +
+    `몇 개 합성할래?\n(가능 최대: ${max}개)`,
+    meta.img,
+    true,
+    "에델린",
+    [
+      { text:"1",   onClick: () => setSynQty(1) },
+      { text:"5",   onClick: () => setSynQty(5) },
+      { text:"20",  onClick: () => setSynQty(20) },
+      { text:"MAX", onClick: () => { const m=getSynMetaById(synTargetId); setSynQty(getSynMaxCraftable(m)); } },
+      { text:"합성확정", onClick: () => confirmSynthesize() },
+      { text:"취소", onClick: () => closeConfirmPopup() }
+    ]
+  );
+}
+
+// 2) 수량 세팅(0~MAX로 클램프)
+function setSynQty(qty){
+  const meta = getSynMetaById(synTargetId);
+  if (!meta) return;
+
+  const max = getSynMaxCraftable(meta);
+  synPendingQty = Math.max(0, Math.min(Number(qty||0), max));
+
+  // 같은 팝업 내용을 갱신(간단히 다시 열기)
+  openScrollSynthesizeConfirm(synTargetId);
+}
+
+// 3) 합성 실행(재료 차감 + 결과 지급)
+function confirmSynthesize(){
+  const meta = getSynMetaById(synTargetId);
+  if (!meta) return;
+
+  const qty = Number(synPendingQty || 0);
+  if (qty <= 0){
+    alert("합성할 수량이 없습니다.");
+    return;
+  }
+
+  const needPaper   = meta.paper   * qty;
+  const needEssence = meta.essence * qty;
+  const needGold    = meta.gold    * qty;
+
+  if (Number(itemMagicPaper||0) < needPaper)   { alert("마력이 깃든 종이가 부족합니다."); return; }
+  if (Number(itemEssence||0) < needEssence)    { alert("마력의정수가 부족합니다."); return; }
+  if (Number(gold||0) < needGold)              { alert("골드가 부족합니다."); return; }
+
+  // 차감
+  itemMagicPaper = Number(itemMagicPaper||0) - needPaper;
+  itemEssence    = Number(itemEssence||0) - needEssence;
+  gold           = Number(gold||0) - needGold;
+
+  // 지급(네 변수명 그대로)
+  if (meta.give === "itemDownProtect") itemDownProtect = Number(itemDownProtect||0) + qty;
+  if (meta.give === "itemProtect")     itemProtect     = Number(itemProtect||0) + qty;
+  if (meta.give === "itemSuper")       itemSuper       = Number(itemSuper||0) + qty;
+  if (meta.give === "itemScroll15")    itemScroll15    = Number(itemScroll15||0) + qty;
+  if (meta.give === "itemScroll21")    itemScroll21    = Number(itemScroll21||0) + qty;
+  if (meta.give === "itemRateUp5")     itemRateUp5     = Number(itemRateUp5||0) + qty;
+
+  save();              // ✅ 기존 세이브 사용
+  renderInventory();   // ✅ 인벤 갱신(네 프로젝트에 이미 존재하는 렌더 호출 패턴 유지)
+  renderScrollShopItems(); // ✅ 합성 탭 리스트 갱신
+
+  alert(`${meta.name} ${qty}개 합성 완료!`);
+  closeConfirmPopup();
 }
 
 function startBossBattleMove(){
