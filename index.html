@@ -5640,12 +5640,12 @@ function renderScrollShopItems() {
    // 🆕 주문서분해 탭
   if (scrollShopTabMode === "dis") {
     const disList = [
-      { id:"itemDownProtect", name:"강등방지주문서", img:"images/items/down_protect.png",  count:Number(itemDownProtect||0), paper:1 },
+      { id:"itemDownProtect", name:"강등방지주문서", img:"images/items/scroll_down_protect.png",  count:Number(itemDownProtect||0), paper:1 },
       { id:"itemScroll15",    name:"15강강화주문서", img:"images/items/scroll_15.png",     count:Number(itemScroll15||0),    paper:2 },
       { id:"itemScroll21",    name:"21강강화주문서", img:"images/items/scroll_21.png",     count:Number(itemScroll21||0),    paper:5 },
-      { id:"itemProtect",     name:"파괴방지주문서", img:"images/items/protect.png",       count:Number(itemProtect||0),     paper:10 },
-      { id:"itemSuper",       name:"슈퍼강화주문서", img:"images/items/super.png",         count:Number(itemSuper||0),       paper:15 },
-      { id:"itemRateUp5",     name:"강화확률5%주문서", img:"images/items/rateup5.png",     count:Number(itemRateUp5||0),     paper:5 },
+      { id:"itemProtect",     name:"파괴방지주문서", img:"images/items/scroll_protect.png",       count:Number(itemProtect||0),     paper:10 },
+      { id:"itemSuper",       name:"슈퍼강화주문서", img:"images/items/scroll_super.png",         count:Number(itemSuper||0),       paper:15 },
+      { id:"itemRateUp5",     name:"강화확률5%주문서", img:"images/items/scroll_rateup_5.png.png",     count:Number(itemRateUp5||0),     paper:5 },
     ].filter(x => x.count > 0);
 
     if (disList.length === 0) {
