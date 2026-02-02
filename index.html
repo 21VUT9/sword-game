@@ -9357,7 +9357,9 @@ function getHuntReward(fieldId) {
   const baseCost = getUpgradeCost(refLevel); // 해당 강의 강화비용
 
   const mul = randRange(1.0, 1.5);   // 1.0 ~ 1.5 배
-  return Math.floor(baseCost * mul * 0.4);
+  // ✅ 차원의 틈새(필드 10) 골드 수급 절반 패치
+const rate = (fieldId === 10) ? 0.2 : 0.4;
+return Math.floor(baseCost * mul * rate);
 }
 
 // ✅ (추가) 요소가 없어도 크래시 안 나게 display 토글
