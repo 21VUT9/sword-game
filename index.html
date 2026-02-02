@@ -2771,32 +2771,76 @@ hr.section-divider{
   filter: brightness(1.15);
 }
 
-  /* =========================
-   🫁 보스 호흡(들숨/날숨) 애니메이션
-   - 대상: #bossBattleBossImg
-   - 인라인 transform(translate) 유지해야 해서 keyframes에 translate 포함
+/* =========================
+   🫁 보스 호흡 업그레이드 + 그림자
+   - wrap이 기준점이 되게 잡아줘야 hit-spark도 안정적으로 뜸
    ========================= */
 
-#bossBattleBossImg.boss-breathe {
-  transform-origin: 50% 70%;
-  animation: bossBreath 2.8s ease-in-out infinite;
-  will-change: transform;
-}
-
-@keyframes bossBreath {
-  0%   { transform: translate(-50%,-50%) scale(1); }
-  45%  { transform: translate(-50%,-50%) scale(1.02); } /* 들숨 */
-  100% { transform: translate(-50%,-50%) scale(1); }    /* 날숨 */
-}
-
-  /* ✅ (필수) wrap이 pseudo(::after) 기준점이 되도록 */
+/* ✅ wrap을 "보스 전용 레이어"로 안정화 */
 #bossBattleBossWrap{
   position:absolute;
   inset:0;
-  pointer-events:none; /* wrap은 통과 */
+  pointer-events:auto;  /* ✅ wrap은 클릭을 막지 않게 */
 }
-#bossBattleBossWrap > #bossBattleBossImg{
-  pointer-events:auto; /* 보스 이미지는 클릭 가능 */
+
+/* 그림자/스파크는 클릭을 절대 먹으면 안 됨 */
+#bossBattleBossShadow{ pointer-events:none; }
+#bossBattleBossWrap::after{ pointer-events:none; }
+
+/* 보스 이미지는 클릭 가능 */
+#bossBattleBossImg{ pointer-events:auto; }
+
+/* ✅ 보스 이미지는 클릭 가능해야 하니까 다시 살려줌 */
+#bossBattleBossImg{
+  pointer-events:auto;
+  z-index:10;
+}
+
+/* ✅ 바닥 그림자 (이미지 아래) */
+#bossBattleBossShadow{
+  position:absolute;
+  left:50%;
+  top:70%;
+  width:min(320px, 55vw);
+  height: min(110px, 18vw);
+  transform: translate(-50%,-50%);
+  border-radius: 999px;
+  background: radial-gradient(ellipse at center,
+    rgba(0,0,0,0.55) 0%,
+    rgba(0,0,0,0.25) 45%,
+    rgba(0,0,0,0.0) 72%);
+  filter: blur(6px);
+  opacity: 0.55;
+  z-index:6;
+  pointer-events:none;
+  will-change: transform, opacity, filter;
+}
+
+/* ✅ 호흡 애니메이션(자연스럽게): scale + 미세한 y 이동 + 약간의 리듬 */
+#bossBattleBossImg.boss-breathe{
+  transform-origin: 50% 72%;
+  animation: bossBreathNatural 3.4s cubic-bezier(.45,0,.55,1) infinite;
+  will-change: transform;
+}
+
+/* ✅ 그림자도 호흡에 맞춰 변형(커지면 그림자는 약간 퍼지고 진해짐) */
+#bossBattleBossShadow.boss-breathe-shadow{
+  animation: bossShadowBreath 3.4s cubic-bezier(.45,0,.55,1) infinite;
+}
+
+/* ✅ 자연스러운 숨: 들숨에서 살짝 “위로/앞으로” 오는 느낌(미세) */
+@keyframes bossBreathNatural{
+  0%   { transform: translate(-50%,-50%) scale(1.000) translateY(0px); }
+  22%  { transform: translate(-50%,-50%) scale(1.010) translateY(-1px); }
+  50%  { transform: translate(-50%,-50%) scale(1.016) translateY(-2px); } /* 들숨 peak */
+  72%  { transform: translate(-50%,-50%) scale(1.006) translateY(-1px); }
+  100% { transform: translate(-50%,-50%) scale(1.000) translateY(0px); }
+}
+
+@keyframes bossShadowBreath{
+  0%   { transform: translate(-50%,-50%) scale(1.00, 1.00); opacity:0.52; filter: blur(6px); }
+  50%  { transform: translate(-50%,-50%) scale(1.06, 1.10); opacity:0.60; filter: blur(7px); }
+  100% { transform: translate(-50%,-50%) scale(1.00, 1.00); opacity:0.52; filter: blur(6px); }
 }
   
   /* =========================
@@ -3603,15 +3647,18 @@ hr.section-divider{
                style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0.95;">
 
           <!-- 보스 이미지(터치 대상) -->
-          <div id="bossBattleBossWrap">
-          <img id="bossBattleBossImg"
-               src="images/bosses/silvana_idle.png"
-               style="position:absolute; left:50%; top:52%; transform:translate(-50%,-50%); width:min(420px, 70vw); height:auto; cursor:pointer; user-select:none;
-            -webkit-tap-highlight-color: rgba(0,0,0,0);
-            -webkit-user-select:none;
-            -webkit-touch-callout:none;"
-               onclick="attackBossByClick(event)">
-            </div>
+<div id="bossBattleBossWrap">
+  <!-- ✅ (추가) 바닥 그림자 -->
+  <div id="bossBattleBossShadow"></div>
+
+  <img id="bossBattleBossImg"
+       src="images/bosses/silvana_idle.png"
+       style="position:absolute; left:50%; top:52%; transform:translate(-50%,-50%); width:min(420px, 70vw); height:auto; cursor:pointer; user-select:none;
+         -webkit-tap-highlight-color: rgba(0,0,0,0);
+         -webkit-user-select:none;
+         -webkit-touch-callout:none;"
+       onclick="attackBossByClick(event)">
+</div>
           
           <!-- ✅ (신규) 보스 타격/숫자 FX 레이어 (보스 화면 내부 전용) -->
     <div id="bossFxLayer"
@@ -12560,6 +12607,7 @@ function openBossBattle(){
 
   ov.style.display = "flex";
   document.getElementById("bossBattleBossImg")?.classList.add("boss-breathe");
+  document.getElementById("bossBattleBossShadow")?.classList.add("boss-breathe-shadow");
   ensureBossBattleLogsSubscription(bossId);
   renderBossBattle();
 
@@ -12677,6 +12725,7 @@ function closeBossBattle(){
   const ov = document.getElementById("bossBattleOverlay");
   if (ov) ov.style.display = "none";
   document.getElementById("bossBattleBossImg")?.classList.remove("boss-breathe");
+  document.getElementById("bossBattleBossShadow")?.classList.remove("boss-breathe-shadow");
   if (bossBattleTickTimer) { clearInterval(bossBattleTickTimer); bossBattleTickTimer = null; }
 }
 
