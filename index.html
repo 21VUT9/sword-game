@@ -5502,39 +5502,22 @@ function getFxAudioCtx(){
   }
 }
 
-/** ✅ 성공: 반짝/파편 느낌(짧은 고주파 + 작은 클릭) */
+// ✅ 강화 성공 SFX (파일로 재생)
+const sfxUpgradeSuccess = new Audio("sounds/sfx_upgrade_success.mp3");
+sfxUpgradeSuccess.preload = "auto";
+sfxUpgradeSuccess.volume = 0.9;
+
 function playShardSfx(){
-  const ctx = getFxAudioCtx();
-  if (!ctx) return;
+  try {
+    // 연타 시에도 다시 재생되도록
+    sfxUpgradeSuccess.pause();
+    sfxUpgradeSuccess.currentTime = 0;
 
-  const t = ctx.currentTime;
-
-  // 짧은 high tone
-  const o1 = ctx.createOscillator();
-  const g1 = ctx.createGain();
-  o1.type = "triangle";
-  o1.frequency.setValueAtTime(1200, t);
-  o1.frequency.exponentialRampToValueAtTime(2200, t + 0.06);
-
-  g1.gain.setValueAtTime(0.0001, t);
-  g1.gain.exponentialRampToValueAtTime(0.18, t + 0.01);
-  g1.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
-
-  o1.connect(g1).connect(ctx.destination);
-  o1.start(t);
-  o1.stop(t + 0.1);
-
-  // tiny click
-  const o2 = ctx.createOscillator();
-  const g2 = ctx.createGain();
-  o2.type = "square";
-  o2.frequency.setValueAtTime(180, t);
-  g2.gain.setValueAtTime(0.0001, t);
-  g2.gain.exponentialRampToValueAtTime(0.12, t + 0.005);
-  g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
-  o2.connect(g2).connect(ctx.destination);
-  o2.start(t);
-  o2.stop(t + 0.04);
+    const p = sfxUpgradeSuccess.play();
+    if (p && typeof p.catch === "function") p.catch(() => {});
+  } catch (e) {
+    // 재생 실패해도 게임 로직 멈추지 않게
+  }
 }
 
 /** ✅ 실패: 금속 파열음(노이즈 + 저주파 펀치) */
