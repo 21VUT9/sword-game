@@ -13386,11 +13386,12 @@ const BOSS_DEFS = [
     mapName: "늪엘프의 숲",
     bossTitle: "하이엘프퀸",
     bossName: "실바나 릴리아네",
+    desc: "",
     minSword: 24,
     applyCostGold: 10000000000,
     durationHours: 72,
-      imgIdle: "images/bosses/silvana_idle.png",
-  imgDead: "images/bosses/silvana_down.png",
+    imgIdle: "images/bosses/silvana_idle.png",
+    imgDead: "images/bosses/silvana_down.png",
   }
 ];
 
@@ -15152,7 +15153,7 @@ function createBossRun(bossId) {
         mapName: def.mapName,
         bossTitle: def.bossTitle,
         bossName: def.bossName,
-        desc: def.desc,
+        desc: String(def.desc || ""),
 
         status: "active",
         logKey: "run_" + Date.now(),
