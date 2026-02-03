@@ -1041,6 +1041,69 @@ button {
   max-height: 100%;
 }
 
+/* =========================
+   ⚔️ 강화 무기 이미지 연출
+   ========================= */
+#weaponImage{
+  transition: filter 120ms ease, transform 120ms ease;
+  will-change: filter, transform;
+}
+
+/* 강화 시도 순간: 하얗게 확 밝아짐 */
+.weapon-flash-charge{
+  animation: weaponFlashCharge 0.22s ease-out;
+}
+
+/* 성공: 흰 번쩍 + 글로우, 이후 서서히 정상으로 */
+.weapon-flash-success{
+  animation: weaponFlashSuccess 0.62s ease-out;
+}
+
+/* 실패: 잠깐 까맣게(먹먹) → 정상으로 */
+.weapon-flash-fail{
+  animation: weaponFlashFail 0.55s ease-out;
+}
+
+@keyframes weaponFlashCharge{
+  0%{
+    filter: brightness(1) drop-shadow(0 0 0 rgba(255,255,255,0));
+    transform: scale(1);
+  }
+  100%{
+    filter: brightness(2.3) drop-shadow(0 0 14px rgba(255,255,255,0.75));
+    transform: scale(1.02);
+  }
+}
+
+@keyframes weaponFlashSuccess{
+  0%{
+    filter: brightness(2.6) drop-shadow(0 0 18px rgba(255,255,255,0.95));
+    transform: scale(1.03);
+  }
+  45%{
+    filter: brightness(2.0) drop-shadow(0 0 26px rgba(255,255,255,0.85));
+    transform: scale(1.02);
+  }
+  100%{
+    filter: brightness(1) drop-shadow(0 0 0 rgba(255,255,255,0));
+    transform: scale(1);
+  }
+}
+
+@keyframes weaponFlashFail{
+  0%{
+    filter: brightness(0.08) saturate(0.2) drop-shadow(0 0 0 rgba(0,0,0,0));
+    transform: scale(0.995);
+  }
+  55%{
+    filter: brightness(0.22) saturate(0.35);
+  }
+  100%{
+    filter: brightness(1) saturate(1);
+    transform: scale(1);
+  }
+}
+
 /* 하단 정보 영역 */
 .profile-info-box {
   width: 100%;
@@ -3092,7 +3155,7 @@ html, body {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.305)
+    (v4.306)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -9314,6 +9377,53 @@ function startAttendanceResetTimer(){
     startAttendanceResetTimer();        // 다음날 것도 예약
   }, ms);
 }
+
+// ⚔️ 무기 이미지(#weaponImage) 강화 연출 유틸
+function getWeaponImgEl(){
+  return document.getElementById("weaponImage");
+}
+
+function playWeaponAnim(cls){
+  const el = getWeaponImgEl();
+  if(!el) return;
+
+  // 같은 애니메이션 연속 재생을 위해 리셋
+  el.classList.remove("weapon-flash-charge","weapon-flash-success","weapon-flash-fail");
+  void el.offsetWidth; // reflow
+
+  el.classList.add(cls);
+  // 애니 끝나면 클래스 정리
+  setTimeout(() => el.classList.remove(cls), 700);
+}
+
+/**
+ * 결과 반영 타이밍 제어:
+ * 1) 먼저 번쩍(또는 암전) 시작
+ * 2) midDelay 후에 실제 update() 실행 (이미지 src 변경 타이밍)
+ * 3) 이후 나머지 애니는 CSS가 마무리
+ */
+function playWeaponResultAndUpdate(isSuccess, doUpdate){
+  const cls = isSuccess ? "weapon-flash-success" : "weapon-flash-fail";
+  const midDelay = isSuccess ? 120 : 90;
+
+  const el = getWeaponImgEl();
+  if(!el){
+    doUpdate();
+    return;
+  }
+
+  el.classList.remove("weapon-flash-charge","weapon-flash-success","weapon-flash-fail");
+  void el.offsetWidth;
+  el.classList.add(cls);
+
+  setTimeout(() => {
+    doUpdate(); // ✅ 여기서 무기 이미지가 바뀌게(성공) / 실패 결과(금속괴 등) 반영
+  }, midDelay);
+
+  setTimeout(() => {
+    el.classList.remove(cls);
+  }, 700);
+}
   
 /* 강화 */
 function upgrade() {
@@ -9348,6 +9458,8 @@ if (!isInFulgurantForge()) {
   
   // 이미 강화 중이면 중복 클릭 방지
   if (isUpgrading) return;
+
+  playWeaponAnim("weapon-flash-charge");
 
   // 🔘 체크박스 상태 읽기
   const scroll15El = document.getElementById("useScroll15");
@@ -9566,8 +9678,10 @@ showNpcMessage(
     // 준비 팝업 닫기
     closeNpcPopup();
 
-    // 🎲 성공 / 실패 판정
-if (Math.random() < chance / 100) {
+    /// 🎲 성공 / 실패 판정 (한 번만 굴리고 변수로 저장)
+const isSuccess = (Math.random() < chance / 100);
+
+if (isSuccess) {
   // ✅ 성공
   let up = useSuper ? 2 : 1; // 슈퍼강화면 +2
   
@@ -9995,16 +10109,22 @@ if (targetLevel >= 21 && targetLevel <= 25) {
     );
   }
     
-// UI 갱신 + 저장 + 플래그 해제
-update();
-const titleChanged = checkAndGrantTitles();
-if (titleChanged) save();
-save();
+// ✅ 결과 연출 + UI 갱신(무기 이미지 변경 타이밍 제어)
+save(); // 결과(성공/실패) 계산으로 바뀐 값들 먼저 저장
 
-isUpgrading = false;
+playWeaponResultAndUpdate(isSuccess, () => {
+  // 여기서 update()가 실행되면서 “이미지 교체 타이밍”이 연출 중간에 들어감
+  update();
 
-const actionButtons = document.querySelectorAll(".action-buttons button");
-actionButtons.forEach(btn => btn.disabled = false);
+  const titleChanged = checkAndGrantTitles();
+  if (titleChanged) save();
+  save();
+
+  // 잠금 해제
+  isUpgrading = false;
+  const actionButtons = document.querySelectorAll(".action-buttons button");
+  actionButtons.forEach(btn => btn.disabled = false);
+});
 
   }, delayMs);
 }
