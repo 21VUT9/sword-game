@@ -166,6 +166,24 @@ body {
   outline: none;
 }
 
+/* 💰 사냥 버튼 동전 팝 이펙트 */
+.hunt-coin-pop{
+  position: fixed;
+  z-index: 999999;
+  pointer-events: none;
+  font-size: 22px;
+  transform: translate(-50%, 0);
+  opacity: 0;
+  filter: drop-shadow(0 0 6px rgba(255,255,255,0.35));
+  animation: huntCoinPop 720ms ease-out forwards;
+}
+
+@keyframes huntCoinPop{
+  0%   { opacity: 0; transform: translate(-50%, 10px) scale(0.85); }
+  15%  { opacity: 1; transform: translate(-50%, -6px) scale(1.05); }
+  100% { opacity: 0; transform: translate(-50%, -34px) scale(1.0); }
+}
+
 /* 📷 프로필 저장 캡쳐 모드 */
 .capture-mode * {
   visibility: hidden !important;
@@ -5702,6 +5720,39 @@ function recalcHuntStamina() {
   huntCountToday = Math.max(0, 20 - huntStamina);
 }
 
+  // 💰 사냥 버튼 위로 동전 이모지 튀는 이펙트
+function spawnHuntCoinPop() {
+  const btn = document.getElementById("huntBtn");
+  if (!btn) return;
+
+  const r = btn.getBoundingClientRect();
+
+  const x = r.left + r.width / 2;
+  const y = r.top + 6;
+
+  // 💰 1~3개 랜덤 생성
+  const n = 1 + Math.floor(Math.random() * 3);
+
+  for (let i = 0; i < n; i++) {
+    const el = document.createElement("div");
+    el.className = "hunt-coin-pop";
+    el.textContent = "💰";
+
+    // 살짝 흩어지게 위치 랜덤
+    el.style.left = `${x + (Math.random() * 16 - 8)}px`;
+    el.style.top  = `${y + (Math.random() * 6 - 3)}px`;
+
+    // 연속으로 튀는 느낌
+    el.style.animationDelay = `${i * 60}ms`;
+
+    document.body.appendChild(el);
+
+    setTimeout(() => {
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+    }, 900);
+  }
+}
+
 // 🧭 사냥 UI만 갱신 (버튼 텍스트 + 남은 시간 표시)
 function updateHuntUI() {
   const huntBtnEl  = document.getElementById("huntBtn");
@@ -10574,6 +10625,8 @@ if (currentField === 0) {
     );
     return;
   }
+
+   spawnHuntCoinPop();
 
   const field = HUNT_FIELDS[currentField];
   if (!field) {
