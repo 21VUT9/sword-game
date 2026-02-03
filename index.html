@@ -9145,10 +9145,20 @@ function checkAttendance() {
   const today = getTodayDateString();
 
   // 이미 오늘 출석함
-  if (lastAttendanceDate === today) {
-    alert("오늘은 이미 출석하셨습니다!");
-    return;
-  }
+if (lastAttendanceDate === today) {
+  showNpcMessage(
+    `<div style="font-size:15px; font-weight:700;">
+      오늘은 이미 출석하셨습니다.
+     </div>
+     <div style="font-size:12px; color:#aaa; margin-top:6px;">
+      내일 다시 출석 보상을 받을 수 있습니다.
+     </div>`,
+    null,   // ✅ NPC 이미지 없음
+    true,   // ✅ 확인 버튼 표시
+    ""      // ✅ 이름 없음
+  );
+  return;
+}
 
   // 날짜 비교 (연속 출석 처리)
   const yesterday = getYesterdayDateString();
