@@ -1033,6 +1033,84 @@ button {
   align-items: center;
   justify-content: center;
   margin-bottom: 12px;
+  position: relative;     /* ✅ 이펙트 레이어 기준 */
+  overflow: hidden;       /* ✅ 박스 밖으로 새는 거 컷 */
+}
+
+  /* ================= 무기 성공/실패 이펙트(파편/연기) ================= */
+
+.weapon-fx-layer{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  z-index: 5; /* weaponImage보다 위로(weaponImage가 기본 z-index 0) */
+}
+
+/* ✅ 흰 파편(샤드) */
+.weapon-shard{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width: 10px;
+  height: 3px;
+  background: rgba(255,255,255,0.95);
+  border-radius: 2px;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 6px rgba(255,255,255,0.9));
+  opacity: 0;
+  animation: shardFly 650ms ease-out forwards;
+}
+
+/* 파편마다 방향/거리/회전을 var로 줌 */
+@keyframes shardFly{
+  0%{
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.6) rotate(var(--r));
+    filter: drop-shadow(0 0 10px rgba(255,255,255,1));
+  }
+  10%{
+    opacity: 1;
+  }
+  100%{
+    opacity: 0;
+    transform:
+      translate(calc(-50% + var(--dx)), calc(-50% + var(--dy)))
+      scale(0.9)
+      rotate(calc(var(--r) + 120deg));
+    filter: drop-shadow(0 0 0 rgba(255,255,255,0));
+  }
+}
+
+/* ✅ 실패 검은 연기 */
+.weapon-smoke{
+  position:absolute;
+  left:50%;
+  top:55%;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%,
+    rgba(60,60,60,0.55),
+    rgba(0,0,0,0.0) 70%);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  filter: blur(0.2px);
+  animation: smokeRise 900ms ease-out forwards;
+}
+
+@keyframes smokeRise{
+  0%{
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.65);
+  }
+  15%{
+    opacity: 0.9;
+  }
+  100%{
+    opacity: 0;
+    transform: translate(calc(-50% + var(--sx)), calc(-50% - var(--sy)))
+               scale(1.8);
+  }
 }
 
 /* 나중에 투명 PNG로 교체하면 됨 */
@@ -3279,6 +3357,7 @@ html, body {
     
     <!-- ⚔️ 검 이미지 -->
     <div class="profile-weapon-box">
+       <div id="weaponFxLayer" class="weapon-fx-layer"></div>
       <img id="weaponImage"
            src="images/weapons/sword_real_temp.png"
            alt="내 무기">
@@ -5309,6 +5388,183 @@ function updateWeaponImage() {
 
   imgEl.src = info.img;
   imgEl.alt = info.name;
+}
+
+  /* ================= 무기 성공/실패 이펙트(파편/연기/사운드) ================= */
+
+function getWeaponFxLayer(){
+  return document.getElementById("weaponFxLayer");
+}
+
+function clearWeaponFx(){
+  const layer = getWeaponFxLayer();
+  if (!layer) return;
+  layer.innerHTML = "";
+}
+
+/** ✅ 성공: 흰 파편(샤드) 튀기기 */
+function spawnWeaponShards(count = 18){
+  const layer = getWeaponFxLayer();
+  if (!layer) return;
+
+  clearWeaponFx();
+
+  for (let i = 0; i < count; i++){
+    const d = document.createElement("div");
+    d.className = "weapon-shard";
+
+    // 방향/거리 랜덤
+    const ang = Math.random() * Math.PI * 2;
+    const dist = 70 + Math.random() * 120; // 퍼짐 거리
+    const dx = Math.cos(ang) * dist;
+    const dy = Math.sin(ang) * dist;
+
+    // 회전/지연 랜덤
+    const rot = (Math.random() * 360) + "deg";
+    d.style.setProperty("--dx", dx.toFixed(1) + "px");
+    d.style.setProperty("--dy", dy.toFixed(1) + "px");
+    d.style.setProperty("--r", rot);
+    d.style.animationDelay = (Math.random() * 60).toFixed(0) + "ms";
+
+    // 크기도 살짝 랜덤
+    const w = 8 + Math.random() * 14;
+    const h = 2 + Math.random() * 4;
+    d.style.width = w.toFixed(1) + "px";
+    d.style.height = h.toFixed(1) + "px";
+
+    layer.appendChild(d);
+  }
+
+  // 애니메이션 끝나면 정리
+  setTimeout(() => clearWeaponFx(), 900);
+}
+
+/** ✅ 실패: 검은 연기 (파괴면 더 크게) */
+function spawnWeaponSmoke(intensity = 1){
+  const layer = getWeaponFxLayer();
+  if (!layer) return;
+
+  clearWeaponFx();
+
+  const base = (intensity >= 2) ? 10 : 7;
+  for (let i = 0; i < base; i++){
+    const s = document.createElement("div");
+    s.className = "weapon-smoke";
+
+    const sx = (-40 + Math.random() * 80);     // 좌우 퍼짐
+    const sy = (60 + Math.random() * 90);      // 위로 상승량
+    s.style.setProperty("--sx", sx.toFixed(0) + "px");
+    s.style.setProperty("--sy", sy.toFixed(0) + "px");
+    s.style.animationDelay = (Math.random() * 80).toFixed(0) + "ms";
+
+    // 파괴면 연기 크기/진함 업
+    if (intensity >= 2){
+      s.style.width  = (28 + Math.random() * 18).toFixed(0) + "px";
+      s.style.height = s.style.width;
+      s.style.filter = "blur(0.6px)";
+    }
+
+    layer.appendChild(s);
+  }
+
+  setTimeout(() => clearWeaponFx(), 1100);
+}
+
+/* ---------- SFX: 금속 파열음(웹 오디오, 파일 없이 구현) ---------- */
+
+let _fxAudioCtx = null;
+function getFxAudioCtx(){
+  try {
+    if (!_fxAudioCtx) _fxAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // 일부 브라우저에서 자동재생 제한 때문에 suspended일 수 있음
+    if (_fxAudioCtx.state === "suspended") _fxAudioCtx.resume().catch(()=>{});
+    return _fxAudioCtx;
+  } catch (e) {
+    return null;
+  }
+}
+
+/** ✅ 성공: 반짝/파편 느낌(짧은 고주파 + 작은 클릭) */
+function playShardSfx(){
+  const ctx = getFxAudioCtx();
+  if (!ctx) return;
+
+  const t = ctx.currentTime;
+
+  // 짧은 high tone
+  const o1 = ctx.createOscillator();
+  const g1 = ctx.createGain();
+  o1.type = "triangle";
+  o1.frequency.setValueAtTime(1200, t);
+  o1.frequency.exponentialRampToValueAtTime(2200, t + 0.06);
+
+  g1.gain.setValueAtTime(0.0001, t);
+  g1.gain.exponentialRampToValueAtTime(0.18, t + 0.01);
+  g1.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+
+  o1.connect(g1).connect(ctx.destination);
+  o1.start(t);
+  o1.stop(t + 0.1);
+
+  // tiny click
+  const o2 = ctx.createOscillator();
+  const g2 = ctx.createGain();
+  o2.type = "square";
+  o2.frequency.setValueAtTime(180, t);
+  g2.gain.setValueAtTime(0.0001, t);
+  g2.gain.exponentialRampToValueAtTime(0.12, t + 0.005);
+  g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
+  o2.connect(g2).connect(ctx.destination);
+  o2.start(t);
+  o2.stop(t + 0.04);
+}
+
+/** ✅ 실패: 금속 파열음(노이즈 + 저주파 펀치) */
+function playMetalCrackSfx(){
+  const ctx = getFxAudioCtx();
+  if (!ctx) return;
+
+  const t = ctx.currentTime;
+
+  // noise burst
+  const bufferSize = Math.floor(ctx.sampleRate * 0.12);
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i=0;i<bufferSize;i++){
+    // 앞부분은 강하게, 뒤로 갈수록 약하게
+    const k = 1 - (i / bufferSize);
+    data[i] = (Math.random()*2-1) * (k*k);
+  }
+  const noise = ctx.createBufferSource();
+  noise.buffer = buffer;
+
+  const nFilter = ctx.createBiquadFilter();
+  nFilter.type = "highpass";
+  nFilter.frequency.setValueAtTime(600, t);
+
+  const nGain = ctx.createGain();
+  nGain.gain.setValueAtTime(0.0001, t);
+  nGain.gain.exponentialRampToValueAtTime(0.35, t + 0.01);
+  nGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+
+  noise.connect(nFilter).connect(nGain).connect(ctx.destination);
+  noise.start(t);
+  noise.stop(t + 0.13);
+
+  // low punch
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = "sine";
+  o.frequency.setValueAtTime(140, t);
+  o.frequency.exponentialRampToValueAtTime(70, t + 0.12);
+
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.22, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+
+  o.connect(g).connect(ctx.destination);
+  o.start(t);
+  o.stop(t + 0.15);
 }
   
 /* 상태 */
@@ -9684,6 +9940,8 @@ const isSuccess = (Math.random() < chance / 100);
 if (isSuccess) {
   // ✅ 성공
   let up = useSuper ? 2 : 1; // 슈퍼강화면 +2
+  playShardSfx();
+spawnWeaponShards(18);
   
 // ✅ 슈퍼강화 성공일 때만 카운트/칭호 지급 (슈퍼스타)
 if (useSuper) {
@@ -9835,6 +10093,7 @@ if (useRate5) {
     // ❌ 실패
     // ✅ 5,10,15,20까지만 세이프 / 25부터는 세이프 없음
     const isSafeLevel = (before % 5 === 0 && before <= 20);
+    playMetalCrackSfx();
 
     if (useProtect) {
       downStreak = 0;
@@ -10108,6 +10367,11 @@ if (targetLevel >= 21 && targetLevel <= 25) {
       "images/npc/blacksmith_fail.png"
     );
   }
+
+    // ✅ 실패 연기(파괴면 더 강하게) — 실패 분기에서만 실행
+if (!isSuccess) {
+  spawnWeaponSmoke((sword === 0 && before > 0) ? 2 : 1);
+}
     
 // ✅ 결과 연출 + UI 갱신(무기 이미지 변경 타이밍 제어)
 save(); // 결과(성공/실패) 계산으로 바뀐 값들 먼저 저장
