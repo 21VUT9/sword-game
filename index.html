@@ -1309,6 +1309,28 @@ button {
 #attendanceIconBtn{ top: var(--field-top-offset); }
 #achievementIconBtn{ top: calc(120px + var(--field-top-offset)); }
 
+  /* ✅ 출석 미완료 알림 뱃지 (!) */
+#attendanceIconBtn{ overflow: visible; } /* (혹시 밖으로 삐져도 보이게) */
+
+.icon-alert-badge{
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: none;              /* ✅ 기본은 숨김 */
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 14px;
+  line-height: 18px;
+  background: #ff3b30;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.45);
+  z-index: 6;
+  pointer-events: none;       /* ✅ 클릭 방해 X */
+}
 
   /* ✅ 지도 버튼 아래로 같은 규격으로 쌓기 (지도 스타일 유지) */
 #mapBtn{ top: var(--field-top-offset) }              /* 지도는 그대로 */
@@ -3087,6 +3109,10 @@ html, body {
         class="map-icon-btn left-icon-btn"
         onclick="checkAttendance()">
   <img class="map-icon-img" src="images/ui/icon_attendance.png" alt="출석">
+
+  <!-- ✅ 미출석 알림 뱃지 (아이콘 내부 우상단) -->
+  <div id="attendanceAlertBadge" class="icon-alert-badge">!</div>
+
   <span class="map-icon-label">출석</span>
 </button>
 
@@ -9173,10 +9199,44 @@ if (lastAttendanceDate === today) {
   lastAttendanceDay = today;
   lastAttendanceDate = today;
   attendanceCount++;
+  updateAttendanceBadge();
 
   // ✅ 여기서 바로 “가챠 연출 + 보상 지급”
   preloadAttendanceGachaImages();
   playAttendanceGachaAnimationAndGrant();
+}
+
+  // ✅ 출석 뱃지(!) 표시/숨김 갱신
+function updateAttendanceBadge(){
+  const badge = document.getElementById("attendanceAlertBadge");
+  if (!badge) return;
+
+  // 로그인 전이면 숨김
+  if (!userId || !userRef) {
+    badge.style.display = "none";
+    return;
+  }
+
+  const today = getTodayDateString();
+
+  // 오늘 출석 안했으면 보이기 / 했으면 숨기기
+  badge.style.display = (lastAttendanceDate === today) ? "none" : "flex";
+}
+
+// ✅ 매일 00:00(자정)마다 뱃지 상태 갱신 (게임 켜놓은 채로 날짜 넘어가도 반영)
+let attendanceResetTimer = null;
+function startAttendanceResetTimer(){
+  if (attendanceResetTimer) clearTimeout(attendanceResetTimer);
+
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(24, 0, 0, 0);           // 다음 자정
+  const ms = Math.max(1000, next - now);
+
+  attendanceResetTimer = setTimeout(() => {
+    updateAttendanceBadge();            // 날짜 바뀌었으니 다시 계산
+    startAttendanceResetTimer();        // 다음날 것도 예약
+  }, ms);
 }
   
 /* 강화 */
@@ -10380,6 +10440,8 @@ startAutoRefreshTimer();
 subscribeGlobalDestroyEvents();
 subscribeGlobal30Events();
 update();
+updateAttendanceBadge();
+startAttendanceResetTimer();
 showTutorialIfFirstTime();
 loadUpdateNotices();
 ensureDuelWeek();
@@ -11392,6 +11454,8 @@ const titleChanged = checkAndGrantTitles();
 if (titleChanged) save();
     
     update();
+    updateAttendanceBadge();
+startAttendanceResetTimer();
     showTutorialIfFirstTime();
     loadUpdateNotices();
     loadHallOfFame();
