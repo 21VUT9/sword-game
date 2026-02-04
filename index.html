@@ -14865,6 +14865,11 @@ function calcBossAttackResult(bossId){
   // 3) 무기 계수 반영
   let dmg = adjPower * wp.coef;
 
+    // ✅ 서리여왕 전용: 주문력 무기(스태프) 10% 상승
+  if (bossId === "frost_queen" && wp.t === "staff") {
+    dmg = dmg * 1.10;
+  }
+
   // 4) 방어/저항(현재 0%지만 룰로는 적용)
   //    창은 물리방어 10% 무시
   const effPhysDef = Math.max(0, Number(stats.physDef || 0) - Number(wp.ignoreDef || 0));
@@ -15638,8 +15643,9 @@ function closeBossRewardOverlay(){
   if (overlay) overlay.style.display = "none";
 }
 
-// ✅ 보상 테이블(하이엘프퀸 1종만 우선 적용)
-function getBossRewardByPct(pct, isLeader){
+// ✅ 보상 테이블(보스별 적용)
+function getBossRewardByPct(bossId, pct, isLeader){
+  bossId = String(bossId || "");
   // pct: 0~100
   const reward = {
     itemProtect: 0,
@@ -15647,33 +15653,70 @@ function getBossRewardByPct(pct, isLeader){
     itemScroll21: 0,
     itemScroll15: 0,
     itemEssence: 0,    // 🟣 마력의 정수
-    itemSuper: 0
+    itemSuper: 0       // 🟡 슈퍼강화주문서(대장 보너스 포함용)
   };
 
-  if (pct >= 30) {
-    reward.itemProtect += 2;
-    reward.itemDownProtect += 5;
-    reward.itemEssence += 50;
-  } else if (pct >= 25) {
-    reward.itemProtect += 1;
-    reward.itemDownProtect += 3;
-    reward.itemEssence += 30;
-  } else if (pct >= 20) {
-    reward.itemScroll21 += 2;
-    reward.itemDownProtect += 5;
-    reward.itemEssence += 20;
-  } else if (pct >= 10) {
-    reward.itemDownProtect += 5;
-    reward.itemEssence += 10;
-  } else if (pct >= 1) {
-    reward.itemScroll15 += 1;
-    reward.itemEssence += 5;
+  // =========================
+  // 1) 실바나 릴리아네(기존 테이블 유지)
+  // =========================
+  if (bossId === "swamp_elf_queen") {
+
+    if (pct >= 30) {
+      reward.itemProtect += 2;
+      reward.itemDownProtect += 5;
+      reward.itemEssence += 50;
+    } else if (pct >= 25) {
+      reward.itemProtect += 1;
+      reward.itemDownProtect += 3;
+      reward.itemEssence += 30;
+    } else if (pct >= 20) {
+      reward.itemScroll21 += 2;
+      reward.itemDownProtect += 5;
+      reward.itemEssence += 20;
+    } else if (pct >= 10) {
+      reward.itemDownProtect += 5;
+      reward.itemEssence += 10;
+    } else if (pct >= 1) {
+      reward.itemScroll15 += 1;
+      reward.itemEssence += 5;
+    } else {
+      reward.itemEssence += 1;
+    }
+
+  // =========================
+  // 2) 서리여왕 아르셀리아(신규 테이블)
+  // =========================
+  } else if (bossId === "frost_queen") {
+
+    if (pct >= 30) {
+      reward.itemProtect += 3;
+      reward.itemEssence += 80;
+    } else if (pct >= 25) {
+      reward.itemProtect += 2;
+      reward.itemEssence += 50;
+    } else if (pct >= 20) {
+      reward.itemProtect += 1;
+      reward.itemEssence += 30;
+    } else if (pct >= 10) {
+      reward.itemScroll21 += 3;
+      reward.itemEssence += 20;
+    } else if (pct >= 1) {
+      reward.itemScroll15 += 5;
+      reward.itemDownProtect += 3;
+      reward.itemEssence += 10;
+    } else {
+      reward.itemDownProtect += 2;
+      reward.itemEssence += 5;
+    }
+
   } else {
+    // ✅ 혹시 모를 기본값(정의되지 않은 보스)
     reward.itemEssence += 1;
   }
 
+  // ✅ 토벌대장 보너스(아르셀리아 요구사항: 슈퍼 1개 + 정수 30개)
   if (isLeader) {
-    reward.itemSuper += 1;    
+    reward.itemSuper += 1;
     reward.itemEssence += 30;
   }
 
@@ -15717,7 +15760,7 @@ function claimBossReward(){
     const pct = (me && total > 0) ? (me.dmg / total * 100) : 0;
 
     const isLeader = (String(run.leaderUid || "") === userId);
-    const rw = getBossRewardByPct(pct, isLeader);
+   const rw = getBossRewardByPct(bossId, pct, isLeader);
 
     // ✅ 로컬 보상 지급(아이템 변수 증가)
     itemProtect = Number(itemProtect || 0) + (rw.itemProtect || 0);
