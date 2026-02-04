@@ -7004,7 +7004,7 @@ function setNpcName(name) {
   if (nameEl) nameEl.textContent = name;
 }
 
-// 🔐 이 탭의 세션 시작 (로그인 성공 후 호출)
+  // 🔐 이 탭의 세션 시작 (로그인 성공 후 호출)
 function startSession() {
   if (!userRef) return;
 
@@ -7014,12 +7014,39 @@ function startSession() {
   // 서버에 내 세션ID 기록
   userRef.child("sessionId").set(currentSessionId);
 
+  watchSessionId(userId, currentSessionId);
+
   // 이 탭이 끊기면 sessionId 자동 제거
   userRef.child("sessionId").onDisconnect().remove();
   
     // ✅ 새로고침/재로그인 시에도 보스 참여 상태 복구를 위해 미리 구독 시작
   ensureBossRunsSubscription();
 
+}
+
+  // ✅ 내 sessionId가 끊기거나 바뀌면 즉시 로그아웃
+function watchSessionId(uid, mySessionId) {
+  const ref = db.ref("users/" + uid + "/sessionId");
+
+  ref.on("value", (snap) => {
+    const cur = snap.val();
+
+    // sessionId가 비워지거나, 내 세션이 아니게 되면 튕김
+    if (!cur || cur !== mySessionId) {
+      console.warn("[SESSION] 다른 곳에서 접속하여 로그아웃 처리");
+
+      // 팝업 한번 띄우고
+      showNpcMessage(
+        "다른 기기에서 접속하여<br>현재 접속이 종료되었습니다.",
+        null,
+        true,
+        ""
+      );
+
+      // 로그아웃 처리
+      logout(); // ← 네 프로젝트의 기존 로그아웃 함수
+    }
+  });
 }
 
   // ================================
