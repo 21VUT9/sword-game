@@ -16656,36 +16656,26 @@ function confirmForceDisconnectAndContinue() {
   const ref = db.ref("users/" + uid);
 
   // 1) 기존 세션 끊기(비우기)
-  ref.child("sessionId").set("").then(() => {
-    // 2) 이 탭 세션 시작
-    //    (너 코드에 startSession()이 이미 있음)
-    userId = uid;
-    userRef = ref;
+ref.child("sessionId").set("").then(() => {
+  // 2) 이 탭 기준 로그인 상태 확정
+  userId = uid;
+  userRef = ref;
 
-    // ✅ 팝업 닫고 진행
-    closeNpcPopup();
+  // 팝업 닫기
+  closeNpcPopup();
 
-    startSession();
+  // 세션 시작 (네 코드에 이미 존재)
+  startSession();
 
-    // 3) 기존 로그인 흐름 이어서 실행 (data가 있으면 재조회 없이 바로 가능)
-    if (data) {
-      loadUserData(data);
-      update();
-      save();
-    } else {
-      // data가 없으면 다시 읽어서 진행
-      ref.once("value").then(snap => {
-        const fresh = snap.val() || {};
-        loadUserData(fresh);
-        update();
-        save();
-      });
-    }
-  }).catch((e) => {
-    console.error("❌ forceDisconnect 실패:", e);
-    closeNpcPopup();
-    showNpcMessage("접속끊기에 실패했습니다.", null, true, "");
-  });
+  // ✅ 데이터 적용은 기존 로그인 루틴에 맡기고
+  //    가장 확실한 방법: 새로고침으로 정상 진입
+  location.reload();
+
+}).catch((e) => {
+  console.error("❌ forceDisconnect 실패:", e);
+  closeNpcPopup();
+  showNpcMessage("접속끊기에 실패했습니다.", null, true, "");
+});
 }
 
 // 🔒 능력치(미구현) 버튼 클릭 연결
