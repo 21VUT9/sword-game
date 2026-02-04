@@ -5592,7 +5592,8 @@ let titlesOwned = {};     // { titleId: true }
 let equippedTitle = "";   // 장착중 칭호 ID
 let lastSeenGlobal30EventId = 0;  // 마지막으로 본 +30 글로벌 이벤트 ID
 let aweUsedGlobal30EventId = 0;   // 마지막으로 ‘경외하기’를 사용한 +30 이벤트 ID (1인 1회)
-
+let pendingLoginData = null;
+let pendingLoginUserId = null;
 
 // 🧭 사냥터 이동 중인지 여부
 let isMoving = false;
@@ -10954,12 +10955,11 @@ return;
       // ⭐ 기존 계정 로그인 시
       const data = s.val();
 
-      // 🔐 이미 다른 곳에서 접속 중인지 체크
-      if (data.sessionId) {
-        alert("이미 다른 곳에서 이 계정으로 접속 중입니다.\n기존 접속을 종료한 뒤 다시 시도해주세요.");
-        userRef = null;   // 이 탭의 ref 초기화
-        return;
-      }
+      // 🔐 이미 다른 곳에서 접속 중이면: 시스템 alert 대신 "접속끊기" 팝업
+if (data.sessionId) {
+  showAlreadyOnlinePopup(userId, data);
+  return;
+}
 
       if (data.password !== userPassword) {
         alert("비밀번호가 올바르지 않습니다.");
@@ -11789,19 +11789,11 @@ destroyCount  = 0;
 
     const data = s.val();
 
-        // 🔐 이미 다른 곳에서 로그인 중이면 자동로그인도 막기
-     if (data.sessionId) {
-      console.log("[autoLogin] 이미 다른 곳에서 접속 중, 자동로그인 취소");
-
-      // ✅ 자동로그인 취소 시, 계정 상태를 남기지 않기
-      userId = "";
-      userRef = null;
-      titlesOwned = {};
-      equippedTitle = "";
-      closeTitleOverlay();
-
-      return;
-    }
+        // 🔐 이미 다른 곳에서 접속 중이면: 자동로그인도 팝업으로 처리
+if (data.sessionId) {
+  showAlreadyOnlinePopup(userId, data);
+  return;
+}
 
     sword = data.sword ?? 0;
     gold  = data.gold  ?? 100;
@@ -16613,6 +16605,87 @@ function showLockedFeaturePopup(){
   `;
   // ✅ npcPopup DOM 구조를 절대 파괴하지 않고, 기존 showNpcMessage를 사용
   showNpcMessage(html, null, true, "");
+}
+
+// ✅ 중복 접속 감지 시: NPC 팝업 레이아웃으로 "접속끊기" 선택 제공
+function showAlreadyOnlinePopup(userIdToKick, dataObj) {
+  pendingLoginUserId = userIdToKick;
+  pendingLoginData = dataObj || null;
+
+  const html = `
+    <div style="text-align:center; font-size:14px; line-height:1.7;">
+      <div style="font-weight:900; font-size:16px; margin-bottom:8px;">
+        이미 다른 곳에서 접속중
+      </div>
+
+      <div style="color:#bbb; margin-bottom:10px;">
+        현재 계정이 다른 기기/탭에서 접속중입니다.<br>
+        이곳에서 접속을 계속하려면 기존 접속을 끊어야 합니다.
+      </div>
+
+      <div style="display:flex; gap:10px; justify-content:center; margin-top:12px;">
+        <button onclick="confirmForceDisconnectAndContinue()"
+          style="padding:8px 14px; border-radius:10px; border:1px solid #444;
+                 background:#2b2b2b; color:#fff; font-weight:900; cursor:pointer;">
+          접속끊기
+        </button>
+
+        <button onclick="closeNpcPopup()"
+          style="padding:8px 14px; border-radius:10px; border:1px solid #333;
+                 background:#141414; color:#bbb; font-weight:800; cursor:pointer;">
+          취소
+        </button>
+      </div>
+    </div>
+  `;
+
+  // ✅ 기본 확인 버튼 숨기고(=false), HTML 내부 버튼 2개로 처리
+  showNpcMessage(html, null, false, "");
+}
+
+// ✅ "접속끊기" 누르면: sessionId 비우고 → 바로 startSession() → 이어서 로그인 진행
+function confirmForceDisconnectAndContinue() {
+  const uid = pendingLoginUserId;
+  const data = pendingLoginData;
+
+  if (!uid) {
+    closeNpcPopup();
+    return;
+  }
+
+  const ref = db.ref("users/" + uid);
+
+  // 1) 기존 세션 끊기(비우기)
+  ref.child("sessionId").set("").then(() => {
+    // 2) 이 탭 세션 시작
+    //    (너 코드에 startSession()이 이미 있음)
+    userId = uid;
+    userRef = ref;
+
+    // ✅ 팝업 닫고 진행
+    closeNpcPopup();
+
+    startSession();
+
+    // 3) 기존 로그인 흐름 이어서 실행 (data가 있으면 재조회 없이 바로 가능)
+    if (data) {
+      loadUserData(data);
+      update();
+      save();
+    } else {
+      // data가 없으면 다시 읽어서 진행
+      ref.once("value").then(snap => {
+        const fresh = snap.val() || {};
+        loadUserData(fresh);
+        update();
+        save();
+      });
+    }
+  }).catch((e) => {
+    console.error("❌ forceDisconnect 실패:", e);
+    closeNpcPopup();
+    showNpcMessage("접속끊기에 실패했습니다.", null, true, "");
+  });
 }
 
 // 🔒 능력치(미구현) 버튼 클릭 연결
