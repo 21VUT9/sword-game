@@ -13401,14 +13401,6 @@ const BOSS_DEFS = [
     durationHours: 72,
     imgIdle: "images/bosses/silvana_idle.png",
     imgDead: "images/bosses/silvana_down.png",
-    // 실바나 (기존 대사 그대로 옮겨 적기)
-    lines: SILVANA_LINES,
-    deadLine: SILVANA_DEAD_LINE,
-    deadSubLine: SILVANA_DEAD_SUBLINE,
-    failLine: SILVANA_FAIL_LINE,
-    logSuccess: "잔혹한 사냥꾼의 몰락에 퍼그란트의 대장간이 환호합니다!",
-    logFail: "퍼그란트의 대장간이 좌절합니다…"
-
   },
 
   {
@@ -13421,7 +13413,7 @@ const BOSS_DEFS = [
     applyCostGold: 30000000000,      // 300억
     durationHours: 72,
 
-    maxHp: 8900000000000,            // 89000억
+    maxHp: 890000000000,            // 8900억
 
     bgImg: "images/bossmaps/ice_cave.png",  // ✅ 너가 확정한 경로
 
@@ -13584,47 +13576,43 @@ function startBossRunWatchdog(){
           db.ref(`bossCooldown/${bossId}`).set({ nextAt });
         });
 
-// (2) 결과 메인로그 1회 고정
-runRef2.transaction((cur) => {
-  if (!cur) return;
-  const s = String(cur.status || "");
-  if (s !== "cleared" && s !== "failed") return;
-  if (cur.resultAnnounced) return;
-  cur.resultAnnounced = true;
-  cur.resultAnnouncedAt = Date.now();
-  return cur;
-}, (err, committed) => {
-  if (err || !committed) return;
+        // (2) 결과 메인로그 1회 고정
+        runRef2.transaction((cur) => {
+          if (!cur) return;
+          const s = String(cur.status || "");
+          if (s !== "cleared" && s !== "failed") return;
+          if (cur.resultAnnounced) return;
+          cur.resultAnnounced = true;
+          cur.resultAnnouncedAt = Date.now();
+          return cur;
+        }, (err, committed) => {
+          if (err || !committed) return;
 
-  const def2 = (typeof BOSS_DEFS !== "undefined")
-    ? (BOSS_DEFS.find(b => b.id === bossId) || null)
-    : null;
+          const def2 = (typeof BOSS_DEFS !== "undefined")
+            ? (BOSS_DEFS.find(b => b.id === bossId) || null)
+            : null;
 
-  const mapName2   = def2 ? def2.mapName   : (run.mapName || "어딘가");
-  const bossTitle2 = def2 ? def2.bossTitle : (run.bossTitle || "보스");
-  const bossName2  = def2 ? def2.bossName  : (run.bossName || "");
-  const title2 = `${mapName2}의 주인 ${bossTitle2}${bossName2 ? " " + bossName2 : ""}`;
-  const leader2 = run.leaderNick || "누군가";
+          const mapName2   = def2 ? def2.mapName   : (run.mapName || "어딘가");
+          const bossTitle2 = def2 ? def2.bossTitle : (run.bossTitle || "보스");
+          const bossName2  = def2 ? def2.bossName  : (run.bossName || "");
+          const title2 = `${mapName2}의 주인 ${bossTitle2}${bossName2 ? " " + bossName2 : ""}`;
+          const leader2 = run.leaderNick || "누군가";
 
-  const successText = def2?.logSuccess || "";
-  const failText    = def2?.logFail || "";
+          if (String(run.status || "") === "cleared") {
+  writeLog(
+    `${leader2}님의 토벌대가 ${title2}를 토벌하는데 성공하였습니다. 잔혹한 사냥꾼의 몰락에 퍼그란트의 대장간이 환호합니다!`,
+    false,
+    { tone: "boss_success" }
+  );
+} else {
+  writeLog(
+    `${leader2}님의 토벌대가 ${title2} 토벌에 실패하였습니다. 퍼그란트의 대장간이 좌절합니다…`,
+    false,
+    { tone: "boss_fail" }
+  );
+}
 
-  const st2 = String(run.status || "");  // ✅ st 대신 여기서 판정
-
-  if (st2 === "cleared") {
-    writeLog(
-      `${leader2}님의 토벌대가 ${title2}를 토벌하는데 성공하였습니다.${successText ? " " + successText : ""}`,
-      false,
-      { tone: "boss_success" }
-    );
-  } else {
-    writeLog(
-      `${leader2}님의 토벌대가 ${title2} 토벌에 실패하였습니다.${failText ? " " + failText : ""}`,
-      false,
-      { tone: "boss_fail" }
-    );
-  }
-});
+        });
       }
     });
   }, 60 * 1000); // 1분마다 체크(가볍게)
@@ -14622,36 +14610,26 @@ renderBossBattleLogs();
     }
   }
 
-    // ✅ 보스 대사(진행중=랜덤 / 종료=고정) - 보스별 처리
-const bossBattleBossLineMain = document.getElementById("bossBattleBossLineMain");
-const bossBattleBossLineSub  = document.getElementById("bossBattleBossLineSub");
-if (!bossBattleBossLineMain || !bossBattleBossLineSub) return;
+    // ✅ 보스 대사(진행중=랜덤 / 종료=고정)
+  const st = String(run.status || "");
 
-const def = BOSS_DEFS.find(b => b.id === bossId) || {};
+  const lineMainEl = document.getElementById("bossBattleBossLineMain");
+  const lineSubEl  = document.getElementById("bossBattleBossLineSub");
 
-const lines       = def.lines || [];
-const deadLine    = def.deadLine || "";
-const deadSubLine = def.deadSubLine || "";
-const failLine    = def.failLine || "";
-
-const st = String(run.status || "");
-
-if (st === "cleared") {
-  bossBattleBossLineMain.textContent = deadLine;
-  bossBattleBossLineSub.textContent  = deadSubLine;
-
-} else if (st === "failed") {
-  bossBattleBossLineMain.textContent = failLine;
-  bossBattleBossLineSub.textContent  = "";
-
-} else {
-  if (lines.length > 0) {
-    bossBattleBossLineMain.textContent =
-      lines[Math.floor(Math.random() * lines.length)];
+  if (st === "cleared") {
+    // ✅ 사망 고정 2줄(메인 + 서브)
+    if (lineMainEl) lineMainEl.textContent = String(SILVANA_DEAD_LINE || "");
+    if (lineSubEl)  lineSubEl.textContent  = String(SILVANA_DEAD_SUBLINE || "");
+  } else if (st === "failed") {
+    // ✅ 실패 고정(서브는 비움)
+    if (lineMainEl) lineMainEl.textContent = String(SILVANA_FAIL_LINE || "…인간은 결국, 약속을 찢는구나…");
+    if (lineSubEl)  lineSubEl.textContent  = "";
   } else {
-    bossBattleBossLineMain.textContent = "";
-  }
-  bossBattleBossLineSub.textContent = "";
+    // ✅ 진행중만 랜덤(서브는 비움)
+    if (lineSubEl) lineSubEl.textContent = "";
+    if (lineMainEl && (!lineMainEl.textContent || Math.random() < 0.12)) {
+      lineMainEl.textContent = SILVANA_LINES[Math.floor(Math.random() * SILVANA_LINES.length)];
+    }
 }
 
     // ✅ 결과 UI / 보상 버튼 토글 + 보스 클릭 가능 여부
