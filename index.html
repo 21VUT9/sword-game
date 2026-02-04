@@ -14455,12 +14455,12 @@ function formatDamageKoUnits(n){
 }
   
 function renderBossBattle(){
-  
-  maybeCastManaShield(bossId, run);
-  
+    
   const bossId = String(activeBossId || "");
   const run = (bossRunsActiveCache || {})[bossId];
   if (!run) return;
+
+  maybeCastManaShield(bossId, run);
 
   const def = BOSS_DEFS.find(b => b.id === bossId);
 
