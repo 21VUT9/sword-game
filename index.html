@@ -14766,31 +14766,26 @@ if (prevSt !== st) {
   ? (BOSS_DEFS.find(b => b.id === bossId) || {})
   : {};
 
-const successText = String(defLog.logSuccess || "");
-const failText    = String(defLog.logFail || "");
+    const successText = def?.logSuccess || "";
+    const failText    = def?.logFail || "";
 
-if (st === "cleared") {
-  writeLog(
-    `${leader}님의 토벌대가 ${title}를 토벌하는데 성공하였습니다.${successText ? " " + successText : ""}`,
-    false,
-    { tone: "boss_success" }
-  );
-
-  if (typeof writeBossBattleLog === "function") {
-    writeBossBattleLog(bossId, "✅ 토벌 성공! 보상 수령이 가능합니다.");
-  }
-
-} else {
-  writeLog(
-    `${leader}님의 토벌대가 ${title} 토벌에 실패하였습니다.${failText ? " " + failText : ""}`,
-    false,
-    { tone: "boss_fail" }
-  );
-
-  if (typeof writeBossBattleLog === "function") {
-    writeBossBattleLog(bossId, "❌ 토벌 실패… 포기(정산) 처리가 가능합니다.");
-  }
-}
+    if (st === "cleared") {
+      writeLog(
+        `${leader}님의 토벌대가 ${title}를 토벌하는데 성공하였습니다.${successText ? " " + successText : ""}`,
+        false
+      );
+      if (typeof writeBossBattleLog === "function") {
+        writeBossBattleLog(bossId, "✅ 토벌 성공! 보상 수령이 가능합니다.");
+      }
+    } else {
+      writeLog(
+        `${leader}님의 토벌대가 ${title} 토벌에 실패하였습니다.${failText ? " " + failText : ""}`,
+        false
+      );
+      if (typeof writeBossBattleLog === "function") {
+        writeBossBattleLog(bossId, "❌ 토벌 실패… 포기(정산) 처리가 가능합니다.");
+      }
+    }
   });
 })();
   
