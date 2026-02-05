@@ -9606,6 +9606,55 @@ function preloadAttendanceGachaImages() {
     });
   } catch (e) {}
 }
+
+  // ============================
+// 🎰 출석 룰렛 사운드
+// 1) "틱틱틱" = WebAudio(시스템 사운드)
+// 2) "뾰롱"   = mp3 (Audio 태그)
+// ============================
+
+// ✅ 룰렛 확정 "뾰롱"
+const attendancePyorong = new Audio("sounds/ui_attendance_pyorong.mp3");
+attendancePyorong.volume = 0.85;
+function playAttendancePyorong(){
+  try{
+    attendancePyorong.currentTime = 0;
+    attendancePyorong.play().catch(()=>{});
+  }catch(e){}
+}
+
+// ✅ 룰렛 "틱/탁" (WebAudio)
+function playRouletteTick(strength = 1){
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return;
+
+  // 네 파일에 이미 있는 ensureUiAudio()가 있으면 그걸 사용
+  const ctx = (typeof ensureUiAudio === "function") ? ensureUiAudio() : null;
+  if (!ctx) return;
+
+  const t0 = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  // strength(0~1.2): 마지막으로 갈수록 "탁" 느낌 강하게
+  const s = Math.max(0, Math.min(1.2, strength));
+  const freq = 900 - (s * 280);
+
+  osc.type = "square";
+  osc.frequency.setValueAtTime(freq, t0);
+
+  const peak = 0.05 + (s * 0.06);
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.exponentialRampToValueAtTime(peak, t0 + 0.004);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.03);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start(t0);
+  osc.stop(t0 + 0.035);
+}
   
 // 🎞️ 3초 가챠 연출: 빠르게→점점 느려지다가 멈춤
 function playAttendanceGachaAnimationAndGrant(onDone) {
@@ -9654,6 +9703,7 @@ function playAttendanceGachaAnimationAndGrant(onDone) {
     // 남은 시간이 0 이하면 확정
     if (left <= 0) {
       // 최종 보상 지급
+      playAttendancePyorong();
       grantAttendanceGachaReward(current);
 
       // 로그
@@ -9686,6 +9736,7 @@ function playAttendanceGachaAnimationAndGrant(onDone) {
 
     // 계속 굴리기: 매 tick마다 “표시되는 아이템”을 바꿈
     current = pickAttendanceGachaReward();
+    playRouletteTick(Math.min(1.2, delay / 600));
 
     if (imgEl) {
       imgEl.style.display = "block";
