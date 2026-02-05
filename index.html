@@ -4403,6 +4403,64 @@ firebase.initializeApp({
   projectId:"sword-game-1d1a1"
 });
 const db = firebase.database();
+
+  // ============================
+// 🔊 아이콘 탭 사운드(지정 버튼만)
+// ============================
+const ICON_TAP_SOUND_SRC = "sounds/ui_tap_icon.mp3"; // ✅ 여기에 저장한 파일명
+
+let _uiTapAudioBase = null;
+
+function _prepareUiTapAudio() {
+  if (_uiTapAudioBase) return;
+  _uiTapAudioBase = new Audio(ICON_TAP_SOUND_SRC);
+  _uiTapAudioBase.preload = "auto";
+  _uiTapAudioBase.volume = 0.55; // 필요하면 0.3~0.8 사이로 조절
+}
+
+function playIconTapSound() {
+  try {
+    _prepareUiTapAudio();
+
+    // ✅ 연타 시 끊김 방지: base를 clone 해서 재생
+    const a = _uiTapAudioBase.cloneNode(true);
+    a.volume = _uiTapAudioBase.volume;
+
+    const p = a.play();
+    if (p && typeof p.catch === "function") p.catch(() => {});
+  } catch (e) {
+    // 조용히 무시
+  }
+}
+
+function bindIconTapSound(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  // ✅ 클릭보다 빠른 "터치 순간"에 반응
+  el.addEventListener(
+    "pointerdown",
+    () => {
+      playIconTapSound();
+    },
+    { passive: true }
+  );
+}
+
+// ✅ 지정한 버튼만 바인딩
+document.addEventListener("DOMContentLoaded", () => {
+  [
+    "hamburgerBtn",
+    "attendanceIconBtn",
+    "achievementIconBtn",
+    "mapBtn",
+    "duelIconBtn",
+    "guildIconBtn",
+    "userListIconBtn",
+    "bossBattleIconBtn",
+  ].forEach(bindIconTapSound);
+});
+
 const logRef = db.ref("logs");
 const globalEventsRef = db.ref("globalEvents");
 
