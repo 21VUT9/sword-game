@@ -329,6 +329,23 @@ body {
   visibility: visible !important;
 }
 
+/* ❄️ 마나실드 활성화 시 보스 파란 글로우 */
+.boss-mana-shield {
+  filter:
+    drop-shadow(0 0 12px rgba(80, 170, 255, 0.85))
+    drop-shadow(0 0 28px rgba(80, 170, 255, 0.55));
+  transition: filter 0.25s ease;
+}
+
+  /* ❄️ 마나실드 파괴 순간 */
+.boss-mana-shield-break {
+  animation: shieldBreakFlash 0.6s ease-out;
+}
+
+@keyframes shieldBreakFlash {
+  0%   { filter: drop-shadow(0 0 40px rgba(180,220,255,1)); }
+  100% { filter: none; }
+}
 
 /* ===========================
    📷 캡쳐 시 숨길 요소
@@ -14658,6 +14675,24 @@ renderBossBattleLogs();
     }
   }
 
+  // ✅ 마나실드 글로우 효과 (보스 주변)
+if (bossImg) {
+  if (shieldHp > 0 && shieldMax > 0) {
+    bossImg.classList.add("boss-mana-shield");
+  } else {
+    bossImg.classList.remove("boss-mana-shield");
+  }
+}
+
+  if (prevShieldHp > 0 && shieldHp === 0) {
+  bossImg.classList.remove("boss-mana-shield");
+  bossImg.classList.add("boss-mana-shield-break");
+
+  setTimeout(() => {
+    bossImg.classList.remove("boss-mana-shield-break");
+  }, 600);
+}
+  
   // ✅ 보스 대사(진행중=랜덤 / 종료=고정) - 보스별 처리
   const st = String(run.status || "");
 
