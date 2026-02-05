@@ -13897,7 +13897,20 @@ function renderBossBattleLogs() {
 
   el.innerHTML = arr.map(x => {
     const t = x.t ? formatTime(x.t) : "";
-    const safeMsg = (x.msg || "").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
+    const esc = (s) => String(s || "")
+  .replace(/&/g, "&amp;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;")
+  .replace(/'/g, "&#39;");
+
+const msgHtml = esc(x.msg).replace(/\n/g, "<br>");
+const tone = String(x.tone || "");
+
+let safeMsg = msgHtml;
+if (tone === "yellow") {
+  safeMsg = `<span style="color:#ffd54f; font-weight:900;">${msgHtml}</span>`;
+}
     return `
       <div style="margin-bottom:6px; font-size:12px; line-height:1.35;">
         <span style="color:#888;">[${t}]</span> ${safeMsg}
@@ -13909,17 +13922,20 @@ function renderBossBattleLogs() {
   el.scrollTop = el.scrollHeight;
 }
 
-function writeBossBattleLog(bossId, msg) {
+function writeBossBattleLog(bossId, msg, opt) {
   bossId = String(bossId || "");
   if (!bossId) return;
 
   const text = String(msg || "").trim();
   if (!text) return;
 
+  const tone = opt && opt.tone ? String(opt.tone) : "";
+
   db.ref(getBossBattleLogPath(bossId)).push({
-  t: Date.now(),
-  msg: text
-});
+    t: Date.now(),
+    msg: text,
+    tone
+  });
 }
 
 function openBossBattle(){
@@ -14478,9 +14494,10 @@ function formatDamageKoUnits(n){
     const r = (bossRunsActiveCache || {})[bossId];
     if (!err && committed && r && Number(r.shieldHp || 0) > 0) {
       writeBossBattleLog(
-        bossId,
-        `<span style="color:#ffd54f; font-weight:900;">서리여왕 아르셀리아가 마나실드를 사용하였습니다. 마나실드가 파괴되기 전까지 공격력이 통하지 않습니다</span>`
-      );
+  bossId,
+  "서리여왕 아르셀리아가 마나실드를 사용하였습니다. 마나실드가 파괴되기 전까지 공격력이 통하지 않습니다",
+  { tone: "yellow" }
+);
     }
   });
 }
