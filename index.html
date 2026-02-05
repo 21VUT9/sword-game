@@ -13390,7 +13390,7 @@ function openAdventureGuildHelp(){
 
 // ✅ (보스 추가 확장용) 보스 정의 테이블
 
-  const SILVANA_LINES = [
+  var SILVANA_LINES = [
   "…늪의 숨결이 네 발목을 잡을 것이다.",
   "인간은 모두 같은 냄새가 난다. 썩은 피의 냄새.",
   "한 걸음만 더. …그 순간이 네 마지막이 된다.",
@@ -13489,11 +13489,11 @@ const BOSS_COOLDOWN_REF    = db.ref("bossCooldown");
 // 메모리 캐시(렌더용)
 let bossRunsActiveCache = {};   // { bossId: runObj }
 let bossCooldownCache = {};     // { bossId: { nextAt: ms } }
-let bossRunsUnsubscribed = true;
+var bossRunsUnsubscribed = true;
 let bossRunWatchdogTimer = null;
 
 function updateBossBattleBtn(){
-  if (activeBossId && bossRunsUnsubscribed) {
+  if (activeBossId && bossRunsUnsubscribed !== false) {
   ensureBossRunsSubscription();
 }
   const btn = document.getElementById("bossBattleBtn");
@@ -13719,7 +13719,7 @@ if (Number(run.endsAt || 0) > 0 && Date.now() >= Number(run.endsAt || 0) && Stri
 
 // ✅ 모험가길드 열릴 때 한번만 구독 시작
 function ensureBossRunsSubscription() {
-  if (!bossRunsUnsubscribed) return;
+  if (bossRunsUnsubscribed === false) return;
 
   bossRunsUnsubscribed = false;
 BOSS_RUNS_ACTIVE_REF.on("value", (snap) => {
@@ -13816,9 +13816,9 @@ function getBossSpriteSrc(bossId, status){
   return sp.alive || "";
 }
   
-const SILVANA_DEAD_LINE = "…아아 미르엘… 이렇게 모든것이… 끝나는구나 … 미르엘…";
-const SILVANA_DEAD_SUBLINE = "마지막 엘프여왕, 릴리아네 미르엘 — 기록 종료";
-const SILVANA_FAIL_LINE = "도망쳐라. 늪은… 너희의 뼈를 기억한다.";
+var SILVANA_DEAD_LINE = "…아아 미르엘… 이렇게 모든것이… 끝나는구나 … 미르엘…";
+var SILVANA_DEAD_SUBLINE = "마지막 엘프여왕, 릴리아네 미르엘 — 기록 종료";
+var SILVANA_FAIL_LINE = "도망쳐라. 늪은… 너희의 뼈를 기억한다.";
 
 let bossBattleTickTimer = null;
   let bossBattleDeathFxShown = {};   // { bossId: true } - 사망/실패 연출 1회만
