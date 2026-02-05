@@ -13847,6 +13847,7 @@ var SILVANA_FAIL_LINE = "도망쳐라. 늪은… 너희의 뼈를 기억한다."
 let bossBattleTickTimer = null;
   let bossBattleDeathFxShown = {};   // { bossId: true } - 사망/실패 연출 1회만
 let bossBattleLastStatus = {};      // { bossId: "active"|"cleared"|"failed" }
+  let bossBattlePrevShieldHp = {};  // { bossId: number } 이전 shieldHp 기억(파괴 순간 감지용)
 
   // ===============================
 // ✅ 보스전 전용 로그 (bossBattleLogs/{bossId})
@@ -14675,22 +14676,26 @@ renderBossBattleLogs();
     }
   }
 
-  // ✅ 마나실드 글로우 효과 (보스 주변)
+  // ✅ 마나실드 글로우 효과 (보스 주변) + 파괴 순간 번쩍임
+const bossImg = document.getElementById("bossBattleBossImg");
+
+// 이전 쉴드HP 기억(파괴 순간 감지)
+const prevShieldHp = Number((bossBattlePrevShieldHp && bossBattlePrevShieldHp[bossId]) || 0);
+bossBattlePrevShieldHp[bossId] = shieldHp;
+
 if (bossImg) {
-  if (shieldHp > 0 && shieldMax > 0) {
-    bossImg.classList.add("boss-mana-shield");
-  } else {
-    bossImg.classList.remove("boss-mana-shield");
-  }
-}
+  // 쉴드가 남아있는 동안 계속 글로우 유지
+  if (shieldHp > 0) bossImg.classList.add("boss-mana-shield");
+  else bossImg.classList.remove("boss-mana-shield");
 
+  // ✅ “파괴 순간” 1회 번쩍임
   if (prevShieldHp > 0 && shieldHp === 0) {
-  bossImg.classList.remove("boss-mana-shield");
-  bossImg.classList.add("boss-mana-shield-break");
-
-  setTimeout(() => {
-    bossImg.classList.remove("boss-mana-shield-break");
-  }, 600);
+    bossImg.classList.remove("boss-mana-shield");
+    bossImg.classList.add("boss-mana-shield-break");
+    setTimeout(() => {
+      bossImg.classList.remove("boss-mana-shield-break");
+    }, 600);
+  }
 }
   
   // ✅ 보스 대사(진행중=랜덤 / 종료=고정) - 보스별 처리
