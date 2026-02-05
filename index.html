@@ -7022,6 +7022,14 @@ function startSession() {
 
   watchSessionId(userId, currentSessionId);
 
+  // ✅ 연결이 다시 살아나면 내 sessionId를 재기록(모바일 순간 끊김 복구)
+db.ref(".info/connected").on("value", (snap) => {
+  if (snap.val() === true && userRef && currentSessionId) {
+    userRef.child("sessionId").set(currentSessionId);
+  }
+});
+
+
   // 이 탭이 끊기면 sessionId 자동 제거
   userRef.child("sessionId").onDisconnect().remove();
   
@@ -7037,21 +7045,20 @@ function watchSessionId(uid, mySessionId) {
   ref.on("value", (snap) => {
     const cur = snap.val();
 
-    // sessionId가 비워지거나, 내 세션이 아니게 되면 튕김
-    if (!cur || cur !== mySessionId) {
-      console.warn("[SESSION] 다른 곳에서 접속하여 로그아웃 처리");
+    // ✅ sessionId가 "다른 값"으로 바뀐 경우에만 튕김
+// (모바일 순간 끊김으로 sessionId가 잠깐 비는 건 허용)
+if (cur && cur !== mySessionId) {
+  console.warn("[SESSION] 다른 곳에서 접속하여 로그아웃 처리");
 
-      // 팝업 한번 띄우고
-      showNpcMessage(
-        "다른 기기에서 접속하여<br>현재 접속이 종료되었습니다.",
-        null,
-        true,
-        ""
-      );
+  showNpcMessage(
+    "다른 기기에서 접속하여<br>현재 접속이 종료되었습니다.",
+    null,
+    true,
+    ""
+  );
 
-      // 로그아웃 처리
-      logout(); // ← 네 프로젝트의 기존 로그아웃 함수
-    }
+  logout();
+}
   });
 }
 
