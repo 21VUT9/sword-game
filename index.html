@@ -4404,33 +4404,43 @@ firebase.initializeApp({
 });
 const db = firebase.database();
 
-  // ============================
-// 🔊 아이콘 탭 사운드(지정 버튼만)
 // ============================
-const ICON_TAP_SOUND_SRC = "sounds/ui_tap_icon.mp3"; // ✅ 여기에 저장한 파일명
+// 🔊 아이콘 탭 사운드(초저지연: WebAudio)
+// ============================
+const ICON_TAP_SOUND_SRC = "sounds/ui_tap_icon.mp3";
 
-let _uiTapAudioBase = null;
+let _tapCtx = null;
+let _tapBuf = null;
+let _tapGain = null;
 
-function _prepareUiTapAudio() {
-  if (_uiTapAudioBase) return;
-  _uiTapAudioBase = new Audio(ICON_TAP_SOUND_SRC);
-  _uiTapAudioBase.preload = "auto";
-  _uiTapAudioBase.volume = 0.55; // 필요하면 0.3~0.8 사이로 조절
+async function _initTapAudioOnce() {
+  if (_tapBuf) return;
+
+  _tapCtx = _tapCtx || new (window.AudioContext || window.webkitAudioContext)();
+
+  // iOS/크롬 정책: 첫 유저 제스처에서 resume 필요할 수 있음
+  if (_tapCtx.state === "suspended") {
+    try { await _tapCtx.resume(); } catch (e) {}
+  }
+
+  const res = await fetch(ICON_TAP_SOUND_SRC);
+  const arr = await res.arrayBuffer();
+  _tapBuf = await _tapCtx.decodeAudioData(arr);
+
+  _tapGain = _tapCtx.createGain();
+  _tapGain.gain.value = 0.55; // 볼륨
+  _tapGain.connect(_tapCtx.destination);
 }
 
 function playIconTapSound() {
+  if (!_tapBuf || !_tapCtx) return;
+
   try {
-    _prepareUiTapAudio();
-
-    // ✅ 연타 시 끊김 방지: base를 clone 해서 재생
-    const a = _uiTapAudioBase.cloneNode(true);
-    a.volume = _uiTapAudioBase.volume;
-
-    const p = a.play();
-    if (p && typeof p.catch === "function") p.catch(() => {});
-  } catch (e) {
-    // 조용히 무시
-  }
+    const src = _tapCtx.createBufferSource();
+    src.buffer = _tapBuf;
+    src.connect(_tapGain);
+    src.start(0);
+  } catch (e) {}
 }
 
 function bindIconTapSound(id) {
@@ -4439,12 +4449,13 @@ function bindIconTapSound(id) {
 
   // ✅ 클릭보다 빠른 "터치 순간"에 반응
   el.addEventListener(
-    "pointerdown",
-    () => {
-      playIconTapSound();
-    },
-    { passive: true }
-  );
+  "pointerdown",
+  async () => {
+    if (!_tapBuf) await _initTapAudioOnce(); // 첫 터치에서 로드/디코드
+    playIconTapSound();
+  },
+  { passive: true }
+);
 }
 
 // ✅ 지정한 버튼만 바인딩
