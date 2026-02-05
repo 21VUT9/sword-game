@@ -14677,22 +14677,22 @@ renderBossBattleLogs();
   }
 
 // ✅ 마나실드 글로우 효과 (보스 주변) + 파괴 순간 번쩍임
-const bossImgEl = document.getElementById("bossBattleBossImg");
+// ⚠ bossImgEl 은 위에서 이미 선언되어 있으니 여기서 다시 const로 선언하지 말 것
 
 // 이전 쉴드HP 기억(파괴 순간 감지)
 const prevShieldHp = Number((bossBattlePrevShieldHp && bossBattlePrevShieldHp[bossId]) || 0);
 bossBattlePrevShieldHp[bossId] = shieldHp;
 
 if (bossImgEl) {
+  // 쉴드가 남아있는 동안 계속 글로우 유지
   if (shieldHp > 0) bossImgEl.classList.add("boss-mana-shield");
   else bossImgEl.classList.remove("boss-mana-shield");
 
+  // ✅ “파괴 순간” 1회 번쩍임
   if (prevShieldHp > 0 && shieldHp === 0) {
     bossImgEl.classList.remove("boss-mana-shield");
     bossImgEl.classList.add("boss-mana-shield-break");
-    setTimeout(() => {
-      bossImgEl.classList.remove("boss-mana-shield-break");
-    }, 600);
+    setTimeout(() => bossImgEl.classList.remove("boss-mana-shield-break"), 600);
   }
 }
 
