@@ -13389,6 +13389,14 @@ function openAdventureGuildHelp(){
 }
 
 // ✅ (보스 추가 확장용) 보스 정의 테이블
+
+  const SILVANA_LINES = [
+  "…늪의 숨결이 네 발목을 잡을 것이다.",
+  "인간은 모두 같은 냄새가 난다. 썩은 피의 냄새.",
+  "한 걸음만 더. …그 순간이 네 마지막이 된다.",
+  "숲은 내 편이다. 너희의 비명조차 삼켜주지."
+];
+  
 const BOSS_DEFS = [
   {
     id: "swamp_elf_queen",
@@ -13783,13 +13791,6 @@ if (!canKeep) activeBossId = "";
     renderAdventureGuildBossRuns();
   }, 1000);
 }
-
-const SILVANA_LINES = [
-  "…늪의 숨결이 네 발목을 잡을 것이다.",
-  "인간은 모두 같은 냄새가 난다. 썩은 피의 냄새.",
-  "한 걸음만 더. …그 순간이 네 마지막이 된다.",
-  "숲은 내 편이다. 너희의 비명조차 삼켜주지."
-];
 
 // ✅ 보스 스프라이트(상태별) - 여기만 바꾸면 됨
 const BOSS_SPRITES = {
@@ -14633,39 +14634,38 @@ renderBossBattleLogs();
     }
   }
 
-    // ✅ 보스 대사(진행중=랜덤 / 종료=고정) - 보스별 처리
-const bossBattleBossLineMain = document.getElementById("bossBattleBossLineMain");
-const bossBattleBossLineSub  = document.getElementById("bossBattleBossLineSub");
-if (!bossBattleBossLineMain || !bossBattleBossLineSub) return;
+  // ✅ 보스 대사(진행중=랜덤 / 종료=고정) - 보스별 처리
+  const st = String(run.status || "");
 
-const defTalk = (typeof BOSS_DEFS !== "undefined")
-  ? (BOSS_DEFS.find(b => b.id === bossId) || {})
-  : {};
+  const lineMainEl = document.getElementById("bossBattleBossLineMain");
+  const lineSubEl  = document.getElementById("bossBattleBossLineSub");
 
-const lines       = defTalk.lines || [];
-const deadLine    = defTalk.deadLine || "";
-const deadSubLine = defTalk.deadSubLine || "";
-const failLine    = defTalk.failLine || "";
+  const defTalk = (typeof BOSS_DEFS !== "undefined")
+    ? (BOSS_DEFS.find(b => b.id === bossId) || null)
+    : null;
 
-const st = String(run.status || "");
+  // 🔁 fallback (실바나 상수 유지)
+  const lines       = defTalk?.lines       || (typeof SILVANA_LINES !== "undefined" ? SILVANA_LINES : []);
+  const deadLine    = defTalk?.deadLine    || (typeof SILVANA_DEAD_LINE !== "undefined" ? SILVANA_DEAD_LINE : "");
+  const deadSubLine = defTalk?.deadSubLine || (typeof SILVANA_DEAD_SUBLINE !== "undefined" ? SILVANA_DEAD_SUBLINE : "");
+  const failLine    = defTalk?.failLine    || (typeof SILVANA_FAIL_LINE !== "undefined" ? SILVANA_FAIL_LINE : "");
 
-if (st === "cleared") {
-  bossBattleBossLineMain.textContent = deadLine;
-  bossBattleBossLineSub.textContent  = deadSubLine;
-
-} else if (st === "failed") {
-  bossBattleBossLineMain.textContent = failLine;
-  bossBattleBossLineSub.textContent  = "";
-
-} else {
-  if (lines.length > 0) {
-    bossBattleBossLineMain.textContent =
-      lines[Math.floor(Math.random() * lines.length)];
+  if (st === "cleared") {
+    if (lineMainEl) lineMainEl.textContent = String(deadLine || "");
+    if (lineSubEl)  lineSubEl.textContent  = String(deadSubLine || "");
+  } else if (st === "failed") {
+    if (lineMainEl) lineMainEl.textContent = String(failLine || "");
+    if (lineSubEl)  lineSubEl.textContent  = "";
   } else {
-    bossBattleBossLineMain.textContent = "";
+    if (lineSubEl) lineSubEl.textContent = "";
+    if (lineMainEl && (!lineMainEl.textContent || Math.random() < 0.12)) {
+      if (lines.length > 0) {
+        lineMainEl.textContent = lines[Math.floor(Math.random() * lines.length)];
+      } else {
+        lineMainEl.textContent = "";
+      }
+    }
   }
-  bossBattleBossLineSub.textContent = "";
-}
 
     // ✅ 결과 UI / 보상 버튼 토글 + 보스 클릭 가능 여부
   const banner = document.getElementById("bossBattleResultBanner");
