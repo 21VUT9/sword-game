@@ -13401,6 +13401,12 @@ const BOSS_DEFS = [
     durationHours: 72,
     imgIdle: "images/bosses/silvana_idle.png",
     imgDead: "images/bosses/silvana_down.png",
+    lines: SILVANA_LINES,
+    deadLine: SILVANA_DEAD_LINE,
+    deadSubLine: SILVANA_DEAD_SUBLINE,
+    failLine: SILVANA_FAIL_LINE,
+    logSuccess: "잔혹한 사냥꾼의 몰락에 퍼그란트의 대장간이 환호합니다!",
+    logFail: "퍼그란트의 대장간이 좌절합니다…"
   },
 
   {
@@ -13420,6 +13426,21 @@ const BOSS_DEFS = [
     // ✅ 보스 스프라이트(실바나 구조 동일)
     imgIdle: "images/bosses/arshelia_idle.png",
     imgDead: "images/bosses/arshelia_down.png",
+    // (2) 서리여왕 아르셀리아 오브젝트 내부, imgDead 아래에 추가
+    // ✅ 보스 대사/로그(아르셀리아 전용)
+    lines: [
+      "나의 분노는 한이 되어 모두를 얼렸지.",
+      "숨결조차 허락하지 않겠다.",
+      "영혼까지 얼어붙는 한기를 보아라.",
+      "너희의 열은 여기서 끝난다."
+    ],
+    deadLine: "…나의 서리얹은 한도, 이 한기처럼… 끝이 났으면…",
+    deadSubLine: "-아르카리아족 마지막 숨결 종료-",
+    failLine: "도망쳐라. 다음엔 숨을 곳조차 없을 것이다.",
+
+    // ✅ 토벌 결과 메인로그에 붙일 문장(보스별)
+    logSuccess: "서리여왕의 냉기가 부서지며 동굴에 봄의 숨결이 스며듭니다!",
+    logFail: "끝없는 냉기가 토벌대를 삼켰습니다… 동굴은 다시 침묵합니다."
   }
   ];
 
@@ -13598,20 +13619,22 @@ function startBossRunWatchdog(){
           const title2 = `${mapName2}의 주인 ${bossTitle2}${bossName2 ? " " + bossName2 : ""}`;
           const leader2 = run.leaderNick || "누군가";
 
-          if (String(run.status || "") === "cleared") {
+          const successText = def2?.logSuccess || "";
+const failText    = def2?.logFail || "";
+const st2 = String(run.status || ""); // ✅ 여기서 판정
+if (st2 === "cleared") {
   writeLog(
-    `${leader2}님의 토벌대가 ${title2}를 토벌하는데 성공하였습니다. 잔혹한 사냥꾼의 몰락에 퍼그란트의 대장간이 환호합니다!`,
+    `${leader2}님의 토벌대가 ${title2}를 토벌하는데 성공하였습니다.${successText ? " " + successText : ""}`,
     false,
     { tone: "boss_success" }
   );
 } else {
   writeLog(
-    `${leader2}님의 토벌대가 ${title2} 토벌에 실패하였습니다. 퍼그란트의 대장간이 좌절합니다…`,
+    `${leader2}님의 토벌대가 ${title2} 토벌에 실패하였습니다.${failText ? " " + failText : ""}`,
     false,
     { tone: "boss_fail" }
   );
 }
-
         });
       }
     });
@@ -14610,26 +14633,38 @@ renderBossBattleLogs();
     }
   }
 
-    // ✅ 보스 대사(진행중=랜덤 / 종료=고정)
-  const st = String(run.status || "");
+    // ✅ 보스 대사(진행중=랜덤 / 종료=고정) - 보스별 처리
+const bossBattleBossLineMain = document.getElementById("bossBattleBossLineMain");
+const bossBattleBossLineSub  = document.getElementById("bossBattleBossLineSub");
+if (!bossBattleBossLineMain || !bossBattleBossLineSub) return;
 
-  const lineMainEl = document.getElementById("bossBattleBossLineMain");
-  const lineSubEl  = document.getElementById("bossBattleBossLineSub");
+const defTalk = (typeof BOSS_DEFS !== "undefined")
+  ? (BOSS_DEFS.find(b => b.id === bossId) || {})
+  : {};
 
-  if (st === "cleared") {
-    // ✅ 사망 고정 2줄(메인 + 서브)
-    if (lineMainEl) lineMainEl.textContent = String(SILVANA_DEAD_LINE || "");
-    if (lineSubEl)  lineSubEl.textContent  = String(SILVANA_DEAD_SUBLINE || "");
-  } else if (st === "failed") {
-    // ✅ 실패 고정(서브는 비움)
-    if (lineMainEl) lineMainEl.textContent = String(SILVANA_FAIL_LINE || "…인간은 결국, 약속을 찢는구나…");
-    if (lineSubEl)  lineSubEl.textContent  = "";
+const lines       = defTalk.lines || [];
+const deadLine    = defTalk.deadLine || "";
+const deadSubLine = defTalk.deadSubLine || "";
+const failLine    = defTalk.failLine || "";
+
+const st = String(run.status || "");
+
+if (st === "cleared") {
+  bossBattleBossLineMain.textContent = deadLine;
+  bossBattleBossLineSub.textContent  = deadSubLine;
+
+} else if (st === "failed") {
+  bossBattleBossLineMain.textContent = failLine;
+  bossBattleBossLineSub.textContent  = "";
+
+} else {
+  if (lines.length > 0) {
+    bossBattleBossLineMain.textContent =
+      lines[Math.floor(Math.random() * lines.length)];
   } else {
-    // ✅ 진행중만 랜덤(서브는 비움)
-    if (lineSubEl) lineSubEl.textContent = "";
-    if (lineMainEl && (!lineMainEl.textContent || Math.random() < 0.12)) {
-      lineMainEl.textContent = SILVANA_LINES[Math.floor(Math.random() * SILVANA_LINES.length)];
-    }
+    bossBattleBossLineMain.textContent = "";
+  }
+  bossBattleBossLineSub.textContent = "";
 }
 
     // ✅ 결과 UI / 보상 버튼 토글 + 보스 클릭 가능 여부
@@ -14727,29 +14762,35 @@ if (prevSt !== st) {
 
     const leader = run.leaderNick || getNickSafe();
 
-    if (st === "cleared") {
-      // ✅ 성공 메인 로그(도배 방지 1회)
-      writeLog(
-        `${leader}님의 토벌대가 ${title}를 토벌하는데 성공하였습니다. 잔혹한 사냥꾼의 몰락에 퍼그란트의 대장간이 환호합니다!`,
-        false
-      );
+    const defLog = (typeof BOSS_DEFS !== "undefined")
+  ? (BOSS_DEFS.find(b => b.id === bossId) || {})
+  : {};
 
-      // ✅ 전용 로그(1회)
-      if (typeof writeBossBattleLog === "function") {
-        writeBossBattleLog(bossId, "✅ 토벌 성공! 보상 수령이 가능합니다.");
-      }
-    } else {
-      // ✅ 실패 메인 로그(도배 방지 1회)
-      writeLog(
-        `${leader}님의 토벌대가 ${title} 토벌에 실패하였습니다. 습격과 함정의 여왕은 다시 숲으로 숨어들었습니다…`,
-        false
-      );
+const successText = String(defLog.logSuccess || "");
+const failText    = String(defLog.logFail || "");
 
-      // ✅ 전용 로그(1회)
-      if (typeof writeBossBattleLog === "function") {
-        writeBossBattleLog(bossId, "❌ 토벌 실패… 포기(정산) 처리가 가능합니다.");
-      }
-    }
+if (st === "cleared") {
+  writeLog(
+    `${leader}님의 토벌대가 ${title}를 토벌하는데 성공하였습니다.${successText ? " " + successText : ""}`,
+    false,
+    { tone: "boss_success" }
+  );
+
+  if (typeof writeBossBattleLog === "function") {
+    writeBossBattleLog(bossId, "✅ 토벌 성공! 보상 수령이 가능합니다.");
+  }
+
+} else {
+  writeLog(
+    `${leader}님의 토벌대가 ${title} 토벌에 실패하였습니다.${failText ? " " + failText : ""}`,
+    false,
+    { tone: "boss_fail" }
+  );
+
+  if (typeof writeBossBattleLog === "function") {
+    writeBossBattleLog(bossId, "❌ 토벌 실패… 포기(정산) 처리가 가능합니다.");
+  }
+}
   });
 })();
   
