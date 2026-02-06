@@ -4436,7 +4436,7 @@ firebase.initializeApp({
   projectId:"sword-game-1d1a1"
 });
 const db = firebase.database();
-
+  
 // ============================
 // 🔊 아이콘 탭 사운드(초저지연: WebAudio)
 // ============================
@@ -7110,6 +7110,55 @@ function applyFieldBackground() {
   // (옵션) 혹시 다른 곳에서 fieldBg 기준으로 읽는 코드가 남아있을 수 있어서 같이 세팅
   if (fieldBgEl) {
     fieldBgEl.style.setProperty("--field-bg-image", `url('${url}')`);
+  }
+  
+  if (typeof updateBgmByField === "function") updateBgmByField();
+
+}
+
+  // ============================
+// 🎵 BGM (필드별)
+// ============================
+let currentBgm = null;
+
+function playBgm(bgm){
+  if (!bgm) return;
+  if (currentBgm === bgm) return; // 이미 재생 중이면 무시
+
+  try{
+    if (currentBgm){
+      currentBgm.pause();
+      currentBgm.currentTime = 0;
+    }
+  }catch(e){}
+
+  currentBgm = bgm;
+  try{
+    const p = bgm.play();
+    if (p && typeof p.catch === "function") p.catch(()=>{});
+  }catch(e){}
+}
+
+function stopBgm(){
+  if (!currentBgm) return;
+  try{
+    currentBgm.pause();
+    currentBgm.currentTime = 0;
+  }catch(e){}
+  currentBgm = null;
+}
+
+// ✅ 퍼그란트의 대장간 BGM (파일명은 네가 sounds/에 넣은 걸로)
+const BGM_FULGURANT_FORGE = new Audio("sounds/bgm_fugrant_forge.mp3");
+BGM_FULGURANT_FORGE.loop = true;
+BGM_FULGURANT_FORGE.volume = 0.35; // 기본 볼륨 (원하면 0.25~0.50 조절)
+
+function updateBgmByField(){
+  // 퍼그란트 대장간이면 재생, 아니면 정지(원하면 다른 필드 BGM 추가 가능)
+  if (typeof isInFulgurantForge === "function" && isInFulgurantForge()){
+    playBgm(BGM_FULGURANT_FORGE);
+  } else {
+    stopBgm();
   }
 }
 
