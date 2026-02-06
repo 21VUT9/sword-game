@@ -9714,12 +9714,12 @@ function playRouletteTick(strength = 1){
 
   // strength(0~1.2): 마지막으로 갈수록 "탁" 느낌 강하게
   const s = Math.max(0, Math.min(1.2, strength));
-  const freq = 900 - (s * 280);
+  const freq = 750 - (s * 220);
 
   osc.type = "square";
   osc.frequency.setValueAtTime(freq, t0);
 
-  const peak = 0.36 + (s * 0.36);
+  const peak = 0.70 + (s * 0.70);
   gain.gain.setValueAtTime(0.0001, t0);
   gain.gain.exponentialRampToValueAtTime(peak, t0 + 0.004);
   gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.03);
