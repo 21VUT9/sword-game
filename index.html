@@ -13988,9 +13988,10 @@ function ensureBossBattleLogsSubscription(bossId) {
   const onValue = (snap) => {
     const v = snap.val() || {};
     const arr = Object.keys(v).map(k => ({
-      t: Number(v[k].t || 0),
-      msg: String(v[k].msg || "")
-    }));
+  t: Number(v[k].t || 0),
+  msg: String(v[k].msg || ""),
+  tone: String(v[k].tone || "")
+}));
     arr.sort((a,b) => a.t - b.t);
     bossBattleLogsCache = arr;
     renderBossBattleLogs();
