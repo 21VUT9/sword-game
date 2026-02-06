@@ -5668,6 +5668,23 @@ function getFxAudioCtx(){
   }
 }
 
+// ✅ 공통 효과음 재생 헬퍼 (mp3)
+// (Effect 설정 즉시 반영: 재생할 때마다 getSfxScale()로 볼륨 계산)
+function playSfx(src, baseVol=1.0){
+  try{
+    const a = new Audio(src);
+    a.preload = "auto";
+    a.volume = Math.max(0, Math.min(1, baseVol * getSfxScale()));
+    a.currentTime = 0;
+
+    const p = a.play();
+    if (p && typeof p.catch === "function") p.catch(()=>{});
+    return a;
+  }catch(e){
+    return null;
+  }
+}
+  
 // ✅ 강화 성공 SFX
 function playShardSfx(){
   playSfx("sounds/sfx_upgrade_success.mp3", 0.9);
@@ -11873,6 +11890,19 @@ function applySoundSettingFromUI(){
   applyBgmVolumeNow();
   applyIconTapVolumeNow?.(); // (아이콘 탭 WebAudio 쓰는 경우가 있으면)
   closeSoundSetting();
+}
+
+  // ✅ 최초 1회: 소리설정 기본값 보장 + 즉시 반영
+function loadSoundSettings(){
+  try{
+    // 기본값(3) 없으면 세팅
+    if (localStorage.getItem("bgmLevel") === null) localStorage.setItem("bgmLevel", "3");
+    if (localStorage.getItem("sfxLevel") === null) localStorage.setItem("sfxLevel", "3");
+  }catch(e){}
+
+  // 현재 오디오에도 즉시 반영
+  try{ applyBgmVolumeNow(); }catch(e){}
+  try{ applyIconTapVolumeNow(); }catch(e){}
 }
 
 // ✅ 네 BGM 오디오 객체에 연결
