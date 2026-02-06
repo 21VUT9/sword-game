@@ -5818,56 +5818,6 @@ let hasSeen25Warning = false;
 let ignoreNextUpgradeWarning = false;
 
 let activeBossId = "";
-
-  // =========================
-// 🔊 사운드 설정 (0~5)
-// =========================
-const SOUND_KEY_BGM = "pug_bgm_level";
-const SOUND_KEY_SFX = "pug_sfx_level";
-
-let bgmLevel = 3; // 0~5 (기본 3)
-let sfxLevel = 3; // 0~5 (기본 3)
-
-// 0~5 → 0.0~1.0 스케일 (3이 “기본” 느낌이 되게)
-function levelToScale(lv){
-  lv = Math.max(0, Math.min(5, Number(lv||0)));
-  // 0=0, 1=0.25, 2=0.5, 3=0.75, 4=1.0, 5=1.25(캡)
-  const map = [0, 0.25, 0.5, 0.75, 1.0, 1.25];
-  return map[lv] ?? 0.75;
-}
-
-function loadSoundSettings(){
-  try {
-    const b = localStorage.getItem(SOUND_KEY_BGM);
-    const s = localStorage.getItem(SOUND_KEY_SFX);
-    if (b !== null) bgmLevel = Math.max(0, Math.min(5, Number(b)));
-    if (s !== null) sfxLevel = Math.max(0, Math.min(5, Number(s)));
-  } catch(e){}
-}
-
-function saveSoundSettings(){
-  try {
-    localStorage.setItem(SOUND_KEY_BGM, String(bgmLevel));
-    localStorage.setItem(SOUND_KEY_SFX, String(sfxLevel));
-  } catch(e){}
-}
-
-// 외부에서 바로 쓰는 값
-function getBgmScale(){ return levelToScale(bgmLevel); }
-function getSfxScale(){ return levelToScale(sfxLevel); }
-
-  // ✅ 공통 효과음 재생 헬퍼 (mp3)
-function playSfx(src, baseVol=1.0){
-  try {
-    const a = new Audio(src);
-    a.volume = Math.max(0, Math.min(1, baseVol * getSfxScale()));
-    a.currentTime = 0;
-    a.play().catch(()=>{});
-    return a;
-  } catch(e){
-    return null;
-  }
-}
    
 // 🧮 사냥 스태미나 계산 (리셋 + 회복 처리)
 function recalcHuntStamina() {
@@ -7238,12 +7188,12 @@ BGM_FULGURANT_FORGE.loop = true;
 BGM_FULGURANT_FORGE.volume = 0.45; // 기본 볼륨 (원하면 0.25~0.50 조절)
 
 function updateBgmByField(){
-  // 퍼그란트 대장간이면 재생, 아니면 정지(원하면 다른 필드 BGM 추가 가능)
   if (typeof isInFulgurantForge === "function" && isInFulgurantForge()){
-    playBgm(BGM_FULGURANT_FORGE);
-  } else {
-    stopBgm();
-  }
+  applyBgmVolumeNow();     // ✅ 추가
+  playBgm(BGM_FULGURANT_FORGE);
+} else {
+  stopBgm();
+}
 }
 
   // ✅ 모바일 자동재생 차단 대응: 첫 사용자 입력에서 BGM 재시도
@@ -11918,12 +11868,21 @@ function applySoundSettingFromUI(){
 // ✅ 네 BGM 오디오 객체에 연결
 function applyBgmVolumeNow(){
   try{
-    // 네가 쓰는 bgm Audio 변수가 전역에 있다면 여기를 그 변수명으로 바꿔줘.
-    // 예: window.fieldBgm, window.bgmAudio, window.currentBgm 등
+    const baseVol = 0.45; // ✅ 너가 실제 BGM에 쓰는 기본값이랑 동일하게
     if (window.currentBgm && typeof window.currentBgm.volume === "number") {
-      // baseVol은 너가 정한 “곡 기본 볼륨” (예: 0.6)
-      const baseVol = 0.6;
       window.currentBgm.volume = Math.min(1.0, baseVol * getBgmScale());
+    }
+    // 곡 객체가 따로 있으면(지금은 이거 하나) 이것도 같이
+    if (typeof BGM_FULGURANT_FORGE !== "undefined" && BGM_FULGURANT_FORGE) {
+      BGM_FULGURANT_FORGE.volume = Math.min(1.0, baseVol * getBgmScale());
+    }
+  }catch(e){}
+}
+
+  function applyIconTapVolumeNow(){
+  try{
+    if (window._tapGain) {
+      _tapGain.gain.value = 0.85 * getSfxScale(); // 아이콘 탭 기본 0.85 유지
     }
   }catch(e){}
 }
