@@ -7162,6 +7162,59 @@ function updateBgmByField(){
   }
 }
 
+  // ==================================================
+// 🔇 모바일 백그라운드 진입 시 사운드 강제 중단
+// (홈버튼 / 앱 전환 대응)
+// ==================================================
+
+function pauseAllSounds(){
+  // 🎵 BGM 정지
+  if (typeof currentBgm !== "undefined" && currentBgm) {
+    try {
+      currentBgm.pause();
+    } catch(e){}
+  }
+
+  // 🔊 WebAudio (틱틱틱 / 클릭음 등)
+  try {
+    if (window._tapCtx && _tapCtx.state === "running") {
+      _tapCtx.suspend();
+    }
+  } catch(e){}
+}
+
+function resumeBgmIfNeeded(){
+  // WebAudio 복구
+  try {
+    if (window._tapCtx && _tapCtx.state === "suspended") {
+      _tapCtx.resume();
+    }
+  } catch(e){}
+
+  // 현재 필드 기준으로 BGM 재생
+  if (typeof updateBgmByField === "function") {
+    updateBgmByField();
+  }
+}
+
+// 🔴 화면이 보이지 않게 되는 순간 (홈버튼 포함)
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    pauseAllSounds();
+  } else {
+    resumeBgmIfNeeded();
+  }
+});
+
+// 🔴 iOS / 일부 브라우저 보조 대응
+window.addEventListener("blur", () => {
+  pauseAllSounds();
+});
+
+window.addEventListener("focus", () => {
+  resumeBgmIfNeeded();
+});
+
   function isInFulgurantForge(){
   return Number(currentField) === FORGE_FIELD_ID;
 }
