@@ -14847,7 +14847,20 @@ renderBossBattleLogs();
   const ratio = Math.max(0, Math.min(1, hp / maxHp));
 
   const fillWrap = document.getElementById("bossHpFillWrap");
-  if (fillWrap) fillWrap.style.width = `calc(${(Math.max(0, Math.min(1, ratio)) * 100).toFixed(3)}% - 60px)`;
+if (fillWrap) {
+  const LEFT_PAD = 60; // ✅ 왼쪽 장식 때문에 비워둘 px
+  const r = Math.max(0, Math.min(1, Number(ratio) || 0));
+
+  const totalW = (fillWrap.parentElement ? fillWrap.parentElement.clientWidth : 0);
+  if (totalW > 0) {
+    const usable = Math.max(0, totalW - LEFT_PAD);
+    const w = LEFT_PAD + usable * r;              // ✅ 60px + (남은구간 * 비율)
+    fillWrap.style.width = `${Math.round(w)}px`;  // ✅ px로 안전하게
+  } else {
+    // 혹시 폭을 못 구하는 순간(드물게) 대비
+    fillWrap.style.width = `${(r * 100).toFixed(3)}%`;
+  }
+}
 
   const hpText = document.getElementById("bossHpText");
 const shieldText = document.getElementById("bossShieldText");
@@ -14877,7 +14890,17 @@ const shieldWrap = document.getElementById("bossShieldFillWrap");
 if (shieldWrap) {
   if (hasShieldBar) {
     const sRatio = Math.max(0, Math.min(1, shieldHp / shieldMax));
-    shieldWrap.style.width = `calc(${(sRatio * 100).toFixed(3)}% - 60px)`;
+    const LEFT_PAD = 60; // ✅ HP랑 동일 규칙
+const totalW = (shieldWrap.parentElement ? shieldWrap.parentElement.clientWidth : 0);
+
+if (totalW > 0) {
+  const usable = Math.max(0, totalW - LEFT_PAD);
+  const w = LEFT_PAD + usable * sRatio;
+  shieldWrap.style.width = `${Math.round(w)}px`;
+} else {
+  shieldWrap.style.width = `${(sRatio * 100).toFixed(3)}%`;
+}
+
     shieldWrap.style.display = "block";
   } else {
     shieldWrap.style.width = "0%";
