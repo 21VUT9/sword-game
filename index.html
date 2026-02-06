@@ -14811,13 +14811,6 @@ if (hpText) {
   }
 }
 
-  if (shieldText) {
-  shieldText.style.display = hasShieldBar ? "flex" : "none";
-  if (hasShieldBar) {
-    shieldText.textContent = `${formatBossHpShort(shieldHp)} / ${formatBossHpShort(shieldMax)}`;
-  }
-}
-
 const shieldWrap = document.getElementById("bossShieldFillWrap");
 if (shieldWrap) {
   if (hasShieldBar) {
