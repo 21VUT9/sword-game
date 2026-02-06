@@ -4461,7 +4461,7 @@ async function _initTapAudioOnce() {
   _tapBuf = await _tapCtx.decodeAudioData(arr);
 
   _tapGain = _tapCtx.createGain();
-  _tapGain.gain.value = 0.55; // 볼륨
+  _tapGain.gain.value = 0.85; // 볼륨
   _tapGain.connect(_tapCtx.destination);
 }
 
