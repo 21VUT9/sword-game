@@ -7151,7 +7151,19 @@ let currentBgm = null;
 
 function playBgm(bgm){
   if (!bgm) return;
-  if (currentBgm === bgm) return; // 이미 재생 중이면 무시
+
+  // ✅ 같은 BGM이라도 "일시정지 상태"면 다시 재생 시도해야 함
+  if (currentBgm === bgm) {
+    try{
+      if (bgm.paused) {
+        const p = bgm.play();
+        if (p && typeof p.catch === "function") {
+          p.catch(() => { window._bgmNeedUserGesture = true; });
+        }
+      }
+    }catch(e){}
+    return;
+  }
 
   try{
     if (currentBgm){
@@ -7161,15 +7173,15 @@ function playBgm(bgm){
   }catch(e){}
 
   currentBgm = bgm;
+
   try{
     const p = bgm.play();
-if (p && typeof p.catch === "function") {
-  p.catch(() => {
-    // ✅ 모바일 자동재생 차단 → 다음 사용자 입력에서 재시도
-    window._bgmNeedUserGesture = true;
-  });
-}
-
+    if (p && typeof p.catch === "function") {
+      p.catch(() => {
+        // ✅ 모바일 자동재생 차단 → 다음 사용자 입력에서 재시도
+        window._bgmNeedUserGesture = true;
+      });
+    }
   }catch(e){}
 }
 
@@ -7221,14 +7233,12 @@ document.addEventListener("pointerdown", () => {
 function pauseAllSounds(){
   // 🎵 BGM 정지
   if (typeof currentBgm !== "undefined" && currentBgm) {
-    try {
-      currentBgm.pause();
-    } catch(e){}
+    try { currentBgm.pause(); } catch(e){}
   }
 
   // 🔊 WebAudio (틱틱틱 / 클릭음 등)
   try {
-    if (window._tapCtx && _tapCtx.state === "running") {
+    if (typeof _tapCtx !== "undefined" && _tapCtx && _tapCtx.state === "running") {
       _tapCtx.suspend();
     }
   } catch(e){}
@@ -7237,7 +7247,7 @@ function pauseAllSounds(){
 function resumeBgmIfNeeded(){
   // WebAudio 복구
   try {
-    if (window._tapCtx && _tapCtx.state === "suspended") {
+    if (typeof _tapCtx !== "undefined" && _tapCtx && _tapCtx.state === "suspended") {
       _tapCtx.resume();
     }
   } catch(e){}
@@ -11868,13 +11878,9 @@ function applySoundSettingFromUI(){
 // ✅ 네 BGM 오디오 객체에 연결
 function applyBgmVolumeNow(){
   try{
-    const baseVol = 0.45; // ✅ 너가 실제 BGM에 쓰는 기본값이랑 동일하게
-    if (window.currentBgm && typeof window.currentBgm.volume === "number") {
-      window.currentBgm.volume = Math.min(1.0, baseVol * getBgmScale());
-    }
-    // 곡 객체가 따로 있으면(지금은 이거 하나) 이것도 같이
-    if (typeof BGM_FULGURANT_FORGE !== "undefined" && BGM_FULGURANT_FORGE) {
-      BGM_FULGURANT_FORGE.volume = Math.min(1.0, baseVol * getBgmScale());
+    if (typeof currentBgm !== "undefined" && currentBgm && typeof currentBgm.volume === "number") {
+      const baseVol = 0.45; // BGM 기본 볼륨
+      currentBgm.volume = Math.min(1.0, baseVol * getBgmScale());
     }
   }catch(e){}
 }
