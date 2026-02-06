@@ -11354,27 +11354,16 @@ if(titleChanged) save();
       return;
     }
 
-    // 3) 생성 성공 → 바로 로그인 상태로 전환(네 기존 신규 생성 후 흐름을 여기서 호출)
-    userId = newId;
-    userPassword = newPw;
-    userRef = newRef;
+    // 3) 생성 성공 → 바로 로그인 처리(로그인 루틴 재사용)
+const idInput2 = document.getElementById("loginId");
+const pwInput2 = document.getElementById("loginPw");
+if (idInput2) idInput2.value = newId;
+if (pwInput2) pwInput2.value = newPw;
 
-    // 마지막 로그인 아이디 저장
-    try { localStorage.setItem("swordGameLastUser", userId); } catch(e) {}
+// ✅ 로그인 함수가: 데이터 로드 + 화면 전환 + 아이콘 표시까지 전부 처리
+login();
+return;
 
-    // 네가 기존 신규 생성 성공 직후 하던 “화면 전환 + startSession + update + save ...”
-    // 를 여기로 옮기면 된다.
-    // (중요) 여기서도 login()은 호출하지 말고, “신규 생성 직후 처리”만 넣어.
-    startSession();
-    ensureBossRunsSubscription();
-
-    const loginScreen = document.getElementById("loginScreen");
-    const gameScreen  = document.getElementById("gameScreen");
-    if (loginScreen) loginScreen.style.display = "none";
-    if (gameScreen)  gameScreen.style.display  = "block";
-
-    update();
-    save();
   });
 }
 
