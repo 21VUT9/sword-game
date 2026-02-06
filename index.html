@@ -3274,6 +3274,7 @@ html, body {
   <input id="loginId" placeholder="아이디"><br><br>
   <input id="loginPw" type="password" placeholder="비밀번호"><br><br>
   <button onclick="login()">접속</button>
+  <button onclick="createAccount()">신규 생성</button>
 </div>
   
 <!-- 🎮 게임 -->
@@ -10983,154 +10984,13 @@ function initNewUserGlobal30Seen() {
   });
 }
     
-    // ⭐ 신규 계정 생성 시
-    if (!s.exists()) {
-
-       return initNewUserGlobal30Seen().then(() => {
-
-      // 처음 계정 생성 시, 현재 sword 기준으로 공격력 한 번 굴려두기
-      rollPowerForCurrentSword();
-
-      userRef.set({
-        password: userPassword,
-        sword,
-        weaponType: null,   // 🔹 처음 계정은 아직 무기 타입 미정
-        power,
-        gold,
-        updated: Date.now(),
-        maxSwordLevel: 0,   
-        destroyCount: 0,    
-        attendanceCount: 0,
-        lastAttendanceDate: "",
-        attendanceStreak: 0,      
-        lastAttendanceDay: "",    
-        currentField: 0, // ✅ 신규 계정은 "퍼그란트의 대장간"에서 시작
-        huntCountToday: 0,
-        plagueRatHuntCount: 0,
-        dopamineTried: false,
-        gamblerRunActive: false,
-        gamblerRunNoScroll: true,
-        fireworksDestroyed: { 21:false, 22:false, 23:false, 24:false, 25:false },
-        reach30Count: 0,
-        weapon30Counts: {},
-        hofDeadline: 0,
-        hofAchievedAt: 0,
-        hofWeaponTypeAt30: "",
-        hofProcessedAt: 0,
-        lastHuntDate: "",
-        itemScroll15: Number(itemScroll15),
-        itemProtect: Number(itemProtect),
-        itemSuper: Number(itemSuper),
-        itemDownProtect: Number(itemDownProtect),
-        starShard: Number(starShard),  
-        itemScroll21: 0,   //  21강 강화 주문서
-        itemRateUp5: 0,    //  강화 확률 +5% 주문서
-        huntStamina: 20,
-        lastStaminaUpdate: Date.now(),
-        // ⚔️ 결투 초기값
-        duelWin: 0,
-        duelLose: 0,
-        duelCountToday: 0,
-        lastDuelDate: "",
-        duelTargetsToday: {},
-        duelPoint: 0,
-        duelPointWeekKey: getKstWeekKey(),
-        duelLastWeekPoint: 0,
-        duelLastWeekRank: 0,
-        duelLastWeekRewardClaimed: false,
-
-// 🏷️ 칭호(업적) 기본값
-titlesOwned: {},
-equippedTitle: "",
-
-// ✅ 글로벌 30강 이벤트/경외 기본값(신규 계정 팝업 방지)
-lastSeenGlobal30EventId: lastSeenGlobal30EventId,
-aweUsedGlobal30EventId: 0
-});
-         
-currentField = 0; // ✅ (중요) 로컬 메모리도 0으로 맞춰서 update/save가 덮어쓰지 않게
-         // ✅ (중요) 신규 계정 생성 직후: 로컬 메모리 초기화(이전 계정 잔상 방지)
-currentField = 0;
-
-weaponType = null;
-maxSwordLevel = 0;
-destroyCount = 0;
-
-// ⚔️ 결투 관련 로컬 초기화 (A 계정 잔상 차단)
-duelPoint = 0;
-duelWin = 0;
-duelLose = 0;
-duelCountToday = 0;
-lastDuelDate = "";
-duelTargetsToday = {};
-duelUpdated = 0;
-duelLastWeekPoint = 0;
-duelLastWeekRank = 0;
-duelLastWeekUpdated = 0;
-duelLastWeekRewardClaimed = false;
-duelPointWeekKey = getKstWeekKey();  // ✅ 신규는 "이번 주"로 시작
-
-titlesOwned = {};
-equippedTitle = "";
-
-    // ✅ 신규 계정 생성 직후에는 바로 화면 전환 + 저장으로 마무리
-startSession();
-ensureBossRunsSubscription();  // ✅ 로그인 직후에도 토벌 구독/복구 시작
-
-try { localStorage.setItem("swordGameLastUser", userId); } catch(e) {}
-
-// 화면 전환(신규 계정) - ✅ 없는 요소 접근해도 안 터지게 안전 처리
-const loginScreen = document.getElementById("loginScreen");
-const gameScreen  = document.getElementById("gameScreen");
-if (loginScreen) loginScreen.style.display = "none";
-if (gameScreen)  gameScreen.style.display  = "block";
-
-// ✅ show/hide 유틸 (이 블록 안에서만 사용)
-const setDisp = (id, disp) => {
-  const el = document.getElementById(id);
-  if (el) el.style.display = disp;
-};
-
-// ✅ 로그인 후 보여야 하는 것들
-setDisp("attendanceIconBtn", "block");
-setDisp("hamburgerBtn", "block");
-
-setDisp("duelIconBtn", "block");
-setDisp("guildIconBtn", "block");
-setDisp("mapBtn", "block");
-setDisp("userListIconBtn", "block");
-setDisp("achievementIconBtn", "block");
-
-setDisp("toastLog", "block");
-setDisp("workbenchDock", "block");
-setDisp("workbenchDockUI", "flex");
-
-// ✅ (구버전 요소가 남아있을 수도 있으니) 있으면 숨김 처리
-setDisp("logToggle", "none");
-setDisp("logoutBtn", "none");
-setDisp("couponBtn", "none");
-
-startAutoRefreshTimer();
-subscribeGlobalDestroyEvents();
-subscribeGlobal30Events();
-update();
-updateAttendanceBadge();
-startAttendanceResetTimer();
-showTutorialIfFirstTime();
-loadUpdateNotices();
-ensureDuelWeek();
-loadRanking();
-
-// 신규 계정은 아직 업적 조건이 거의 없으니(0강), 체크해도 무해하지만 안전상 여기선 생략 가능
-// checkAndGrantTitles();
-
-save();
-return;
- });
-      
-    } else {
-      // ⭐ 기존 계정 로그인 시
-      const data = s.val();
+    // ⭐ 신규 계정 생성 시 (로그인에서는 신규 생성 금지)
+if (!s.exists()) {
+  alert("존재하지 않는 계정입니다.\n신규 계정은 '신규 생성' 버튼으로만 만들 수 있습니다.");
+  return;
+} else {
+  // ⭐ 기존 계정 로그인 시
+  const data = s.val();
 
       // 🔐 이미 다른 곳에서 접속 중이면: 시스템 alert 대신 "접속끊기" 팝업
 if (data.sessionId) {
@@ -11314,6 +11174,123 @@ updateHonorHallButton();
 // 🏷️ 칭호 자동 지급(로그인 로드 직후)
 const titleChanged = checkAndGrantTitles();
 if(titleChanged) save();
+  });
+}
+
+  function createAccount() {
+  // 1) 입력값 읽기
+  const idInput = document.getElementById("loginId");
+  const pwInput = document.getElementById("loginPw");
+
+  if (!idInput || !pwInput) {
+    alert("입력창을 찾을 수 없습니다.");
+    return;
+  }
+
+  const newId = idInput.value.trim();
+  const newPw = pwInput.value;
+
+  if (!newId || !newPw) {
+    alert("아이디와 비밀번호를 모두 입력해주세요.");
+    return;
+  }
+
+  // (선택) 실수 방지 확인
+  if (!confirm(`신규 계정을 생성할까요?\n아이디: ${newId}\n\n⚠️ 이미 존재하면 생성되지 않습니다.`)) return;
+
+  const newRef = db.ref("users/" + newId);
+
+  // 2) 덮어쓰기 방지: transaction으로 “비어있을 때만 생성”
+  newRef.transaction((cur) => {
+    if (cur) return; // 이미 있으면 중단(덮어쓰기 방지)
+
+    // ✅ 여기 newUserObj는 "너가 기존에 쓰던 신규생성 set 객체" 그대로 넣으면 됨
+    const newUserObj = {
+      password: newPw,
+      sword,
+      weaponType: null,
+      power,
+      gold,
+      updated: Date.now(),
+      maxSwordLevel: 0,
+      destroyCount: 0,
+      attendanceCount: 0,
+      lastAttendanceDate: "",
+      attendanceStreak: 0,
+      lastAttendanceDay: "",
+      currentField: 0,
+      huntCountToday: 0,
+      plagueRatHuntCount: 0,
+      dopamineTried: false,
+      gamblerRunActive: false,
+      gamblerRunNoScroll: true,
+      fireworksDestroyed: { 21:false, 22:false, 23:false, 24:false, 25:false },
+      reach30Count: 0,
+      weapon30Counts: {},
+      hofDeadline: 0,
+      hofAchievedAt: 0,
+      hofWeaponTypeAt30: "",
+      hofProcessedAt: 0,
+      lastHuntDate: "",
+      itemScroll15: Number(itemScroll15),
+      itemProtect: Number(itemProtect),
+      itemSuper: Number(itemSuper),
+      itemDownProtect: Number(itemDownProtect),
+      starShard: Number(starShard),
+      itemScroll21: 0,
+      itemRateUp5: 0,
+      huntStamina: 20,
+      lastStaminaUpdate: Date.now(),
+      duelWin: 0,
+      duelLose: 0,
+      duelCountToday: 0,
+      lastDuelDate: "",
+      duelTargetsToday: {},
+      duelPoint: 0,
+      duelPointWeekKey: getKstWeekKey(),
+      duelLastWeekPoint: 0,
+      duelLastWeekRank: 0,
+      duelLastWeekRewardClaimed: false,
+      titlesOwned: {},
+      equippedTitle: "",
+      // ⚠️ 네가 쓰던 글로벌30 기본값도 여기 포함(있으면)
+      // lastSeenGlobal30EventId: ...,
+      // aweUsedGlobal30EventId: 0
+    };
+
+    return newUserObj;
+  }, (err, committed, snap) => {
+    if (err) {
+      console.error(err);
+      alert("신규 생성에 실패했습니다.");
+      return;
+    }
+    if (!committed) {
+      alert("이미 존재하는 아이디입니다. 로그인 해주세요.");
+      return;
+    }
+
+    // 3) 생성 성공 → 바로 로그인 상태로 전환(네 기존 신규 생성 후 흐름을 여기서 호출)
+    userId = newId;
+    userPassword = newPw;
+    userRef = newRef;
+
+    // 마지막 로그인 아이디 저장
+    try { localStorage.setItem("swordGameLastUser", userId); } catch(e) {}
+
+    // 네가 기존 신규 생성 성공 직후 하던 “화면 전환 + startSession + update + save ...”
+    // 를 여기로 옮기면 된다.
+    // (중요) 여기서도 login()은 호출하지 말고, “신규 생성 직후 처리”만 넣어.
+    startSession();
+    ensureBossRunsSubscription();
+
+    const loginScreen = document.getElementById("loginScreen");
+    const gameScreen  = document.getElementById("gameScreen");
+    if (loginScreen) loginScreen.style.display = "none";
+    if (gameScreen)  gameScreen.style.display  = "block";
+
+    update();
+    save();
   });
 }
 
