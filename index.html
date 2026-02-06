@@ -14798,12 +14798,20 @@ const hasShieldBar = (shieldMax > 0 && shieldHp > 0);
 
 // ✅ HP 텍스트 / 실드 텍스트 토글
 if (hpText) {
-  hpText.style.display = hasShieldBar ? "none" : "flex";
-  if (!hasShieldBar) {
-    hpText.textContent = `${formatBossHpShort(hp)} / ${formatBossHpShort(maxHp)}`;
+  // ✅ HP는 항상 표시
+  hpText.style.display = "flex";
+
+  const hpStr = `${formatBossHpShort(hp)} / ${formatBossHpShort(maxHp)}`;
+
+  if (hasShieldBar) {
+    const shStr = `${formatBossHpShort(shieldHp)} / ${formatBossHpShort(shieldMax)}`;
+    hpText.textContent = `${hpStr}(${shStr})`;   // ✅ 예: 544.4억/8900억(35.5억/300억)
+  } else {
+    hpText.textContent = hpStr;
   }
 }
-if (shieldText) {
+
+  if (shieldText) {
   shieldText.style.display = hasShieldBar ? "flex" : "none";
   if (hasShieldBar) {
     shieldText.textContent = `${formatBossHpShort(shieldHp)} / ${formatBossHpShort(shieldMax)}`;
@@ -14825,8 +14833,8 @@ if (shieldWrap) {
   // ✅ 실드가 있으면 HP 채움 바를 숨겨서 "실드가 HP를 완전히 덮는" 연출
 if (fillWrap) {
   const hasShieldBar = (shieldMax > 0 && shieldHp > 0);
-  fillWrap.style.opacity = hasShieldBar ? "0.35" : "1";
-fillWrap.style.filter  = hasShieldBar ? "grayscale(0.6) brightness(0.8)" : "";
+  fillWrap.style.opacity = hasShieldBar ? "0.65" : "1";
+fillWrap.style.filter  = hasShieldBar ? "brightness(0.92)" : "";
 }
 
   // ✅ 보스 대사(진행중=랜덤 / 종료=고정) - 보스별 처리
