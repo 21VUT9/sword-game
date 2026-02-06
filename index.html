@@ -4022,6 +4022,14 @@ html, body {
             font-size:12px; font-weight:900; line-height:1; transform:translateY(0px); text-shadow:0 1px 2px #000; z-index:3;">
       -
     </div>
+   
+   <div id="bossShieldText"
+     style="position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+            font-size:12px; font-weight:900; line-height:1; transform:translateY(0px);
+            text-shadow:0 1px 2px #000; z-index:3; color:#bfe7ff;">
+  -
+</div>
+
   </div>
 </div>
 
@@ -14780,23 +14788,39 @@ renderBossBattleLogs();
   if (fillWrap) fillWrap.style.width = (ratio * 100).toFixed(3) + "%";
 
   const hpText = document.getElementById("bossHpText");
-  if (hpText) hpText.textContent = `${formatBossHpShort(hp)} / ${formatBossHpShort(maxHp)}`;
+const shieldText = document.getElementById("bossShieldText");
 
-    // ✅ 마나실드 바(HP 위에 덮음) - HP 값은 그대로 유지
-  const shieldHp = Math.max(0, Number(run.shieldHp || 0));
-  const shieldMax = Math.max(0, Number(run.shieldMax || 0)); // 아르셀리아면 300억
+// ✅ 마나실드 바(HP 위에 덮음)
+const shieldHp = Math.max(0, Number(run.shieldHp || 0));
+const shieldMax = Math.max(0, Number(run.shieldMax || 0)); // 아르셀리아면 300억
 
-  const shieldWrap = document.getElementById("bossShieldFillWrap");
-  if (shieldWrap) {
-    if (shieldMax > 0 && shieldHp > 0) {
-      const sRatio = Math.max(0, Math.min(1, shieldHp / shieldMax));
-      shieldWrap.style.width = (sRatio * 100).toFixed(3) + "%";
-      shieldWrap.style.display = "block";
-    } else {
-      shieldWrap.style.width = "0%";
-      shieldWrap.style.display = "none";
-    }
+const hasShieldBar = (shieldMax > 0 && shieldHp > 0);
+
+// ✅ HP 텍스트 / 실드 텍스트 토글
+if (hpText) {
+  hpText.style.display = hasShieldBar ? "none" : "flex";
+  if (!hasShieldBar) {
+    hpText.textContent = `${formatBossHpShort(hp)} / ${formatBossHpShort(maxHp)}`;
   }
+}
+if (shieldText) {
+  shieldText.style.display = hasShieldBar ? "flex" : "none";
+  if (hasShieldBar) {
+    shieldText.textContent = `${formatBossHpShort(shieldHp)} / ${formatBossHpShort(shieldMax)}`;
+  }
+}
+
+const shieldWrap = document.getElementById("bossShieldFillWrap");
+if (shieldWrap) {
+  if (hasShieldBar) {
+    const sRatio = Math.max(0, Math.min(1, shieldHp / shieldMax));
+    shieldWrap.style.width = (sRatio * 100).toFixed(3) + "%";
+    shieldWrap.style.display = "block";
+  } else {
+    shieldWrap.style.width = "0%";
+    shieldWrap.style.display = "none";
+  }
+}
 
   // ✅ 실드가 있으면 HP 채움 바를 숨겨서 "실드가 HP를 완전히 덮는" 연출
 if (fillWrap) {
