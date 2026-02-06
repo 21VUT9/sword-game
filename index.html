@@ -15321,7 +15321,20 @@ const dmg = Number(result.damage || 0);
 const isMagic = (weaponType === "staff");
 const kind = result.isMiss ? "miss" : (result.isCrit ? "crit" : "hit");
 
-  playBossHitFx(); // ✅ 보스 흔들림/번쩍/스파크
+// ✅ (표기용 데미지) 실드 중 + 공격력무기면 숫자도 1로 보이게
+let displayDmg = dmg;
+{
+  const isFrostQueen = (bossId === "frost_queen");
+  const shieldHpNow  = Math.max(0, Number(run?.shieldHp || 0));
+  const shieldMaxNow = Math.max(0, Number(run?.shieldMax || 0));
+  const isStaff = (String(weaponType || "") === "staff");
+
+  if (!result.isMiss && isFrostQueen && shieldMaxNow > 0 && shieldHpNow > 0 && !isStaff) {
+    displayDmg = 1;
+  }
+}
+
+playBossHitFx(); // ✅ 보스 흔들림/번쩍/스파크
 
 // 타격 이미지
 spawnBossHitEffectAt(ev.clientX, ev.clientY, kind, isMagic);
@@ -15330,10 +15343,10 @@ spawnBossHitEffectAt(ev.clientX, ev.clientY, kind, isMagic);
 if (result.isMiss) {
   spawnBossDamageFloatAt(ev.clientX, ev.clientY, "MISS", "miss");
 } else {
-  spawnBossDamageFloatAt(ev.clientX, ev.clientY, dmg, result.isCrit ? "crit" : "hit");
+  spawnBossDamageFloatAt(ev.clientX, ev.clientY, displayDmg, result.isCrit ? "crit" : "hit");
 }
 
-  // ✅ MISS가 아닐 때만 보스 피격(흔들림/플래시) 연출
+// ✅ MISS가 아닐 때만 보스 피격(흔들림/플래시) 연출
 if (!result.isMiss) playBossHitFx();
 
   // 서버 반영(트랜잭션)
