@@ -331,10 +331,32 @@ body {
 
 /* ❄️ 마나실드 활성화 시 보스 파란 글로우 */
 .boss-mana-shield {
+  /* ✅ 흰 코어 + 파랑 + 보라 외곽 (배경에 묻히지 않게 대비 강화) */
   filter:
-    drop-shadow(0 0 12px rgba(80, 170, 255, 0.85))
-    drop-shadow(0 0 28px rgba(80, 170, 255, 0.55));
-  transition: filter 0.25s ease;
+    drop-shadow(0 0 5px  rgba(255,255,255,0.95))
+    drop-shadow(0 0 12px rgba(120,200,255,0.85))
+    drop-shadow(0 0 26px rgba(90,170,255,0.55))
+    drop-shadow(0 0 44px rgba(170,90,255,0.35));
+  animation: manaShieldPulse 1.9s ease-in-out infinite;
+  will-change: filter;
+}
+
+/* ✅ 느린 펄스(숨 쉬듯) */
+@keyframes manaShieldPulse {
+  0%, 100% {
+    filter:
+      drop-shadow(0 0 4px  rgba(255,255,255,0.85))
+      drop-shadow(0 0 10px rgba(120,200,255,0.75))
+      drop-shadow(0 0 22px rgba(90,170,255,0.45))
+      drop-shadow(0 0 38px rgba(170,90,255,0.28));
+  }
+  50% {
+    filter:
+      drop-shadow(0 0 7px  rgba(255,255,255,1.00))
+      drop-shadow(0 0 16px rgba(140,220,255,0.95))
+      drop-shadow(0 0 34px rgba(90,170,255,0.65))
+      drop-shadow(0 0 56px rgba(180,110,255,0.42));
+  }
 }
 
   /* ❄️ 마나실드 파괴 순간 */
