@@ -3581,6 +3581,41 @@ html, body {
 <div id="hamburgerMenu" style="display:none;">
   <button type="button" class="hm-item" onclick="openCouponPopup(); closeHamburgerMenu();">쿠폰입력</button>
   <button type="button" class="hm-item" onclick="logout(); closeHamburgerMenu();">로그아웃</button>
+  <div class="hm-item" onclick="openSoundSetting()">소리설정</div>
+
+</div>
+
+  <!-- 🔊 소리설정 오버레이 -->
+<div id="soundSettingOverlay"
+     onclick="if(event.target===this) closeSoundSetting();"
+     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:99999; align-items:center; justify-content:center;">
+  <div onclick="event.stopPropagation()"
+       style="width:min(360px, 92vw); background:#1f1f1f; border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:16px; color:#fff;">
+    <div style="font-weight:800; font-size:16px; margin-bottom:12px;">🔊 소리설정</div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 0;">
+      <div style="opacity:0.9;">BGM</div>
+      <select id="bgmLevelSelect" style="background:#111; color:#fff; border:1px solid rgba(255,255,255,0.18); border-radius:10px; padding:6px 10px;">
+        <option value="0">0 (음소거)</option>
+        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+        <option value="4">4</option><option value="5">5</option>
+      </select>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 0;">
+      <div style="opacity:0.9;">Effect</div>
+      <select id="sfxLevelSelect" style="background:#111; color:#fff; border:1px solid rgba(255,255,255,0.18); border-radius:10px; padding:6px 10px;">
+        <option value="0">0 (음소거)</option>
+        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+        <option value="4">4</option><option value="5">5</option>
+      </select>
+    </div>
+
+    <div style="display:flex; gap:10px; margin-top:14px;">
+      <button onclick="closeSoundSetting()" style="flex:1; padding:10px 0; border-radius:10px; border:0; background:#333; color:#fff; font-weight:700;">닫기</button>
+      <button onclick="applySoundSettingFromUI()" style="flex:1; padding:10px 0; border-radius:10px; border:0; background:#e6b35a; color:#111; font-weight:900;">적용</button>
+    </div>
+  </div>
 </div>
   
 <!-- 🔔 로그 -->
@@ -4461,7 +4496,7 @@ async function _initTapAudioOnce() {
   _tapBuf = await _tapCtx.decodeAudioData(arr);
 
   _tapGain = _tapCtx.createGain();
-  _tapGain.gain.value = 0.85; // 볼륨
+  _tapGain.gain.value = 0.85 * getSfxScale(); // ✅ Effect(0~5) 반영
   _tapGain.connect(_tapCtx.destination);
 }
 
@@ -4504,6 +4539,12 @@ document.addEventListener("DOMContentLoaded", () => {
     "bossBattleIconBtn",
   ].forEach(bindIconTapSound);
 });
+
+  function applyIconTapVolumeNow(){
+  try{
+    if (window._tapGain) _tapGain.gain.value = 0.85 * getSfxScale();
+  }catch(e){}
+}
 
 const logRef = db.ref("logs");
 const globalEventsRef = db.ref("globalEvents");
@@ -5627,22 +5668,9 @@ function getFxAudioCtx(){
   }
 }
 
-// ✅ 강화 성공 SFX (파일로 재생)
-const sfxUpgradeSuccess = new Audio("sounds/sfx_upgrade_success.mp3");
-sfxUpgradeSuccess.preload = "auto";
-sfxUpgradeSuccess.volume = 0.9;
-
+// ✅ 강화 성공 SFX
 function playShardSfx(){
-  try {
-    // 연타 시에도 다시 재생되도록
-    sfxUpgradeSuccess.pause();
-    sfxUpgradeSuccess.currentTime = 0;
-
-    const p = sfxUpgradeSuccess.play();
-    if (p && typeof p.catch === "function") p.catch(() => {});
-  } catch (e) {
-    // 재생 실패해도 게임 로직 멈추지 않게
-  }
+  playSfx("sounds/sfx_upgrade_success.mp3", 0.9);
 }
 
 /** ✅ 실패: 금속 파열음(노이즈 + 저주파 펀치) */
@@ -5790,6 +5818,56 @@ let hasSeen25Warning = false;
 let ignoreNextUpgradeWarning = false;
 
 let activeBossId = "";
+
+  // =========================
+// 🔊 사운드 설정 (0~5)
+// =========================
+const SOUND_KEY_BGM = "pug_bgm_level";
+const SOUND_KEY_SFX = "pug_sfx_level";
+
+let bgmLevel = 3; // 0~5 (기본 3)
+let sfxLevel = 3; // 0~5 (기본 3)
+
+// 0~5 → 0.0~1.0 스케일 (3이 “기본” 느낌이 되게)
+function levelToScale(lv){
+  lv = Math.max(0, Math.min(5, Number(lv||0)));
+  // 0=0, 1=0.25, 2=0.5, 3=0.75, 4=1.0, 5=1.25(캡)
+  const map = [0, 0.25, 0.5, 0.75, 1.0, 1.25];
+  return map[lv] ?? 0.75;
+}
+
+function loadSoundSettings(){
+  try {
+    const b = localStorage.getItem(SOUND_KEY_BGM);
+    const s = localStorage.getItem(SOUND_KEY_SFX);
+    if (b !== null) bgmLevel = Math.max(0, Math.min(5, Number(b)));
+    if (s !== null) sfxLevel = Math.max(0, Math.min(5, Number(s)));
+  } catch(e){}
+}
+
+function saveSoundSettings(){
+  try {
+    localStorage.setItem(SOUND_KEY_BGM, String(bgmLevel));
+    localStorage.setItem(SOUND_KEY_SFX, String(sfxLevel));
+  } catch(e){}
+}
+
+// 외부에서 바로 쓰는 값
+function getBgmScale(){ return levelToScale(bgmLevel); }
+function getSfxScale(){ return levelToScale(sfxLevel); }
+
+  // ✅ 공통 효과음 재생 헬퍼 (mp3)
+function playSfx(src, baseVol=1.0){
+  try {
+    const a = new Audio(src);
+    a.volume = Math.max(0, Math.min(1, baseVol * getSfxScale()));
+    a.currentTime = 0;
+    a.play().catch(()=>{});
+    return a;
+  } catch(e){
+    return null;
+  }
+}
    
 // 🧮 사냥 스태미나 계산 (리셋 + 회복 처리)
 function recalcHuntStamina() {
@@ -9814,13 +9892,8 @@ function preloadAttendanceGachaImages() {
 // ============================
 
 // ✅ 룰렛 확정 "뾰롱"
-const attendancePyorong = new Audio("sounds/ui_attendance_pyorong.mp3");
-attendancePyorong.volume = 0.85;
 function playAttendancePyorong(){
-  try{
-    attendancePyorong.currentTime = 0;
-    attendancePyorong.play().catch(()=>{});
-  }catch(e){}
+  playSfx("sounds/ui_attendance_pyorong.mp3", 0.85);
 }
 
 // ✅ 룰렛 "틱/탁" (WebAudio)
@@ -9844,7 +9917,7 @@ function playRouletteTick(strength = 1){
   osc.type = "square";
   osc.frequency.setValueAtTime(freq, t0);
 
-  const peak = 0.70 + (s * 0.70);
+  const peak = (0.70 + (s * 0.70)) * getSfxScale();
   gain.gain.setValueAtTime(0.0001, t0);
   gain.gain.exponentialRampToValueAtTime(peak, t0 + 0.004);
   gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.03);
@@ -11777,6 +11850,84 @@ document.addEventListener("DOMContentLoaded", () => {
   if (btn)  btn.addEventListener("click", (e) => e.stopPropagation());
 });
 
+  // =====================
+// 🔊 소리설정 (BGM / SFX 0~5)
+// =====================
+function clampSoundLevel(v){
+  v = Number(v);
+  if (!Number.isFinite(v)) v = 3;
+  return Math.max(0, Math.min(5, Math.floor(v)));
+}
+
+// 0~5 -> 스케일 (3이 기본)
+function levelToScale(level){
+  // 0: mute, 3: 1.0, 5: 1.35 정도 (취향)
+  const lv = clampSoundLevel(level);
+  if (lv === 0) return 0;
+  const table = [0, 0.45, 0.70, 1.00, 1.18, 1.35];
+  return table[lv] ?? 1.0;
+}
+
+// 저장값 (기본 3)
+function getBgmLevel(){ return clampSoundLevel(localStorage.getItem("bgmLevel")); }
+function getSfxLevel(){ return clampSoundLevel(localStorage.getItem("sfxLevel")); }
+
+function getBgmScale(){ return levelToScale(getBgmLevel()); }
+function getSfxScale(){ return levelToScale(getSfxLevel()); }
+
+// 오버레이 열기/닫기
+function openSoundSetting(){
+  const ov = document.getElementById("soundSettingOverlay");
+  if (!ov) return;
+
+  const bgmSel = document.getElementById("bgmLevelSelect");
+  const sfxSel = document.getElementById("sfxLevelSelect");
+
+  // 기본값 3 보장
+  if (localStorage.getItem("bgmLevel") == null) localStorage.setItem("bgmLevel", "3");
+  if (localStorage.getItem("sfxLevel") == null) localStorage.setItem("sfxLevel", "3");
+
+  if (bgmSel) bgmSel.value = String(getBgmLevel());
+  if (sfxSel) sfxSel.value = String(getSfxLevel());
+
+  ov.style.display = "flex";
+}
+
+function closeSoundSetting(){
+  const ov = document.getElementById("soundSettingOverlay");
+  if (ov) ov.style.display = "none";
+}
+
+// 적용
+function applySoundSettingFromUI(){
+  const bgmSel = document.getElementById("bgmLevelSelect");
+  const sfxSel = document.getElementById("sfxLevelSelect");
+
+  const bgmLv = clampSoundLevel(bgmSel ? bgmSel.value : 3);
+  const sfxLv = clampSoundLevel(sfxSel ? sfxSel.value : 3);
+
+  localStorage.setItem("bgmLevel", String(bgmLv));
+  localStorage.setItem("sfxLevel", String(sfxLv));
+
+  // ✅ 여기서 실제 볼륨 반영(네 BGM 변수명에 맞게 한 줄만 수정하면 됨)
+  applyBgmVolumeNow();
+  applyIconTapVolumeNow?.(); // (아이콘 탭 WebAudio 쓰는 경우가 있으면)
+  closeSoundSetting();
+}
+
+// ✅ 네 BGM 오디오 객체에 연결
+function applyBgmVolumeNow(){
+  try{
+    // 네가 쓰는 bgm Audio 변수가 전역에 있다면 여기를 그 변수명으로 바꿔줘.
+    // 예: window.fieldBgm, window.bgmAudio, window.currentBgm 등
+    if (window.currentBgm && typeof window.currentBgm.volume === "number") {
+      // baseVol은 너가 정한 “곡 기본 볼륨” (예: 0.6)
+      const baseVol = 0.6;
+      window.currentBgm.volume = Math.min(1.0, baseVol * getBgmScale());
+    }
+  }catch(e){}
+}
+  
   function openMapPanelNearParchmentBtn(ev){
   if (ev) ev.stopPropagation();
 
@@ -12479,6 +12630,7 @@ function closeOtherUserProfilePopup() {
 
 // 👤 다른 유저 프로필 팝업 / 공지 ESC 초기화
 document.addEventListener("DOMContentLoaded", function () {
+  loadSoundSettings();
   const overlay  = document.getElementById("otherProfileOverlay");
   const closeBtn = document.getElementById("otherProfileCloseBtn");
 
