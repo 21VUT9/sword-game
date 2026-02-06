@@ -14713,7 +14713,8 @@ function formatDamageKoUnits(n){
 }
   
 function renderBossBattle(){
-    
+  const BOSS_BAR_LEFT_PAD = 54; // ✅ 보스 체력/실드바 왼쪽 장식 여백(여기만 조절)
+ 
   const bossId = String(activeBossId || "");
   const run = (bossRunsActiveCache || {})[bossId];
   if (!run) return;
@@ -14848,7 +14849,6 @@ renderBossBattleLogs();
 
   const fillWrap = document.getElementById("bossHpFillWrap");
 if (fillWrap) {
-  const LEFT_PAD = 60; // ✅ 왼쪽 장식 때문에 비워둘 px
   const r = Math.max(0, Math.min(1, Number(ratio) || 0));
 
   const totalW = (fillWrap.parentElement ? fillWrap.parentElement.clientWidth : 0);
@@ -14890,8 +14890,7 @@ const shieldWrap = document.getElementById("bossShieldFillWrap");
 if (shieldWrap) {
   if (hasShieldBar) {
     const sRatio = Math.max(0, Math.min(1, shieldHp / shieldMax));
-    const LEFT_PAD = 60; // ✅ HP랑 동일 규칙
-const totalW = (shieldWrap.parentElement ? shieldWrap.parentElement.clientWidth : 0);
+    const totalW = (shieldWrap.parentElement ? shieldWrap.parentElement.clientWidth : 0);
 
 if (totalW > 0) {
   const usable = Math.max(0, totalW - LEFT_PAD);
