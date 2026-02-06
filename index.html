@@ -7135,7 +7135,13 @@ function playBgm(bgm){
   currentBgm = bgm;
   try{
     const p = bgm.play();
-    if (p && typeof p.catch === "function") p.catch(()=>{});
+if (p && typeof p.catch === "function") {
+  p.catch(() => {
+    // ✅ 모바일 자동재생 차단 → 다음 사용자 입력에서 재시도
+    window._bgmNeedUserGesture = true;
+  });
+}
+
   }catch(e){}
 }
 
@@ -7161,6 +7167,23 @@ function updateBgmByField(){
     stopBgm();
   }
 }
+
+  // ✅ 모바일 자동재생 차단 대응: 첫 사용자 입력에서 BGM 재시도
+window._bgmNeedUserGesture = false;
+
+document.addEventListener("pointerdown", () => {
+  if (!window._bgmNeedUserGesture) return;
+  window._bgmNeedUserGesture = false;
+
+  try {
+    if (currentBgm) {
+      const p = currentBgm.play();
+      if (p && typeof p.catch === "function") p.catch(()=>{});
+    } else if (typeof updateBgmByField === "function") {
+      updateBgmByField();
+    }
+  } catch(e){}
+}, { passive: true });
 
   // ==================================================
 // 🔇 모바일 백그라운드 진입 시 사운드 강제 중단
