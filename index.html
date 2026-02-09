@@ -9493,6 +9493,7 @@ function showWorldMapMoveConfirm(fieldId, fieldName, recommendLvText) {
       cancelBtn.style.display = "none";
       okBtn.textContent = "확인";
       okBtn.onclick = () => closeNpcPopup();
+      popup.style.display = "flex";
       return;
     }
   }
@@ -11894,7 +11895,7 @@ function coloredWeaponName(level, baseName) {
   return `<span style="color:${cssColor};font-weight:bold;">${baseName}</span>`;
 }
 
-  // ✅ 지도 POI(사냥터) 추천/잠금 상태 갱신
+ // ✅ 지도 POI(사냥터) 추천/잠금 상태 갱신
 function updateWorldMapHuntPoiHints(){
   const list = [
     { btnId: "poiMushroomVillage", fieldId: 1 },
@@ -11906,6 +11907,16 @@ function updateWorldMapHuntPoiHints(){
     { btnId: "poiBehemothPit",    fieldId: 7 },
   ];
 
+  // ✅ 1) 현재 내 강화(sword) 기준 "80% 이상이 되는 가장 높은 단계" 찾기
+  let bestRecoFieldId = null;
+  list.forEach(({fieldId}) => {
+    const chance = getHuntSuccessChance(sword, fieldId);
+    if (chance >= 80) bestRecoFieldId = fieldId; // 리스트가 낮은→높은 순이라 계속 덮어쓰면 최종이 최고 단계
+  });
+
+  const prevRecoFieldId = (bestRecoFieldId !== null) ? (bestRecoFieldId - 1) : null;
+
+  // ✅ 2) 각 POI에 클래스 적용
   list.forEach(({btnId, fieldId}) => {
     const el = document.getElementById(btnId);
     if(!el) return;
@@ -11914,11 +11925,17 @@ function updateWorldMapHuntPoiHints(){
 
     el.classList.remove("poi-hunt-reco", "poi-hunt-locked");
 
-    if (chance >= 80) {
-      el.classList.add("poi-hunt-reco");
-    } else if (chance <= 0) {
+    // 잠금(0%)
+    if (chance <= 0) {
       el.classList.add("poi-hunt-locked");
+      return;
     }
+
+    // 추천: 최고 80% 사냥터 + 바로 직전 사냥터만
+    if (bestRecoFieldId !== null && (fieldId === bestRecoFieldId || fieldId === prevRecoFieldId)) {
+      el.classList.add("poi-hunt-reco");
+    }
+
     // 1~79%: 기본(아무 클래스 없음)
   });
 }
