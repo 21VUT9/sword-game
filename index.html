@@ -1094,6 +1094,11 @@ button {
   overflow: hidden;       /* ✅ 박스 밖으로 새는 거 컷 */
 }
 
+  /* ✅ 다른 유저 프로필에서는 무기 이미지가 카드 밖으로 삐져나오게 */
+#otherProfileOverlay .profile-weapon-box{
+  overflow: visible;
+}
+
   /* ================= 무기 성공/실패 이펙트(파편/연기) ================= */
 
 .weapon-fx-layer{
