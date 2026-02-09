@@ -8586,6 +8586,30 @@ function playUiClick(){
   osc.stop(t0 + 0.085);
 }
 
+  // ============================
+// 🔊 Dock / Icon Tap SFX (mp3)
+// ============================
+// 파일명: sounds/ui_tap_dock.mp3
+const UI_DOCK_TAP_SRC = "sounds/ui_tap_dock.mp3";
+
+// 연타 대비 풀(씹힘 방지)
+const UI_DOCK_TAP_POOL = Array.from({ length: 4 }, () => {
+  const a = new Audio(UI_DOCK_TAP_SRC);
+  a.volume = 0.65;
+  a.preload = "auto";
+  return a;
+});
+let _uiDockTapIdx = 0;
+
+function playUiDockTap(){
+  try{
+    const a = UI_DOCK_TAP_POOL[_uiDockTapIdx++ % UI_DOCK_TAP_POOL.length];
+    a.currentTime = 0;
+    const p = a.play();
+    if (p && typeof p.catch === "function") p.catch(()=>{});
+  }catch(e){}
+}
+
 // ✅ 첫 사용자 입력에서 오디오 컨텍스트 활성화(모바일 대응)
 // (이미 열려있으면 아무 일도 안 함)
 document.addEventListener("pointerdown", () => {
@@ -18086,6 +18110,7 @@ ref.update({ sessionId: "", sessionUpdatedAt: 0 }).then(() => {
 const statDockBtn = document.getElementById("statDockBtn");
 if (statDockBtn) {
   statDockBtn.addEventListener("click", () => {
+    playUiDockTap();
     showLockedFeaturePopup();
   });
 }
@@ -18093,6 +18118,7 @@ if (statDockBtn) {
 const runeDockBtn = document.getElementById("runeDockBtn");
 if (runeDockBtn) {
   runeDockBtn.addEventListener("click", () => {
+    playUiDockTap();
     showLockedFeaturePopup();
   });
 }
@@ -18101,6 +18127,7 @@ if (runeDockBtn) {
 const beastDockBtn = document.getElementById("beastDockBtn");
 if (beastDockBtn) {
   beastDockBtn.addEventListener("click", () => {
+    playUiDockTap();
     showLockedFeaturePopup();
   });
 }
@@ -18109,6 +18136,7 @@ if (beastDockBtn) {
 const scrollShopDockBtn = document.getElementById("scrollShopDockBtn");
 if (scrollShopDockBtn) {
   scrollShopDockBtn.addEventListener("click", () => {
+    playUiDockTap();
     openScrollShop();
   });
 }
@@ -18117,6 +18145,7 @@ if (scrollShopDockBtn) {
 const invBtn = document.getElementById("inventoryDockBtn");
 if (invBtn) {
   invBtn.addEventListener("click", () => {
+    playUiDockTap();
     toggleInventory();
   });
 }
