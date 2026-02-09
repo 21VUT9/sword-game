@@ -12617,14 +12617,6 @@ function closeIfClickOutside(event, panelId, buttonId) {
   // 해당 패널의 토글 버튼을 클릭한 경우 → 토글 로직에 맡김
   if (btn && btn.contains(target)) return;
 
-  // (예시) panel 바깥 클릭이면 닫기
-if (panelOpen && !panel.contains(e.target)
-    && !mapBtn.contains(e.target)
-    && !document.getElementById("parchmentMapLegacyBtn")?.contains(e.target)
-) {
-  panel.style.display = "none";
-}
-
   // 그 외 영역 클릭 시 패널 닫기
   panel.style.display = "none";
 }
@@ -12634,7 +12626,36 @@ document.addEventListener("mousedown", function (e) {
   closeIfClickOutside(e, "mapPanel", "mapBtn");             // MAP
   closeIfClickOutside(e, "inventoryPanel", "inventoryBtn"); // 인벤토리
   closeIfClickOutside(e, "logPanel", "logToggle");          // 로그
-  closeIfClickOutside(e, "duelPanel", "duelIconBtn");       // 결투
+    // ✅ 결투 지정매칭 패널(duelPanel): 바깥 클릭 닫기 + 지정매칭 버튼은 예외
+  (function(){
+    const panel = document.getElementById("duelPanel");
+    if (!panel) return;
+    if (panel.style.display === "none" || panel.style.display === "") return;
+
+    const t = e.target;
+
+    // 패널 내부 클릭은 무시
+    if (panel.contains(t)) return;
+
+    // (기존 예외) 결투장 아이콘 클릭은 무시
+    const duelIconBtn = document.getElementById("duelIconBtn");
+    if (duelIconBtn && duelIconBtn.contains(t)) return;
+
+    // ✅ 결투장 안 “🎯 결투하기(지정매칭)” 버튼(= data-duel-target) 클릭은 무시
+    if (t && typeof t.closest === "function" && t.closest("[data-duel-target]")) return;
+
+    panel.style.display = "none";
+  })();
+});
+
+  // ✅ ESC 누르면 결투 지정매칭 패널(duelPanel) 닫기
+document.addEventListener("keydown", function(e){
+  if (e.key === "Escape" || e.key === "Esc") {
+    const panel = document.getElementById("duelPanel");
+    if (panel && panel.style.display !== "none" && panel.style.display !== "") {
+      panel.style.display = "none";
+    }
+  }
 });
 
 // 🧷 새로고침 시 자동 로그인
@@ -14061,6 +14082,10 @@ function openDuelArena() {
 
 // ⚔️ 결투장 닫기
 function closeDuelArena() {
+  // ✅ 지정매칭 패널도 같이 닫기
+  const duelPanel = document.getElementById("duelPanel");
+  if (duelPanel) duelPanel.style.display = "none";
+
   const overlay = document.getElementById("duelArenaOverlay");
   if (!overlay) return;
   overlay.style.display = "none";
