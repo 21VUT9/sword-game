@@ -2464,7 +2464,56 @@ hr.section-divider{
   filter: brightness(1.15);
 }
 
-  /* 🍄 POI: 평화로운 버섯마을 (이그드라실 1/3 크기) */
+  /* =========================
+   🗺 지도: 추천/잠금 사냥터 표시
+   - 추천(>=80%): glow + '추천'
+   - 잠금(0%): 어둡게 + '🔒'
+   ========================= */
+
+#parchmentMapStage button.poi-hunt-reco{
+  filter: drop-shadow(0 0 8px rgba(255, 235, 150, 0.55))
+          drop-shadow(0 0 14px rgba(255, 235, 150, 0.35));
+}
+
+#parchmentMapStage button.poi-hunt-reco::after{
+  content: "추천";
+  position:absolute;
+  right:-6px;
+  top:-8px;
+  background: rgba(255, 235, 150, 0.95);
+  color:#2b1a00;
+  font-weight:900;
+  font-size:10px;
+  padding:2px 6px;
+  border-radius:10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  pointer-events:none;
+}
+
+#parchmentMapStage button.poi-hunt-locked{
+  filter: grayscale(1) brightness(0.6);
+  opacity: 0.75;
+}
+
+#parchmentMapStage button.poi-hunt-locked::after{
+  content: "🔒";
+  position:absolute;
+  right:-6px;
+  top:-8px;
+  width:18px;
+  height:18px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background: rgba(0,0,0,0.75);
+  color:#fff;
+  font-size:12px;
+  border-radius:10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  pointer-events:none;
+}
+
+    /* 🍄 POI: 평화로운 버섯마을 (이그드라실 1/3 크기) */
 #poiMushroomVillage{
   position: absolute;
 
@@ -9422,6 +9471,32 @@ function showWorldMapMoveConfirm(fieldId, fieldName, recommendLvText) {
 
   if (!popup || !msgEl || !okBtn || !cancelBtn) return;
 
+    // ✅ 잠금(성공률 0%) 사냥터는 이동 불가 + 안내 팝업
+  const field = HUNT_FIELDS[fieldId];
+  if (fieldId !== 0 && field) {
+    const chance = getHuntSuccessChance(sword, fieldId);
+    if (chance <= 0) {
+      const need = field.recLevel;
+
+      msgEl.innerHTML = `
+        <div style="font-size:16px; font-weight:800; margin-bottom:6px;">
+          🔒 잠긴 사냥터
+        </div>
+        <div style="font-size:13px; line-height:1.6; color:#ddd;">
+          현재 장비로는 이 사냥터에서 <b>사냥 성공률이 0%</b>입니다.<br>
+          <span style="color:#aaa;">권장 강화:</span> <b>+${need}강</b><br>
+          <span style="color:#aaa;">현재 강화:</span> <b>+${sword}강</b>
+        </div>
+      `;
+
+      okBtn.style.display = "inline-block";
+      cancelBtn.style.display = "none";
+      okBtn.textContent = "확인";
+      okBtn.onclick = () => closeNpcPopup();
+      return;
+    }
+  }
+
   // NPC 요소 숨김
   if (nameEl) nameEl.textContent = "";
   if (imgEl) imgEl.style.display = "none";
@@ -11819,6 +11894,35 @@ function coloredWeaponName(level, baseName) {
   return `<span style="color:${cssColor};font-weight:bold;">${baseName}</span>`;
 }
 
+  // ✅ 지도 POI(사냥터) 추천/잠금 상태 갱신
+function updateWorldMapHuntPoiHints(){
+  const list = [
+    { btnId: "poiMushroomVillage", fieldId: 1 },
+    { btnId: "poiSewer",          fieldId: 2 },
+    { btnId: "poiOutlawWasteland",fieldId: 3 },
+    { btnId: "poiSwampElfForest", fieldId: 4 },
+    { btnId: "poiFrostQueenCave", fieldId: 5 },
+    { btnId: "poiDeathWorld",     fieldId: 6 },
+    { btnId: "poiBehemothPit",    fieldId: 7 },
+  ];
+
+  list.forEach(({btnId, fieldId}) => {
+    const el = document.getElementById(btnId);
+    if(!el) return;
+
+    const chance = getHuntSuccessChance(sword, fieldId);
+
+    el.classList.remove("poi-hunt-reco", "poi-hunt-locked");
+
+    if (chance >= 80) {
+      el.classList.add("poi-hunt-reco");
+    } else if (chance <= 0) {
+      el.classList.add("poi-hunt-locked");
+    }
+    // 1~79%: 기본(아무 클래스 없음)
+  });
+}
+
   // =========================
 // 🗺 양피지 지도 오버레이
 // =========================
@@ -11826,8 +11930,10 @@ function openParchmentMap(){
   const ov = document.getElementById("parchmentMapOverlay");
   if(!ov) return;
 
+  updateWorldMapHuntPoiHints();
+  
   ov.style.display = "flex";
-  // 뒤 스크롤 방지(모바일 포함)
+    // 뒤 스크롤 방지(모바일 포함)
   document.body.style.overflow = "hidden";
 }
 
