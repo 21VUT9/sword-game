@@ -7075,6 +7075,10 @@ currentSessionId = null;
   
     // 🔌 랭킹/유저 실시간 구독 해제 (선택)
   db.ref("users").off();
+
+  // ✅ 보스전 구독/캐시 완전 초기화 (계정 전환 버그 방지)
+resetBossRunsSubscription();
+activeBossId = "";
   
   // 저장된 자동 로그인 정보 삭제
   try {
@@ -7381,6 +7385,7 @@ function startSession() {
   userRef.child("sessionId").onDisconnect().remove();
   userRef.child("sessionUpdatedAt").onDisconnect().remove();
 
+  resetBossRunsSubscription();
   ensureBossRunsSubscription();
 }
 
@@ -14063,6 +14068,24 @@ const BOSS_COOLDOWN_REF    = db.ref("bossCooldown");
 let bossRunsActiveCache = {};   // { bossId: runObj }
 let bossCooldownCache = {};     // { bossId: { nextAt: ms } }
 var bossRunsUnsubscribed = true;
+
+  // ✅ 계정 전환/재로그인 시 보스전 리스너를 강제로 다시 붙이기 위한 리셋
+function resetBossRunsSubscription(){
+  try { BOSS_RUNS_ACTIVE_REF.off(); } catch(e){}
+  try { BOSS_COOLDOWN_REF.off(); } catch(e){}
+
+  bossRunsUnsubscribed = true;
+  bossRunsActiveCache = {};
+  bossCooldownCache = {};
+
+  try{
+    if (bossRunWatchdogTimer) {
+      clearInterval(bossRunWatchdogTimer);
+      bossRunWatchdogTimer = null;
+    }
+  }catch(e){}
+}
+
 let bossRunWatchdogTimer = null;
 
 function updateBossBattleBtn(){
