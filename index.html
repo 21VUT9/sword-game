@@ -1585,6 +1585,7 @@ button {
 
   /* ✅ 출석 미완료 알림 뱃지 (!) */
 #attendanceIconBtn{ overflow: visible; } /* (혹시 밖으로 삐져도 보이게) */
+#bossBattleIconBtn{ overflow: visible; }
 #guildIconBtn{ overflow: visible; }
 
 .icon-alert-badge{
@@ -3477,6 +3478,7 @@ html, body {
         class="map-icon-btn"
         onclick="onBossBattleIconClick()">
   <img src="images/ui/icon_boss.png" class="map-icon-img">
+  <div id="bossBattleAlertBadge" class="icon-alert-badge">!</div>
   <span class="map-icon-label">보스전</span>
 </button>
 
@@ -14743,6 +14745,66 @@ function getBossBattleLogPath(bossId){
   const logKey = run && run.logKey ? String(run.logKey) : "run_default";
   return `bossBattleLogs/${bossId}_${logKey}`;
 }
+
+  // =========================
+// 👹 보스전 아이콘 ! 알림(새 전투로그 기준)
+// =========================
+function getBossLogSeenKey(bossId){
+  return "pug_bossLogSeenTs_" + String(bossId || "");
+}
+
+function getBossLogSeenTs(bossId){
+  try{
+    return Number(localStorage.getItem(getBossLogSeenKey(bossId)) || 0);
+  }catch(e){
+    return 0;
+  }
+}
+
+function setBossLogSeenTs(bossId, ts){
+  try{
+    localStorage.setItem(getBossLogSeenKey(bossId), String(Number(ts||0)));
+  }catch(e){}
+}
+
+function setBossBattleAlertVisible(on){
+  const b = document.getElementById("bossBattleAlertBadge");
+  if (!b) return;
+  b.style.display = on ? "flex" : "none";
+}
+
+// 현재 activeBossId 기준으로 최신 로그 시각을 보고 ! 갱신
+function refreshBossBattleAlert(bossId){
+  const id = String(bossId || activeBossId || "");
+  if (!id) { setBossBattleAlertVisible(false); return; }
+
+  const seenTs = getBossLogSeenTs(id);
+  const arr = bossBattleLogsCache || [];
+  const latestTs = arr.length ? Number(arr[arr.length - 1].t || 0) : 0;
+
+  // 보스전 오버레이가 열려있으면 읽는 중 → ! 끔
+  const ov = document.getElementById("bossBattleOverlay");
+  const isOpen = !!(ov && ov.style.display !== "none" && ov.style.display !== "");
+
+  if (isOpen) {
+    setBossBattleAlertVisible(false);
+    return;
+  }
+
+  setBossBattleAlertVisible(latestTs > seenTs);
+}
+
+// 보스전 오버레이를 열거나 닫을 때 "읽음 처리"
+function markBossBattleLogsSeenNow(bossId){
+  const id = String(bossId || activeBossId || "");
+  if (!id) return;
+
+  const arr = bossBattleLogsCache || [];
+  const latestTs = arr.length ? Number(arr[arr.length - 1].t || 0) : 0;
+
+  setBossLogSeenTs(id, latestTs);
+  setBossBattleAlertVisible(false);
+}
   
 // 로그 구독 시작(보스전 열 때/참여상태 복구 때 호출)
 function ensureBossBattleLogsSubscription(bossId) {
@@ -14776,6 +14838,7 @@ function ensureBossBattleLogsSubscription(bossId) {
     arr.sort((a,b) => a.t - b.t);
     bossBattleLogsCache = arr;
     renderBossBattleLogs();
+    refreshBossBattleAlert(bossId);
   };
 
   ref.on("value", onValue);
@@ -14855,6 +14918,7 @@ function openBossBattle(){
   if (!ov) return;
 
   ov.style.display = "flex";
+  markBossBattleLogsSeenNow(bossId);
   document.getElementById("bossBattleBossImg")?.classList.add("boss-breathe");
   document.getElementById("bossBattleBossShadow")?.classList.add("boss-breathe-shadow");
   ensureBossBattleLogsSubscription(bossId);
@@ -15174,6 +15238,7 @@ function startBossBattleMove(){
 function closeBossBattle(){
   const ov = document.getElementById("bossBattleOverlay");
   if (ov) ov.style.display = "none";
+  markBossBattleLogsSeenNow(activeBossId);
   document.getElementById("bossBattleBossImg")?.classList.remove("boss-breathe");
   document.getElementById("bossBattleBossShadow")?.classList.remove("boss-breathe-shadow");
   if (bossBattleTickTimer) { clearInterval(bossBattleTickTimer); bossBattleTickTimer = null; }
