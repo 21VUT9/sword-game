@@ -12183,6 +12183,28 @@ function openParchmentMap(){
   if(!ov) return;
 
   updateWorldMapHuntPoiHints();
+
+    // ✅ 지도 오픈 사운드 (양피지 지도 전용)
+  // 파일: sounds/ui_map_open.mp3
+  try{
+    // 이미 열려있으면(중복 재생 방지)
+    if (ov.style.display === "flex") return;
+
+    if (!window.__SFX_PARCHMENT_MAP_OPEN) {
+      window.__SFX_PARCHMENT_MAP_OPEN = new Audio("sounds/ui_map_open.mp3");
+      window.__SFX_PARCHMENT_MAP_OPEN.preload = "auto";
+    }
+
+    // ✅ SFX(0~5) 설정 반영
+    window.__SFX_PARCHMENT_MAP_OPEN.volume = Math.min(
+      1,
+      0.9 * (typeof getSfxScale === "function" ? getSfxScale() : 1)
+    );
+
+    window.__SFX_PARCHMENT_MAP_OPEN.currentTime = 0;
+    const p = window.__SFX_PARCHMENT_MAP_OPEN.play();
+    if (p && typeof p.catch === "function") p.catch(()=>{});
+  }catch(e){}
   
   ov.style.display = "flex";
     // 뒤 스크롤 방지(모바일 포함)
