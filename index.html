@@ -3591,9 +3591,9 @@ html, body {
 </p>
 
 <div class="action-buttons">
-  <button id="upgradeBtn" onclick="upgrade()"> 강화</button>
-  <button id="huntBtn" onclick="hunt()"> 사냥</button>
-  <button id="sellBtn" onclick="sell()"> 판매</button>
+  <button id="upgradeBtn" onclick="playUiTap(); upgrade()"> 강화</button>
+  <button id="huntBtn" onclick="playUiTap(); hunt()"> 사냥</button>
+  <button id="sellBtn" onclick="playUiTap(); sell()"> 판매</button>
 
   <!-- 🏛️ 30강 전용: 명예의 전당 보내기 -->
   <button id="hallBtn"
@@ -7329,6 +7329,31 @@ const BGM_FULGURANT_FORGE = new Audio("sounds/bgm_fugrant_forge.mp3");
 BGM_FULGURANT_FORGE.loop = true;
 BGM_FULGURANT_FORGE.volume = 0.45; // 기본 볼륨 (원하면 0.25~0.50 조절)
 
+// ============================
+// 👆 UI Tap SFX (강화/사냥/판매 버튼 클릭음)
+// ============================
+
+const UI_TAP_SFX_SRC = "sounds/ui_tap_action.mp3";
+
+// 빠르게 연타해도 씹히지 않게 4개 풀로 돌림
+const UI_TAP_POOL = Array.from({ length: 4 }, () => {
+  const a = new Audio(UI_TAP_SFX_SRC);
+  a.volume = 0.65;     // 취향대로 0.4~0.8
+  a.preload = "auto";
+  return a;
+});
+let _uiTapIdx = 0;
+
+function playUiTap(){
+  try{
+    const a = UI_TAP_POOL[_uiTapIdx++ % UI_TAP_POOL.length];
+    a.currentTime = 0;
+    const p = a.play();
+    if (p && typeof p.catch === "function") p.catch(()=>{});
+  }catch(e){}
+}
+
+
 function updateBgmByField(){
   if (typeof isInFulgurantForge === "function" && isInFulgurantForge()){
   applyBgmVolumeNow();     // ✅ 추가
@@ -7364,6 +7389,11 @@ function pauseAllSounds(){
   // 🎵 BGM 정지
   if (typeof currentBgm !== "undefined" && currentBgm) {
     try { currentBgm.pause(); } catch(e){}
+  }
+
+    // 🔊 UI 탭 사운드 정지
+  if (typeof UI_TAP_POOL !== "undefined" && UI_TAP_POOL) {
+    UI_TAP_POOL.forEach(a => { try { a.pause(); a.currentTime = 0; } catch(e){} });
   }
 
   // 🔊 WebAudio (틱틱틱 / 클릭음 등)
