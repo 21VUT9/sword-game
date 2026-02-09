@@ -2471,12 +2471,42 @@ hr.section-divider{
    ========================= */
 
 /* 🗺 지도: 추천/잠금 사냥터 표시 */
+/* 🗺 지도: 추천/잠금 사냥터 표시 (PNG 실루엣 글로우 버전) */
+
+/* ✅ 추천: 버튼 박스가 아니라 "이미지 실루엣"에 글로우 */
 #parchmentMapStage button.poi-hunt-reco,
 #parchmentSkyPanel button.poi-hunt-reco{
-  box-shadow: 0 0 12px rgba(255,255,255,0.28), 0 0 26px rgba(180,220,255,0.22);
-  filter: brightness(1.12);
+  /* 박스 글로우 방지 */
+  box-shadow: none !important;
+  filter: none !important;
 }
 
+#parchmentMapStage button.poi-hunt-reco img,
+#parchmentSkyPanel button.poi-hunt-reco img{
+  filter:
+    drop-shadow(0 0 6px rgba(255,255,255,0.55))
+    drop-shadow(0 0 14px rgba(180,220,255,0.40))
+    drop-shadow(0 0 26px rgba(180,220,255,0.22));
+  animation: poiRecoPulse 2.2s ease-in-out infinite;
+  will-change: filter;
+}
+
+@keyframes poiRecoPulse{
+  0%, 100%{
+    filter:
+      drop-shadow(0 0 5px rgba(255,255,255,0.45))
+      drop-shadow(0 0 12px rgba(180,220,255,0.32))
+      drop-shadow(0 0 22px rgba(180,220,255,0.18));
+  }
+  50%{
+    filter:
+      drop-shadow(0 0 8px rgba(255,255,255,0.75))
+      drop-shadow(0 0 18px rgba(180,220,255,0.55))
+      drop-shadow(0 0 34px rgba(180,220,255,0.30));
+  }
+}
+
+/* ✅ 추천 배지 */
 #parchmentMapStage button.poi-hunt-reco::after,
 #parchmentSkyPanel button.poi-hunt-reco::after{
   content:"추천";
@@ -2490,13 +2520,22 @@ hr.section-divider{
   color:#111;
   font-weight:900;
   box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  pointer-events:none;
 }
 
+/* ✅ 잠금: 이미지 자체를 어둡게 */
 #parchmentMapStage button.poi-hunt-locked,
 #parchmentSkyPanel button.poi-hunt-locked{
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+#parchmentMapStage button.poi-hunt-locked img,
+#parchmentSkyPanel button.poi-hunt-locked img{
   filter: brightness(0.45) grayscale(0.9);
 }
 
+/* ✅ 잠금 배지 */
 #parchmentMapStage button.poi-hunt-locked::after,
 #parchmentSkyPanel button.poi-hunt-locked::after{
   content:"🔒";
@@ -2510,6 +2549,7 @@ hr.section-divider{
   color:#fff;
   font-weight:900;
   box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  pointer-events:none;
 }
 
     /* 🍄 POI: 평화로운 버섯마을 (이그드라실 1/3 크기) */
