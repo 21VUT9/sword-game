@@ -12447,6 +12447,24 @@ function applyBgmVolumeNow(){
     return;
   }
 
+      // ✅ 지도 오픈 사운드 (mp3)
+  // 파일: sounds/ui_map_open.mp3
+  try{
+    if (!window.__SFX_MAP_OPEN) {
+      window.__SFX_MAP_OPEN = new Audio("sounds/ui_map_open.mp3");
+      window.__SFX_MAP_OPEN.preload = "auto";
+    }
+    // ✅ SFX(0~5) 설정 반영
+    window.__SFX_MAP_OPEN.volume = Math.min(
+      1,
+      0.8 * (typeof getSfxScale === "function" ? getSfxScale() : 1)
+    );
+
+    window.__SFX_MAP_OPEN.currentTime = 0;
+    const p = window.__SFX_MAP_OPEN.play();
+    if (p && typeof p.catch === "function") p.catch(()=>{});
+  }catch(e){}
+
   panel.style.display = "block";
   renderMap();
 
