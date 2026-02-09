@@ -7329,6 +7329,31 @@ const BGM_FULGURANT_FORGE = new Audio("sounds/bgm_fugrant_forge.mp3");
 BGM_FULGURANT_FORGE.loop = true;
 BGM_FULGURANT_FORGE.volume = 0.45; // 기본 볼륨 (원하면 0.25~0.50 조절)
 
+  // ============================
+// 🏹 Hunt Success SFX (사냥 성공)
+// ============================
+
+// 파일명: sounds/sfx_hunt_success.mp3
+const HUNT_SUCCESS_SFX_SRC = "sounds/sfx_hunt_success.mp3";
+
+// 연속 성공 대비 풀
+const HUNT_SUCCESS_POOL = Array.from({ length: 3 }, () => {
+  const a = new Audio(HUNT_SUCCESS_SFX_SRC);
+  a.volume = 0.75;   // 보상 사운드는 UI보다 살짝 큼
+  a.preload = "auto";
+  return a;
+});
+let _huntSuccessIdx = 0;
+
+function playHuntSuccessSfx(){
+  try{
+    const a = HUNT_SUCCESS_POOL[_huntSuccessIdx++ % HUNT_SUCCESS_POOL.length];
+    a.currentTime = 0;
+    const p = a.play();
+    if (p && typeof p.catch === "function") p.catch(()=>{});
+  }catch(e){}
+}
+
 // ============================
 // 👆 UI Tap SFX (강화/사냥/판매 버튼 클릭음)
 // ============================
@@ -7394,6 +7419,13 @@ function pauseAllSounds(){
     // 🔊 UI 탭 사운드 정지
   if (typeof UI_TAP_POOL !== "undefined" && UI_TAP_POOL) {
     UI_TAP_POOL.forEach(a => { try { a.pause(); a.currentTime = 0; } catch(e){} });
+  }
+
+    // 🏹 사냥 성공 사운드 정지
+  if (typeof HUNT_SUCCESS_POOL !== "undefined") {
+    HUNT_SUCCESS_POOL.forEach(a => {
+      try { a.pause(); a.currentTime = 0; } catch(e){}
+    });
   }
 
   // 🔊 WebAudio (틱틱틱 / 클릭음 등)
@@ -11344,6 +11376,7 @@ if (currentField === 2) {
 const r = Math.random() * 100;
 if (r < successChance) {
   // ✅ 성공
+  playHuntSuccessSfx();
   const reward = getHuntReward(currentField);
   gold += reward;
 
