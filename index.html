@@ -11965,7 +11965,22 @@ function coloredWeaponName(level, baseName) {
   return `<span style="color:${cssColor};font-weight:bold;">${baseName}</span>`;
 }
 
- // ✅ 지도 POI(사냥터) 추천/잠금 상태 갱신
+    // ✅ 전체(1~10) 기준: 80% 이상이 되는 "가장 높은 단계" + 바로 직전 단계
+function getGlobalRecommendPair(){
+  // 현재 파일 FIELD_DESCRIPTIONS가 1~10을 쓰고 있으니(=필드ID 1~10 존재) 그대로 고정 배열 사용
+  const all = [1,2,3,4,5,6,7,8,9,10];
+
+  let best = null;
+  all.forEach((fieldId) => {
+    const chance = getHuntSuccessChance(sword, fieldId);
+    if (chance >= 80) best = fieldId; // 낮→높 순회라 덮어쓰면 최종이 최고 단계
+  });
+
+  const prev = (best !== null) ? (best - 1) : null;
+  return { best, prev };
+}
+
+// ✅ 지도 POI(사냥터) 추천/잠금 상태 갱신 (월드맵)
 function updateWorldMapHuntPoiHints(){
   const list = [
     { btnId: "poiMushroomVillage", fieldId: 1 },
@@ -11977,16 +11992,9 @@ function updateWorldMapHuntPoiHints(){
     { btnId: "poiBehemothPit",    fieldId: 7 },
   ];
 
-  // ✅ 1) 현재 내 강화(sword) 기준 "80% 이상이 되는 가장 높은 단계" 찾기
-  let bestRecoFieldId = null;
-  list.forEach(({fieldId}) => {
-    const chance = getHuntSuccessChance(sword, fieldId);
-    if (chance >= 80) bestRecoFieldId = fieldId; // 리스트가 낮은→높은 순이라 계속 덮어쓰면 최종이 최고 단계
-  });
+  // ✅ 전체(1~10) 기준으로 best/prev 한 번만 계산
+  const { best, prev } = getGlobalRecommendPair();
 
-  const prevRecoFieldId = (bestRecoFieldId !== null) ? (bestRecoFieldId - 1) : null;
-
-  // ✅ 2) 각 POI에 클래스 적용
   list.forEach(({btnId, fieldId}) => {
     const el = document.getElementById(btnId);
     if(!el) return;
@@ -12001,12 +12009,11 @@ function updateWorldMapHuntPoiHints(){
       return;
     }
 
-    // 추천: 최고 80% 사냥터 + 바로 직전 사냥터만
-    if (bestRecoFieldId !== null && (fieldId === bestRecoFieldId || fieldId === prevRecoFieldId)) {
+    // ✅ 추천: 전체 최고 80% 필드(best) + 바로 직전(prev)만
+    // (단, 월드맵은 1~7만 있으니 best/prev가 8~10이면 여기선 아무것도 추천 안 뜨는 게 정상)
+    if (best !== null && (fieldId === best || fieldId === prev)) {
       el.classList.add("poi-hunt-reco");
     }
-
-    // 1~79%: 기본(아무 클래스 없음)
   });
 }
 
@@ -12085,6 +12092,35 @@ document.addEventListener("keydown", (e) => {
     }
   }
 });
+
+  // ✅ 지도 POI(사냥터) 추천/잠금 상태 갱신 (하늘맵)
+function updateSkyMapHuntPoiHints(){
+  const list = [
+    { btnId: "poiArchangelCradle", fieldId: 8 },
+    { btnId: "poiGodSanctum",      fieldId: 9 },
+    { btnId: "poiDimensionalRift", fieldId: 10 },
+  ];
+
+  const { best, prev } = getGlobalRecommendPair();
+
+  list.forEach(({btnId, fieldId}) => {
+    const el = document.getElementById(btnId);
+    if(!el) return;
+
+    const chance = getHuntSuccessChance(sword, fieldId);
+
+    el.classList.remove("poi-hunt-reco", "poi-hunt-locked");
+
+    if (chance <= 0) {
+      el.classList.add("poi-hunt-locked");
+      return;
+    }
+
+    if (best !== null && (fieldId === best || fieldId === prev)) {
+      el.classList.add("poi-hunt-reco");
+    }
+  });
+}
 
   function openSkyMap(e){
   if (e) e.stopPropagation(); // ✅ 1번 지도 바깥클릭 닫기랑 충돌 방지
