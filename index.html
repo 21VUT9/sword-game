@@ -11970,6 +11970,50 @@ function updateWorldMapHuntPoiHints(){
   });
 }
 
+  // ✅ 하늘맵 POI(사냥터) 추천/잠금 상태 갱신
+function updateSkyMapHuntPoiHints(){
+  const list = [
+    { btnId: "poiArchangelCradle", fieldId: 8 },
+    { btnId: "poiGodSanctum",      fieldId: 9 },
+    { btnId: "poiDimensionalRift", fieldId: 10 },
+  ];
+
+  // ✅ 1) 현재 내 강화(sword) 기준 "80% 이상이 되는 가장 높은 단계" 찾기
+  let bestRecoFieldId = null;
+  list.forEach(({fieldId}) => {
+    const chance = getHuntSuccessChance(sword, fieldId);
+    if (chance >= 80) bestRecoFieldId = fieldId;
+  });
+
+  // ✅ "바로 직전 단계"는 하늘맵 리스트 기준으로 잡기(8→9→10)
+  let prevRecoFieldId = null;
+  if (bestRecoFieldId !== null){
+    const idx = list.findIndex(x => x.fieldId === bestRecoFieldId);
+    if (idx > 0) prevRecoFieldId = list[idx - 1].fieldId;
+  }
+
+  // ✅ 2) 각 POI에 클래스 적용
+  list.forEach(({btnId, fieldId}) => {
+    const el = document.getElementById(btnId);
+    if(!el) return;
+
+    const chance = getHuntSuccessChance(sword, fieldId);
+
+    el.classList.remove("poi-hunt-reco", "poi-hunt-locked");
+
+    // 잠금(0%)
+    if (chance <= 0) {
+      el.classList.add("poi-hunt-locked");
+      return;
+    }
+
+    // 추천: 최고 80% 사냥터 + 바로 직전 사냥터만
+    if (bestRecoFieldId !== null && (fieldId === bestRecoFieldId || fieldId === prevRecoFieldId)) {
+      el.classList.add("poi-hunt-reco");
+    }
+  });
+}
+
   // =========================
 // 🗺 양피지 지도 오버레이
 // =========================
@@ -12006,14 +12050,21 @@ document.addEventListener("keydown", (e) => {
   if (e) e.stopPropagation(); // ✅ 1번 지도 바깥클릭 닫기랑 충돌 방지
   const sky = document.getElementById("parchmentSkyOverlay");
   if (!sky) return;
-  updateSkyMapHuntPoiHints();
+
+  updateSkyMapHuntPoiHints();   // ✅ 하늘맵 추천/잠금 갱신
   sky.style.display = "flex";
+
+  // ✅ 뒤 스크롤 방지(모바일 포함) - 월드맵과 동일
+  document.body.style.overflow = "hidden";
 }
 
 function closeSkyMap(){
   const sky = document.getElementById("parchmentSkyOverlay");
   if (!sky) return;
   sky.style.display = "none";
+
+  // ✅ 스크롤 원복
+  document.body.style.overflow = "";
 }
 
 /* ✅ ESC 처리: 2번이 열려있으면 2번부터 닫고, 아니면 1번 닫기 */
