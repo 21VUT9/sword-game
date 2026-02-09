@@ -1585,6 +1585,7 @@ button {
 
   /* ✅ 출석 미완료 알림 뱃지 (!) */
 #attendanceIconBtn{ overflow: visible; } /* (혹시 밖으로 삐져도 보이게) */
+#guildIconBtn{ overflow: visible; }
 
 .icon-alert-badge{
   position: absolute;
@@ -3462,6 +3463,7 @@ html, body {
   <!-- 🏛️ 모험가길드 (지도 스타일) -->
   <button id="guildIconBtn" class="map-icon-btn" onclick="openAdventureGuild()">
     <img class="map-icon-img" src="images/ui/icon_guild.png" alt="모험가길드">
+    <div id="adventureGuildAlertBadge" class="icon-alert-badge">!</div>
     <span class="map-icon-label">모험가<br>길드</span>
   </button>
   
