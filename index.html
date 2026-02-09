@@ -2470,47 +2470,46 @@ hr.section-divider{
    - 잠금(0%): 어둡게 + '🔒'
    ========================= */
 
-#parchmentMapStage button.poi-hunt-reco{
-  filter: drop-shadow(0 0 8px rgba(255, 235, 150, 0.55))
-          drop-shadow(0 0 14px rgba(255, 235, 150, 0.35));
+/* 🗺 지도: 추천/잠금 사냥터 표시 */
+#parchmentMapStage button.poi-hunt-reco,
+#parchmentSkyPanel button.poi-hunt-reco{
+  box-shadow: 0 0 12px rgba(255,255,255,0.28), 0 0 26px rgba(180,220,255,0.22);
+  filter: brightness(1.12);
 }
 
-#parchmentMapStage button.poi-hunt-reco::after{
-  content: "추천";
+#parchmentMapStage button.poi-hunt-reco::after,
+#parchmentSkyPanel button.poi-hunt-reco::after{
+  content:"추천";
   position:absolute;
-  right:-6px;
   top:-8px;
-  background: rgba(255, 235, 150, 0.95);
-  color:#2b1a00;
-  font-weight:900;
+  right:-10px;
   font-size:10px;
   padding:2px 6px;
   border-radius:10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
-  pointer-events:none;
+  background: rgba(255,255,255,0.95);
+  color:#111;
+  font-weight:900;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
 }
 
-#parchmentMapStage button.poi-hunt-locked{
-  filter: grayscale(1) brightness(0.6);
-  opacity: 0.75;
+#parchmentMapStage button.poi-hunt-locked,
+#parchmentSkyPanel button.poi-hunt-locked{
+  filter: brightness(0.45) grayscale(0.9);
 }
 
-#parchmentMapStage button.poi-hunt-locked::after{
-  content: "🔒";
+#parchmentMapStage button.poi-hunt-locked::after,
+#parchmentSkyPanel button.poi-hunt-locked::after{
+  content:"🔒";
   position:absolute;
-  right:-6px;
   top:-8px;
-  width:18px;
-  height:18px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  right:-10px;
+  font-size:12px;
+  padding:2px 6px;
+  border-radius:10px;
   background: rgba(0,0,0,0.75);
   color:#fff;
-  font-size:12px;
-  border-radius:10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
-  pointer-events:none;
+  font-weight:900;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
 }
 
     /* 🍄 POI: 평화로운 버섯마을 (이그드라실 1/3 크기) */
@@ -9546,6 +9545,37 @@ function showSkyMapMoveConfirm(fieldId){
 
   if (!popup || !msgEl || !okBtn || !cancelBtn) return;
 
+    // 🔒 성공률 0% 사냥터 → 잠금 안내만 띄우고 종료
+  const chance = getHuntSuccessChance(sword, fieldId);
+  if (chance <= 0) {
+
+    // NPC 요소 숨김 (기존 흐름과 동일)
+    if (nameEl) nameEl.textContent = "";
+    if (imgEl) imgEl.style.display = "none";
+
+    msgEl.innerHTML = `
+      <div style="font-size:16px; font-weight:700; margin-bottom:6px;">
+        🔒 잠긴 사냥터
+      </div>
+      <div style="font-size:13px; line-height:1.6; color:#ddd;">
+        현재 강화 단계에서는 이 사냥터에 도전할 수 없습니다.<br>
+        <span style="color:#ffb3b3; font-weight:700;">
+          사냥 성공 확률: 0%
+        </span><br><br>
+        <span style="color:#aaa;">추천 강화:</span>
+        <b>+${Number(f.recLevel || "?")}강</b>
+      </div>
+    `;
+
+    okBtn.style.display = "inline-block";
+    cancelBtn.style.display = "none";
+    okBtn.textContent = "확인";
+    okBtn.onclick = closeNpcPopup;
+
+    popup.style.display = "flex";
+    return;
+  }
+
   // NPC 요소 숨김(월드맵과 동일)
   if (nameEl) nameEl.textContent = "";
   if (imgEl) imgEl.style.display = "none";
@@ -11976,6 +12006,7 @@ document.addEventListener("keydown", (e) => {
   if (e) e.stopPropagation(); // ✅ 1번 지도 바깥클릭 닫기랑 충돌 방지
   const sky = document.getElementById("parchmentSkyOverlay");
   if (!sky) return;
+  updateSkyMapHuntPoiHints();
   sky.style.display = "flex";
 }
 
