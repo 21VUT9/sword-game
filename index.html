@@ -1606,6 +1606,17 @@ button {
   pointer-events: none;       /* ✅ 클릭 방해 X */
 }
 
+  /* ✅ 칭호(업적) 그리드 셀 내부용 !딱지 (작게) */
+.title-alert-badge{
+  width: 16px;
+  height: 16px;
+  font-size: 12px;
+  line-height: 16px;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+}
+
   /* ✅ 지도 버튼 아래로 같은 규격으로 쌓기 (지도 스타일 유지) */
 #mapBtn{ top: var(--field-top-offset) }              /* 지도는 그대로 */
 #duelIconBtn{ top: calc(120px + var(--field-top-offset)); }
@@ -3396,6 +3407,7 @@ html, body {
         class="map-icon-btn left-icon-btn"
         onclick="openTitleOverlay()">
   <img class="map-icon-img" src="images/ui/icon_achievement.png" alt="업적">
+  <div id="achievementAlertBadge" class="icon-alert-badge">!</div>
   <span class="map-icon-label">업적</span>
 </button>
   
@@ -7912,13 +7924,82 @@ const LINEA_LINES = [
 // 🏷️ 칭호 자동 지급 로직
 // =====================
 let titleSortMode = "default"; // "default" | "recent"
+
+  // =====================
+// 🏆 업적(칭호) 신규 알림(!) 관리
+// =====================
+const UNSEEN_TITLES_KEY = "pug_unseen_titles"; // { titleId: 1, ... }
+let unseenTitles = {};
+
+function loadUnseenTitles(){
+  try{
+    const raw = localStorage.getItem(UNSEEN_TITLES_KEY);
+    unseenTitles = raw ? (JSON.parse(raw) || {}) : {};
+  }catch(e){
+    unseenTitles = {};
+  }
+}
+
+function saveUnseenTitles(){
+  try{
+    localStorage.setItem(UNSEEN_TITLES_KEY, JSON.stringify(unseenTitles || {}));
+  }catch(e){}
+}
+
+function markTitleUnseen(titleId){
+  if(!titleId) return;
+  if(!unseenTitles) unseenTitles = {};
+  unseenTitles[titleId] = 1;
+  saveUnseenTitles();
+}
+
+function markTitleSeen(titleId){
+  if(!titleId || !unseenTitles) return;
+  if(unseenTitles[titleId]){
+    delete unseenTitles[titleId];
+    saveUnseenTitles();
+  }
+}
+
+function isTitleUnseen(titleId){
+  return !!(unseenTitles && unseenTitles[titleId]);
+}
+
+function updateAchievementBadge(){
+  const badge = document.getElementById("achievementAlertBadge");
+  if(!badge) return;
+
+  // 로그인 전이면 숨김
+  if(!userId || !userRef){
+    badge.style.display = "none";
+    return;
+  }
+
+  // “획득했고 + 아직 확인 안 한 칭호”가 하나라도 있으면 표시
+  let hasNew = false;
+  if(unseenTitles && titlesOwned){
+    for(const id in unseenTitles){
+      if(titlesOwned[id]){
+        hasNew = true;
+        break;
+      }
+    }
+  }
+  badge.style.display = hasNew ? "flex" : "none";
+}
   
 // changed가 true면, 호출한 쪽에서 save() 한번만 해주면 됨(중복 save 방지)
 function grantTitleOnceNoSave(titleId){
   if(!titleId) return false;
   if(!titlesOwned) titlesOwned = {};
   if(titlesOwned[titleId]) return false;
+
   titlesOwned[titleId] = Date.now();
+
+  // ✅ 새로 획득한 칭호는 “미확인”으로 등록 → 아이콘/그리드에 ! 표시
+  markTitleUnseen(titleId);
+  updateAchievementBadge();
+
   return true;
 }
 
@@ -8142,10 +8223,14 @@ grid.innerHTML = defs.map(def => {
     ? (ts ? new Date(ts).toLocaleDateString("ko-KR") : "획득")
     : "미획득";
 
+  const isNew = owned && isTitleUnseen(def.id);
+
   return `
     <div class="titleCell"
          data-id="${def.id}"
-         style="padding:10px 6px; text-align:center; border:${border}; border-radius:10px; cursor:pointer; color:${color}; user-select:none;">
+         style="position:relative; padding:10px 6px; text-align:center; border:${border}; border-radius:10px; cursor:pointer; color:${color}; user-select:none;">
+      ${isNew ? `<div class="icon-alert-badge title-alert-badge" style="display:flex;">!</div>` : ``}
+
       <div style="font-weight:bold;">${def.name}</div>
       <div style="margin-top:4px; font-size:11px; color:${owned ? "#bbb" : "#555"};">
         ${earnedText}
@@ -8184,6 +8269,11 @@ function onTitleClick(titleId){
   }
 
   // ✅ 획득한 칭호 클릭
+  // ✅ “새로 획득” 뱃지 해제 (한 번 눌러 확인하면 사라짐)
+  markTitleSeen(titleId);
+  updateAchievementBadge();
+  renderTitleGrid();
+
   // 1) 이미 장착중 → “장착해제” 팝업
   if (equippedTitle === titleId) {
     showActionPopupAt(x, y, `
@@ -12631,6 +12721,8 @@ function closeOtherUserProfilePopup() {
 // 👤 다른 유저 프로필 팝업 / 공지 ESC 초기화
 document.addEventListener("DOMContentLoaded", function () {
   loadSoundSettings();
+  loadUnseenTitles();
+  updateAchievementBadge();
   const overlay  = document.getElementById("otherProfileOverlay");
   const closeBtn = document.getElementById("otherProfileCloseBtn");
 
