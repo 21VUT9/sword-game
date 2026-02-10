@@ -18342,6 +18342,11 @@ ref.update({ sessionId: "", sessionUpdatedAt: 0 }).then(() => {
   // 세션 시작 (네 코드에 이미 존재)
   startSession();
 
+  // ✅ 강제탈취로 로그인 확정 시, 이 기기의 자동로그인 계정을 지금 uid로 고정
+try {
+  localStorage.setItem("swordGameLastUser", String(uid));
+} catch (e) {}
+
   // ✅ 데이터 적용은 기존 로그인 루틴에 맡기고
   //    가장 확실한 방법: 새로고침으로 정상 진입
   location.reload();
