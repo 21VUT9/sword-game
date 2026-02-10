@@ -12338,6 +12338,9 @@ function updateSkyMapHuntPoiHints(){
   const sky = document.getElementById("parchmentSkyOverlay");
   if (!sky) return;
 
+    // ✅ 하늘맵(2번 지도)도 지도 펼쳐지는 사운드 재생
+  try{ playMapOpenSfx(); }catch(e){}
+
   updateSkyMapHuntPoiHints();   // ✅ 하늘맵 추천/잠금 갱신
   sky.style.display = "flex";
 
@@ -12516,7 +12519,7 @@ function loadSoundSettings(){
 function applyBgmVolumeNow(){
   try{
     if (typeof currentBgm !== "undefined" && currentBgm && typeof currentBgm.volume === "number") {
-      const baseVol = 0.45; // BGM 기본 볼륨
+      const baseVol = 0.675; // BGM 기본 볼륨
       currentBgm.volume = Math.min(1.0, baseVol * getBgmScale());
     }
   }catch(e){}
