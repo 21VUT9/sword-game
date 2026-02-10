@@ -16134,16 +16134,23 @@ function getBossPowerMultiplier(bossId, swordLv){
 }
 
 function getBossWeaponProfile(){
-  // weaponType은 너 코드에서 이미 쓰고 있는 전역 값(예: "sword","spear","axe","bow","staff")을 그대로 사용
+  // weaponType은 기존 전역 그대로 사용
   const t = String(weaponType || "sword");
 
   // 기본값(검)
   let coef = 1.0;
   let critRate = 0.0;
   let critDmgBonus = 0.0; // 치명타 데미지 추가(+0.05 = +5%)
-  let ignoreDef = 0.0;
-  let ignoreEvade = 0.0;
+  let ignoreDef = 0.0;    // 관통(물리방어 무시)
+  let ignoreEvade = 0.0;  // 회피 무시
   let dmgLabel = "공격력"; // 표시용(스태프는 주문력)
+
+  // ✅ 패시브(무기 30강 달성 횟수 기반)
+  const counts = (typeof weapon30Counts === "object" && weapon30Counts) ? weapon30Counts : {};
+  const passiveLv = Math.max(0, Math.min(5, Number(counts[t] || 0))); // 1회=LV1, 5회=MAX
+
+  // ✅ “공격/주문력 %” 패시브용 (검/스태프만)
+  let dmgMul = 1.0;
 
   if (t === "staff") { coef = 1.0; dmgLabel = "주문력"; }
   else if (t === "spear") { coef = 0.9; ignoreDef = 0.10; }
@@ -16151,7 +16158,40 @@ function getBossWeaponProfile(){
   else if (t === "bow") { coef = 0.9; ignoreEvade = 0.10; }
   else if (t === "dagger") { coef = 0.9; critRate = 0.05; critDmgBonus = 0.05; }
 
-  return { t, coef, critRate, critDmgBonus, ignoreDef, ignoreEvade, dmgLabel };
+  // ✅ 패시브 합산(실전 반영)
+  // 검: 공격/주문력 +10% * LV
+  if (t === "sword") {
+    dmgMul *= (1 + passiveLv * 0.10);
+  }
+  // 스태프: 공격/주문력 +10% * LV  (스태프는 “주문력”이므로 dmgMul로 반영)
+  if (t === "staff") {
+    dmgMul *= (1 + passiveLv * 0.10);
+  }
+  // 창: 관통력 +10% * LV  → 물리방어 무시로 합산
+  if (t === "spear") {
+    ignoreDef += passiveLv * 0.10;
+  }
+  // 도끼: 치명타확률 +10% * LV
+  if (t === "axe") {
+    critRate += passiveLv * 0.10;
+  }
+  // 활: 회피무시 +10% * LV
+  if (t === "bow") {
+    ignoreEvade += passiveLv * 0.10;
+  }
+  // 단검: 치명타데미지 +10% * LV
+  if (t === "dagger") {
+    critDmgBonus += passiveLv * 0.10;
+  }
+
+  // ✅ 안전 캡(0~1)
+  critRate = Math.max(0, Math.min(1, critRate));
+  ignoreDef = Math.max(0, Math.min(1, ignoreDef));
+  ignoreEvade = Math.max(0, Math.min(1, ignoreEvade));
+  // critDmgBonus는 “추가 배율”이라 상한 굳이 필요 없지만 음수만 방지
+  critDmgBonus = Math.max(0, critDmgBonus);
+
+  return { t, coef, critRate, critDmgBonus, ignoreDef, ignoreEvade, dmgLabel, dmgMul, passiveLv };
 }
 
 // ✅ 최종 공격 결과(한 번 클릭 시 결과)
@@ -16169,6 +16209,11 @@ function calcBossAttackResult(bossId){
 
   // 3) 무기 계수 반영
   let dmg = adjPower * wp.coef;
+
+    // ✅ 패시브(검/스태프): 공격/주문력 % 보정은 “실전 데미지”에 곱해준다
+  if (wp && typeof wp.dmgMul === "number") {
+    dmg = dmg * wp.dmgMul;
+  }
 
     // ✅ 서리여왕 전용: 주문력 무기(스태프) 10% 상승
   if (bossId === "frost_queen" && wp.t === "staff") {
@@ -18301,20 +18346,57 @@ if (invBtn) {
   const lvDagger = getLv("dagger");
 
   // -----------------------------
-  // 2) (임시) 1단계 더미값 + 패시브 보정 반영
-  //    ※ 다음 단계에서 "보스전 기준 최종치" 계산으로 교체하면 됨
+  // 2) "보스전 기준 최종치" (실제 전투 계산식과 동일)
+  //    - 랜덤(85~100%), MISS, CRIT 적용 전 단계의 기본값을 표기
   // -----------------------------
-  const baseAtk = Number(sword || 0); // 현재는 더미(네가 1단계에서 바꿀 예정)
-  const atkMul = 1 + (lvSword * 0.10); // 기사의 혼: 공격/주문력 +10% * LV
-  const finalAtk = Math.floor(baseAtk * atkMul);
+  const wp = getBossWeaponProfile();
 
-  const penPct    = lvSpear  * 10; // 전사의 혼: 관통력 +10% * LV
-  const ignorePct = lvBow    * 10; // 사냥꾼의 혼: 회피무시 +10% * LV
-  const critPct   = lvAxe    * 10; // 바이킹의 혼: 치명타확률 +10% * LV
-  const critDmgPct= lvDagger * 10; // 어쌔신의 혼: 치명타데미지 +10% * LV
-  const huntPlus  = lvStaff  * 2;  // 마법사의 혼: 사냥횟수최대치 +2 * LV (능력치칸엔 아직 미표기)
+  // 보스 컨텍스트: 보스전 중이면 activeBossId 사용, 아니면 보정 1로 표기
+  const bossIdForStat = String((typeof activeBossId !== "undefined" && activeBossId) ? activeBossId : "");
+  const rawPower = Number(power || 0);
+  const swordLvNow = Number(sword || 0);
 
-  document.getElementById("statAtk").textContent = String(finalAtk);
+  const powerMul = (bossIdForStat ? getBossPowerMultiplier(bossIdForStat, swordLvNow) : 1);
+  const adjPower = rawPower * powerMul;
+
+  // “공격력/주문력” 표기용 기본값(랜덤/치명/미스 전)
+  let baseMain = adjPower * Number(wp.coef || 1);
+
+  // 검/스태프 패시브(공격/주문력 %)
+  if (wp && typeof wp.dmgMul === "number") baseMain = baseMain * wp.dmgMul;
+
+  // 서리여왕 전용 스태프 10% (전투와 동일)
+  if (bossIdForStat === "frost_queen" && wp.t === "staff") baseMain = baseMain * 1.10;
+
+  baseMain = Math.floor(baseMain);
+
+  // 라벨/무기 표기
+  const labelEl = document.getElementById("statMainLabel");
+  if (labelEl) labelEl.textContent = String(wp.dmgLabel || "공격력");
+
+  const weaponLineEl = document.getElementById("statWeaponLine");
+  if (weaponLineEl) {
+    const kor = (tt) => {
+      if (tt === "spear") return "창";
+      if (tt === "axe") return "도끼";
+      if (tt === "bow") return "활";
+      if (tt === "staff") return "스태프";
+      if (tt === "dagger") return "단검";
+      return "검";
+    };
+    weaponLineEl.textContent = `${kor(wp.t)} (+${swordLvNow}강)`;
+  }
+
+  // 확률/부가스탯(전투 기준)
+  const penPct     = Math.round((Number(wp.ignoreDef || 0) * 100));     // 관통(물리방어 무시)
+  const ignorePct  = Math.round((Number(wp.ignoreEvade || 0) * 100));   // 회피 무시
+  const critPct    = Math.round((Number(wp.critRate || 0) * 100));      // 치명타 확률
+
+  // 전투 로직 기준: 치명타 시 “기본 +20%”가 존재함
+  const baseCritDmg = 0.20;
+  const critDmgPct  = Math.round(( (baseCritDmg + Number(wp.critDmgBonus || 0)) * 100 ));
+
+  document.getElementById("statAtk").textContent = String(baseMain);
   document.getElementById("statPen").textContent = `${penPct}%`;
   document.getElementById("statIgnore").textContent = `${ignorePct}%`;
   document.getElementById("statCrit").textContent = `${critPct}%`;
@@ -18690,9 +18772,13 @@ window.addEventListener("DOMContentLoaded", () => {
         능력치
       </div>
 
-      <div style="font-size:21px;font-weight:900;margin-bottom:18px;">
-        ⚔ 공격력 <span id="statAtk">0</span>
-      </div>
+      <div style="font-size:12px; color:#aaa; margin-bottom:10px;">
+  무기: <span id="statWeaponLine">-</span>
+</div>
+
+<div style="font-size:21px;font-weight:900;margin-bottom:18px;">
+  ⚔ <span id="statMainLabel">공격력</span> <span id="statAtk">0</span>
+</div>
 
       <div class="stat-line">관통력 <span id="statPen">0%</span></div>
       <div class="stat-line">회피 무시 <span id="statIgnore">0%</span></div>
