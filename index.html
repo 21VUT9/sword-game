@@ -15638,6 +15638,38 @@ myLines.push(`• 치명타 데미지: <b>+${Math.round((0.20 + Number(critDmgBo
   return formatGold(v);
 }
 
+  // 🔢 능력치용 숫자 풀 표기 (조 / 억 / 만 / 1의 자리)
+function formatNumberFullKR(num) {
+  num = Math.floor(Number(num) || 0);
+  if (num <= 0) return "0";
+
+  const parts = [];
+
+  const jo  = Math.floor(num / 1_0000_0000_0000);
+  if (jo > 0) {
+    parts.push(`${jo}조`);
+    num %= 1_0000_0000_0000;
+  }
+
+  const eok = Math.floor(num / 1_0000_0000);
+  if (eok > 0) {
+    parts.push(`${eok}억`);
+    num %= 1_0000_0000;
+  }
+
+  const man = Math.floor(num / 1_0000);
+  if (man > 0) {
+    parts.push(`${man}만`);
+    num %= 1_0000;
+  }
+
+  if (num > 0 || parts.length === 0) {
+    parts.push(`${num}`);
+  }
+
+  return parts.join(" ");
+}
+
 // ✅ 데미지용: 16억4215만5512 형태 (쉼표 없음 / 만, 억 단위)
 function formatDamageKoUnits(n){
   n = Math.floor(Number(n || 0));
@@ -18393,7 +18425,7 @@ if (invBtn) {
   if (mainLabelEl) mainLabelEl.textContent = my.dmgLabel;
 
   const atkEl = document.getElementById("statAtk");
-  if (atkEl) atkEl.textContent = formatBossHpShort(my.mainPower);
+  if (atkEl) atkEl.textContent = formatNumberFullKR(my.mainPower);
 
   // (B) 무기 표시(UX)
   const wLine = document.getElementById("statWeaponLine"); // 있으면 사용
