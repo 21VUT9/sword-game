@@ -4632,6 +4632,20 @@ firebase.initializeApp({
   projectId:"sword-game-1d1a1"
 });
 const db = firebase.database();
+
+  // 🔊 공통 버튼 클릭 SFX
+let uiClickCommonAudio = null;
+
+function playUiClickCommon(){
+  try{
+    if (!uiClickCommonAudio) {
+      uiClickCommonAudio = new Audio("sounds/ui_click_common.mp3");
+      uiClickCommonAudio.volume = 0.7; // 필요하면 조절
+    }
+    uiClickCommonAudio.currentTime = 0;
+    uiClickCommonAudio.play();
+  }catch(e){}
+}
   
 // ============================
 // 🔊 아이콘 탭 사운드(초저지연: WebAudio)
@@ -18552,7 +18566,21 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-  </script>
+  // 🖱️ 전역 공통 버튼 클릭 사운드 처리(잡다한 버튼 통일)
+document.addEventListener("click", function(e){
+  const target = e.target.closest("button, .poi, [role='button'], .clickable");
+  if (!target) return;
+
+  // ❌ 예외: 전용 사운드 버튼
+  if (target.dataset && target.dataset.nosfx === "1") return;
+
+  // ❌ 예외: 입력 계열
+  if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+
+  playUiClickCommon();
+});
+
+    </script>
 
 <!-- 📘 처음 접속 튜토리얼 (NPC 버전) -->
 <div id="tutorialOverlay">
