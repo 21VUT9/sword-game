@@ -5991,6 +5991,22 @@ let hofProcessedAt = 0;       // 전당행 처리 완료 시각(ms) (중복방�
 let huntStamina = 20;          // 현재 사냥 가능 횟수 (0~20)
 let lastStaminaUpdate = 0;     // 마지막 스태미나 갱신 시각 (ms timestamp)
 
+  // 🆕 사냥 스태미나 최대치 (기본 20 + 마법사 패시브)
+function getHuntStaminaMax() {
+  const base = 20;
+
+  let plus = 0;
+  try {
+    // getPlayerFinalCombatStats() 안에서 마법사 패시브로 huntMaxPlus 를 만들고 있음
+    const st = (typeof getPlayerFinalCombatStats === "function") ? getPlayerFinalCombatStats() : null;
+    plus = Number(st && st.huntMaxPlus ? st.huntMaxPlus : 0);
+  } catch (e) {
+    plus = 0;
+  }
+
+  return base + Math.max(0, plus);
+}
+
 // 🆕 25강 이상 강화 경고 안내 표시 여부 (세션 기준 1회)
 let hasSeen25Warning = false;
 let ignoreNextUpgradeWarning = false;
@@ -6001,23 +6017,27 @@ let activeBossId = "";
 function recalcHuntStamina() {
   const now = Date.now();
   const today = getTodayDateString();
+  const max = getHuntStaminaMax();
 
   // 최초 호출 시 초기화
   if (!lastStaminaUpdate) {
     lastStaminaUpdate = now;
   }
 
-  // 🔁 날짜가 바뀌었으면 00시에 풀 회복 (20개)
+  // 혹시 저장된 값이 max를 넘으면 클램프
+  if (huntStamina > max) huntStamina = max;
+
+  // 🔁 날짜가 바뀌었으면 00시에 풀 회복 (max개)
   if (lastHuntDate !== today) {
-    lastHuntDate     = today;
-    huntStamina      = 20;
+    lastHuntDate      = today;
+    huntStamina       = max;
     lastStaminaUpdate = now;
-    huntCountToday   = 0;
+    huntCountToday    = 0;
     return;
   }
 
   // 이미 가득 차 있으면 더 회복 X
-  if (huntStamina >= 20) return;
+  if (huntStamina >= max) return;
 
   const intervalMs = 20 * 60 * 1000; // 20분
   const elapsed    = now - lastStaminaUpdate;
@@ -6027,12 +6047,13 @@ function recalcHuntStamina() {
   const gained = Math.floor(elapsed / intervalMs);
   if (gained <= 0) return;
 
-  huntStamina = Math.min(20, huntStamina + gained);
+  huntStamina = Math.min(max, huntStamina + gained);
+
   // 마지막 회복 기준 시각 앞으로 당겨주기
   lastStaminaUpdate += gained * intervalMs;
 
-  // 참고용: 오늘 사용한 횟수 = 20 - 남은 스태미나
-  huntCountToday = Math.max(0, 20 - huntStamina);
+  // 참고용: 오늘 사용한 횟수 = max - 남은 스태미나
+  huntCountToday = Math.max(0, max - huntStamina);
 }
 
   // 💰 사냥 버튼 위로 동전 이모지 튀는 이펙트
@@ -6077,32 +6098,34 @@ function updateHuntUI() {
   // 매번 부를 때마다 스태미나 재계산
   recalcHuntStamina();
 
-  const remaining = huntStamina;
-  huntBtnEl.textContent = ` 사냥 (${remaining}/20)`;
+  const max = getHuntStaminaMax();
+  const remaining = Math.min(max, Number(huntStamina || 0));
+
+  huntBtnEl.textContent = ` 사냥 (${remaining}/${max})`;
 
   // 회복까지 남은 시간 계산
   let infoText = "";
   const intervalMs = 20 * 60 * 1000;
 
- if (remaining >= 20) {
-  infoText = `[ 00:00 ]`;
-} else {
-  const now = Date.now();
-  const elapsed = now - lastStaminaUpdate;
+  if (remaining >= max) {
+    infoText = `[ 00:00 ]`;
+  } else {
+    const now = Date.now();
+    const elapsed = now - lastStaminaUpdate;
 
-  const passed = Math.max(0, elapsed);
-  const remainMs = intervalMs - (passed % intervalMs);
-  const totalSec = Math.floor(remainMs / 1000);
+    const passed = Math.max(0, elapsed);
+    const remainMs = intervalMs - (passed % intervalMs);
+    const totalSec = Math.floor(remainMs / 1000);
 
-  const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
-  const ss = String(totalSec % 60).padStart(2, "0");
+    const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
+    const ss = String(totalSec % 60).padStart(2, "0");
 
-  infoText = `[ ${mm}:${ss} ]`;
-}
+    infoText = `[ ${mm}:${ss} ]`;
+  }
 
   huntInfoEl.style.fontSize   = "13px";
   huntInfoEl.style.color      = "#ccc";
-  huntInfoEl.style.whiteSpace = "pre-line"; // \n 줄바꿈
+  huntInfoEl.style.whiteSpace = "pre-line";
   huntInfoEl.textContent      = infoText;
 }
 
