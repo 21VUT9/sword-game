@@ -3502,7 +3502,7 @@ html, body {
 </div>
 
   <!-- 🗺 MAP 아이콘 버튼(기존 기능 유지: toggleMap) -->
-  <button id="mapBtn" class="map-icon-btn" onclick="openParchmentMap()">
+  <button id="mapBtn" class="map-icon-btn" onclick="openParchmentMap()" data-nosfx="1">
     <img class="map-icon-img" src="images/ui/icon_map_roll.png" alt="MAP">
     <span class="map-icon-label">지도</span>
   </button>
@@ -3643,9 +3643,9 @@ html, body {
 </p>
 
 <div class="action-buttons">
-  <button id="upgradeBtn" onclick="playUiTap(); upgrade()"> 강화</button>
-  <button id="huntBtn" onclick="playUiTap(); hunt()"> 사냥</button>
-  <button id="sellBtn" onclick="playUiTap(); sell()"> 판매</button>
+  <button id="upgradeBtn" onclick="playUiTap(); upgrade()"data-nosfx="1"> 강화</button>
+  <button id="huntBtn" onclick="playUiTap(); hunt()"data-nosfx="1"> 사냥</button>
+  <button id="sellBtn" onclick="playUiTap(); sell()"data-nosfx="1"> 판매</button>
 
   <!-- 🏛️ 30강 전용: 명예의 전당 보내기 -->
   <button id="hallBtn"
@@ -3796,14 +3796,14 @@ html, body {
   <div id="workbenchDockUI">
     
   <div class="dock-slot">
-  <button id="scrollShopDockBtn" class="dock-btn">
+  <button id="scrollShopDockBtn" class="dock-btn" data-nosfx="1">
     <img src="images/ui/icon_shop.png" alt="스크롤상점">
   </button>
   <span class="map-icon-label one-line">스크롤상점</span>
 </div>
 
   <div class="dock-slot">
-  <button id="inventoryDockBtn" class="dock-btn">
+  <button id="inventoryDockBtn" class="dock-btn" data-nosfx="1">
     <img src="images/ui/icon_inventory.png" alt="인벤토리">
   </button>
   <span class="map-icon-label one-line">인벤토리</span>
@@ -3811,7 +3811,7 @@ html, body {
 
   <!-- ⭐ 중앙: 내 능력치 -->
   <div class="dock-slot">
-    <button id="statDockBtn" class="dock-btn locked">
+    <button id="statDockBtn" class="dock-btn locked" data-nosfx="1">
     <img src="images/ui/icon_stat.png" alt="능력치">
     <span class="dock-lock">🔒</span>
     </button>
@@ -3819,7 +3819,7 @@ html, body {
   </div>
 
   <div class="dock-slot">
-  <button id="runeDockBtn" class="dock-btn locked">
+  <button id="runeDockBtn" class="dock-btn locked" data-nosfx="1">
     <img src="images/ui/icon_rune.png" alt="룬">
     <span class="dock-lock">🔒</span>
   </button>
@@ -3827,7 +3827,7 @@ html, body {
 </div>
 
   <div class="dock-slot">
-  <button id="beastDockBtn" class="dock-btn locked">
+  <button id="beastDockBtn" class="dock-btn locked" data-nosfx="1">
     <img src="images/ui/icon_beast.png" alt="신수">
     <span class="dock-lock">🔒</span>
   </button>
