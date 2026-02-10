@@ -16154,34 +16154,93 @@ function getBossWeaponProfile(){
   return { t, coef, critRate, critDmgBonus, ignoreDef, ignoreEvade, dmgLabel };
 }
 
-// ✅ 최종 공격 결과(한 번 클릭 시 결과)
+// ✅ (신규) 무기 한글명(능력치 UI용)
+function weaponTypeKor(t){
+  t = String(t || "");
+  if (t === "sword") return "검";
+  if (t === "spear") return "창";
+  if (t === "axe") return "도끼";
+  if (t === "bow") return "활";
+  if (t === "staff") return "스태프";
+  if (t === "dagger") return "단검";
+  return t;
+}
+
+// ✅ (신규) 패시브 레벨(무기별 30강 달성 횟수 기반)
+function getPassiveLevels(){
+  const counts = (typeof weapon30Counts === "object" && weapon30Counts) ? weapon30Counts : {};
+  const getLv = (wt) => {
+    const n = Number(counts[wt] || 0);
+    return Math.max(0, Math.min(5, n)); // 1회=LV1, 5회=MAX
+  };
+
+  return {
+    sword:  getLv("sword"),
+    spear:  getLv("spear"),
+    axe:    getLv("axe"),
+    bow:    getLv("bow"),
+    staff:  getLv("staff"),
+    dagger: getLv("dagger")
+  };
+}
+
+// ✅ (신규) “내 최종 전투 스탯(절대수치)”
+// - 여기 값이 능력치 오버레이에 그대로 찍힘
+// - 보스전에서는 여기 값에 보스 보정만 곱/적용
+function getPlayerFinalCombatStats(){
+  const wp = getBossWeaponProfile();     // 현재 무기 고유 특성(계수/기본특성)
+  const lv = getPassiveLevels();         // 영구 패시브 레벨
+  const rawPower = Number(power || 0);   // 네 게임의 기본 전투력(절대 성장치)
+
+  // 1) 메인 수치(공격력/주문력) = rawPower * 무기계수 * (검패시브 공격/주문력%)
+  const mainMul = 1 + (lv.sword * 0.10);
+  const mainPower = Math.floor(rawPower * wp.coef * mainMul);
+
+  // 2) 서브 스탯(0%여도 표기 대상)
+  const penetration   = Number(wp.ignoreDef || 0)   + (lv.spear  * 0.10); // 관통력
+  const ignoreEvade   = Number(wp.ignoreEvade || 0) + (lv.bow    * 0.10); // 회피무시
+  const critRate      = Number(wp.critRate || 0)    + (lv.axe    * 0.10); // 치명타확률
+  const critDmgBonus  = Number(wp.critDmgBonus || 0)+ (lv.dagger * 0.10); // 치명타데미지 추가(+0.10=+10%)
+  const huntMaxPlus   = (lv.staff * 2);                                 // 사냥횟수 최대치 +2*LV
+
+  return {
+    weaponType: wp.t,
+    weaponTypeKor: weaponTypeKor(wp.t),
+    dmgLabel: wp.dmgLabel,      // "공격력" or "주문력"
+    mainPower,
+    penetration,
+    ignoreEvade,
+    critRate,
+    critDmgBonus,
+    huntMaxPlus,
+    passiveLv: lv
+  };
+}
+
 function calcBossAttackResult(bossId){
   const stats = getBossBattleStats(bossId);
-  const wp = getBossWeaponProfile();
 
-  // 1) 전투력 기반 베이스
-  const rawPower = Number(power || 0);
+  // ✅ “내 최종스탯(절대수치)” 불러오기
+  const my = getPlayerFinalCombatStats();
+  const wp = getBossWeaponProfile(); // label/dmgLabel 용도로 유지
 
-  // 2) 강화별 보정(25~30)
+  // ✅ 보스 강화 보정(25~30)은 “보스에서만” 적용
   const swordLv = Number(sword || 0);
   const powerMul = getBossPowerMultiplier(bossId, swordLv);
-  const adjPower = rawPower * powerMul;
 
-  // 3) 무기 계수 반영
-  let dmg = adjPower * wp.coef;
+  // ✅ 보스전 기본 데미지 = (내 절대 메인스탯) * (보스 보정)
+  let dmg = Number(my.mainPower || 0) * powerMul;
 
-    // ✅ 서리여왕 전용: 주문력 무기(스태프) 10% 상승
-  if (bossId === "frost_queen" && wp.t === "staff") {
+  // ✅ 서리여왕 전용: 주문력 무기(스태프) 10% 상승
+  if (bossId === "frost_queen" && my.weaponType === "staff") {
     dmg = dmg * 1.10;
   }
 
-  // 4) 방어/저항(현재 0%지만 룰로는 적용)
-  //    창은 물리방어 10% 무시
-  const effPhysDef = Math.max(0, Number(stats.physDef || 0) - Number(wp.ignoreDef || 0));
-  // 스태프는 마법 저항 적용(현재 0)
+  // 4) 방어/저항
+  const effPhysDef = Math.max(0, Number(stats.physDef || 0) - Number(my.penetration || 0));
   const effMagicRes = Math.max(0, Number(stats.magicRes || 0));
 
-  if (wp.t === "staff") {
+  if (my.weaponType === "staff") {
     dmg = dmg * (1 - effMagicRes);
   } else {
     dmg = dmg * (1 - effPhysDef);
@@ -16192,27 +16251,21 @@ function calcBossAttackResult(bossId){
   dmg = Math.floor(dmg * randMul);
 
   // 6) 회피(MISS)
-  //    활은 회피 10% 무시 → effEvade가 0이 됨(현재 보스 evade=0.10 기준)
-  const effEvade = Math.max(0, Number(stats.evade || 0) - Number(wp.ignoreEvade || 0));
+  const effEvade = Math.max(0, Number(stats.evade || 0) - Number(my.ignoreEvade || 0));
   const isMiss = (Math.random() < effEvade);
-
   if (isMiss) {
-    return { damage: 0, isMiss: true, isCrit: false, label: wp.dmgLabel };
+    return { damage: 0, isMiss: true, isCrit: false, label: my.dmgLabel };
   }
 
-  // 7) 치명타(기본 0% + 도끼 10%)
-  const baseCrit = 0.0;
-  const critRate = baseCrit + Number(wp.critRate || 0);
-  const isCrit = (Math.random() < critRate);
-
+  // 7) 치명타
+  const isCrit = (Math.random() < Number(my.critRate || 0));
   if (isCrit) {
-  const cd = 0.20 + Number(wp.critDmgBonus || 0); // 기본 +20% + 무기 보너스(단검 +5%)
-  dmg = Math.floor(dmg * (1 + cd));
-}
+    const cd = 0.20 + Number(my.critDmgBonus || 0); // 기본 +20% + (무기/패시브)
+    dmg = Math.floor(dmg * (1 + cd));
+  }
 
   if (dmg < 0) dmg = 0;
-
-  return { damage: dmg, isMiss: false, isCrit, label: wp.dmgLabel };
+  return { damage: dmg, isMiss: false, isCrit, label: my.dmgLabel };
 }
 
 // (기존 코드 호환용: 혹시 다른 곳에서 calcBossDamageBase()만 부르는 경우 대비)
@@ -18300,25 +18353,35 @@ if (invBtn) {
   const lvStaff  = getLv("staff");
   const lvDagger = getLv("dagger");
 
-  // -----------------------------
-  // 2) (임시) 1단계 더미값 + 패시브 보정 반영
-  //    ※ 다음 단계에서 "보스전 기준 최종치" 계산으로 교체하면 됨
-  // -----------------------------
-  const baseAtk = Number(sword || 0); // 현재는 더미(네가 1단계에서 바꿀 예정)
-  const atkMul = 1 + (lvSword * 0.10); // 기사의 혼: 공격/주문력 +10% * LV
-  const finalAtk = Math.floor(baseAtk * atkMul);
+  // ✅ 2) 진짜 최종치(절대수치) 계산 결과 불러오기
+  const my = getPlayerFinalCombatStats();
 
-  const penPct    = lvSpear  * 10; // 전사의 혼: 관통력 +10% * LV
-  const ignorePct = lvBow    * 10; // 사냥꾼의 혼: 회피무시 +10% * LV
-  const critPct   = lvAxe    * 10; // 바이킹의 혼: 치명타확률 +10% * LV
-  const critDmgPct= lvDagger * 10; // 어쌔신의 혼: 치명타데미지 +10% * LV
-  const huntPlus  = lvStaff  * 2;  // 마법사의 혼: 사냥횟수최대치 +2 * LV (능력치칸엔 아직 미표기)
+  // (A) 메인 라벨/값
+  const mainLabelEl = document.getElementById("statMainLabel"); // 있으면 사용
+  if (mainLabelEl) mainLabelEl.textContent = my.dmgLabel;
 
-  document.getElementById("statAtk").textContent = String(finalAtk);
-  document.getElementById("statPen").textContent = `${penPct}%`;
-  document.getElementById("statIgnore").textContent = `${ignorePct}%`;
-  document.getElementById("statCrit").textContent = `${critPct}%`;
-  document.getElementById("statCritDmg").textContent = `${critDmgPct}%`;
+  const atkEl = document.getElementById("statAtk");
+  if (atkEl) atkEl.textContent = String(my.mainPower);
+
+  // (B) 무기 표시(UX)
+  const wLine = document.getElementById("statWeaponLine"); // 있으면 사용
+  if (wLine) wLine.textContent = `무기: ${my.weaponTypeKor}`;
+
+  // (C) 서브스탯(0%도 표기)
+  const penEl = document.getElementById("statPen");
+  if (penEl) penEl.textContent = `${Math.round(my.penetration * 100)}%`;
+
+  const igEvEl = document.getElementById("statIgnoreEvade");
+  if (igEvEl) igEvEl.textContent = `${Math.round(my.ignoreEvade * 100)}%`;
+
+  const crEl = document.getElementById("statCritRate");
+  if (crEl) crEl.textContent = `${Math.round(my.critRate * 100)}%`;
+
+  const cdEl = document.getElementById("statCritDmg");
+  if (cdEl) cdEl.textContent = `${Math.round(my.critDmgBonus * 100)}%`;
+
+  const huntEl = document.getElementById("statHuntMaxPlus");
+  if (huntEl) huntEl.textContent = `+${my.huntMaxPlus}`;
 
   // -----------------------------
   // 3) 패시브 리스트 렌더
