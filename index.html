@@ -739,6 +739,14 @@ button {
   padding:4px 0;
   border-bottom:1px solid #333;
 }
+
+.stat-line{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:10px;
+  color:#bbb;
+}
+
 .toast-destroy {
   color:red;
   font-weight:bold;
@@ -18184,12 +18192,12 @@ ref.update({ sessionId: "", sessionUpdatedAt: 0 }).then(() => {
 });
 }
 
-// 🔒 능력치(미구현) 버튼 클릭 연결
+// 능력치 버튼 클릭 연결
 const statDockBtn = document.getElementById("statDockBtn");
 if (statDockBtn) {
   statDockBtn.addEventListener("click", () => {
-    playUiDockTap();
-    showLockedFeaturePopup();
+  playUiDockTap();
+  openStatOverlay();   // ← 1단계 능력치 오버레이
   });
 }
   // 🔒 룬(미구현) 버튼 클릭 연결
@@ -18227,6 +18235,27 @@ if (invBtn) {
     toggleInventory();
   });
 }
+
+  function openStatOverlay(){
+  const el = document.getElementById("statOverlay");
+  if (!el) return;
+
+  // 임시 더미값 (1단계 확인용)
+  document.getElementById("statAtk").textContent = sword || 0;
+  document.getElementById("statPen").textContent = "0%";
+  document.getElementById("statIgnore").textContent = "0%";
+  document.getElementById("statCrit").textContent = "0%";
+  document.getElementById("statCritDmg").textContent = "0%";
+
+  el.style.display = "block";
+}
+
+document.getElementById("statOverlay")?.addEventListener("click", (e)=>{
+  if (e.target.id === "statOverlay") {
+    e.currentTarget.style.display = "none";
+  }
+});
+
   
 </script>
 
@@ -18446,5 +18475,59 @@ if (invBtn) {
 </div>
 
   </div>
+
+  <!-- 🧮 능력치 오버레이 (1단계) -->
+<div id="statOverlay" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.65);
+  z-index:3000;
+">
+  <div style="
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    width:860px;
+    height:520px;
+    background:#0b0b0b;
+    border:1px solid rgba(255,255,255,0.15);
+    display:flex;
+    color:#eee;
+    font-family:inherit;
+  ">
+
+    <!-- 1단계 능력치 영역 -->
+    <div style="
+      width:50%;
+      padding:24px;
+      border-right:1px solid rgba(255,255,255,0.1);
+    ">
+      <div style="font-size:18px;font-weight:900;margin-bottom:16px;">
+        능력치
+      </div>
+
+      <div style="font-size:32px;font-weight:900;margin-bottom:18px;">
+        ⚔ 공격력 <span id="statAtk">0</span>
+      </div>
+
+      <div class="stat-line">관통력 <span id="statPen">0%</span></div>
+      <div class="stat-line">회피 무시 <span id="statIgnore">0%</span></div>
+      <div class="stat-line">치명타 확률 <span id="statCrit">0%</span></div>
+      <div class="stat-line">치명타 피해 <span id="statCritDmg">0%</span></div>
+    </div>
+
+    <!-- 우측 (2단계 패시브 예정 영역) -->
+    <div style="width:50%; padding:24px; color:#777;">
+      <div style="font-size:18px;font-weight:900;margin-bottom:12px;">
+        패시브 스킬
+      </div>
+      <div>아직 해금되지 않았습니다.</div>
+    </div>
+
+  </div>
+</div>
+
 </body>
 </html>
