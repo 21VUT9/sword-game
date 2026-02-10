@@ -747,6 +747,50 @@ button {
   color:#bbb;
 }
 
+  .passive-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 0;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+}
+
+.passive-icon{
+  width:34px;
+  height:34px;
+  border-radius:8px;
+  object-fit:cover;
+  flex:0 0 auto;
+  background: rgba(255,255,255,0.06);
+}
+
+.passive-name{
+  font-weight:900;
+  color:#eaeaea;
+  font-size:14px;
+}
+
+.passive-desc{
+  font-size:12px;
+  color:#bdbdbd;
+  margin-top:2px;
+}
+
+.passive-lv{
+  margin-left:auto;
+  font-weight:900;
+  font-size:12px;
+  padding:6px 10px;
+  border-radius:10px;
+  background: rgba(255,255,255,0.08);
+  color:#fff;
+  flex:0 0 auto;
+}
+
+.passive-locked{
+  opacity:0.35;
+}
+
 .toast-destroy {
   color:red;
   font-weight:bold;
@@ -18240,12 +18284,107 @@ if (invBtn) {
   const el = document.getElementById("statOverlay");
   if (!el) return;
 
-  // 임시 더미값 (1단계 확인용)
-  document.getElementById("statAtk").textContent = sword || 0;
-  document.getElementById("statPen").textContent = "0%";
-  document.getElementById("statIgnore").textContent = "0%";
-  document.getElementById("statCrit").textContent = "0%";
-  document.getElementById("statCritDmg").textContent = "0%";
+  // -----------------------------
+  // 1) 패시브 레벨 계산 (무기별 30강 달성 횟수 기반)
+  // -----------------------------
+  const counts = (typeof weapon30Counts === "object" && weapon30Counts) ? weapon30Counts : {};
+  const getLv = (wt) => {
+    const n = Number(counts[wt] || 0);
+    return Math.max(0, Math.min(5, n)); // 1회=LV1, 5회=MAX
+  };
+
+  const lvSword  = getLv("sword");
+  const lvSpear  = getLv("spear");
+  const lvAxe    = getLv("axe");
+  const lvBow    = getLv("bow");
+  const lvStaff  = getLv("staff");
+  const lvDagger = getLv("dagger");
+
+  // -----------------------------
+  // 2) (임시) 1단계 더미값 + 패시브 보정 반영
+  //    ※ 다음 단계에서 "보스전 기준 최종치" 계산으로 교체하면 됨
+  // -----------------------------
+  const baseAtk = Number(sword || 0); // 현재는 더미(네가 1단계에서 바꿀 예정)
+  const atkMul = 1 + (lvSword * 0.10); // 기사의 혼: 공격/주문력 +10% * LV
+  const finalAtk = Math.floor(baseAtk * atkMul);
+
+  const penPct    = lvSpear  * 10; // 전사의 혼: 관통력 +10% * LV
+  const ignorePct = lvBow    * 10; // 사냥꾼의 혼: 회피무시 +10% * LV
+  const critPct   = lvAxe    * 10; // 바이킹의 혼: 치명타확률 +10% * LV
+  const critDmgPct= lvDagger * 10; // 어쌔신의 혼: 치명타데미지 +10% * LV
+  const huntPlus  = lvStaff  * 2;  // 마법사의 혼: 사냥횟수최대치 +2 * LV (능력치칸엔 아직 미표기)
+
+  document.getElementById("statAtk").textContent = String(finalAtk);
+  document.getElementById("statPen").textContent = `${penPct}%`;
+  document.getElementById("statIgnore").textContent = `${ignorePct}%`;
+  document.getElementById("statCrit").textContent = `${critPct}%`;
+  document.getElementById("statCritDmg").textContent = `${critDmgPct}%`;
+
+  // -----------------------------
+  // 3) 패시브 리스트 렌더
+  // -----------------------------
+  const listEl = document.getElementById("passiveSkillList");
+  if (listEl) {
+    const row = (icon, name, desc, lv, locked) => {
+      const lvTxt = (lv >= 5) ? "MAX" : `LV${lv}`;
+      return `
+        <div class="passive-row ${locked ? "passive-locked" : ""}">
+          <img class="passive-icon" src="${icon}" alt="">
+          <div style="min-width:0;">
+            <div class="passive-name">${name}</div>
+            <div class="passive-desc">${desc}</div>
+          </div>
+          <div class="passive-lv">${locked ? "LOCK" : lvTxt}</div>
+        </div>
+      `;
+    };
+
+    const items = [];
+    items.push(row(
+      "images/skills/passive_knight_sword.png",
+      "기사의 혼",
+      `공격력/주문력 +${lvSword * 10}%`,
+      lvSword,
+      lvSword <= 0
+    ));
+    items.push(row(
+      "images/skills/passive_warrior_spear.png",
+      "전사의 혼",
+      `관통력 +${lvSpear * 10}%`,
+      lvSpear,
+      lvSpear <= 0
+    ));
+    items.push(row(
+      "images/skills/passive_viking_axe.png",
+      "바이킹의 혼",
+      `치명타확률 +${lvAxe * 10}%`,
+      lvAxe,
+      lvAxe <= 0
+    ));
+    items.push(row(
+      "images/skills/passive_hunter_bow.png",
+      "사냥꾼의 혼",
+      `회피무시 +${lvBow * 10}%`,
+      lvBow,
+      lvBow <= 0
+    ));
+    items.push(row(
+      "images/skills/passive_mage_staff.png",
+      "마법사의 혼",
+      `사냥횟수최대치 +${huntPlus}`,
+      lvStaff,
+      lvStaff <= 0
+    ));
+    items.push(row(
+      "images/skills/passive_assassin_dagger.png",
+      "어쌔신의 혼",
+      `치명타데미지 +${lvDagger * 10}%`,
+      lvDagger,
+      lvDagger <= 0
+    ));
+
+    listEl.innerHTML = items.join("");
+  }
 
   el.style.display = "block";
 }
@@ -18561,13 +18700,20 @@ window.addEventListener("DOMContentLoaded", () => {
       <div class="stat-line">치명타 피해 <span id="statCritDmg">0%</span></div>
     </div>
 
-    <!-- 우측 (2단계 패시브 예정 영역) -->
-    <div style="width:50%; padding:24px; color:#777;">
-      <div style="font-size:18px;font-weight:900;margin-bottom:12px;">
-        패시브 스킬
-      </div>
-      <div>아직 해금되지 않았습니다.</div>
-    </div>
+    <!-- 우측 (2단계 패시브 영역) -->
+<div style="width:50%; padding:24px;">
+  <div style="font-size:18px;font-weight:900;margin-bottom:12px;">
+    패시브 스킬
+  </div>
+
+  <!-- 리스트 들어갈 자리 -->
+  <div id="passiveSkillList"></div>
+
+  <div style="margin-top:12px; font-size:12px; color:#777; line-height:1.4;">
+    • 획득조건: 해당 무기 +30 달성 시 LV1, 이후 +30 달성마다 +1<br>
+    • MAX LV: 5 (LV5는 <b>MAX</b>로 표기)
+  </div>
+</div>
 
   </div>
 </div>
