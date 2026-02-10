@@ -18393,7 +18393,7 @@ if (invBtn) {
   if (mainLabelEl) mainLabelEl.textContent = my.dmgLabel;
 
   const atkEl = document.getElementById("statAtk");
-  if (atkEl) atkEl.textContent = String(my.mainPower);
+  if (atkEl) atkEl.textContent = formatBossHpShort(my.mainPower);
 
   // (B) 무기 표시(UX)
   const wLine = document.getElementById("statWeaponLine"); // 있으면 사용
@@ -18785,9 +18785,15 @@ window.addEventListener("DOMContentLoaded", () => {
         능력치
       </div>
 
-      <div style="font-size:21px;font-weight:900;margin-bottom:18px;">
-        ⚔ 공격력 <span id="statAtk">0</span>
-      </div>
+      <!-- 무기 표시(UX) -->
+<div id="statWeaponLine" style="font-size:13px;color:#aaa;margin-bottom:8px;">
+  무기: -
+</div>
+
+<!-- 메인 스탯(공격력/주문력) -->
+<div style="font-size:21px;font-weight:900;margin-bottom:18px;">
+  ⚔ <span id="statMainLabel">공격력</span> <span id="statAtk">0</span>
+</div>
 
       <div class="stat-line">관통력 <span id="statPen">0%</span></div>
       <div class="stat-line">회피 무시 <span id="statIgnore">0%</span></div>
