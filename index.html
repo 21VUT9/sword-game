@@ -4160,7 +4160,7 @@ html, body {
 
     <div style="display:flex; gap:8px;">
     <button onclick="openBossBattleRewards()" style="padding:6px 10px; border-radius:10px;">보상</button>
-    <button onclick="openBossBattleHelp()" style="padding:6px 10px; border-radius:10px;">능력치</button>
+    <button onclick="openBossBattleStat()" style="padding:6px 10px; border-radius:10px;">능력치</button>
     <button onclick="closeBossBattle()" style="padding:6px 10px; border-radius:10px;">닫기</button>
   </div>
 </div>
@@ -15515,6 +15515,14 @@ function closeBossBattle(){
   showNpcMessage(msg, LEON_IMG.focus, true, "보상");
 }
 
+  function openBossBattleStat(){
+  // 버튼 탭 사운드(도크랑 동일)
+  try { playUiDockTap(); } catch(e){}
+
+  // 1단계 능력치 오버레이 열기
+  openStatOverlay();
+}
+  
 function openBossBattleHelp(){
   const bossId = String(activeBossId || "");
   const run = (bossRunsActiveCache || {})[bossId];
