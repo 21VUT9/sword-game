@@ -7040,7 +7040,7 @@ function grantScrollShopItem(item, qty) {
   // 구매 즉시 사용: 사냥횟수 20/20 초기화
   if (item.id === "huntReset") {
     huntCountToday = 0;
-    huntStamina = 20;
+    huntStamina = getHuntStaminaMax();
     lastHuntDate = getTodayDateString();
   }
 
@@ -16124,7 +16124,8 @@ function consumeHuntPointForBoss(){
   huntStamina = Math.max(0, huntStamina - 1);
 
   // 참고용 카운트도 메인과 동일하게 재계산
-  huntCountToday = Math.max(0, 20 - huntStamina);
+  const max = getHuntStaminaMax();
+huntCountToday = Math.max(0, max - huntStamina);
 
   save();
   update();
