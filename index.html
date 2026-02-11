@@ -3448,7 +3448,7 @@ html, body {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.346)
+    (v4.362)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -15799,13 +15799,20 @@ function renderBossBattle(){
 const huntRemainEl = document.getElementById("bossBattleHuntRemain");
 const headHunt = document.getElementById("bossBattleHeaderHuntRemain");
 
+// ✅ 최대 사냥횟수(스태프 30강 패시브 포함)
+const max = getHuntStaminaMax();
+
 const today = getTodayDateString();
 let used = 0;
 if (lastHuntDate === today) used = Number(huntCountToday || 0);
-const remain = Math.max(0, 20 - used);
 
-if (huntRemainEl) huntRemainEl.textContent = `사냥횟수: ${remain}/20`;
-if (headHunt) headHunt.textContent = `(사냥횟수 ${remain} / 20)`;
+// 안전장치: used가 max보다 커지지 않게
+used = Math.max(0, Math.min(max, used));
+
+const remain = Math.max(0, max - used);
+
+if (huntRemainEl) huntRemainEl.textContent = `사냥횟수: ${remain}/${max}`;
+if (headHunt) headHunt.textContent = `(사냥횟수 ${remain} / ${max})`;
 
   // ✅ 우측 토벌대 리스트 렌더(대장 최상단 고정 + 스크롤)
 const partyEl = document.getElementById("bossBattlePartyList");
