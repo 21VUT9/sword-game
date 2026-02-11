@@ -3444,6 +3444,49 @@ hr.section-divider{
 html, body {
   -webkit-tap-highlight-color: rgba(0,0,0,0);
 }
+
+/* ===== 각인 텍스트 연출 ===== */
+.engrave-line {
+  position: relative;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+}
+
+.engrave-line.is-rolling {
+  animation: engraveFadeOut 0.55s ease forwards;
+}
+
+.engrave-line.is-flash {
+  animation: engraveFlash 0.35s ease-out forwards;
+}
+
+.engrave-line.is-reveal {
+  animation: engraveReveal 0.45s ease-out forwards;
+}
+
+@keyframes engraveFadeOut {
+  0%   { opacity: 1; filter: none; transform: translateY(0); }
+  100% { opacity: 0.08; filter: blur(1px); transform: translateY(1px); }
+}
+
+@keyframes engraveFlash {
+  0%   { opacity: 0.2; text-shadow: none; filter:none; }
+  40%  { opacity: 1;   text-shadow: 0 0 10px rgba(255,220,120,0.9), 0 0 22px rgba(255,220,120,0.6); }
+  100% { opacity: 0.9; text-shadow: 0 0 6px rgba(255,220,120,0.45); }
+}
+
+@keyframes engraveReveal {
+  0%   { opacity: 0.0; filter: blur(1px); transform: translateY(2px); text-shadow: 0 0 0 rgba(0,0,0,0); }
+  55%  { opacity: 1.0; filter: none; transform: translateY(0); text-shadow: 0 0 10px rgba(255,220,120,0.75), 0 0 20px rgba(255,220,120,0.35); }
+  100% { opacity: 1.0; text-shadow: 0 0 6px rgba(255,220,120,0.30); }
+}
+
+/* 연출 중 버튼 잠금 시 시각 처리 */
+#engraveOverlay .btn-disabled {
+  pointer-events: none !important;
+  opacity: 0.45 !important;
+  filter: grayscale(0.2);
+}
   
 </style>
 </head>
@@ -19125,6 +19168,74 @@ window.addEventListener("DOMContentLoaded", () => {
     before3.textContent = lines?.[2] ?? "-";
   }
 
+  // ===== 각인 연출(1초 내외) =====
+let engraveAnimLock = false;
+
+function setEngraveUiLocked(locked) {
+  const overlay = document.getElementById("engraveOverlay");
+  if (!overlay) return;
+
+  const ids = [
+    "engraveRollBtn",
+    "engraveConfirmBtn",
+    "engraveCancelBtn",
+    "engraveTabNormal",
+    "engraveTabAdvanced",
+    "engraveOverlayCloseBtn"
+  ];
+
+  for (const id of ids) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    if (locked) el.classList.add("btn-disabled");
+    else el.classList.remove("btn-disabled");
+  }
+}
+
+function playEngraveTextEffect(finalLines, onDone) {
+  // finalLines: ["...", "...", "..."]
+  const a1 = document.getElementById("engraveAfter1");
+  const a2 = document.getElementById("engraveAfter2");
+  const a3 = document.getElementById("engraveAfter3");
+  if (!a1 || !a2 || !a3) { onDone?.(); return; }
+
+  const els = [a1, a2, a3];
+
+  // 0) 초기화
+  for (const el of els) {
+    el.classList.remove("is-rolling", "is-flash", "is-reveal");
+  }
+
+  // 1) 페이드아웃 + 더미 텍스트
+  const dummy = ["…", "……", "………"];
+  els.forEach((el, i) => {
+    el.textContent = dummy[i];
+    el.classList.add("is-rolling");
+  });
+
+  // 2) 플래시
+  setTimeout(() => {
+    els.forEach((el) => {
+      el.classList.remove("is-rolling");
+      el.classList.add("is-flash");
+    });
+  }, 600);
+
+  // 3) 결과 리빌
+  setTimeout(() => {
+    els.forEach((el, i) => {
+      el.classList.remove("is-flash");
+      el.textContent = finalLines[i] ?? "-";
+      el.classList.add("is-reveal");
+    });
+
+    setTimeout(() => {
+      els.forEach((el) => el.classList.remove("is-reveal"));
+      onDone?.();
+    }, 480);
+  }, 820);
+}
+
   // ✅ 기존 setEngraveMode 로직이 있었다면 "모드 변수"만 동기화해주기
   // (네 파일에 이미 setEngraveMode가 있으니, 아래만 덧대는 방식으로 안전하게 감)
   const _origSetEngraveMode = (typeof setEngraveMode === "function") ? setEngraveMode : null;
@@ -19144,67 +19255,151 @@ window.addEventListener("DOMContentLoaded", () => {
   //  지금은 여기서 전역 함수 이름을 덮지 않고 안전하게 window쪽만 교체)
   window.setEngraveMode = setEngraveModeSafe;
 
-  // ✅ 리롤 버튼: "후 상태 3줄" 랜덤 생성/표시 + 임시보관
-    if (rollBtn) {
-        rollBtn.addEventListener("click", () => {
+  // ✅ 연출 중 입력 잠금
+let engraveAnimLock = false;
 
-      // ✅ 일반각인: 10억 / 리롤 즉시 확정
-      if (engraveMode === "normal") {
-        const cost = 1000000000; // 10억
+function setEngraveUiLocked(locked){
+  const rollBtn = document.getElementById("engraveRollBtn");
+  const confirmBtn = document.getElementById("engraveConfirmBtn");
+  const cancelBtn  = document.getElementById("engraveCancelBtn");
 
-        if (Number(gold || 0) < cost) {
-          alert("골드가 부족합니다.");
-          return;
-        }
+  if (rollBtn) {
+    rollBtn.disabled = locked;
+    rollBtn.style.opacity = locked ? "0.55" : "1";
+    rollBtn.style.cursor  = locked ? "not-allowed" : "pointer";
+  }
+  if (confirmBtn) {
+    confirmBtn.disabled = locked;
+    confirmBtn.style.opacity = locked ? "0.55" : "1";
+    confirmBtn.style.cursor  = locked ? "not-allowed" : "pointer";
+  }
+  if (cancelBtn) {
+    cancelBtn.disabled = locked;
+    cancelBtn.style.opacity = locked ? "0.55" : "1";
+    cancelBtn.style.cursor  = locked ? "not-allowed" : "pointer";
+  }
+}
 
-        const lines = rollEngraveLines();
+// ✅ 1초 내외 텍스트 연출(“사라졌다가 빛나며 결과 등장”)
+function playEngraveTextEffect(finalLines, onDone){
+  const a1 = document.getElementById("engraveAfter1");
+  const a2 = document.getElementById("engraveAfter2");
+  const a3 = document.getElementById("engraveAfter3");
+  const els = [a1, a2, a3].filter(Boolean);
 
-        gold = Number(gold || 0) - cost;
+  // 0) 시작: 흐리게 + 살짝 사라지는 느낌
+  els.forEach(el => {
+    el.style.transition = "opacity 220ms ease, filter 220ms ease, transform 220ms ease";
+    el.style.opacity = "0.0";
+    el.style.filter = "brightness(2.0) drop-shadow(0 0 10px rgba(255,255,255,0.8))";
+    el.style.transform = "translateY(-2px) scale(1.02)";
+  });
 
-        // 즉시 확정 반영
-        engraveLines = [lines[0] || "-", lines[1] || "-", lines[2] || "-"];
+  // 1) 중간: 빠르게 깜빡이며 “돌아가는 중” 느낌 (짧게)
+  const flickerMs = 520;
+  const start = Date.now();
+  const timer = setInterval(() => {
+    if (Date.now() - start > flickerMs) return;
+
+    els.forEach(el => {
+      el.textContent = "…";
+      el.style.opacity = (Math.random() * 0.6 + 0.2).toFixed(2);
+      el.style.filter = "brightness(2.6) drop-shadow(0 0 14px rgba(255,255,255,0.95))";
+    });
+  }, 70);
+
+  // 2) 종료: 결과 확정 + 밝게 등장
+  setTimeout(() => {
+    clearInterval(timer);
+
+    if (typeof setAfter === "function") setAfter(finalLines);
+
+    els.forEach(el => {
+      el.style.transition = "opacity 260ms ease, filter 260ms ease, transform 260ms ease";
+      el.style.opacity = "1";
+      el.style.filter = "brightness(1.4) drop-shadow(0 0 10px rgba(255,255,255,0.55))";
+      el.style.transform = "translateY(0) scale(1)";
+    });
+
+    // 3) 아주 살짝 잔광만 남기고 정상화
+    setTimeout(() => {
+      els.forEach(el => {
+        el.style.filter = "";
+      });
+      onDone && onDone();
+    }, 260);
+  }, 850); // 전체 연출 0.85~1.1초 체감
+}
+
+
+// ✅ 리롤 버튼(각인) 클릭 로직: “결과를 즉시 setAfter()” 하지 말고, 연출 끝에서 넣기
+if (rollBtn) {
+  rollBtn.addEventListener("click", () => {
+    if (engraveAnimLock) return;
+
+    // 모드 변수는 네가 이미 쓰고 있는 engraveMode 그대로 사용
+    const mode = (engraveMode === "advanced") ? "advanced" : "normal";
+
+    // ✅ 비용 (일반 10억 / 고급 60억)
+    const cost = (mode === "advanced") ? 6000000000 : 1000000000;
+
+    if (Number(gold || 0) < cost) {
+      alert("골드가 부족합니다.");
+      return;
+    }
+
+    // 🔒 연출 시작: 입력 잠금
+    engraveAnimLock = true;
+    setEngraveUiLocked(true);
+
+    // ✅ 고급각인: 전 상태는 현재 확정 각인으로 세팅(이미 네 로직이 이걸 기대함)
+    if (mode === "advanced") {
+      const before = Array.isArray(engraveLines) ? engraveLines : ["-","-","-"];
+      if (typeof setBefore === "function") setBefore(before);
+    }
+
+    // ✅ 비용은 버튼 누르는 즉시 차감 (요구사항)
+    gold = Number(gold || 0) - cost;
+
+    // 골드 차감은 즉시 저장/갱신 (연출 중이라도 돈은 빠져야 함)
+    if (typeof save === "function") save();
+    if (typeof update === "function") update();
+
+    // ✅ 이번에 뽑힌 3줄(아직 화면 setAfter는 연출 끝에서!)
+    const lines = (typeof rollEngraveLines === "function")
+      ? rollEngraveLines()
+      : ["-","-","-"];
+
+    const finalLines = [lines[0] || "-", lines[1] || "-", lines[2] || "-"];
+
+    // ✨ 텍스트 연출 → 끝에서 적용
+    playEngraveTextEffect(finalLines, () => {
+      if (mode === "normal") {
+        // ✅ 일반각인: 연출 끝나면 즉시 확정 반영
+        engraveLines = finalLines;
         lastRolledLines = null;
 
-        setAfter(engraveLines);
-
-        save();
-        update();
+        if (typeof save === "function") save();
+        if (typeof update === "function") update();
 
         const statOverlay = document.getElementById("statOverlay");
-        if (statOverlay && statOverlay.style.display === "block") {
+        if (statOverlay && statOverlay.style.display === "block" && typeof openStatOverlay === "function") {
           openStatOverlay();
         }
-        return;
+      } else {
+        // ✅ 고급각인: 연출 끝나면 임시보관(확정/취소로 처리)
+        lastRolledLines = finalLines;
+
+        // (고급각인은 확정 시에 save/update 하니까 여기서는 저장 안 해도 됨)
+        // 단, “후 상태 표시”는 이미 playEngraveTextEffect 안에서 setAfter로 처리됨
       }
 
-      // ✅ 고급각인: 60억 / [각인] 누르는 즉시 비용 소모 + 결과 임시보관
-      if (engraveMode === "advanced") {
-        const cost = 6000000000; // 60억
-
-        if (Number(gold || 0) < cost) {
-          alert("골드가 부족합니다.");
-          return;
-        }
-
-        // ✅ 전 상태 = 현재 확정 각인
-        const before = Array.isArray(engraveLines) ? engraveLines : ["-","-","-"];
-        setBefore(before);
-
-        // ✅ 비용은 [각인] 버튼 누르는 즉시 차감
-        gold = Number(gold || 0) - cost;
-
-        // ✅ 후 상태 = 새 리롤 결과(임시)
-        const lines = rollEngraveLines();
-        lastRolledLines = [lines[0] || "-", lines[1] || "-", lines[2] || "-"];
-        setAfter(lastRolledLines);
-
-        // ✅ 여기서는 저장/반영 안 함 (확정에서만 적용)
-        save();   // 비용 차감은 저장되어야 함
-        update();
-        return;
-      }
+      // 🔓 연출 종료: 입력 해제
+      engraveAnimLock = false;
+      setEngraveUiLocked(false);
     });
-  }
+  });
+}
   
 });
 
@@ -19620,9 +19815,9 @@ document.addEventListener("click", function(e){
         <div>
           <div style="font-size:12px; color:#aaa; margin-bottom:6px; font-weight:900;">후 상태</div>
           <div style="padding:12px; border:1px solid rgba(255,255,255,0.10); border-radius:12px; background:rgba(255,255,255,0.03);">
-            <div id="engraveAfter1" style="font-size:13px; margin-bottom:4px;">-</div>
-            <div id="engraveAfter2" style="font-size:13px; margin-bottom:4px;">-</div>
-            <div id="engraveAfter3" style="font-size:13px;">-</div>
+            <div id="engraveAfter1" class="engrave-line" style="font-size:13px; margin-bottom:4px;">-</div>
+            <div id="engraveAfter2" class="engrave-line" style="font-size:13px; margin-bottom:4px;">-</div>
+            <div id="engraveAfter3" class="engrave-line" style="font-size:13px;">-</div>
           </div>
         </div>
 
