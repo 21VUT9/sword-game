@@ -18665,22 +18665,6 @@ window.addEventListener("DOMContentLoaded", () => {
   if (confirmBtn) confirmBtn.addEventListener("click", () => closeEngraveOverlay());
   if (cancelBtn) cancelBtn.addEventListener("click", () => closeEngraveOverlay());
 
-});
-
-  // 🖱️ 전역 공통 버튼 클릭 사운드 처리(잡다한 버튼 통일)
-document.addEventListener("click", function(e){
-  const target = e.target.closest("button, .poi, [role='button'], .clickable");
-  if (!target) return;
-
-  // ❌ 예외: 전용 사운드 버튼
-  if (target.dataset && target.dataset.nosfx === "1") return;
-
-  // ❌ 예외: 입력 계열
-  if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
-
-  playUiClickCommon();
-});
-
     // =========================
   // 🪬 각인(리롤) 1단계: "후 상태 3줄" 랜덤 생성/표시
   // =========================
@@ -18830,6 +18814,22 @@ document.addEventListener("click", function(e){
       }
     });
   }
+  
+});
+
+  // 🖱️ 전역 공통 버튼 클릭 사운드 처리(잡다한 버튼 통일)
+document.addEventListener("click", function(e){
+  const target = e.target.closest("button, .poi, [role='button'], .clickable");
+  if (!target) return;
+
+  // ❌ 예외: 전용 사운드 버튼
+  if (target.dataset && target.dataset.nosfx === "1") return;
+
+  // ❌ 예외: 입력 계열
+  if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+
+  playUiClickCommon();
+});
 
     </script>
 
