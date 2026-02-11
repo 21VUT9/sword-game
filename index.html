@@ -15867,7 +15867,10 @@ used = Math.max(0, Math.min(max, used));
 const remain = Math.max(0, max - used);
 
 if (huntRemainEl) huntRemainEl.textContent = `사냥횟수: ${remain}/${max}`;
-if (headHunt) headHunt.textContent = `(사냥횟수 ${remain} / ${max})`;
+  const st = (typeof getPlayerFinalCombatStats === "function") ? (getPlayerFinalCombatStats() || {}) : {};
+  const minusMin = Number(st.huntRechargeMinusMin || 0);
+  const extra = (minusMin > 0) ? ` | 충전 -${minusMin}분` : "";
+  if (headHunt) headHunt.textContent = `(사냥횟수 ${remain} / ${max}${extra})`;
 
   // ✅ 우측 토벌대 리스트 렌더(대장 최상단 고정 + 스크롤)
 const partyEl = document.getElementById("bossBattlePartyList");
@@ -18656,6 +18659,29 @@ if (invBtn) {
   if (e2) e2.textContent = engraveLines?.[1] ?? "-";
   if (e3) e3.textContent = engraveLines?.[2] ?? "-";
 
+    // ✅ 각인 효과 요약(능력치 표기용)
+  const effEl = document.getElementById("engraveEffectList");
+  if (effEl) {
+    const eff = [];
+
+    // 자원/행동
+    if (Number(my.huntMaxPlus || 0) > 0) eff.push(`• 사냥 최대 횟수 +${my.huntMaxPlus}`);
+    if (Number(my.huntRechargeMinusMin || 0) > 0) eff.push(`• 사냥 충전시간 -${my.huntRechargeMinusMin}분`);
+    if (Number(my.huntDropPct || 0) > 0) eff.push(`• 사냥 아이템 드랍률 +${my.huntDropPct}%`);
+    if (Number(my.huntGoldGainPct || 0) > 0) eff.push(`• 사냥 골드 획득량 +${my.huntGoldGainPct}%`);
+    if (Number(my.upgradeFailGoldRefundPct || 0) > 0) eff.push(`• 강화 실패 골드 소모 -${my.upgradeFailGoldRefundPct}%`);
+    if (Number(my.upgradeChancePlus || 0) > 0) eff.push(`• 강화 성공확률 +${my.upgradeChancePlus}%`);
+
+    // 보스전 전용 / 특수
+    if (Number(my.bossRewardDropPct || 0) > 0) eff.push(`• 보스전 보상 드랍률 +${my.bossRewardDropPct}%`);
+    if (Number(my.bossShieldBreakDmgPct || 0) > 0) eff.push(`• 보스 보호막 파괴 피해 +${my.bossShieldBreakDmgPct}%`);
+    if (Number(my.bossShieldRemoveChance || 0) > 0) eff.push(`• 공격 시 ${Math.round(my.bossShieldRemoveChance * 100)}% 확률로 보스실드 제거`);
+    if (Number(my.bossFirstHitBonusPct || 0) > 0) eff.push(`• 보스 체력 100% 첫타격 데미지 +${my.bossFirstHitBonusPct}%`);
+    if (Number(my.bossExecuteBonusPct || 0) > 0) eff.push(`• 보스 체력 1% 이하 데미지 +${my.bossExecuteBonusPct}%`);
+
+    effEl.innerHTML = eff.length ? eff.join("<br>") : `<span style="color:#666;">(추가 효과 없음)</span>`;
+  }
+
   // (A) 메인 라벨/값
   const mainLabelEl = document.getElementById("statMainLabel"); // 있으면 사용
   if (mainLabelEl) mainLabelEl.textContent = my.dmgLabel;
@@ -18671,10 +18697,10 @@ if (invBtn) {
   const penEl = document.getElementById("statPen");
   if (penEl) penEl.textContent = `${Math.round(my.penetration * 100)}%`;
 
-  const igEvEl = document.getElementById("statIgnoreEvade");
+  const igEvEl = document.getElementById("statIgnoreEvade") || document.getElementById("statIgnore");
   if (igEvEl) igEvEl.textContent = `${Math.round(my.ignoreEvade * 100)}%`;
 
-  const crEl = document.getElementById("statCritRate");
+  const crEl = document.getElementById("statCritRate") || document.getElementById("statCrit");
   if (crEl) crEl.textContent = `${Math.round(my.critRate * 100)}%`;
 
   const cdEl = document.getElementById("statCritDmg");
@@ -19487,6 +19513,7 @@ document.addEventListener("click", function(e){
   <div id="engraveLine1" style="font-size:13px; color:#cfcfcf; margin-bottom:4px;">-</div>
   <div id="engraveLine2" style="font-size:13px; color:#cfcfcf; margin-bottom:4px;">-</div>
   <div id="engraveLine3" style="font-size:13px; color:#cfcfcf;">-</div>
+  <div id="engraveEffectList" style="margin-top:10px; font-size:12px; color:#9fd3ff; line-height:1.5;"></div>
 
   <button id="openEngraveOverlayBtn"
   style="margin-top:10px; width:100%; padding:5px 8px; border-radius:8px; border:0; cursor:pointer; font-weight:900; font-size:12px;">
