@@ -18789,71 +18789,139 @@ window.addEventListener("DOMContentLoaded", () => {
     return pool[pool.length - 1];
   }
 
-  // ✅ (중복 허용) 3줄 생성
+    // ✅ (중복 허용) 3줄 생성 - 카테고리/종류/티어 확률 설계 반영
   function rollEngraveLines(){
-    // 너가 정리한 옵션 기반 + "수치 높을수록 확률 낮음" 대강 가중치
-    // (2단계에서 비용/저장 붙일 때, 여기 pool만 손보면 밸런스 그대로 조정 가능)
-    const POOL = [
-      // ① 공격 계열
-      { text: "공격력 +6%",  weight: 220 },
-      { text: "공격력 +9%",  weight: 120 },
-      { text: "공격력 +12%", weight: 45  },
 
-      { text: "주문력 +6%",  weight: 220 },
-      { text: "주문력 +9%",  weight: 120 },
-      { text: "주문력 +12%", weight: 45  },
-
-      { text: "치명타 확률 +10%", weight: 170 },
-      { text: "치명타 확률 +15%", weight: 95  },
-
-      { text: "치명타 데미지 +15%", weight: 150 },
-      { text: "치명타 데미지 +25%", weight: 80  },
-
-      { text: "관통력 +10%", weight: 160 },
-      { text: "관통력 +15%", weight: 90  },
-
-      { text: "회피무시 +15%", weight: 150 },
-      { text: "회피무시 +20%", weight: 85  },
-
-      // ③ 자원/행동 계열
-      { text: "사냥 최대 횟수 +2", weight: 140 },
-      { text: "사냥 최대 횟수 +3", weight: 70  },
-
-      { text: "강화 실패 시 골드 소모 감소 +30%", weight: 120 },
-      { text: "강화 실패 시 골드 소모 감소 +50%", weight: 65  },
-
-      { text: "사냥 아이템 드랍률 +20%", weight: 130 },
-      { text: "사냥 아이템 드랍률 +30%", weight: 75  },
-
-      { text: "사냥 골드 획득량 +20%", weight: 130 },
-      { text: "사냥 골드 획득량 +30%", weight: 75  },
-
-      { text: "사냥 횟수 충전시간 감소 +2분", weight: 115 },
-      { text: "사냥 횟수 충전시간 감소 +4분", weight: 60  },
-
-      // ④ 상태이상 / 특수 조건
-      { text: "공격시 1% 확률로 보스실드 모두제거", weight: 45 },
-      { text: "공격시 2% 확률로 보스실드 모두제거", weight: 18 },
-
-      { text: "보스 체력이 100%일 때 첫타격 데미지 +500%", weight: 20 },
-      { text: "보스 체력이 1% 이하일때 데미지 +400%",       weight: 24 },
-
-      // ⑤ 보스전 전용
-      { text: "보스전 보상 드랍률 +15%", weight: 85 },
-      { text: "보스전 보상 드랍률 +20%", weight: 45 },
-
-      { text: "보스 보호막 파괴 피해 +30%", weight: 70 },
-
-      // ⑥ 시스템/메타
-      { text: "강화 성공확률 +2%", weight: 55 },
-      { text: "강화 성공확률 +3%", weight: 18 },
+    // 1) 카테고리 확률 (20 / 45 / 20 / 10 / 5)
+    const CATEGORIES = [
+      { key:"ATK",   weight:20 }, // ① 공격
+      { key:"RES",   weight:45 }, // ③ 자원/행동
+      { key:"SPEC",  weight:20 }, // ④ 상태/특수
+      { key:"BOSS",  weight:10 }, // ⑤ 보스전 전용
+      { key:"META",  weight:5  }, // ⑥ 시스템/메타
     ];
 
-    const a = pickWeighted(POOL).text;
-    const b = pickWeighted(POOL).text;
-    const c = pickWeighted(POOL).text;
-    return [a, b, c];
+    // 2) 카테고리별 "종류" 가중치
+    // - 공격 계열은 네가 준 10/10/18/18/22/22 그대로
+    const TYPES = {
+      ATK: [
+        { key:"atkPct",   weight:10 },
+        { key:"spellPct", weight:10 },
+        { key:"critRate", weight:18 },
+        { key:"critDmg",  weight:18 },
+        { key:"pen",      weight:22 },
+        { key:"ignoreEv", weight:22 },
+      ],
+      // 나머지 카테고리는 (네가 종류 가중치를 따로 지정 안 했으니) 균등 분배로 시작
+      RES: [
+        { key:"huntMax",   weight:20 },
+        { key:"failGold",  weight:20 },
+        { key:"drop",      weight:20 },
+        { key:"goldGain",  weight:20 },
+        { key:"chargeCd",  weight:20 },
+      ],
+      SPEC: [
+        { key:"stripShield", weight:40 },
+        { key:"firstHit500", weight:30 },
+        { key:"execute400",  weight:30 },
+      ],
+      BOSS: [
+        { key:"bossDrop",    weight:55 },
+        { key:"shieldBreak", weight:45 },
+      ],
+      META: [
+        { key:"upgradeChance", weight:100 },
+      ],
+    };
+
+    // 3) 수치 티어 확률 (가중치로 표현)
+    // A) 공/주: 6% 75 / 9% 20 / 12% 5
+    const TIER = {
+      atkPct: [
+        { text:"공격력 +6%",  weight:75 },
+        { text:"공격력 +9%",  weight:20 },
+        { text:"공격력 +12%", weight:5  },
+      ],
+      spellPct: [
+        { text:"주문력 +6%",  weight:75 },
+        { text:"주문력 +9%",  weight:20 },
+        { text:"주문력 +12%", weight:5  },
+      ],
+
+      // C) 나머지
+      critRate: [
+        { text:"치명타 확률 +10%", weight:85 },
+        { text:"치명타 확률 +15%", weight:15 },
+      ],
+      critDmg: [
+        { text:"치명타 데미지 +15%", weight:80 },
+        { text:"치명타 데미지 +25%", weight:20 },
+      ],
+      pen: [
+        { text:"관통력 +10%", weight:80 },
+        { text:"관통력 +15%", weight:20 },
+      ],
+      ignoreEv: [
+        { text:"회피무시 +15%", weight:80 },
+        { text:"회피무시 +20%", weight:20 },
+      ],
+
+      huntMax: [
+        { text:"사냥 최대 횟수 +2", weight:85 },
+        { text:"사냥 최대 횟수 +3", weight:15 },
+      ],
+      failGold: [
+        { text:"강화 실패 시 골드 소모 감소 +30%", weight:80 },
+        { text:"강화 실패 시 골드 소모 감소 +50%", weight:20 },
+      ],
+      drop: [
+        { text:"사냥 아이템 드랍률 +20%", weight:80 },
+        { text:"사냥 아이템 드랍률 +30%", weight:20 },
+      ],
+      goldGain: [
+        { text:"사냥 골드 획득량 +20%", weight:80 },
+        { text:"사냥 골드 획득량 +30%", weight:20 },
+      ],
+      chargeCd: [
+        { text:"사냥 횟수 충전시간 감소 +2분", weight:85 },
+        { text:"사냥 횟수 충전시간 감소 +4분", weight:15 },
+      ],
+
+      stripShield: [
+        { text:"공격시 1% 확률로 보스실드 모두제거", weight:90 },
+        { text:"공격시 2% 확률로 보스실드 모두제거", weight:10 },
+      ],
+      firstHit500: [
+        { text:"보스 체력이 100%일 때 첫타격 데미지 +500%", weight:100 },
+      ],
+      execute400: [
+        { text:"보스 체력이 1% 이하일때 데미지 +400%", weight:100 },
+      ],
+
+      bossDrop: [
+        { text:"보스전 보상 드랍률 +15%", weight:80 },
+        { text:"보스전 보상 드랍률 +20%", weight:20 },
+      ],
+      shieldBreak: [
+        { text:"보스 보호막 파괴 피해 +30%", weight:100 },
+      ],
+
+      // B) 강화 성공확률: +2% 97 / +3% 3
+      upgradeChance: [
+        { text:"강화 성공확률 +2%", weight:97 },
+        { text:"강화 성공확률 +3%", weight:3  },
+      ],
+    };
+
+    function rollOneLine(){
+      const cat = pickWeighted(CATEGORIES).key;
+      const type = pickWeighted(TYPES[cat]).key;
+      return pickWeighted(TIER[type]).text;
+    }
+
+    return [rollOneLine(), rollOneLine(), rollOneLine()];
   }
+
 
   function setAfter(lines){
     if (!after1 || !after2 || !after3) return;
