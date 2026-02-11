@@ -18572,6 +18572,91 @@ window.addEventListener("DOMContentLoaded", () => {
       if (e.target === overlay) closeStatOverlay();
     });
   }
+
+    // =========================
+  // 🪬 각인 오버레이 열기/닫기/탭 연결
+  // =========================
+  const engraveOverlay = document.getElementById("engraveOverlay");
+  const openEngraveBtn = document.getElementById("openEngraveOverlayBtn");
+  const engraveCloseBtn = document.getElementById("engraveOverlayCloseBtn");
+
+  const tabNormal = document.getElementById("engraveTabNormal");
+  const tabAdvanced = document.getElementById("engraveTabAdvanced");
+  const costText = document.getElementById("engraveCostText");
+
+  const beforeWrap = document.getElementById("engraveBeforeWrap");
+  const confirmBtn = document.getElementById("engraveConfirmBtn");
+  const cancelBtn = document.getElementById("engraveCancelBtn");
+
+  let engraveMode = "normal"; // "normal" | "advanced"
+
+  function setEngraveMode(mode){
+    engraveMode = mode;
+
+    // 탭 스타일(가볍게 활성만 표시)
+    if (tabNormal) {
+      tabNormal.style.background = (mode === "normal") ? "#ffd54f" : "rgba(255,255,255,0.08)";
+      tabNormal.style.color = (mode === "normal") ? "#000" : "#eee";
+    }
+    if (tabAdvanced) {
+      tabAdvanced.style.background = (mode === "advanced") ? "#ffd54f" : "rgba(255,255,255,0.08)";
+      tabAdvanced.style.color = (mode === "advanced") ? "#000" : "#eee";
+    }
+
+    // 비용 표기
+    if (costText) costText.textContent = (mode === "advanced") ? "비용: 60억" : "비용: 10억";
+
+    // 전 상태(고급각인에서만 표시)
+    if (beforeWrap) beforeWrap.style.display = (mode === "advanced") ? "block" : "none";
+
+    // 버튼(일반각인=확정만, 고급각인=확정/취소)
+    if (cancelBtn) cancelBtn.style.display = (mode === "advanced") ? "block" : "none";
+    if (confirmBtn) confirmBtn.textContent = "확정";
+  }
+
+  window.openEngraveOverlay = function(){
+    if (!engraveOverlay) return;
+    engraveOverlay.style.display = "block";
+    setEngraveMode("normal");
+  };
+
+  window.closeEngraveOverlay = function(){
+    if (!engraveOverlay) return;
+    engraveOverlay.style.display = "none";
+  };
+
+  // 열기 버튼
+  if (openEngraveBtn) {
+    openEngraveBtn.addEventListener("click", () => {
+      openEngraveOverlay();
+    });
+  }
+
+  // X 닫기
+  if (engraveCloseBtn) engraveCloseBtn.addEventListener("click", closeEngraveOverlay);
+
+  // 배경 클릭 닫기
+  if (engraveOverlay) {
+    engraveOverlay.addEventListener("click", (e) => {
+      if (e.target === engraveOverlay) closeEngraveOverlay();
+    });
+  }
+
+  // 탭 클릭
+  if (tabNormal) tabNormal.addEventListener("click", () => setEngraveMode("normal"));
+  if (tabAdvanced) tabAdvanced.addEventListener("click", () => setEngraveMode("advanced"));
+
+  // ESC 닫기(능력치 overlay ESC 로직과 공존)
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (!engraveOverlay) return;
+    if (engraveOverlay.style.display === "block") closeEngraveOverlay();
+  });
+
+  // (구조단계) 확정/취소는 일단 닫기만
+  if (confirmBtn) confirmBtn.addEventListener("click", () => closeEngraveOverlay());
+  if (cancelBtn) cancelBtn.addEventListener("click", () => closeEngraveOverlay());
+
 });
 
   // 🖱️ 전역 공통 버튼 클릭 사운드 처리(잡다한 버튼 통일)
@@ -18888,9 +18973,9 @@ document.addEventListener("click", function(e){
   <div id="engraveLine3" style="font-size:13px; color:#cfcfcf;">-</div>
 
   <button id="openEngraveOverlayBtn"
-    style="margin-top:10px; width:100%; padding:10px 10px; border-radius:10px; border:0; cursor:pointer; font-weight:900;">
-    각인하기
-  </button>
+  style="margin-top:10px; width:100%; padding:5px 8px; border-radius:8px; border:0; cursor:pointer; font-weight:900; font-size:12px;">
+  각인하기
+</button>
 
   <div style="margin-top:8px; font-size:11px; color:#777; line-height:1.35;">
     • 일반각인: 10억 / 고급각인: 60억
