@@ -515,6 +515,14 @@ button {
   margin:10px;
 }
 
+  /* ✅ 각인 오버레이 안에서는 전역 button 규칙(마진/패딩) 무효화 */
+#engraveOverlay button{
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: inherit !important;
+  box-sizing: border-box;
+}
+
 /* 🌈 30강 무지개 */
 .rainbow {
   background:linear-gradient(90deg,red,orange,yellow,green,cyan,blue,violet);
