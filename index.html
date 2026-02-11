@@ -3853,49 +3853,49 @@ html, body {
 </button>
 
       <!-- 월드맵 POI: 퍼그란트의 대장간 -->
-<button id="poiFulgurantForge" class="poi-btn" onclick="moveToFulgurantForgeFromWorldMap(event)">
+<button id="poiFulgurantForge" class="poi-btn" onclick="playUiClickCommon(); moveToFulgurantForgeFromWorldMap(event)">
   <img src="images/maps/poi_fulgurant_forge.png" alt="">
   <span class="poi-label">퍼그란트 대장간</span>
 </button>
 
         <!-- 🍄 POI: 평화로운 버섯마을 (이그드라실 서쪽/호수 아래) -->
-  <button id="poiMushroomVillage" onclick="moveToMushroomVillageFromWorldMap(event)">
+  <button id="poiMushroomVillage" onclick="playUiClickCommon(); moveToMushroomVillageFromWorldMap(event)">
     <img src="images/maps/poi_mushroom_village.png" alt="평화로운 버섯마을">
     <span class="poi-label">평화로운 버섯마을</span>
   </button>
 
       <!-- 🐀 POI: 역병쥐가 들끓는 시궁창 (대륙 남서쪽 끝단 강하류) -->
-<button id="poiSewer" onclick="moveToSewerFromWorldMap(event)">
+<button id="poiSewer" onclick="playUiClickCommon(); moveToSewerFromWorldMap(event)">
   <img src="images/maps/poi_sewer.png" alt="역병쥐가 들끓는 시궁창">
   <span class="poi-label">역병쥐가 들끓는 시궁창</span>
 </button>
 
       <!-- 🏜️ POI: 무법자들의 황야 (이그드라실 하단 평야) -->
-<button id="poiOutlawWasteland" onclick="moveToOutlawWastelandFromWorldMap(event)">
+<button id="poiOutlawWasteland" onclick="playUiClickCommon(); moveToOutlawWastelandFromWorldMap(event)">
   <img src="images/maps/poi_outlaw_wasteland.png" alt="무법자들의 황야">
   <span class="poi-label">무법자들의 황야</span>
 </button>
 
       <!-- 🌿 POI: 늪엘프의 숲 (이그드라실 바로 밑) -->
-<button id="poiSwampElfForest" onclick="moveToSwampElfForestFromWorldMap(event)">
+<button id="poiSwampElfForest" onclick="playUiClickCommon(); moveToSwampElfForestFromWorldMap(event)">
   <img src="images/maps/poi_swamp_elf_forest.png" alt="늪엘프의 숲">
   <span class="poi-label">늪엘프의 숲</span>
 </button>
 
       <!-- ❄️ POI: 서리여왕의 동굴 (이그드라실 북동쪽) -->
-<button id="poiFrostQueenCave" onclick="moveToFrostQueenCaveFromWorldMap(event)">
+<button id="poiFrostQueenCave" onclick="playUiClickCommon(); moveToFrostQueenCaveFromWorldMap(event)">
   <img src="images/maps/poi_frost_queen_cave.png" alt="서리여왕의 동굴">
   <span class="poi-label">서리여왕의 동굴</span>
 </button>
 
       <!-- 👻 POI: 망령왕의 죽음세계 (이그드라실 동쪽 / 서리여왕 동굴보다 더 동쪽) -->
-<button id="poiDeathWorld" onclick="moveToDeathWorldFromWorldMap(event)">
+<button id="poiDeathWorld" onclick="playUiClickCommon(); moveToDeathWorldFromWorldMap(event)">
   <img src="images/maps/poi_death_world.png" alt="망령왕의 죽음세계">
   <span class="poi-label">망령왕의 죽음세계</span>
 </button>
 
       <!-- 🔥 POI: 베히모스의 불구덩이 -->
-<button id="poiBehemothPit" onclick="moveToBehemothPitFromWorldMap(event)">
+<button id="poiBehemothPit" onclick="playUiClickCommon(); moveToBehemothPitFromWorldMap(event)">
   <img src="images/maps/poi_behemoth_pit.png" alt="베히모스의 불구덩이">
   <span class="poi-label">베히모스의 불구덩이</span>
 </button>
@@ -3911,19 +3911,19 @@ html, body {
     <img id="parchmentSkyImg" src="images/maps/parchment_sky.png">
 
     <!-- ✅ (추가) 하늘맵 POI: 대천사의 요람 -->
-<button id="poiArchangelCradle" class="poi-btn" onclick="moveToArchangelCradleFromSkyMap(event)">
+<button id="poiArchangelCradle" class="poi-btn" onclick="playUiClickCommon(); moveToArchangelCradleFromSkyMap(event)">
   <img src="images/maps/poi_archangel_cradle.png" alt="">
   <span class="poi-label">대천사의 요람</span>
 </button>
 
     <!-- ✅ (추가) 하늘맵 POI: 신의 처소 -->
-<button id="poiGodSanctum" class="poi-btn" onclick="moveToGodSanctumFromSkyMap(event)">
+<button id="poiGodSanctum" class="poi-btn" onclick="playUiClickCommon(); moveToGodSanctumFromSkyMap(event)">
   <img src="images/maps/poi_divine_sanctum.png" alt="">
   <span class="poi-label">신의 처소</span>
 </button>
 
 <!-- ✅ (추가) 하늘맵 POI: 차원의 틈새 -->
-<button id="poiDimensionalRift" class="poi-btn" onclick="moveToDimensionalRiftFromSkyMap(event)">
+<button id="poiDimensionalRift" class="poi-btn" onclick="playUiClickCommon(); moveToDimensionalRiftFromSkyMap(event)">
   <img src="images/maps/poi_dimensional_rift.png" alt="">
   <span class="poi-label">차원의 틈새</span>
 </button>
@@ -4713,22 +4713,6 @@ document.addEventListener("DOMContentLoaded", () => {
     "userListIconBtn",
     "bossBattleIconBtn",
 
-    // ✅ (추가) 월드맵 POI
-    "poiYggdrasil",
-    "poiFulgurantForge",
-    "poiMushroomVillage",
-    "poiSewer",
-    "poiOutlawWasteland",
-    "poiSwampElfForest",
-    "poiFrostQueenCave",
-    "poiDeathWorld",
-
-    // ✅ (추가) 하늘맵 POI
-    "poiArchangelCradle",
-    "poiBehemothPit",
-    "poiFallingStarCrater",
-    "poiForgottenGarden",
-    "poiDragonNest"
   ].forEach(bindIconTapSound);
 });
 
