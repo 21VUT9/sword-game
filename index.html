@@ -18663,9 +18663,16 @@ window.addEventListener("DOMContentLoaded", () => {
     if (confirmBtn) confirmBtn.textContent = "확정";
   }
 
-  window.openEngraveOverlay = function(){
+    window.openEngraveOverlay = function(){
     if (!engraveOverlay) return;
     engraveOverlay.style.display = "block";
+
+    // ✅ 오버레이 열 때: 현재 확정 각인 3줄을 "후 상태"에 먼저 표시
+    const cur = Array.isArray(engraveLines) ? engraveLines : ["-","-","-"];
+    setBefore(cur);   // 고급각인 탭에서만 보이지만, 데이터는 미리 세팅
+    setAfter(cur);
+
+    lastRolledLines = null;
     setEngraveMode("normal");
   };
 
@@ -18702,9 +18709,55 @@ window.addEventListener("DOMContentLoaded", () => {
     if (engraveOverlay.style.display === "block") closeEngraveOverlay();
   });
 
-  // (구조단계) 확정/취소는 일단 닫기만
-  if (confirmBtn) confirmBtn.addEventListener("click", () => closeEngraveOverlay());
-  if (cancelBtn) cancelBtn.addEventListener("click", () => closeEngraveOverlay());
+    // ✅ 3단계: 고급각인 확정/취소
+  if (confirmBtn) confirmBtn.addEventListener("click", () => {
+    // 일반각인은 리롤 즉시 확정이라 여기서 할 일 없음
+    if (engraveMode !== "advanced") {
+      closeEngraveOverlay();
+      return;
+    }
+
+    // 고급각인: 마지막 리롤 결과를 확정 적용
+    if (!lastRolledLines) {
+      alert("먼저 [각인]을 눌러 결과를 생성해줘.");
+      return;
+    }
+
+    engraveLines = [
+      lastRolledLines[0] || "-",
+      lastRolledLines[1] || "-",
+      lastRolledLines[2] || "-"
+    ];
+    lastRolledLines = null;
+
+    save();
+    update();
+
+    // 능력치 오버레이가 열려있으면 즉시 갱신
+    const statOverlay = document.getElementById("statOverlay");
+    if (statOverlay && statOverlay.style.display === "block") {
+      openStatOverlay();
+    }
+
+    closeEngraveOverlay();
+  });
+
+  if (cancelBtn) cancelBtn.addEventListener("click", () => {
+    // 일반각인은 취소 버튼이 안 보이지만, 안전장치
+    if (engraveMode !== "advanced") {
+      closeEngraveOverlay();
+      return;
+    }
+
+    // 고급각인: 리롤 결과 폐기(⚠️ 비용은 [각인] 누를 때 이미 소모되므로 환불 없음)
+    lastRolledLines = null;
+
+    // 표시도 현재 확정 상태로 되돌림
+    const cur = Array.isArray(engraveLines) ? engraveLines : ["-","-","-"];
+    setAfter(cur);
+
+    closeEngraveOverlay();
+  });
 
     // =========================
   // 🪬 각인(리롤) 1단계: "후 상태 3줄" 랜덤 생성/표시
@@ -18837,12 +18890,9 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // ✅ 리롤 버튼: "후 상태 3줄" 랜덤 생성/표시 + 임시보관
     if (rollBtn) {
-    rollBtn.addEventListener("click", () => {
-      const lines = rollEngraveLines();
-      lastRolledLines = lines;
-      setAfter(lines);
+        rollBtn.addEventListener("click", () => {
 
-      // ✅ 일반각인: 리롤 즉시 확정(골드 차감 + 저장 + 능력치 반영)
+      // ✅ 일반각인: 10억 / 리롤 즉시 확정
       if (engraveMode === "normal") {
         const cost = 1000000000; // 10억
 
@@ -18851,31 +18901,51 @@ window.addEventListener("DOMContentLoaded", () => {
           return;
         }
 
+        const lines = rollEngraveLines();
+
         gold = Number(gold || 0) - cost;
 
-        // 확정 반영
+        // 즉시 확정 반영
         engraveLines = [lines[0] || "-", lines[1] || "-", lines[2] || "-"];
+        lastRolledLines = null;
 
-        // 저장 + UI 반영
+        setAfter(engraveLines);
+
         save();
         update();
 
-        // 능력치 오버레이가 열려있으면 표기도 즉시 갱신
         const statOverlay = document.getElementById("statOverlay");
         if (statOverlay && statOverlay.style.display === "block") {
           openStatOverlay();
         }
-
         return;
       }
 
-      // ✅ 고급각인: (다음 단계에서) 임시보관만
+      // ✅ 고급각인: 60억 / [각인] 누르는 즉시 비용 소모 + 결과 임시보관
       if (engraveMode === "advanced") {
-        setBefore([
-          before1?.textContent || "-",
-          before2?.textContent || "-",
-          before3?.textContent || "-"
-        ]);
+        const cost = 60000000000; // 60억
+
+        if (Number(gold || 0) < cost) {
+          alert("골드가 부족합니다.");
+          return;
+        }
+
+        // ✅ 전 상태 = 현재 확정 각인
+        const before = Array.isArray(engraveLines) ? engraveLines : ["-","-","-"];
+        setBefore(before);
+
+        // ✅ 비용은 [각인] 버튼 누르는 즉시 차감
+        gold = Number(gold || 0) - cost;
+
+        // ✅ 후 상태 = 새 리롤 결과(임시)
+        const lines = rollEngraveLines();
+        lastRolledLines = [lines[0] || "-", lines[1] || "-", lines[2] || "-"];
+        setAfter(lastRolledLines);
+
+        // ✅ 여기서는 저장/반영 안 함 (확정에서만 적용)
+        save();   // 비용 차감은 저장되어야 함
+        update();
+        return;
       }
     });
   }
