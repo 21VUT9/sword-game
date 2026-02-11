@@ -6063,7 +6063,14 @@ function recalcHuntStamina() {
   // 이미 가득 차 있으면 더 회복 X
   if (huntStamina >= max) return;
 
-  const intervalMs = 20 * 60 * 1000; // 20분
+    let intervalMin = 20; // 기본 20분
+  try {
+    const st = (typeof getPlayerFinalCombatStats === "function") ? getPlayerFinalCombatStats() : null;
+    intervalMin = 20 - Math.max(0, Number(st && st.huntRechargeMinusMin ? st.huntRechargeMinusMin : 0));
+  } catch (e) {}
+
+  intervalMin = Math.max(1, intervalMin); // 최소 1분(원하면 5로 바꿔도 됨)
+  const intervalMs = intervalMin * 60 * 1000;
   const elapsed    = now - lastStaminaUpdate;
   if (elapsed <= 0) return;
 
@@ -10241,6 +10248,12 @@ function getUpgradeChance(level) {
   // 💫 전체 구간 소폭 상향 (+5%)
   chance += 5;
 
+    // ✅ 각인: 강화 성공확률 +N%
+  try {
+    const st = (typeof getPlayerFinalCombatStats === "function") ? getPlayerFinalCombatStats() : null;
+    chance += Number(st && st.upgradeChancePlus ? st.upgradeChancePlus : 0);
+  } catch (e) {}
+
   // 상한/하한 정리
   chance = Math.min(100, chance); // 100% 넘지 않게
   chance = Math.max(5, chance);   // 안전 하한 (실제로는 거의 10% 이상일 것)
@@ -11015,6 +11028,16 @@ if (useRate5) {
     const isSafeLevel = (before % 5 === 0 && before <= 20);
     playMetalCrackSfx();
 
+      // ✅ 각인: 강화 실패 시 골드 소모 감소(+30/+50) → 실패 시 환급
+    try {
+      const st = (typeof getPlayerFinalCombatStats === "function") ? getPlayerFinalCombatStats() : null;
+      const refundPct = Number(st && st.upgradeFailGoldRefundPct ? st.upgradeFailGoldRefundPct : 0);
+      if (refundPct > 0) {
+        const refund = Math.floor(cost * (refundPct / 100));
+        if (refund > 0) gold += refund;
+      }
+    } catch (e) {}
+
     if (useProtect) {
       downStreak = 0;
       // 파괴방지 주문서 사용 시
@@ -11524,15 +11547,27 @@ if (r < successChance) {
   // ✅ 성공
   playHuntSuccessSfx();
   const reward = getHuntReward(currentField);
-  gold += reward;
+
+  const st = (typeof getPlayerFinalCombatStats === "function") ? getPlayerFinalCombatStats() : null;
+  const goldPct = Number(st && st.huntGoldGainPct ? st.huntGoldGainPct : 0);
+  const dropPct = Number(st && st.huntDropPct ? st.huntDropPct : 0);
+
+  const finalReward = Math.floor(reward * (1 + Math.max(0, goldPct) / 100));
+  gold += finalReward;
 
   // 🔔 기본 팝업 문구 (골드 보상)
-  let popupMsg = `사냥 성공!<br>💰 ${formatGold(reward)} 골드 획득`;
+  let popupMsg = `사냥 성공!<br>💰 ${formatGold(finalReward)} 골드 획득` + (goldPct > 0 ? ` <span style="color:#7CFCB0;">(+${goldPct}%)</span>` : "");
+
+  // ✅ 드랍확률 보정 함수
+  const adjDrop = (base) => {
+    const p = base * (1 + Math.max(0, dropPct) / 100);
+    return Math.min(0.95, p);
+  };
 
   // 🎁 아이템 드랍 처리
 
   // LV6 이상: 3% 확률로 15강 강화 주문서
-  if (currentField >= 6 && Math.random() < 0.015) {
+  if (currentField >= 6 && Math.random() < adjDrop(0.015)) {
     itemScroll15 += 1;
 
     popupMsg += `<br><br>📜 15강 강화 주문서를 획득했다!`;
@@ -11543,7 +11578,7 @@ if (r < successChance) {
   }
 
   // LV7 이상: 2% 확률로 파괴방지 주문서
-  if (currentField >= 7 && Math.random() < 0.01) {
+  if (currentField >= 7 && Math.random() < adjDrop(0.01)) {
     itemProtect += 1;
 
     popupMsg += `<br>🛡 파괴방지 주문서를 획득했다!`;
@@ -11554,7 +11589,7 @@ if (r < successChance) {
   }
 
   // LV8 이상: 1% 확률로 슈퍼강화 주문서
-  if (currentField >= 8 && Math.random() < 0.005) {
+  if (currentField >= 8 && Math.random() < adjDrop(0.005)) {
     itemSuper += 1;
 
     popupMsg += `<br>✨ 슈퍼강화 주문서를 획득했다!`;
@@ -11565,7 +11600,7 @@ if (r < successChance) {
   }
 
   // LV4 이상: 10% 확률로 강등방지 주문서
-  if (currentField >= 4 && Math.random() < 0.05) {
+  if (currentField >= 4 && Math.random() < adjDrop(0.05)) {
     itemDownProtect += 1;
 
     popupMsg += `<br>🔒 강등방지 주문서를 획득했다!`;
@@ -16308,18 +16343,49 @@ function getPlayerFinalCombatStats(){
   let engrIgnoreEv = 0;
   let engrCritRate = 0;
   let engrCritDmg = 0;
+    // ✅ 각인 보너스(사냥/강화/보스전 반영용)
+  let engrHuntMaxPlus = 0;
+  let engrHuntGoldPct = 0;
+  let engrHuntDropPct = 0;
+  let engrHuntRechargeMinusMin = 0;
+
+  let engrUpgradeFailRefundPct = 0;
+  let engrUpgradeChancePlus = 0;
+
+  let engrBossShieldRemoveChance = 0; // 0.01 / 0.02 형태(확률)
+  let engrBossFirstHitBonusPct = 0;   // +500% 등 “퍼센트 값”
+  let engrBossExecuteBonusPct = 0;    // +400% 등
+  let engrBossRewardDropPct = 0;      // 15/20
+  let engrBossShieldBreakDmgPct = 0;  // 30
 
   const _lines = Array.isArray(engraveLines) ? engraveLines : ["-","-","-"];
   for (const t of _lines) {
     const s = String(t || "");
 
     let m;
-    if ((m = s.match(/^공격력 \+(\d+)%$/))) engrAtkPct += Number(m[1]) / 100;
+        if ((m = s.match(/^공격력 \+(\d+)%$/))) engrAtkPct += Number(m[1]) / 100;
     else if ((m = s.match(/^주문력 \+(\d+)%$/))) engrSpellPct += Number(m[1]) / 100;
     else if ((m = s.match(/^치명타 확률 \+(\d+)%$/))) engrCritRate += Number(m[1]) / 100;
     else if ((m = s.match(/^치명타 데미지 \+(\d+)%$/))) engrCritDmg += Number(m[1]) / 100;
     else if ((m = s.match(/^관통력 \+(\d+)%$/))) engrPen += Number(m[1]) / 100;
     else if ((m = s.match(/^회피무시 \+(\d+)%$/))) engrIgnoreEv += Number(m[1]) / 100;
+
+    // ✅ 사냥/자원
+    else if ((m = s.match(/^사냥 최대 횟수 \+(\d+)$/))) engrHuntMaxPlus += Number(m[1]);
+    else if ((m = s.match(/^사냥 골드 획득량 \+(\d+)%$/))) engrHuntGoldPct += Number(m[1]);
+    else if ((m = s.match(/^사냥 아이템 드랍률 \+(\d+)%$/))) engrHuntDropPct += Number(m[1]);
+    else if ((m = s.match(/^사냥 횟수 충전시간 감소 \+(\d+)분$/))) engrHuntRechargeMinusMin += Number(m[1]);
+
+    // ✅ 강화
+    else if ((m = s.match(/^강화 실패 시 골드 소모 감소 \+(\d+)%$/))) engrUpgradeFailRefundPct += Number(m[1]);
+    else if ((m = s.match(/^강화 성공확률 \+(\d+)%$/))) engrUpgradeChancePlus += Number(m[1]);
+
+    // ✅ 보스전 특수
+    else if ((m = s.match(/^공격시 (\d+)% 확률로 보스실드 모두제거$/))) engrBossShieldRemoveChance += Number(m[1]) / 100;
+    else if ((m = s.match(/^보스 체력이 100%일 때 첫타격 데미지 \+(\d+)%$/))) engrBossFirstHitBonusPct += Number(m[1]);
+    else if ((m = s.match(/^보스 체력이 1% 이하일때 데미지 \+(\d+)%$/))) engrBossExecuteBonusPct += Number(m[1]);
+    else if ((m = s.match(/^보스전 보상 드랍률 \+(\d+)%$/))) engrBossRewardDropPct += Number(m[1]);
+    else if ((m = s.match(/^보스 보호막 파괴 피해 \+(\d+)%$/))) engrBossShieldBreakDmgPct += Number(m[1]);
   }
 
    const mainMul = 1 + (lv.sword * 0.10);
@@ -16333,7 +16399,7 @@ function getPlayerFinalCombatStats(){
   const ignoreEvade   = Number(wp.ignoreEvade || 0) + (lv.bow    * 0.10) + engrIgnoreEv;
   const critRate      = Number(wp.critRate || 0)    + (lv.axe    * 0.10) + engrCritRate;
   const critDmgBonus  = Number(wp.critDmgBonus || 0)+ (lv.dagger * 0.10) + engrCritDmg;
-  const huntMaxPlus   = (lv.staff * 2); // 사냥횟수 최대치 +2*LV (스태프 30강 패시브)
+  const huntMaxPlus   = (lv.staff * 2) + Math.max(0, engrHuntMaxPlus); // 스태프 패시브 + 각인
 
   return {
     weaponType: wp.t,
@@ -16345,6 +16411,19 @@ function getPlayerFinalCombatStats(){
     critRate,
     critDmgBonus,
     huntMaxPlus,
+    huntGoldGainPct: engrHuntGoldPct,
+    huntDropPct: engrHuntDropPct,
+    huntRechargeMinusMin: engrHuntRechargeMinusMin,
+
+    upgradeFailGoldRefundPct: engrUpgradeFailRefundPct,
+    upgradeChancePlus: engrUpgradeChancePlus,
+
+    bossShieldRemoveChance: engrBossShieldRemoveChance,
+    bossFirstHitBonusPct: engrBossFirstHitBonusPct,
+    bossExecuteBonusPct: engrBossExecuteBonusPct,
+    bossRewardDropPct: engrBossRewardDropPct,
+    bossShieldBreakDmgPct: engrBossShieldBreakDmgPct,
+
     passiveLv: lv
   };
 }
@@ -16367,6 +16446,28 @@ function calcBossAttackResult(bossId){
   if (bossId === "frost_queen" && my.weaponType === "staff") {
     dmg = dmg * 1.10;
   }
+
+    // ✅ 각인: 보스 체력 조건 딜 보너스(100% 첫타 / 1% 이하 막타)
+  try {
+    const run = (bossRunsActiveCache || {})[bossId];
+    const hpNow = Number(run && run.hp != null ? run.hp : 0);
+    const hpMax = Number(run && run.maxHp != null ? run.maxHp : 0);
+
+    if (hpMax > 0) {
+      // 100%일 때 첫타격 +500% → (1 + 5.00) = 6배
+      if (hpNow >= hpMax) {
+        const b = Number(my && my.bossFirstHitBonusPct ? my.bossFirstHitBonusPct : 0);
+        if (b > 0) dmg = Math.floor(dmg * (1 + b / 100));
+      }
+
+      // 1% 이하일 때 +400% → (1 + 4.00) = 5배
+      const hpPct = (hpNow / hpMax) * 100;
+      if (hpPct <= 1) {
+        const b = Number(my && my.bossExecuteBonusPct ? my.bossExecuteBonusPct : 0);
+        if (b > 0) dmg = Math.floor(dmg * (1 + b / 100));
+      }
+    }
+  } catch (e) {}
 
   // 4) 방어/저항
   const effPhysDef = Math.max(0, Number(stats.physDef || 0) - Number(my.penetration || 0));
@@ -16600,8 +16701,23 @@ if (!result.isMiss) playBossHitFx();
 let applied = dmg;
 
 const isFrostQueen = (bossId === "frost_queen");
-const shieldHp0 = Math.max(0, Number(cur.shieldHp || 0));
-const shieldMax0 = Math.max(0, Number(cur.shieldMax || 0));
+
+// ✅ 각인: 보스실드 모두제거 (1%/2%)
+let shieldHp0 = Math.max(0, Number(cur.shieldHp || 0));
+let shieldMax0 = Math.max(0, Number(cur.shieldMax || 0));
+
+if (isFrostQueen && shieldMax0 > 0 && shieldHp0 > 0) {
+  try {
+    const st = (typeof getPlayerFinalCombatStats === "function") ? getPlayerFinalCombatStats() : null;
+    const p = Number(st && st.bossShieldRemoveChance ? st.bossShieldRemoveChance : 0);
+    if (p > 0 && Math.random() < p) {
+      cur.shieldHp = 0;
+      cur.shieldMax = 0;
+      shieldHp0 = 0;
+      shieldMax0 = 0;
+    }
+  } catch (e) {}
+}
 
 if (isFrostQueen && shieldMax0 > 0 && shieldHp0 > 0) {
   const isMagic = (String(weaponType || "") === "staff");
@@ -16611,14 +16727,24 @@ if (isFrostQueen && shieldMax0 > 0 && shieldHp0 > 0) {
     applied = 1;
     // 실드가 있는 동안엔 HP는 절대 안 깎이게
   } else {
-    // 주문력 무기: 실드를 먼저 깎고, 남으면 HP로 관통
-    const toShield = Math.min(shieldHp0, applied);
+        // ✅ 각인: 보스 보호막 파괴 피해 +30% (실드에 들어가는 데미지 자체를 증가)
+    let shieldApplied = applied;
+    try {
+      const st = (typeof getPlayerFinalCombatStats === "function") ? getPlayerFinalCombatStats() : null;
+      const b = Number(st && st.bossShieldBreakDmgPct ? st.bossShieldBreakDmgPct : 0);
+      if (b > 0) shieldApplied = Math.floor(applied * (1 + b / 100));
+    } catch (e) {}
+
+    const toShield = Math.min(shieldHp0, shieldApplied);
     cur.shieldHp = shieldHp0 - toShield;
 
-    const left = applied - toShield;
+    const left = shieldApplied - toShield;
     if (left > 0 && Number(cur.shieldHp || 0) <= 0) {
       cur.hp = Math.max(0, Number(cur.hp || 0) - left);
     }
+
+    // ✅ 기여도도 “강화된 실드 데미지 포함”
+    applied = shieldApplied;
   }
 } else {
   // 일반 보스/실드 없음: 기존대로 HP 감소
@@ -17310,6 +17436,35 @@ function claimBossReward(){
 
     const isLeader = (String(run.leaderUid || "") === userId);
    const rw = getBossRewardByPct(bossId, pct, isLeader);
+       // ✅ 각인: 보스전 보상 드랍률 +15/+20 → 추가 드랍(확률형 보너스)
+   try {
+     const st = (typeof getPlayerFinalCombatStats === "function") ? getPlayerFinalCombatStats() : null;
+     const bonusPct = Number(st && st.bossRewardDropPct ? st.bossRewardDropPct : 0);
+
+     if (bonusPct > 0) {
+       const p = bonusPct / 100;
+
+       // 작은 아이템류: 개수만큼 “추가 1개” 확률 롤
+       const keys = ["itemProtect","itemDownProtect","itemScroll21","itemScroll15","itemSuper"];
+       for (const k of keys) {
+         const c = Number(rw[k] || 0);
+         if (c > 0) {
+           let extra = 0;
+           for (let i=0; i<c; i++) if (Math.random() < p) extra++;
+           rw[k] = c + extra;
+         }
+       }
+
+       // 정수(대량): 비율 보너스 방식(가볍게)
+       const ess = Number(rw.itemEssence || 0);
+       if (ess > 0) {
+         const add = ess * p;
+         const addInt = Math.floor(add);
+         const addFrac = add - addInt;
+         rw.itemEssence = ess + addInt + (Math.random() < addFrac ? 1 : 0);
+       }
+     }
+   } catch (e) {}
 
     // ✅ 로컬 보상 지급(아이템 변수 증가)
     itemProtect = Number(itemProtect || 0) + (rw.itemProtect || 0);
