@@ -19008,13 +19008,13 @@ document.addEventListener("click", function(e){
   background:rgba(0,0,0,0.70);
   z-index:3500;
 ">
-  <div style="
+    <div style="
     position:absolute;
     top:50%;
     left:50%;
     transform:translate(-50%,-50%);
-    width:860px;
-    height:560px;
+    width:min(860px, calc(100% - 40px));
+    height:min(560px, calc(100% - 60px));
     background:#0b0b0b;
     border:1px solid rgba(255,255,255,0.15);
     color:#eee;
@@ -19026,26 +19026,27 @@ document.addEventListener("click", function(e){
     <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 14px; border-bottom:1px solid rgba(255,255,255,0.08);">
       <div style="font-size:18px; font-weight:900;">각인</div>
 
-      <button id="engraveOverlayCloseBtn" style="
-        width:30px; height:30px; border:0; border-radius:10px;
-        background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.88);
+            <button id="engraveOverlayCloseBtn" style="
+        width:30px; height:30px;
+        margin:0; padding:0;
+        border:0; border-radius:10px;
+        display:grid; place-items:center;
+        background:rgba(255,255,255,0.08);
+        color:rgba(255,255,255,0.88);
         font-size:16px; font-weight:900; cursor:pointer;
+        line-height:30px;
       ">✕</button>
-    </div>
 
     <!-- 탭 -->
     <div style="display:flex; gap:8px; padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08);">
-      <button id="engraveTabNormal" style="padding:10px 12px; border-radius:10px; border:0; cursor:pointer; font-weight:900;">
+      <button id="engraveTabNormal" style="margin:0; padding:10px 12px; border-radius:10px; border:0; cursor:pointer; font-weight:900;">
         일반각인
       </button>
-      <button id="engraveTabAdvanced" style="padding:10px 12px; border-radius:10px; border:0; cursor:pointer; font-weight:900;">
+      <button id="engraveTabAdvanced" style="margin:0; padding:10px 12px; border-radius:10px; border:0; cursor:pointer; font-weight:900;">
         고급각인
       </button>
       <div style="flex:1;"></div>
-      <div id="engraveCostText" style="font-size:13px; color:#bbb; font-weight:800; align-self:center;">
-        비용: -
       </div>
-    </div>
 
     <!-- 본문(2컬럼) -->
     <div style="display:flex; height:calc(100% - 120px);">
@@ -19083,9 +19084,12 @@ document.addEventListener("click", function(e){
       <div style="width:42%; padding:16px; display:flex; flex-direction:column;">
         <div style="font-size:14px; font-weight:900; margin-bottom:10px;">조작</div>
 
+        <div id="engraveCostText" style=" margin:0 0 10px 0; font-size:14px; font-weight:900; color:#ffd54f; text-align:right; ">비용: -</div>
+
         <button id="engraveRollBtn"
-          style="padding:12px 12px; border-radius:12px; border:0; cursor:pointer; font-weight:900; margin-bottom:10px;">
-          각인(리롤)
+          style="margin:0 0 10px 0; padding:14px 12px; border-radius:12px; border:0; cursor:pointer; font-weight:900;
+            font-size:16px; width:100%; ">
+          각인
         </button>
 
         <div style="flex:1; font-size:12px; color:#8a8a8a; line-height:1.5;">
@@ -19095,12 +19099,12 @@ document.addEventListener("click", function(e){
 
         <div style="display:flex; gap:10px;">
           <button id="engraveConfirmBtn"
-            style="flex:1; padding:12px 12px; border-radius:12px; border:0; cursor:pointer; font-weight:900;">
+            style="flex:1; margin:0; padding:6px 10px; border-radius:10px; border:0; cursor:pointer; font-weight:900; font-size:13px;">
             확정
           </button>
 
           <button id="engraveCancelBtn"
-            style="flex:1; padding:12px 12px; border-radius:12px; border:0; cursor:pointer; font-weight:900;">
+            style="flex:1; margin:0; padding:6px 10px; border-radius:10px; border:0; cursor:pointer; font-weight:900; font-size:13px;">
             취소
           </button>
         </div>
