@@ -16333,6 +16333,7 @@ function getPlayerFinalCombatStats(){
   const ignoreEvade   = Number(wp.ignoreEvade || 0) + (lv.bow    * 0.10) + engrIgnoreEv;
   const critRate      = Number(wp.critRate || 0)    + (lv.axe    * 0.10) + engrCritRate;
   const critDmgBonus  = Number(wp.critDmgBonus || 0)+ (lv.dagger * 0.10) + engrCritDmg;
+  const huntMaxPlus   = (lv.staff * 2); // 사냥횟수 최대치 +2*LV (스태프 30강 패시브)
 
   return {
     weaponType: wp.t,
