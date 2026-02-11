@@ -18875,6 +18875,27 @@ document.addEventListener("click", function(e){
       <div class="stat-line">회피 무시 <span id="statIgnore">0%</span></div>
       <div class="stat-line">치명타 확률 <span id="statCrit">0%</span></div>
       <div class="stat-line">치명타 피해 <span id="statCritDmg">0%</span></div>
+
+      <!-- ======================
+     🪬 각인(표시용) + 각인하기 버튼
+     ====================== -->
+<div style="margin-top:18px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.08);">
+  <div style="font-size:14px; font-weight:900; margin-bottom:8px;">각인</div>
+
+  <!-- 3줄 표시(현재는 자리만) -->
+  <div id="engraveLine1" style="font-size:13px; color:#cfcfcf; margin-bottom:4px;">-</div>
+  <div id="engraveLine2" style="font-size:13px; color:#cfcfcf; margin-bottom:4px;">-</div>
+  <div id="engraveLine3" style="font-size:13px; color:#cfcfcf;">-</div>
+
+  <button id="openEngraveOverlayBtn"
+    style="margin-top:10px; width:100%; padding:10px 10px; border-radius:10px; border:0; cursor:pointer; font-weight:900;">
+    각인하기
+  </button>
+
+  <div style="margin-top:8px; font-size:11px; color:#777; line-height:1.35;">
+    • 일반각인: 10억 / 고급각인: 60억
+  </div>
+</div>
     </div>
 
     <!-- 우측 (2단계 패시브 영역) -->
@@ -18891,6 +18912,115 @@ document.addEventListener("click", function(e){
   </div>
 </div>
 
+  </div>
+</div>
+
+  <!-- 🪬 각인 오버레이 -->
+<div id="engraveOverlay" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.70);
+  z-index:3500;
+">
+  <div style="
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    width:860px;
+    height:560px;
+    background:#0b0b0b;
+    border:1px solid rgba(255,255,255,0.15);
+    color:#eee;
+    font-family:inherit;
+    border-radius:12px;
+    overflow:hidden;
+  ">
+    <!-- 상단바 -->
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 14px; border-bottom:1px solid rgba(255,255,255,0.08);">
+      <div style="font-size:18px; font-weight:900;">각인</div>
+
+      <button id="engraveOverlayCloseBtn" style="
+        width:30px; height:30px; border:0; border-radius:10px;
+        background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.88);
+        font-size:16px; font-weight:900; cursor:pointer;
+      ">✕</button>
+    </div>
+
+    <!-- 탭 -->
+    <div style="display:flex; gap:8px; padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.08);">
+      <button id="engraveTabNormal" style="padding:10px 12px; border-radius:10px; border:0; cursor:pointer; font-weight:900;">
+        일반각인
+      </button>
+      <button id="engraveTabAdvanced" style="padding:10px 12px; border-radius:10px; border:0; cursor:pointer; font-weight:900;">
+        고급각인
+      </button>
+      <div style="flex:1;"></div>
+      <div id="engraveCostText" style="font-size:13px; color:#bbb; font-weight:800; align-self:center;">
+        비용: -
+      </div>
+    </div>
+
+    <!-- 본문(2컬럼) -->
+    <div style="display:flex; height:calc(100% - 120px);">
+      <!-- 좌: 결과 -->
+      <div style="width:58%; padding:16px; border-right:1px solid rgba(255,255,255,0.08);">
+        <div style="font-size:14px; font-weight:900; margin-bottom:10px;">결과</div>
+
+        <!-- 고급각인 전 상태 -->
+        <div id="engraveBeforeWrap" style="display:none; margin-bottom:14px;">
+          <div style="font-size:12px; color:#aaa; margin-bottom:6px; font-weight:900;">전 상태</div>
+          <div style="padding:12px; border:1px solid rgba(255,255,255,0.10); border-radius:12px; background:rgba(255,255,255,0.03);">
+            <div id="engraveBefore1" style="font-size:13px; margin-bottom:4px;">-</div>
+            <div id="engraveBefore2" style="font-size:13px; margin-bottom:4px;">-</div>
+            <div id="engraveBefore3" style="font-size:13px;">-</div>
+          </div>
+        </div>
+
+        <!-- 후 상태(일반/고급 공통 표시) -->
+        <div>
+          <div style="font-size:12px; color:#aaa; margin-bottom:6px; font-weight:900;">후 상태</div>
+          <div style="padding:12px; border:1px solid rgba(255,255,255,0.10); border-radius:12px; background:rgba(255,255,255,0.03);">
+            <div id="engraveAfter1" style="font-size:13px; margin-bottom:4px;">-</div>
+            <div id="engraveAfter2" style="font-size:13px; margin-bottom:4px;">-</div>
+            <div id="engraveAfter3" style="font-size:13px;">-</div>
+          </div>
+        </div>
+
+        <div style="margin-top:10px; font-size:11px; color:#777; line-height:1.4;">
+          • 일반각인: 리롤 즉시 “후 상태”로 확정<br>
+          • 고급각인: 리롤 후 “확정/취소” 선택
+        </div>
+      </div>
+
+      <!-- 우: 조작 -->
+      <div style="width:42%; padding:16px; display:flex; flex-direction:column;">
+        <div style="font-size:14px; font-weight:900; margin-bottom:10px;">조작</div>
+
+        <button id="engraveRollBtn"
+          style="padding:12px 12px; border-radius:12px; border:0; cursor:pointer; font-weight:900; margin-bottom:10px;">
+          각인(리롤)
+        </button>
+
+        <div style="flex:1; font-size:12px; color:#8a8a8a; line-height:1.5;">
+          (지금은 오버레이 구조 단계)<br>
+          다음 단계에서 “리롤 결과 생성 / 골드 차감 / 저장 / 능력치 반영”을 연결할 거야.
+        </div>
+
+        <div style="display:flex; gap:10px;">
+          <button id="engraveConfirmBtn"
+            style="flex:1; padding:12px 12px; border-radius:12px; border:0; cursor:pointer; font-weight:900;">
+            확정
+          </button>
+
+          <button id="engraveCancelBtn"
+            style="flex:1; padding:12px 12px; border-radius:12px; border:0; cursor:pointer; font-weight:900;">
+            취소
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
