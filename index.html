@@ -18681,6 +18681,156 @@ document.addEventListener("click", function(e){
   playUiClickCommon();
 });
 
+    // =========================
+  // 🪬 각인(리롤) 1단계: "후 상태 3줄" 랜덤 생성/표시
+  // =========================
+  const rollBtn = document.getElementById("engraveRollBtn");
+
+  const beforeWrap = document.getElementById("engraveBeforeWrap");
+  const before1 = document.getElementById("engraveBefore1");
+  const before2 = document.getElementById("engraveBefore2");
+  const before3 = document.getElementById("engraveBefore3");
+
+  const after1 = document.getElementById("engraveAfter1");
+  const after2 = document.getElementById("engraveAfter2");
+  const after3 = document.getElementById("engraveAfter3");
+
+  // 현재 모드/리롤 결과 임시 보관(2~3단계에서 그대로 사용)
+  let engraveMode = "normal";     // "normal" | "advanced"
+  let lastRolledLines = null;     // ["...", "...", "..."]
+
+  // ✅ 가중치 랜덤 1개 뽑기
+  function pickWeighted(pool){
+    let total = 0;
+    for (const it of pool) total += Number(it.weight || 0);
+
+    let r = Math.random() * total;
+    for (const it of pool) {
+      r -= Number(it.weight || 0);
+      if (r <= 0) return it;
+    }
+    return pool[pool.length - 1];
+  }
+
+  // ✅ (중복 허용) 3줄 생성
+  function rollEngraveLines(){
+    // 너가 정리한 옵션 기반 + "수치 높을수록 확률 낮음" 대강 가중치
+    // (2단계에서 비용/저장 붙일 때, 여기 pool만 손보면 밸런스 그대로 조정 가능)
+    const POOL = [
+      // ① 공격 계열
+      { text: "공격력 +6%",  weight: 220 },
+      { text: "공격력 +9%",  weight: 120 },
+      { text: "공격력 +12%", weight: 45  },
+
+      { text: "주문력 +6%",  weight: 220 },
+      { text: "주문력 +9%",  weight: 120 },
+      { text: "주문력 +12%", weight: 45  },
+
+      { text: "치명타 확률 +10%", weight: 170 },
+      { text: "치명타 확률 +15%", weight: 95  },
+
+      { text: "치명타 데미지 +15%", weight: 150 },
+      { text: "치명타 데미지 +25%", weight: 80  },
+
+      { text: "관통력 +10%", weight: 160 },
+      { text: "관통력 +15%", weight: 90  },
+
+      { text: "회피무시 +15%", weight: 150 },
+      { text: "회피무시 +20%", weight: 85  },
+
+      // ③ 자원/행동 계열
+      { text: "사냥 최대 횟수 +2", weight: 140 },
+      { text: "사냥 최대 횟수 +3", weight: 70  },
+
+      { text: "강화 실패 시 골드 소모 감소 +30%", weight: 120 },
+      { text: "강화 실패 시 골드 소모 감소 +50%", weight: 65  },
+
+      { text: "사냥 아이템 드랍률 +20%", weight: 130 },
+      { text: "사냥 아이템 드랍률 +30%", weight: 75  },
+
+      { text: "사냥 골드 획득량 +20%", weight: 130 },
+      { text: "사냥 골드 획득량 +30%", weight: 75  },
+
+      { text: "사냥 횟수 충전시간 감소 +2분", weight: 115 },
+      { text: "사냥 횟수 충전시간 감소 +4분", weight: 60  },
+
+      // ④ 상태이상 / 특수 조건
+      { text: "공격시 1% 확률로 보스실드 모두제거", weight: 45 },
+      { text: "공격시 2% 확률로 보스실드 모두제거", weight: 18 },
+
+      { text: "보스 체력이 100%일 때 첫타격 데미지 +500%", weight: 20 },
+      { text: "보스 체력이 1% 이하일때 데미지 +400%",       weight: 24 },
+
+      // ⑤ 보스전 전용
+      { text: "보스전 보상 드랍률 +15%", weight: 85 },
+      { text: "보스전 보상 드랍률 +20%", weight: 45 },
+
+      { text: "보스 보호막 파괴 피해 +30%", weight: 70 },
+
+      // ⑥ 시스템/메타
+      { text: "강화 성공확률 +2%", weight: 55 },
+      { text: "강화 성공확률 +3%", weight: 18 },
+    ];
+
+    const a = pickWeighted(POOL).text;
+    const b = pickWeighted(POOL).text;
+    const c = pickWeighted(POOL).text;
+    return [a, b, c];
+  }
+
+  function setAfter(lines){
+    if (!after1 || !after2 || !after3) return;
+    after1.textContent = lines?.[0] ?? "-";
+    after2.textContent = lines?.[1] ?? "-";
+    after3.textContent = lines?.[2] ?? "-";
+  }
+
+  function setBefore(lines){
+    if (!before1 || !before2 || !before3) return;
+    before1.textContent = lines?.[0] ?? "-";
+    before2.textContent = lines?.[1] ?? "-";
+    before3.textContent = lines?.[2] ?? "-";
+  }
+
+  // ✅ 기존 setEngraveMode 로직이 있었다면 "모드 변수"만 동기화해주기
+  // (네 파일에 이미 setEngraveMode가 있으니, 아래만 덧대는 방식으로 안전하게 감)
+  const _origSetEngraveMode = (typeof setEngraveMode === "function") ? setEngraveMode : null;
+
+  function setEngraveModeSafe(mode){
+    engraveMode = (mode === "advanced") ? "advanced" : "normal";
+
+    // 기존 UI 토글 로직은 그대로 살리고
+    if (_origSetEngraveMode) _origSetEngraveMode(mode);
+
+    // advanced면 전 상태 영역을 보이게(HTML에 이미 존재)
+    if (beforeWrap) beforeWrap.style.display = (engraveMode === "advanced") ? "block" : "none";
+  }
+
+  // ✅ 기존 탭 클릭이 setEngraveMode("normal"/"advanced")를 부르니까, 그 부분을 안전 래핑
+  // (아래 2줄은 "탭 클릭 addEventListener" 아래에 두면 제일 확실하지만,
+  //  지금은 여기서 전역 함수 이름을 덮지 않고 안전하게 window쪽만 교체)
+  window.setEngraveMode = setEngraveModeSafe;
+
+  // ✅ 리롤 버튼: "후 상태 3줄" 랜덤 생성/표시 + 임시보관
+  if (rollBtn) {
+    rollBtn.addEventListener("click", () => {
+      const lines = rollEngraveLines();
+      lastRolledLines = lines;
+      setAfter(lines);
+
+      // 고급각인이면 전 상태도 채워두기(2~3단계에서 "현재 각인"으로 교체 예정)
+      if (engraveMode === "advanced") {
+        // 지금 단계에선 "전 상태"를 그냥 현재 표시값으로 복사만 해둠
+        // (2단계에서 실제 저장된 각인값을 붙이면 됨)
+        setBefore([
+          before1?.textContent || "-",
+          before2?.textContent || "-",
+          before3?.textContent || "-"
+        ]);
+      }
+    });
+  }
+
     </script>
 
 <!-- 📘 처음 접속 튜토리얼 (NPC 버전) -->
