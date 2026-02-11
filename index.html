@@ -5940,6 +5940,7 @@ let duelUpdated = 0;          // 이번 주 결투 포인트가 마지막으로 
 let duelLastWeekUpdated = 0;  // 지난주 결투 포인트 최종 기록 시각  
 let weaponType = null; 
 // null: 아직 미배정(0강) / "sword": 검 / "spear": 창 / "axe": 도끼 / "bow": 활 / "staff": 스태프
+let engraveLines = ["-","-","-"]; // ✅ 각인 확정 3줄(저장/로드 대상)
 let isUpgrading = false; 
 let isDueling   = false;   // ⚔️ 결투 VS 대기중일 때 true
 let titlesOwned = {};     // { titleId: true }
@@ -11699,7 +11700,7 @@ if (!s.exists()) {
   // ⭐ 기존 계정 로그인 시
   const data = s.val();
 
-      // 🔐 이미 다른 곳에서 접속 중이면: 시스템 alert 대신 "접속끊기" 팝업
+// 🔐 이미 다른 곳에서 접속 중이면: 시스템 alert 대신 "접속끊기" 팝업
 // 🔐 이미 다른 곳에서 접속 중이면: "살아있는" 다른 세션만 막기
 // - 같은 기기 새로고침(같은 sessionId)이면 통과
 // - 하트비트 끊긴 죽은 세션이면 통과(자동 복구)
@@ -11744,6 +11745,11 @@ if (equippedTitle && equippedTitle.includes("${")) equippedTitle = "";
 
       sword = data.sword ?? 0;
       gold  = data.gold  ?? 100;
+
+      // ✅ 각인(3줄) 로드
+      engraveLines = (Array.isArray(data.engraveLines) && data.engraveLines.length)
+      ? [data.engraveLines[0] || "-", data.engraveLines[1] || "-", data.engraveLines[2] || "-"]
+      : ["-","-","-"];
 
       // 🗡 무기 타입 로드 (v3.8 이전 계정 호환용)
 if (data.weaponType !== undefined && data.weaponType !== null) {
@@ -12063,7 +12069,8 @@ function save() {
     hofWeaponTypeAt30: hofWeaponTypeAt30 || "",
     hofProcessedAt: Number(hofProcessedAt || 0),
     lastSeenGlobal30EventId: Number(lastSeenGlobal30EventId || 0),
-aweUsedGlobal30EventId: Number(aweUsedGlobal30EventId || 0)
+aweUsedGlobal30EventId: Number(aweUsedGlobal30EventId || 0),
+     engraveLines: engraveLines
   };
 
   // ⭐ 강화 수치가 바뀌었을 때만 updated 갱신
@@ -12976,6 +12983,11 @@ if (data.sessionId) {
 
     sword = data.sword ?? 0;
     gold  = data.gold  ?? 100;
+
+    // ✅ 각인(3줄) 로드
+engraveLines = (Array.isArray(data.engraveLines) && data.engraveLines.length)
+  ? [data.engraveLines[0] || "-", data.engraveLines[1] || "-", data.engraveLines[2] || "-"]
+  : ["-","-","-"];
 
 titlesOwned = (data.titlesOwned && typeof data.titlesOwned === "object") ? data.titlesOwned : {};
 equippedTitle = (typeof data.equippedTitle === "string") ? data.equippedTitle : "";
@@ -16289,16 +16301,38 @@ function getPlayerFinalCombatStats(){
   const lv = getPassiveLevels();         // 영구 패시브 레벨
   const rawPower = Number(power || 0);   // 네 게임의 기본 전투력(절대 성장치)
 
-  // 1) 메인 수치(공격력/주문력) = rawPower * 무기계수 * (검패시브 공격/주문력%)
-  const mainMul = 1 + (lv.sword * 0.10);
-  const mainPower = Math.floor(rawPower * wp.coef * mainMul);
+    // ✅ 각인 보너스(전투 스탯에만 반영: 공격/주문/치확/치뎀/관통/회피무시)
+  let engrAtkPct = 0;
+  let engrSpellPct = 0;
+  let engrPen = 0;
+  let engrIgnoreEv = 0;
+  let engrCritRate = 0;
+  let engrCritDmg = 0;
+
+  const _lines = Array.isArray(engraveLines) ? engraveLines : ["-","-","-"];
+  for (const t of _lines) {
+    const s = String(t || "");
+
+    let m;
+    if ((m = s.match(/^공격력 \+(\d+)%$/))) engrAtkPct += Number(m[1]) / 100;
+    else if ((m = s.match(/^주문력 \+(\d+)%$/))) engrSpellPct += Number(m[1]) / 100;
+    else if ((m = s.match(/^치명타 확률 \+(\d+)%$/))) engrCritRate += Number(m[1]) / 100;
+    else if ((m = s.match(/^치명타 데미지 \+(\d+)%$/))) engrCritDmg += Number(m[1]) / 100;
+    else if ((m = s.match(/^관통력 \+(\d+)%$/))) engrPen += Number(m[1]) / 100;
+    else if ((m = s.match(/^회피무시 \+(\d+)%$/))) engrIgnoreEv += Number(m[1]) / 100;
+  }
+
+   const mainMul = 1 + (lv.sword * 0.10);
+
+  // ✅ 메인(공격력/주문력) 각인 % 적용
+  const engrMainPct = (wp.t === "staff") ? engrSpellPct : engrAtkPct;
+  const mainPower = Math.floor(rawPower * wp.coef * mainMul * (1 + engrMainPct));
 
   // 2) 서브 스탯(0%여도 표기 대상)
-  const penetration   = Number(wp.ignoreDef || 0)   + (lv.spear  * 0.10); // 관통력
-  const ignoreEvade   = Number(wp.ignoreEvade || 0) + (lv.bow    * 0.10); // 회피무시
-  const critRate      = Number(wp.critRate || 0)    + (lv.axe    * 0.10); // 치명타확률
-  const critDmgBonus  = Number(wp.critDmgBonus || 0)+ (lv.dagger * 0.10); // 치명타데미지 추가(+0.10=+10%)
-  const huntMaxPlus   = (lv.staff * 2);                                 // 사냥횟수 최대치 +2*LV
+  const penetration   = Number(wp.ignoreDef || 0)   + (lv.spear  * 0.10) + engrPen;
+  const ignoreEvade   = Number(wp.ignoreEvade || 0) + (lv.bow    * 0.10) + engrIgnoreEv;
+  const critRate      = Number(wp.critRate || 0)    + (lv.axe    * 0.10) + engrCritRate;
+  const critDmgBonus  = Number(wp.critDmgBonus || 0)+ (lv.dagger * 0.10) + engrCritDmg;
 
   return {
     weaponType: wp.t,
@@ -18458,6 +18492,14 @@ if (invBtn) {
   // ✅ 2) 진짜 최종치(절대수치) 계산 결과 불러오기
   const my = getPlayerFinalCombatStats();
 
+      // ✅ 각인 3줄 표기
+  const e1 = document.getElementById("engraveLine1");
+  const e2 = document.getElementById("engraveLine2");
+  const e3 = document.getElementById("engraveLine3");
+  if (e1) e1.textContent = engraveLines?.[0] ?? "-";
+  if (e2) e2.textContent = engraveLines?.[1] ?? "-";
+  if (e3) e3.textContent = engraveLines?.[2] ?? "-";
+
   // (A) 메인 라벨/값
   const mainLabelEl = document.getElementById("statMainLabel"); // 있으면 사용
   if (mainLabelEl) mainLabelEl.textContent = my.dmgLabel;
@@ -18793,16 +18835,41 @@ window.addEventListener("DOMContentLoaded", () => {
   window.setEngraveMode = setEngraveModeSafe;
 
   // ✅ 리롤 버튼: "후 상태 3줄" 랜덤 생성/표시 + 임시보관
-  if (rollBtn) {
+    if (rollBtn) {
     rollBtn.addEventListener("click", () => {
       const lines = rollEngraveLines();
       lastRolledLines = lines;
       setAfter(lines);
 
-      // 고급각인이면 전 상태도 채워두기(2~3단계에서 "현재 각인"으로 교체 예정)
+      // ✅ 일반각인: 리롤 즉시 확정(골드 차감 + 저장 + 능력치 반영)
+      if (engraveMode === "normal") {
+        const cost = 1000000000; // 10억
+
+        if (Number(gold || 0) < cost) {
+          alert("골드가 부족합니다.");
+          return;
+        }
+
+        gold = Number(gold || 0) - cost;
+
+        // 확정 반영
+        engraveLines = [lines[0] || "-", lines[1] || "-", lines[2] || "-"];
+
+        // 저장 + UI 반영
+        save();
+        update();
+
+        // 능력치 오버레이가 열려있으면 표기도 즉시 갱신
+        const statOverlay = document.getElementById("statOverlay");
+        if (statOverlay && statOverlay.style.display === "block") {
+          openStatOverlay();
+        }
+
+        return;
+      }
+
+      // ✅ 고급각인: (다음 단계에서) 임시보관만
       if (engraveMode === "advanced") {
-        // 지금 단계에선 "전 상태"를 그냥 현재 표시값으로 복사만 해둠
-        // (2단계에서 실제 저장된 각인값을 붙이면 됨)
         setBefore([
           before1?.textContent || "-",
           before2?.textContent || "-",
