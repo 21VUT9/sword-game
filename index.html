@@ -5965,11 +5965,13 @@ function playMetalCrackSfx(){
   o.stop(t + 0.15);
 }
 
-function playEngraveSound(){
+function playEngraveSound(delayMs = 1000){
   try {
-    const sfx = new Audio("sounds/sfx_engrave_roll.mp3");
-    sfx.volume = 0.8;   // 기존 강화 성공보다 살짝만 낮게
-    sfx.play();
+    setTimeout(() => {
+      const sfx = new Audio("sounds/sfx_engrave_roll.mp3");
+      sfx.volume = 0.8;
+      sfx.play();
+    }, delayMs);
   } catch (e) {}
 }
 
