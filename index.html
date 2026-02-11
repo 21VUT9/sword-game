@@ -3508,27 +3508,27 @@ html, body {
   </button>
 
      <!-- ⚔️ 결투장 (지도 스타일) -->
-  <button id="duelIconBtn" class="map-icon-btn" onclick="openDuelArena()">
+  <button id="duelIconBtn" class="map-icon-btn" onclick="openDuelArena()" data-nosfx="1">
     <img class="map-icon-img" src="images/ui/icon_duel.png" alt="결투장">
     <span class="map-icon-label">결투장</span>
   </button>
 
   <!-- 🏛️ 모험가길드 (지도 스타일) -->
-  <button id="guildIconBtn" class="map-icon-btn" onclick="openAdventureGuild()">
+  <button id="guildIconBtn" class="map-icon-btn" onclick="openAdventureGuild()" data-nosfx="1">
     <img class="map-icon-img" src="images/ui/icon_guild.png" alt="모험가길드">
     <div id="adventureGuildAlertBadge" class="icon-alert-badge">!</div>
     <span class="map-icon-label">모험가<br>길드</span>
   </button>
   
   <!-- 👥 전체유저 (지도 스타일) -->
-  <button id="userListIconBtn" class="map-icon-btn" onclick="openUserListOverlay()">
+  <button id="userListIconBtn" class="map-icon-btn" onclick="openUserListOverlay()" data-nosfx="1">
     <img class="map-icon-img" src="images/ui/icon_users.png" alt="전체유저">
     <span class="map-icon-label one-line">유저검색</span>
   </button>
 
   <button id="bossBattleIconBtn"
         class="map-icon-btn"
-        onclick="onBossBattleIconClick()">
+        onclick="onBossBattleIconClick()" data-nosfx="1">
   <img src="images/ui/icon_boss.png" class="map-icon-img">
   <div id="bossBattleAlertBadge" class="icon-alert-badge">!</div>
   <span class="map-icon-label">보스전</span>
@@ -3537,7 +3537,7 @@ html, body {
   <!-- 📅 출석 (좌측 아이콘) -->
 <button id="attendanceIconBtn"
         class="map-icon-btn left-icon-btn"
-        onclick="checkAttendance()">
+        onclick="checkAttendance()" data-nosfx="1">
   <img class="map-icon-img" src="images/ui/icon_attendance.png" alt="출석">
 
   <!-- ✅ 미출석 알림 뱃지 (아이콘 내부 우상단) -->
@@ -3549,7 +3549,7 @@ html, body {
 <!-- 🏆 업적 (좌측 아이콘) -->
 <button id="achievementIconBtn"
         class="map-icon-btn left-icon-btn"
-        onclick="openTitleOverlay()">
+        onclick="openTitleOverlay()" data-nosfx="1">
   <img class="map-icon-img" src="images/ui/icon_achievement.png" alt="업적">
   <div id="achievementAlertBadge" class="icon-alert-badge">!</div>
   <span class="map-icon-label">업적</span>
@@ -3732,7 +3732,7 @@ html, body {
 </div> <!-- 🔚 gameScreen -->
 
   <!-- 🍔 햄버거 메뉴 버튼 (프레임 내부 우측상단) -->
-<button id="hamburgerBtn" type="button" aria-label="메뉴" onclick="toggleHamburgerMenu(event)" style="display:none;">
+<button id="hamburgerBtn" data-nosfx="1" type="button" aria-label="메뉴" onclick="toggleHamburgerMenu(event)" style="display:none;">
   <span class="hb-line"></span>
   <span class="hb-line"></span>
   <span class="hb-line"></span>
