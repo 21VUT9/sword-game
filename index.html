@@ -5971,74 +5971,23 @@ function playMetalCrackSfx(){
   o.stop(t + 0.15);
 }
 
-// ✅ 각인 전용 SFX (유저 제스처 언락 + 1초 지연 재생)
+  // ✅ 각인 전용 SFX (즉시 재생 버전)
 const __engraveAudio = new Audio("sounds/sfx_engrave_roll.mp3");
 __engraveAudio.preload = "auto";
 
-let __engraveUnlocked = false;
-
-function __unlockEngraveAudioOnce() {
-  if (__engraveUnlocked) return;
-
-  try {
-    // 유저 제스처에서 "한번" 재생을 성공시키면 이후 setTimeout 재생이 막히는 이슈가 크게 줄어듦
-    __engraveAudio.muted = true;
-    __engraveAudio.currentTime = 0;
-
-    const p = __engraveAudio.play();
-    if (p && typeof p.then === "function") {
-      p.then(() => {
-        __engraveAudio.pause();
-        __engraveAudio.currentTime = 0;
-        __engraveAudio.muted = false;
-        __engraveUnlocked = true;
-      }).catch(() => {
-        // 언락 실패해도 muted 해제는 해둠
-        __engraveAudio.muted = false;
-      });
-    } else {
-      // 일부 환경 fallback
-      __engraveAudio.pause();
-      __engraveAudio.currentTime = 0;
-      __engraveAudio.muted = false;
-      __engraveUnlocked = true;
-    }
-  } catch (e) {
-    __engraveAudio.muted = false;
-  }
-}
-
-// ✅ 첫 클릭/터치 순간에 언락(각인 버튼 클릭 전에 pointerdown이 먼저 발생함)
-document.addEventListener("pointerdown", __unlockEngraveAudioOnce, { once: true });
-
-function playEngraveSound(delayMs = 1000) {
-  // 게임에 공용 스케일 함수가 있으면 존중
+function playEngraveSound() {
+  // 공용 스케일 함수가 있으면 존중
   const scale = (typeof getSfxScale === "function") ? getSfxScale() : 1;
   if (!scale) return;
 
-  // 각인 버튼 "클릭" 흐름 안에서 호출되면 여기서도 언락 시도(안전장치)
-  __unlockEngraveAudioOnce();
+  try {
+    __engraveAudio.pause();
+    __engraveAudio.currentTime = 0;
+    __engraveAudio.volume = Math.max(0, Math.min(1, 0.9 * scale));
 
-  const targetTime = performance.now() + delayMs;
-
-  const fire = () => {
-    const remain = targetTime - performance.now();
-    if (remain > 0) {
-      setTimeout(fire, Math.min(50, remain));
-      return;
-    }
-
-    try {
-      __engraveAudio.pause();
-      __engraveAudio.currentTime = 0;
-      __engraveAudio.volume = Math.max(0, Math.min(1, 0.9 * scale));
-
-      const p = __engraveAudio.play();
-      if (p && typeof p.catch === "function") p.catch(() => {});
-    } catch (e) {}
-  };
-
-  setTimeout(fire, Math.min(50, delayMs));
+    const p = __engraveAudio.play();
+    if (p && typeof p.catch === "function") p.catch(() => {});
+  } catch (e) {}
 }
   
 /* 상태 */
@@ -19557,7 +19506,7 @@ function playEngraveTextEffect(finalLines, onDone) {
   const els = [a1, a2, a3];
 
       // 🔊 각인 리롤 전용 사운드(클릭 순간 호출 → 1초 후 재생 스케줄)
-  playEngraveSound(1000);
+  playEngraveSound();
 
   // 0) 초기화
   for (const el of els) {
