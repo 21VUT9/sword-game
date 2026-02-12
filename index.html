@@ -19640,6 +19640,9 @@ function playEngraveTextEffect(finalLines, onDone){
 // ✅ 리롤 버튼(각인) 클릭 로직: “결과를 즉시 setAfter()” 하지 말고, 연출 끝에서 넣기
 if (rollBtn) {
   rollBtn.addEventListener("click", () => {
+
+     playEngraveSound();
+    
     if (engraveAnimLock) return;
 
     // 모드 변수는 네가 이미 쓰고 있는 engraveMode 그대로 사용
