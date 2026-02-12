@@ -19497,6 +19497,12 @@ function playEngraveTextEffect(finalLines, onDone) {
 
   const els = [a1, a2, a3];
 
+    // 🔊 각인 리롤 전용 사운드: 클릭(연출 시작) 후 1초 딜레이
+  if (window.__engraveSfxTimer) clearTimeout(window.__engraveSfxTimer);
+  window.__engraveSfxTimer = setTimeout(() => {
+    try { playEngraveSound(); } catch(e) {}
+  }, 1000);
+
   // 0) 초기화
   for (const el of els) {
     el.classList.remove("is-rolling", "is-flash", "is-reveal");
