@@ -1321,6 +1321,13 @@ button {
   margin: 2px 0;
 }
 
+  .profile-engrave {
+  text-align: center;
+  font-size: 13px;
+  color: #dddddd;
+  margin: 3px 0;
+}
+
 .profile-label {
   color: #bbbbbb;
   margin-right: 4px;
@@ -13376,9 +13383,9 @@ function openOtherUserProfilePopup(targetId) {
     // ✅ 각인 3줄 표기 (없으면 "-")
     // 각인 저장 키는 d.engraveLines (배열) 기준
     const lines = Array.isArray(d.engraveLines) ? d.engraveLines : [];
-    if (engr1El) engr1El.textContent = lines[0] ? `1) ${lines[0]}` : "1) -";
-    if (engr2El) engr2El.textContent = lines[1] ? `2) ${lines[1]}` : "2) -";
-    if (engr3El) engr3El.textContent = lines[2] ? `3) ${lines[2]}` : "3) -";
+    if (engr1El) engr1El.textContent = lines[0] ? lines[0] : "-";
+    if (engr2El) engr2El.textContent = lines[1] ? lines[1] : "-";
+    if (engr3El) engr3El.textContent = lines[2] ? lines[2] : "-";
 
     if (imgEl && wInfo && wInfo.img) {
       imgEl.src = wInfo.img;
@@ -19689,15 +19696,15 @@ document.addEventListener("click", function(e){
         </div>
         
 <div class="profile-row">
-  <span id="otherProfilePowerLabel">공격력</span>
-  <span id="otherProfilePower">0</span>
+  <span class="profile-label" id="otherProfilePowerLabel">공격력</span>
+<span class="profile-value" id="otherProfilePower">0</span>
 </div>
 
-<div class="profile-row" style="flex-direction:column; align-items:flex-start; gap:6px;">
+<div class="profile-row" style="flex-direction:column; align-items:center; gap:6px;">
   <span style="color:#bbb;">각인</span>
-  <div id="otherProfileEngrave1" style="width:100%; text-align:left; color:#eaeaea;">-</div>
-  <div id="otherProfileEngrave2" style="width:100%; text-align:left; color:#eaeaea;">-</div>
-  <div id="otherProfileEngrave3" style="width:100%; text-align:left; color:#eaeaea;">-</div>
+  <div id="otherProfileEngrave1" style="width:100%; text-align:center; color:#eaeaea;">-</div>
+  <div id="otherProfileEngrave2" style="width:100%; text-align:center; color:#eaeaea;">-</div>
+  <div id="otherProfileEngrave3" style="width:100%; text-align:center; color:#eaeaea;">-</div>
 </div>
 
       </div>
