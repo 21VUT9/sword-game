@@ -5971,14 +5971,55 @@ function playMetalCrackSfx(){
   o.stop(t + 0.15);
 }
 
-// ✅ 각인 리롤 SFX (1초 뒤 전용 사운드 재생)
+// ✅ 각인 리롤 SFX (클릭 제스처에서 "언락" 후 1초 뒤 재생)
+let __engraveAudio = null;
+let __engraveAudioUnlocked = false;
+let __engraveSfxTimer = null;
+
 function playEngraveSound(delayMs = 1000){
   try{
     const ms = Math.max(0, Number(delayMs) || 0);
-    setTimeout(() => {
-      // ✅ 기존 효과음 볼륨 시스템(getSfxScale()) 그대로 사용
-      playSfx("sounds/sfx_engrave_roll.mp3", 0.8);
+
+    // 1) 오디오 준비(재사용)
+    if (!__engraveAudio){
+      __engraveAudio = new Audio("sounds/sfx_engrave_roll.mp3");
+      __engraveAudio.preload = "auto";
+    }
+
+    const a = __engraveAudio;
+
+    // 2) ✅ 클릭(유저 제스처) 순간에 0볼륨으로 한번 재생해서 "언락"
+    if (!__engraveAudioUnlocked){
+      const prevVol = a.volume;
+      a.volume = 0;
+
+      const p = a.play();
+      if (p && typeof p.catch === "function") p.catch(()=>{});
+
+      // 아주 짧게 재생 후 정지/리셋
+      setTimeout(() => {
+        try { a.pause(); a.currentTime = 0; } catch(e) {}
+      }, 20);
+
+      a.volume = prevVol;
+      __engraveAudioUnlocked = true;
+    }
+
+    // 3) 1초 딜레이 후 실제 재생
+    if (__engraveSfxTimer) clearTimeout(__engraveSfxTimer);
+    __engraveSfxTimer = setTimeout(() => {
+      try{
+        a.pause();
+        a.currentTime = 0;
+
+        // ✅ 기존 효과음 볼륨 시스템 그대로 반영
+        a.volume = Math.max(0, Math.min(1, 0.8 * getSfxScale()));
+
+        const p2 = a.play();
+        if (p2 && typeof p2.catch === "function") p2.catch(()=>{});
+      }catch(e){}
     }, ms);
+
   }catch(e){}
 }
   
