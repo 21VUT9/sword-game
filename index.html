@@ -5971,11 +5971,6 @@ function playMetalCrackSfx(){
   o.stop(t + 0.15);
 }
 
-// ✅ 각인 리롤 SFX (클릭 제스처에서 "언락" 후 1초 뒤 재생)
-let __engraveAudio = null;
-let __engraveAudioUnlocked = false;
-let __engraveSfxTimer = null;
-
 // ✅ 각인 전용 SFX (유저 제스처 언락 + 1초 지연 재생)
 const __engraveAudio = new Audio("sounds/sfx_engrave_roll.mp3");
 __engraveAudio.preload = "auto";
