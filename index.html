@@ -5971,16 +5971,51 @@ function playMetalCrackSfx(){
   o.stop(t + 0.15);
 }
 
-function playEngraveSound(delayMs = 1000){
-  try {
-    setTimeout(() => {
-      const sfx = new Audio("sounds/sfx_engrave_roll.mp3");
-      sfx.volume = 0.8;
-      sfx.play();
-    }, delayMs);
-  } catch (e) {}
+// ✅ 각인 리롤 SFX (AudioContext 스케줄링: 유저 제스처 이슈 회피)
+let __engraveBuf = null;
+let __engraveBufLoading = false;
+
+async function __loadEngraveBuf(){
+  if (__engraveBuf || __engraveBufLoading) return;
+  __engraveBufLoading = true;
+  try{
+    const ctx = getFxAudioCtx();
+    if (!ctx) { __engraveBufLoading = false; return; }
+
+    const res = await fetch("sounds/sfx_engrave_roll.mp3");
+    const arr = await res.arrayBuffer();
+    __engraveBuf = await ctx.decodeAudioData(arr);
+  }catch(e){
+    __engraveBuf = null;
+  }finally{
+    __engraveBufLoading = false;
+  }
 }
 
+function playEngraveSound(delayMs = 1000){
+  try{
+    const ctx = getFxAudioCtx();
+    if (!ctx) return;
+
+    // 아직 로딩 전이면 먼저 로딩 시작(다음 클릭부터 안정적으로 재생됨)
+    if (!__engraveBuf){
+      __loadEngraveBuf();
+      return;
+    }
+
+    const src = ctx.createBufferSource();
+    src.buffer = __engraveBuf;
+
+    const g = ctx.createGain();
+    // 너 파일에 이미 getSfxScale() / playSfx가 있으니 그 스케일 그대로 사용
+    g.gain.value = Math.max(0, Math.min(1, 0.8 * getSfxScale()));
+
+    src.connect(g).connect(ctx.destination);
+
+    const when = ctx.currentTime + (Math.max(0, delayMs) / 1000);
+    src.start(when);
+  }catch(e){}
+}
   
 /* 상태 */
 let sword = 0, power = 10, gold = 100;
@@ -19497,11 +19532,8 @@ function playEngraveTextEffect(finalLines, onDone) {
 
   const els = [a1, a2, a3];
 
-    // 🔊 각인 리롤 전용 사운드: 클릭(연출 시작) 후 1초 딜레이
-  if (window.__engraveSfxTimer) clearTimeout(window.__engraveSfxTimer);
-  window.__engraveSfxTimer = setTimeout(() => {
-    try { playEngraveSound(); } catch(e) {}
-  }, 1000);
+      // 🔊 각인 리롤 전용 사운드(클릭 순간 호출 → 1초 후 재생 스케줄)
+  playEngraveSound(1000);
 
   // 0) 초기화
   for (const el of els) {
