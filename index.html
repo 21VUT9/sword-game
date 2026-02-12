@@ -5976,51 +5976,74 @@ let __engraveAudio = null;
 let __engraveAudioUnlocked = false;
 let __engraveSfxTimer = null;
 
-function playEngraveSound(delayMs = 1000){
-  try{
-    const ms = Math.max(0, Number(delayMs) || 0);
+// ✅ 각인 전용 SFX (유저 제스처 언락 + 1초 지연 재생)
+const __engraveAudio = new Audio("sounds/sfx_engrave_roll.mp3");
+__engraveAudio.preload = "auto";
 
-    // 1) 오디오 준비(재사용)
-    if (!__engraveAudio){
-      __engraveAudio = new Audio("sounds/sfx_engrave_roll.mp3");
-      __engraveAudio.preload = "auto";
+let __engraveUnlocked = false;
+
+function __unlockEngraveAudioOnce() {
+  if (__engraveUnlocked) return;
+
+  try {
+    // 유저 제스처에서 "한번" 재생을 성공시키면 이후 setTimeout 재생이 막히는 이슈가 크게 줄어듦
+    __engraveAudio.muted = true;
+    __engraveAudio.currentTime = 0;
+
+    const p = __engraveAudio.play();
+    if (p && typeof p.then === "function") {
+      p.then(() => {
+        __engraveAudio.pause();
+        __engraveAudio.currentTime = 0;
+        __engraveAudio.muted = false;
+        __engraveUnlocked = true;
+      }).catch(() => {
+        // 언락 실패해도 muted 해제는 해둠
+        __engraveAudio.muted = false;
+      });
+    } else {
+      // 일부 환경 fallback
+      __engraveAudio.pause();
+      __engraveAudio.currentTime = 0;
+      __engraveAudio.muted = false;
+      __engraveUnlocked = true;
+    }
+  } catch (e) {
+    __engraveAudio.muted = false;
+  }
+}
+
+// ✅ 첫 클릭/터치 순간에 언락(각인 버튼 클릭 전에 pointerdown이 먼저 발생함)
+document.addEventListener("pointerdown", __unlockEngraveAudioOnce, { once: true });
+
+function playEngraveSound(delayMs = 1000) {
+  // 게임에 공용 스케일 함수가 있으면 존중
+  const scale = (typeof getSfxScale === "function") ? getSfxScale() : 1;
+  if (!scale) return;
+
+  // 각인 버튼 "클릭" 흐름 안에서 호출되면 여기서도 언락 시도(안전장치)
+  __unlockEngraveAudioOnce();
+
+  const targetTime = performance.now() + delayMs;
+
+  const fire = () => {
+    const remain = targetTime - performance.now();
+    if (remain > 0) {
+      setTimeout(fire, Math.min(50, remain));
+      return;
     }
 
-    const a = __engraveAudio;
+    try {
+      __engraveAudio.pause();
+      __engraveAudio.currentTime = 0;
+      __engraveAudio.volume = Math.max(0, Math.min(1, 0.9 * scale));
 
-    // 2) ✅ 클릭(유저 제스처) 순간에 0볼륨으로 한번 재생해서 "언락"
-    if (!__engraveAudioUnlocked){
-      const prevVol = a.volume;
-      a.volume = 0;
+      const p = __engraveAudio.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    } catch (e) {}
+  };
 
-      const p = a.play();
-      if (p && typeof p.catch === "function") p.catch(()=>{});
-
-      // 아주 짧게 재생 후 정지/리셋
-      setTimeout(() => {
-        try { a.pause(); a.currentTime = 0; } catch(e) {}
-      }, 20);
-
-      a.volume = prevVol;
-      __engraveAudioUnlocked = true;
-    }
-
-    // 3) 1초 딜레이 후 실제 재생
-    if (__engraveSfxTimer) clearTimeout(__engraveSfxTimer);
-    __engraveSfxTimer = setTimeout(() => {
-      try{
-        a.pause();
-        a.currentTime = 0;
-
-        // ✅ 기존 효과음 볼륨 시스템 그대로 반영
-        a.volume = Math.max(0, Math.min(1, 0.8 * getSfxScale()));
-
-        const p2 = a.play();
-        if (p2 && typeof p2.catch === "function") p2.catch(()=>{});
-      }catch(e){}
-    }, ms);
-
-  }catch(e){}
+  setTimeout(fire, Math.min(50, delayMs));
 }
   
 /* 상태 */
