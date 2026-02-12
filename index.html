@@ -6000,7 +6000,46 @@ let duelUpdated = 0;          // 이번 주 결투 포인트가 마지막으로 
 let duelLastWeekUpdated = 0;  // 지난주 결투 포인트 최종 기록 시각  
 let weaponType = null; 
 // null: 아직 미배정(0강) / "sword": 검 / "spear": 창 / "axe": 도끼 / "bow": 활 / "staff": 스태프
-let engraveLines = ["-","-","-"]; // ✅ 각인 확정 3줄(저장/로드 대상)
+// ✅ 각인 프리셋(1~3)
+// - engravePresets[engravePresetIdx] 가 "현재 적용 프리셋"이고
+// - engraveLines 는 기존 코드 호환용으로 "현재 프리셋 3줄"을 가리킴
+let engravePresetIdx = 0; // 0=Preset1, 1=Preset2, 2=Preset3
+let engravePresets = [
+  ["-","-","-"],
+  ["-","-","-"],
+  ["-","-","-"]
+];
+
+// ✅ (호환) 기존 코드들이 engraveLines 를 많이 쓰니까 유지
+let engraveLines = engravePresets[engravePresetIdx];
+
+// ✅ 프리셋/라인 모양 보정 + engraveLines 동기화
+function ensureEngravePresetShape(){
+  if (!Array.isArray(engravePresets)) engravePresets = [];
+  for (let i = 0; i < 3; i++){
+    if (!Array.isArray(engravePresets[i])) engravePresets[i] = ["-","-","-"];
+    engravePresets[i] = [
+      engravePresets[i][0] || "-",
+      engravePresets[i][1] || "-",
+      engravePresets[i][2] || "-"
+    ];
+  }
+  if (![0,1,2].includes(Number(engravePresetIdx))) engravePresetIdx = 0;
+  engraveLines = engravePresets[engravePresetIdx];
+}
+
+// ✅ “현재 프리셋”의 각인 3줄을 세팅(= 기존 engraveLines = ... 대체용)
+function setActiveEngraveLines(lines){
+  ensureEngravePresetShape();
+  const arr = [
+    (lines && lines[0]) ? lines[0] : "-",
+    (lines && lines[1]) ? lines[1] : "-",
+    (lines && lines[2]) ? lines[2] : "-"
+  ];
+  engravePresets[engravePresetIdx] = arr;
+  engraveLines = engravePresets[engravePresetIdx];
+}
+
 let isUpgrading = false; 
 let isDueling   = false;   // ⚔️ 결투 VS 대기중일 때 true
 let titlesOwned = {};     // { titleId: true }
@@ -11899,10 +11938,21 @@ if (equippedTitle && equippedTitle.includes("${")) equippedTitle = "";
       sword = data.sword ?? 0;
       gold  = data.gold  ?? 100;
 
-      // ✅ 각인(3줄) 로드
-      engraveLines = (Array.isArray(data.engraveLines) && data.engraveLines.length)
-      ? [data.engraveLines[0] || "-", data.engraveLines[1] || "-", data.engraveLines[2] || "-"]
-      : ["-","-","-"];
+     // ✅ 각인(프리셋) 로드 + 구버전(engraveLines) → Preset1 이관
+engravePresetIdx = Number(data.engravePresetIdx ?? 0);
+
+if (Array.isArray(data.engravePresets) && data.engravePresets.length) {
+  engravePresets = data.engravePresets;
+} else {
+  // 구버전 저장값(engraveLines)만 있는 유저는 Preset1로 이관
+  const old = (Array.isArray(data.engraveLines) && data.engraveLines.length)
+    ? [data.engraveLines[0] || "-", data.engraveLines[1] || "-", data.engraveLines[2] || "-"]
+    : ["-","-","-"];
+  engravePresets = [old, ["-","-","-"], ["-","-","-"]];
+  engravePresetIdx = 0;
+}
+
+ensureEngravePresetShape();
 
       // 🗡 무기 타입 로드 (v3.8 이전 계정 호환용)
 if (data.weaponType !== undefined && data.weaponType !== null) {
@@ -12227,7 +12277,10 @@ function save() {
     hofProcessedAt: Number(hofProcessedAt || 0),
     lastSeenGlobal30EventId: Number(lastSeenGlobal30EventId || 0),
 aweUsedGlobal30EventId: Number(aweUsedGlobal30EventId || 0),
-     engraveLines: engraveLines
+     engravePresetIdx: Number(engravePresetIdx || 0),
+     engravePresets: engravePresets,
+     engraveLines: engraveLines // ✅ (구버전/외부표기 호환용) "현재 프리셋" 3줄
+
   };
 
   // ⭐ 강화 수치가 바뀌었을 때만 updated 갱신
@@ -18857,6 +18910,35 @@ if (invBtn) {
   if (e2) e2.textContent = engraveLines?.[1] ?? "-";
   if (e3) e3.textContent = engraveLines?.[2] ?? "-";
 
+      // ✅ Preset 탭 바인딩/하이라이트
+  const p1 = document.getElementById("engravePresetTab1");
+  const p2 = document.getElementById("engravePresetTab2");
+  const p3 = document.getElementById("engravePresetTab3");
+
+  const paintPresetTabs = () => {
+    const btns = [p1,p2,p3];
+    btns.forEach((b, i) => {
+      if (!b) return;
+      const on = (i === Number(engravePresetIdx || 0));
+      b.style.background = on ? "rgba(255, 213, 79, 0.18)" : "rgba(255,255,255,0.06)";
+      b.style.borderColor = on ? "rgba(255, 213, 79, 0.45)" : "rgba(255,255,255,0.18)";
+      b.style.color = on ? "#ffd54f" : "#eee";
+    });
+  };
+
+  const applyPreset = (idx) => {
+    engravePresetIdx = idx;
+    ensureEngravePresetShape();
+    save();            // ✅ 선택 프리셋 저장
+    openStatOverlay(); // ✅ 화면/스탯/각인표시 즉시 갱신
+  };
+
+  if (p1) p1.onclick = () => applyPreset(0);
+  if (p2) p2.onclick = () => applyPreset(1);
+  if (p3) p3.onclick = () => applyPreset(2);
+
+  paintPresetTabs();
+
     // ✅ 각인 효과 요약(능력치 표기용)
   const effEl = document.getElementById("engraveEffectList");
   if (effEl) {
@@ -19112,11 +19194,11 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    engraveLines = [
-      lastRolledLines[0] || "-",
-      lastRolledLines[1] || "-",
-      lastRolledLines[2] || "-"
-    ];
+    setActiveEngraveLines([
+  lastRolledLines[0] || "-",
+  lastRolledLines[1] || "-",
+  lastRolledLines[2] || "-"
+]);
     lastRolledLines = null;
 
     save();
@@ -19533,7 +19615,7 @@ if (typeof setEngraveMode === "function") setEngraveMode(engraveMode);
     playEngraveTextEffect(finalLines, () => {
       if (mode === "normal") {
         // ✅ 일반각인: 연출 끝나면 즉시 확정 반영
-        engraveLines = finalLines;
+        setActiveEngraveLines(finalLines);
         lastRolledLines = null;
 
         if (typeof save === "function") save();
@@ -19865,6 +19947,13 @@ document.addEventListener("click", function(e){
      ====================== -->
 <div style="margin-top:18px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.08);">
   <div style="font-size:14px; font-weight:900; margin-bottom:8px;">각인</div>
+
+    <!-- ✅ Preset 탭 -->
+  <div id="engravePresetTabs" style="display:flex; gap:6px; margin:6px 0 10px 0;">
+    <button id="engravePresetTab1" style="flex:1; padding:6px 0; border-radius:8px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.06); color:#eee; font-weight:900; cursor:pointer; font-size:12px;">Preset 1</button>
+    <button id="engravePresetTab2" style="flex:1; padding:6px 0; border-radius:8px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.06); color:#eee; font-weight:900; cursor:pointer; font-size:12px;">Preset 2</button>
+    <button id="engravePresetTab3" style="flex:1; padding:6px 0; border-radius:8px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.06); color:#eee; font-weight:900; cursor:pointer; font-size:12px;">Preset 3</button>
+  </div>
 
   <!-- 3줄 표시(현재는 자리만) -->
   <div id="engraveLine1" style="font-size:13px; color:#cfcfcf; margin-bottom:4px;">-</div>
