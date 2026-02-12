@@ -19617,6 +19617,8 @@ function playEngraveTextEffect(finalLines, onDone){
   setTimeout(() => {
     clearInterval(timer);
 
+    playEngraveSound();
+
     if (typeof setAfter === "function") setAfter(finalLines);
 
     els.forEach(el => {
@@ -19640,8 +19642,6 @@ function playEngraveTextEffect(finalLines, onDone){
 // ✅ 리롤 버튼(각인) 클릭 로직: “결과를 즉시 setAfter()” 하지 말고, 연출 끝에서 넣기
 if (rollBtn) {
   rollBtn.addEventListener("click", () => {
-
-     playEngraveSound();
     
     if (engraveAnimLock) return;
 
