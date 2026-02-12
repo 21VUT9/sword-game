@@ -19386,13 +19386,13 @@ if (rollBtn) {
    // ✅ 비용: 주문서 1개 소모 (일반/고급 각인 버튼 누르는 즉시)
 if (mode === "advanced") {
   if (Number(itemEngraveAdvanced || 0) < 1) {
-    pushSystemToast("고급각인의 주문서가 부족합니다.");
+    showNpcMessage("고급 각인의 주문서가 부족합니다.", null, true, "");
     return;
   }
   itemEngraveAdvanced = Number(itemEngraveAdvanced || 0) - 1;
 } else {
   if (Number(itemEngraveNormal || 0) < 1) {
-    pushSystemToast("일반각인의 주문서가 부족합니다.");
+    showNpcMessage("일반 각인의 주문서가 부족합니다.", null, true, "");
     return;
   }
   itemEngraveNormal = Number(itemEngraveNormal || 0) - 1;
