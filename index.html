@@ -6402,9 +6402,10 @@ function showScrollShopConfirmPopup(item) {
 
   // 가격 라벨
   const currencyLabel =
-    item.priceType === "starShard" ? "별조각" :
-    item.priceType === "honor" ? "명예메달" :
-    item.priceType === "downProtect" ? "파괴방지주문서" : "";
+  item.priceType === "gold" ? "골드" :
+  item.priceType === "starShard" ? "별조각" :
+  item.priceType === "honorMedal" ? "명예의 훈장" :
+  "";
 
   const maxBuy = getScrollShopMaxBuyable(item);
 
@@ -6417,7 +6418,7 @@ function showScrollShopConfirmPopup(item) {
       ${item.desc || ""}
     </div>
     <div style="margin-top:10px; font-size:13px; color:#ddd;">
-      가격: <b>${item.price}</b> ${currencyLabel}
+      가격: <b>${item.priceType === "gold" ? formatGoldFullKR(item.price) : item.price}</b> ${currencyLabel}
       <span style="color:#888;">(최대 ${maxBuy}개)</span>
     </div>
     <div style="margin-top:8px; font-size:13px; color:#aaa;">
@@ -6535,7 +6536,7 @@ function openScrollShopQtyStep(){
 
     <div style="text-align:center; font-size:13px; color:#ddd; line-height:1.6;">
       선택 수량: <b>${scrollShopPendingQty}</b>개<br>
-      총 가격: <b>${totalCost}</b> ${currencyLabel}
+      총 가격: <b>${item.priceType === "gold" ? formatGoldFullKR(totalCost) : totalCost}</b> ${currencyLabel}
     </div>
     `;
 
@@ -6732,7 +6733,7 @@ function renderScrollShopItems() {
         <!-- 오른쪽 가격 -->
         <div style="display:flex; align-items:center; gap:4px;">
           <img src="${priceIcon}" alt="" style="width:20px; height:20px;">
-          <span>x ${item.price}</span>
+          <span>x ${item.priceType === "gold" ? formatGoldFullKR(item.price) : item.price}</span>
         </div>
       </div>
     `;
@@ -15849,6 +15850,10 @@ function formatNumberFullKR(num) {
   }
 
   return parts.join(" ");
+}
+
+  function formatGoldFullKR(n){
+  return formatNumberFullKR(n).replace(/\s+/g, "") + "골드";
 }
 
 // ✅ 데미지용: 16억4215만5512 형태 (쉼표 없음 / 만, 억 단위)
