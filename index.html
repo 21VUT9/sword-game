@@ -10110,6 +10110,14 @@ function submitCouponCode() {
     case "honorMedal":
       itemHonorMedal = Number(itemHonorMedal || 0) + reward.count;
       break;
+    case "engraveNormalScroll":
+  itemEngraveNormal = Number(itemEngraveNormal || 0) + reward.count;
+  break;
+
+case "engraveAdvancedScroll":
+  itemEngraveAdvanced = Number(itemEngraveAdvanced || 0) + reward.count;
+  break;
+
     // 필요하면 타입 더 추가 가능
     default:
       break;
