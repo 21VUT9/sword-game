@@ -13290,29 +13290,41 @@ updateHonorHallButton();
 
 // 🧾 다른 유저 프로필 팝업 열기
 function openOtherUserProfilePopup(targetId) {
-  const overlay        = document.getElementById("otherProfileOverlay");
+  const overlay = document.getElementById("otherProfileOverlay");
   if (!overlay) return;
 
-  const nickEl         = document.getElementById("otherProfileNickname");
-  const weaponTitleEl  = document.getElementById("otherProfileWeaponTitle");
-  const weaponDescEl   = document.getElementById("otherProfileWeaponDesc");
-  const maxInfoEl      = document.getElementById("otherProfileMaxInfo");
-  const powerEl        = document.getElementById("otherProfilePower");
-  const goldEl         = document.getElementById("otherProfileGold");
-  const weaponValueEl  = document.getElementById("otherProfileWeaponValue");
-  const recordEl       = document.getElementById("otherProfileRecord");
-  const imgEl          = document.getElementById("otherWeaponImage");
+  const nickEl        = document.getElementById("otherProfileNickname");
+  const weaponTitleEl = document.getElementById("otherProfileWeaponTitle");
+  const weaponDescEl  = document.getElementById("otherProfileWeaponDesc");
+  const maxInfoEl     = document.getElementById("otherProfileMaxInfo");
+
+  // ✅ 전투력 → 공격력/주문력 라벨 + 값
+  const powerLabelEl  = document.getElementById("otherProfilePowerLabel"); // (새로 필요)
+  const powerEl       = document.getElementById("otherProfilePower");
+
+  const goldEl        = document.getElementById("otherProfileGold");
+  const imgEl         = document.getElementById("otherWeaponImage");
+
+  // ✅ 각인 3줄(새로 필요)
+  const engr1El       = document.getElementById("otherProfileEngrave1");
+  const engr2El       = document.getElementById("otherProfileEngrave2");
+  const engr3El       = document.getElementById("otherProfileEngrave3");
 
   // 기본 초기화
   if (nickEl)        nickEl.textContent        = targetId;
   if (weaponTitleEl) weaponTitleEl.textContent = "-";
   if (weaponDescEl)  weaponDescEl.textContent  = "-";
   if (maxInfoEl)     maxInfoEl.textContent     = "-";
+
+  if (powerLabelEl)  powerLabelEl.textContent  = "공격력";
   if (powerEl)       powerEl.textContent       = "0";
+
   if (goldEl)        goldEl.textContent        = "0";
-  if (weaponValueEl) weaponValueEl.textContent = "0";
-  if (recordEl)      recordEl.textContent      = "승 0 / 패 0";
   if (imgEl)         imgEl.src                 = "images/weapons/sword_real_temp.png";
+
+  if (engr1El) engr1El.textContent = "1) -";
+  if (engr2El) engr2El.textContent = "2) -";
+  if (engr3El) engr3El.textContent = "3) -";
 
   // DB에서 해당 유저 정보 읽기
   db.ref("users/" + targetId).once("value").then(snap => {
@@ -13324,15 +13336,19 @@ function openOtherUserProfilePopup(targetId) {
     const d = snap.val() || {};
     if (nickEl) nickEl.innerHTML = formatNicknameWithTitle(targetId, d.equippedTitle || "", d.reach30Count);
 
-    const swordLevel = Number(d.sword || 0);
+    const swordLevel      = Number(d.sword || 0);
     const weaponTypeOther = d.weaponType || "sword";
-    const maxSword   = Number(d.maxSwordLevel ?? swordLevel);
-    const destroyCnt = Number(d.destroyCount || 0);
-    const powerVal   = Number(d.power || 0);
-    const goldVal    = Number(d.gold || 0);
-    const duelW      = Number(d.duelWin || 0);
-    const duelL      = Number(d.duelLose || 0);
+    const maxSword        = Number(d.maxSwordLevel ?? swordLevel);
+    const destroyCnt      = Number(d.destroyCount || 0);
 
+    // ✅ 전투력(power) 대신 "공격력/주문력" 표시용 값
+    // - 네 DB에 mainPower 같은 값이 있으면 그걸 우선 사용
+    // - 없으면 기존 d.power를 그대로 표시(최소한 기존 기능은 유지)
+    const mainPowerVal = Number((d.mainPower != null) ? d.mainPower : (d.power || 0));
+
+    const goldVal       = Number(d.gold || 0);
+
+    // 무기 정보
     const wInfo = getWeaponInfo(swordLevel, weaponTypeOther);
 
     if (weaponTitleEl && wInfo) {
@@ -13346,19 +13362,24 @@ function openOtherUserProfilePopup(targetId) {
         `+${maxSword}강 ` +
         `<span style="font-size:12px; color:#bbbbbb;">(파괴 ${destroyCnt}회)</span>`;
     }
-    if (powerEl) {
-      powerEl.textContent = formatGold(powerVal);
-    }
-    if (goldEl) {
-      goldEl.textContent  = formatGold(goldVal);
-    }
-    if (weaponValueEl) {
-      const avgValue = getSellRewardAverage(swordLevel);
-      weaponValueEl.textContent = formatGold(avgValue);
-    }
-    if (recordEl) {
-      recordEl.textContent = `승 ${duelW} / 패 ${duelL}`;
-    }
+
+    // ✅ 공격력/주문력 라벨
+    const isStaff = (String(weaponTypeOther).toLowerCase() === "staff");
+    if (powerLabelEl) powerLabelEl.textContent = isStaff ? "주문력" : "공격력";
+
+    // ✅ 공격력/주문력 값 표시
+    if (powerEl) powerEl.textContent = formatGold(mainPowerVal);
+
+    // 골드 표시(유지)
+    if (goldEl) goldEl.textContent = formatGold(goldVal);
+
+    // ✅ 각인 3줄 표기 (없으면 "-")
+    // 각인 저장 키는 d.engraveLines (배열) 기준
+    const lines = Array.isArray(d.engraveLines) ? d.engraveLines : [];
+    if (engr1El) engr1El.textContent = lines[0] ? `1) ${lines[0]}` : "1) -";
+    if (engr2El) engr2El.textContent = lines[1] ? `2) ${lines[1]}` : "2) -";
+    if (engr3El) engr3El.textContent = lines[2] ? `3) ${lines[2]}` : "3) -";
+
     if (imgEl && wInfo && wInfo.img) {
       imgEl.src = wInfo.img;
     }
@@ -19663,24 +19684,22 @@ document.addEventListener("click", function(e){
         </div>
 
         <div class="profile-row">
-          <span class="profile-label">전투력</span>
-          <span class="profile-value" id="otherProfilePower">0</span>
-        </div>
-
-        <div class="profile-row">
           <span class="profile-label">골드</span>
           <span class="profile-value" id="otherProfileGold">0</span>
         </div>
+        
+<div class="profile-row">
+  <span id="otherProfilePowerLabel">공격력</span>
+  <span id="otherProfilePower">0</span>
+</div>
 
-        <div class="profile-row">
-          <span class="profile-label">무기가치</span>
-          <span class="profile-value" id="otherProfileWeaponValue">0</span>
-        </div>
+<div class="profile-row" style="flex-direction:column; align-items:flex-start; gap:6px;">
+  <span style="color:#bbb;">각인</span>
+  <div id="otherProfileEngrave1" style="width:100%; text-align:left; color:#eaeaea;">-</div>
+  <div id="otherProfileEngrave2" style="width:100%; text-align:left; color:#eaeaea;">-</div>
+  <div id="otherProfileEngrave3" style="width:100%; text-align:left; color:#eaeaea;">-</div>
+</div>
 
-        <div class="profile-row">
-          <span class="profile-label">전적</span>
-          <span class="profile-value" id="otherProfileRecord">승 0 / 패 0</span>
-        </div>
       </div>
     </div>
   </div>
