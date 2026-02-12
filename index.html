@@ -4211,7 +4211,7 @@ html, body {
 
     <div style="display:flex; gap:8px;">
     <button onclick="openBossBattleRewards()" style="padding:6px 10px; border-radius:10px;">보상</button>
-    <button onclick="openBossBattleStat()" style="padding:6px 10px; border-radius:10px;">능력치</button>
+    <button onclick="openBossBattleStat()" style="padding:6px 10px; border-radius:10px;">보스정보</button>
     <button onclick="closeBossBattle()" style="padding:6px 10px; border-radius:10px;">닫기</button>
   </div>
 </div>
@@ -15701,8 +15701,8 @@ function closeBossBattle(){
   // 버튼 탭 사운드(도크랑 동일)
   try { playUiDockTap(); } catch(e){}
 
-  // 1단계 능력치 오버레이 열기
-  openStatOverlay();
+  // ✅ 보스전 전용: 보스정보(보스 스탯 + 내 보정/최종 수치) 열기
+  openBossBattleHelp();
 }
   
 function openBossBattleHelp(){
@@ -15710,7 +15710,7 @@ function openBossBattleHelp(){
   const run = (bossRunsActiveCache || {})[bossId];
 
   if (!bossId || !run) {
-    showNpcMessage("확인할 보스전 정보가 없습니다.", LEON_IMG.focus, true, "능력치");
+    showNpcMessage("확인할 보스전 정보가 없습니다.", LEON_IMG.focus, true, "보스정보");
     return;
   }
 
