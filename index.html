@@ -3869,10 +3869,9 @@ html, body {
 
   <!-- ⭐ 중앙: 내 능력치 -->
   <div class="dock-slot">
-    <button id="statDockBtn" class="dock-btn locked" data-nosfx="1">
+    <button id="statDockBtn" class="dock-btn" data-nosfx="1">
     <img src="images/ui/icon_stat.png" alt="능력치">
-    <span class="dock-lock">🔒</span>
-    </button>
+        </button>
     <span class="map-icon-label one-line">능력치</span>
   </div>
 
@@ -18966,12 +18965,16 @@ if (invBtn) {
   }
 
   el.style.display = "block";
+
+  document.getElementById("statDockBtn")?.classList.add("active");
 }
+  
 
   function closeStatOverlay(){
   const el = document.getElementById("statOverlay");
   if (!el) return;
   el.style.display = "none";
+    document.getElementById("statDockBtn")?.classList.remove("active");
 }
 
 // ✅ 능력치 오버레이: 닫기/ESC/화면밖터치 (DOM 로딩 후 1회만 연결)
