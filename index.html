@@ -11939,10 +11939,30 @@ if (equippedTitle && equippedTitle.includes("${")) equippedTitle = "";
       gold  = data.gold  ?? 100;
 
      // ✅ 각인(프리셋) 로드 + 구버전(engraveLines) → Preset1 이관
+// ✅ 각인(프리셋) 로드 + 구버전(engraveLines) → Preset1 이관
 engravePresetIdx = Number(data.engravePresetIdx ?? 0);
 
-if (Array.isArray(data.engravePresets) && data.engravePresets.length) {
-  engravePresets = data.engravePresets;
+// Firebase RTDB는 배열이 객체처럼 내려올 수 있음({0:...,1:...,2:...})
+const norm3 = (v) => {
+  if (Array.isArray(v)) return v;
+  if (v && typeof v === "object") return [v[0] ?? v["0"], v[1] ?? v["1"], v[2] ?? v["2"]];
+  return null;
+};
+
+const normLines = (p) => {
+  const a = norm3(p);
+  if (a) return [a[0] || "-", a[1] || "-", a[2] || "-"];
+  return ["-","-","-"];
+};
+
+const rawPresets = norm3(data.engravePresets);
+
+if (rawPresets) {
+  // rawPresets 자체가 배열/객체 어떤 형태든 3칸으로 정규화
+  const p0 = rawPresets[0] ?? rawPresets["0"];
+  const p1 = rawPresets[1] ?? rawPresets["1"];
+  const p2 = rawPresets[2] ?? rawPresets["2"];
+  engravePresets = [normLines(p0), normLines(p1), normLines(p2)];
 } else {
   // 구버전 저장값(engraveLines)만 있는 유저는 Preset1로 이관
   const old = (Array.isArray(data.engraveLines) && data.engraveLines.length)
