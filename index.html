@@ -19354,13 +19354,13 @@ window.addEventListener("DOMContentLoaded", () => {
     // ✅ (중복 허용) 3줄 생성 - 카테고리/종류/티어 확률 설계 반영
   function rollEngraveLines(){
 
-    // 1) 카테고리 확률 (20 / 45 / 20 / 10 / 5)
+    // 1) 카테고리 확률 (20 / 35 / 30 / 14 / 1)
     const CATEGORIES = [
       { key:"ATK",   weight:20 }, // ① 공격
-      { key:"RES",   weight:45 }, // ③ 자원/행동
-      { key:"SPEC",  weight:20 }, // ④ 상태/특수
-      { key:"BOSS",  weight:10 }, // ⑤ 보스전 전용
-      { key:"META",  weight:5  }, // ⑥ 시스템/메타
+      { key:"RES",   weight:35 }, // ③ 자원/행동
+      { key:"SPEC",  weight:30 }, // ④ 상태/특수
+      { key:"BOSS",  weight:14 }, // ⑤ 보스전 전용
+      { key:"META",  weight:1  }, // ⑥ 시스템/메타
     ];
 
     // 2) 카테고리별 "종류" 가중치
