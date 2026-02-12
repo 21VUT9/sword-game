@@ -6293,7 +6293,23 @@ const scrollShopItems = [
     price: 30,
     img: "images/items/scroll_hunt_reset.png",
     desc: "구매 즉시 오늘의 사냥횟수가 20/20으로 초기화됩니다."
-  }
+  },
+    {
+    id: "engraveNormalScroll",
+    name: "일반각인의 주문서",
+    priceType: "gold",
+    price: 30000000000,
+    img: "images/items/engrave_normal.png",
+    desc: "각인을 새로 새길 때 소모되는 주문서입니다. (일반각인 전용)"
+  },
+  {
+    id: "engraveAdvancedScroll",
+    name: "고급각인의 주문서",
+    priceType: "gold",
+    price: 120000000000,
+    img: "images/items/engrave_advanced.png",
+    desc: "각인을 새로 새길 때 소모되는 주문서입니다. (고급각인 전용)"
+  },
 ];
 
 // 📦 쿠폰 코드 보상 목록 (원하는 대로 코드/보상 수정)
@@ -6782,6 +6798,9 @@ function checkScrollShopCurrency(item) {
   if (item.priceType === "downProtect") {
     return itemDownProtect >= item.price;
   }
+  if (item.priceType === "gold") {
+    return Number(gold || 0) >= item.price;
+  }
   return false;
 }
 
@@ -6789,6 +6808,7 @@ function checkScrollShopCurrency(item) {
   if (item.priceType === "starShard") return Number(starShard || 0);
   if (item.priceType === "honor") return Number(itemHonorMedal || 0);
   if (item.priceType === "downProtect") return Number(itemDownProtect || 0);
+  if (item.priceType === "gold") return Number(gold || 0);
   return 0;
 }
 
@@ -6802,6 +6822,8 @@ function deductScrollShopCurrency(item, totalCost){
     itemHonorMedal = Math.max(0, Number(itemHonorMedal || 0) - totalCost);
   } else if (item.priceType === "downProtect") {
     itemDownProtect = Math.max(0, Number(itemDownProtect || 0) - totalCost);
+  } else if (item.priceType === "gold") {
+    gold = Math.max(0, Number(gold || 0) - totalCost);
   }
 }
 
@@ -7127,6 +7149,8 @@ function grantScrollShopItem(item, qty) {
   else if (item.id === "protect_trade_down10") {
     itemProtect += qty;
   }
+  if (item.id === "engraveNormalScroll")   itemEngraveNormal   += qty;
+  if (item.id === "engraveAdvancedScroll") itemEngraveAdvanced += qty;
 
   if (item.id === "super")      itemSuper += qty;
   if (item.id === "rateUp5")    itemRateUp5 += qty;
@@ -10323,19 +10347,25 @@ function getUpgradeChance(level) {
 
   return chance;
 }
-// 🎰 출석 가챠 보상(가중치 % 합계 = 100)
 const ATTENDANCE_GACHA_POOL = [
-  { type: "itemProtect",     name: "파괴방지 주문서",        count: 1,  weight: 5,  img: "images/items/scroll_protect.png" },
-  { type: "itemSuper",       name: "슈퍼강화 주문서",        count: 1,  weight: 3,  img: "images/items/scroll_super.png" },
-  { type: "itemDownProtect", name: "강등방지 주문서",        count: 1,  weight: 15, img: "images/items/scroll_down_protect.png" },
-  { type: "honorMedal",      name: "명예의 훈장",            count: 30, weight: 15, img: "images/items/honor_medal.png" },
+  { type: "itemProtect",     name: "파괴방지 주문서",        count: 1,  weight: 4,  img: "images/items/scroll_protect.png" }, // 5→4
+  { type: "itemSuper",       name: "슈퍼강화 주문서",        count: 1,  weight: 2,  img: "images/items/scroll_super.png" },   // 3→2
+
+  // ✅ 추가(너가 지정한 확률)
+  { type: "engraveAdvancedScroll", name: "고급각인의 주문서", count: 1, weight: 3, img: "images/items/engrave_advanced.png" },
+  { type: "engraveNormalScroll",   name: "일반각인의 주문서", count: 1, weight: 5, img: "images/items/engrave_normal.png" },
+
+  // (여기 아래 기존 항목들은 그대로)
+  { type: "itemDownProtect", name: "강등방지 주문서",        count: 1,  weight: 13, img: "images/items/scroll_down_protect.png" },
+  { type: "honorMedal",      name: "명예의 훈장",            count: 30, weight: 13, img: "images/items/honor_medal.png" },
   { type: "itemRateUp5",     name: "강화확률 +5% 주문서",    count: 1,  weight: 7,  img: "images/items/scroll_rateup_5.png" },
   { type: "starShard",       name: "빛나지 못한 별의 조각",  count: 5,  weight: 15, img: "images/items/star_shard.png" },
   { type: "itemScroll15",    name: "15강 강화 주문서",       count: 1,  weight: 10, img: "images/items/scroll_15.png" },
   { type: "itemScroll21",    name: "21강 강화 주문서",       count: 1,  weight: 5,  img: "images/items/scroll_21.png" },
   { type: "itemDownProtect", name: "강등방지 주문서",        count: 5,  weight: 5,  img: "images/items/scroll_down_protect.png" },
-  { type: "gold",            name: "5억 골드",               count: 500000000, weight: 20, img: "images/items/gold.png" }
+  { type: "gold",            name: "5억 골드",               count: 500000000, weight: 18, img: "images/items/gold.png" } // 20→14
 ];
+
 
 // 🎲 가중치 랜덤 1개 뽑기
 function pickAttendanceGachaReward() {
@@ -10381,6 +10411,15 @@ function grantAttendanceGachaReward(reward) {
     case "gold":
       gold = Number(gold || 0) + Number(reward.count || 0);
       break;
+      
+    case "engraveNormalScroll":
+  itemEngraveNormal = Number(itemEngraveNormal || 0) + Number(reward.count || 1);
+  break;
+
+case "engraveAdvancedScroll":
+  itemEngraveAdvanced = Number(itemEngraveAdvanced || 0) + Number(reward.count || 1);
+  break;
+
     default:
       break;
   }
@@ -17400,7 +17439,9 @@ function getBossRewardByPct(bossId, pct, isLeader){
     itemScroll21: 0,
     itemScroll15: 0,
     itemEssence: 0,    // 🟣 마력의 정수
-    itemSuper: 0       // 🟡 슈퍼강화주문서(대장 보너스 포함용)
+    itemSuper: 0,       // 🟡 슈퍼강화주문서(대장 보너스 포함용)
+    itemEngraveNormal: 0,
+    itemEngraveAdvanced: 0
   };
 
   // =========================
@@ -17430,6 +17471,17 @@ function getBossRewardByPct(bossId, pct, isLeader){
       reward.itemEssence += 1;
     }
 
+    // ✅ 추가: 실바나 각인 주문서 보상
+if (pct >= 30) {
+  reward.itemEngraveAdvanced += 3;
+} else if (pct >= 25) {
+  reward.itemEngraveAdvanced += 1;
+} else if (pct >= 20) {
+  reward.itemEngraveNormal += 3;
+} else if (pct >= 10) {
+  reward.itemEngraveNormal += 1;
+}
+
   // =========================
   // 2) 서리여왕 아르셀리아(신규 테이블)
   // =========================
@@ -17455,6 +17507,18 @@ function getBossRewardByPct(bossId, pct, isLeader){
       reward.itemDownProtect += 2;
       reward.itemEssence += 5;
     }
+    
+    // ✅ 추가: 서리여왕 각인 주문서 보상
+if (pct >= 30) {
+  reward.itemEngraveAdvanced += 4;
+} else if (pct >= 25) {
+  reward.itemEngraveAdvanced += 1;
+  reward.itemEngraveNormal += 3;
+} else if (pct >= 20) {
+  reward.itemEngraveNormal += 5;
+} else if (pct >= 10) {
+  reward.itemEngraveNormal += 3;
+}
 
   } else {
     // ✅ 혹시 모를 기본값(정의되지 않은 보스)
@@ -17545,6 +17609,8 @@ function claimBossReward(){
     itemScroll15 = Number(itemScroll15 || 0) + (rw.itemScroll15 || 0);
     itemEssence = Number(itemEssence || 0) + (rw.itemEssence || 0);
     itemSuper = Number(itemSuper || 0) + (rw.itemSuper || 0);
+    itemEngraveNormal = Number(itemEngraveNormal || 0) + (rw.itemEngraveNormal || 0);
+    itemEngraveAdvanced = Number(itemEngraveAdvanced || 0) + (rw.itemEngraveAdvanced || 0);
     save(); // ✅ 보상(아이템) 지급 저장 확정
 
     // ✅ 보스 토벌 1회 성공 칭호 지급 (1회만)
@@ -17566,6 +17632,8 @@ function claimBossReward(){
     if (rw.itemScroll15) lines.push(`15강 주문서 ${rw.itemScroll15}개`);
     if (rw.itemEssence) lines.push(`마력의 정수 ${rw.itemEssence}개`);
     if (rw.itemSuper) lines.push(`대장 보너스 ${rw.itemSuper}개`);
+    if (rw.itemEngraveNormal)   lines.push(`일반각인의 주문서 ${rw.itemEngraveNormal}개`);
+    if (rw.itemEngraveAdvanced) lines.push(`고급각인의 주문서 ${rw.itemEngraveAdvanced}개`);
 
     showNpcMessage(
       `보상 수령 완료!<br><span style="color:#ffd54f;">${lines.join(", ") || "없음"}</span>`,
