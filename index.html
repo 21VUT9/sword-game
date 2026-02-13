@@ -11248,10 +11248,83 @@ if (useRate5) {
             "images/npc/blacksmith_fail.png"
           );
 } else if (sword <= 20) {
-  // 11~20구간 : 절반은 유지, 절반은 강등
-  if (Math.random() < 0.5) {
+  // ✅ 11~20구간 : 레벨별 실패 결과(유지/강등/파괴) 적용
+  // 현재 여기까지 왔다는 건 "이미 실패"한 상태라서,
+  // 아래의 keep/down/destroy는 failRemain(=100-chance) 안에서의 비율로 변환해서 사용한다.
+
+  const failRemain = 100 - chance;
+
+  // (절대값 %) : 네가 적은 표 그대로
+  let absKeep = 0;
+  let absDown = 0;
+  let absDestroy = 0;
+
+  if (before === 11) { absKeep = 20; absDown = 19; absDestroy = 0; }
+  else if (before === 12) { absKeep = 22; absDown = 21; absDestroy = 0; }
+  else if (before === 13) { absKeep = 24; absDown = 23; absDestroy = 0; }
+  else if (before === 14) { absKeep = 26; absDown = 25; absDestroy = 0; }
+  // 15는 안전구간(isSafeLevel)에서 이미 처리되므로 여기로 오지 않음
+  else if (before === 16) { absKeep = 30; absDown = 23; absDestroy = 6; }
+  else if (before === 17) { absKeep = 32; absDown = 23; absDestroy = 8; }
+  else if (before === 18) { absKeep = 34; absDown = 23; absDestroy = 10; }
+  else if (before === 19) { absKeep = 36; absDown = 23; absDestroy = 12; }
+  else {
+    // ✅ 11~20 중에서 표에 없는 레벨(예: 20은 안전으로 이미 처리되지만 혹시 대비)
+    // 기존 동작 유지(절반 유지/절반 강등)
+    absKeep = Math.floor(failRemain * 0.5);
+    absDown = failRemain - absKeep;
+    absDestroy = 0;
+  }
+
+  // failRemain 안에서의 비율로 변환
+  const pDestroy = (failRemain > 0) ? (absDestroy / failRemain) : 0;
+  const pKeep    = (failRemain > 0) ? (absKeep    / failRemain) : 0;
+  // down은 나머지로 처리
+
+  const r = Math.random();
+
+  // ✅ 파괴 (16~19에서만)
+  if (pDestroy > 0 && r < pDestroy) {
+    const targetLevel = before + 1; // 도전하던 강화 단계
+
+    // ⭐ 22강 미만 파괴는 조각 지급 없음(기존 파괴 블록 정책과 동일)
+    sword = 0;
     downStreak = 0;
-    // 실패 (유지)
+    weaponType = null;
+
+    gamblerRunActive = false;
+    gamblerRunNoScroll = true;
+
+    rollPowerForCurrentSword();
+
+    destroyCount++;
+    checkAndGrantTitles();
+
+    // ✅ 운수좋은날(기존 파괴 로직과 동일 정책: targetLevel < 20)
+    if (targetLevel < 20) {
+      if (grantTitleOnceNoSave("luckyday")) save();
+    }
+
+    const logMsg =
+      `${userId}이 ${coloredLevel(targetLevel)} 도전에 실패하여 ` +
+      `<span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`;
+    writeLog(logMsg, true);
+
+    showNpcMessage(
+      `
+      <div style="font-size:18px; font-weight:bold; color:#FF4444;">
+        장비가 산산조각 나 버렸군...
+      </div>
+      <div style="margin-top:6px;">
+        ${coloredLevel(targetLevel)} 도전은 너무 거칠었네.
+      </div>
+      `,
+      "images/npc/blacksmith_fail.png"
+    );
+
+  // ✅ 유지
+  } else if (r < pDestroy + pKeep) {
+    downStreak = 0;
     showNpcMessage(
       `
       <div style="font-size:18px; font-weight:bold; color:#FF5555;">
@@ -11263,8 +11336,9 @@ if (useRate5) {
       `,
       "images/npc/blacksmith_fail.png"
     );
+
+  // ✅ 강등(또는 강등방지)
   } else {
-    // 강등 or 강등방지 발동
     if (useDownProt) {
       downStreak = 0;
       showNpcMessage(
@@ -11280,13 +11354,14 @@ if (useRate5) {
       );
     } else {
       sword--;
-      
-            downStreak = Number(downStreak || 0) + 1;
+
+      downStreak = Number(downStreak || 0) + 1;
       if (downStreak >= 4) {
         if (grantTitleOnceNoSave("slide4")) save();
       }
 
       rollPowerForCurrentSword();
+
       showNpcMessage(
         `
         <div style="font-size:18px; font-weight:bold; color:#FFA500;">
@@ -11299,7 +11374,6 @@ if (useRate5) {
         "images/npc/blacksmith_fail.png"
       );
     }
-  }
   } else {
     // 파괴 (강등방지는 파괴엔 효과 없음)
     const targetLevel = before + 1; // 도전하던 강화 단계
