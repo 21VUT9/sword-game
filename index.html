@@ -8587,16 +8587,18 @@ if (npcImg) npcImg.src = "images/npc/linea_idle.png";
 const sortBtn = document.getElementById("titleSortBtn");
 if (sortBtn) {
   sortBtn.onclick = () => {
-    titleSortMode = (titleSortMode === "default") ? "recent" : "default";
-    sortBtn.textContent = (titleSortMode === "recent") ? "기본정렬" : "최근획득순";
-    renderTitleGrid();
-  };
+  playUiClick();
+  titleSortMode = (titleSortMode === "default") ? "recent" : "default";
+  sortBtn.textContent = (titleSortMode === "recent") ? "기본정렬" : "최근획득순";
+  renderTitleGrid();
+};
 }
   
   renderTitleGrid();
 }
 
 function closeTitleOverlay(){
+  playUiClick();
   const ov = document.getElementById("titleOverlay");
   if(ov) ov.style.display = "none";
   hideActionPopup();
@@ -8659,7 +8661,7 @@ function showActionPopupAt(x, y, html){
   // ✅ actionPopup에서 쓰는 버튼 HTML 생성 (없으면 획득 칭호 클릭 시 팝업이 안뜸)
 function popupBtn(label, onClickJs){
   return `
-    <button class="actionBtn" onclick="${onClickJs}">
+    <button class="actionBtn" onclick="playUiClick(); ${onClickJs}">
       ${label}
     </button>
   `;
