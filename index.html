@@ -7623,6 +7623,11 @@ const BGM_FULGURANT_FORGE = new Audio("sounds/bgm_fugrant_forge.mp3");
 BGM_FULGURANT_FORGE.loop = true;
 BGM_FULGURANT_FORGE.volume = Math.min(1, 0.5 * 1.3); // 기본 볼륨 (원하면 0.25~0.50 조절)
 
+  // ✅ 평화로운 버섯마을 BGM
+const BGM_MUSHROOM_VILLAGE = new Audio("sounds/bgm_mushroom_village.mp3");
+BGM_MUSHROOM_VILLAGE.loop = true;
+BGM_MUSHROOM_VILLAGE.volume = 0.5; // 기본 볼륨(최종은 applyBgmVolumeNow()에서 스케일 반영됨)
+
   // ============================
 // 🗺 MAP Open SFX
 // ============================
@@ -7695,14 +7700,23 @@ function playUiTap(){
   }catch(e){}
 }
 
-
 function updateBgmByField(){
+  // ✅ 1번 필드 = 평화로운 버섯마을 (기본 필드)
+  if (Number(currentField) === 1) {
+    applyBgmVolumeNow();
+    playBgm(BGM_MUSHROOM_VILLAGE);
+    return;
+  }
+
+  // ✅ 퍼그란트 대장간
   if (typeof isInFulgurantForge === "function" && isInFulgurantForge()){
-  applyBgmVolumeNow();     // ✅ 추가
-  playBgm(BGM_FULGURANT_FORGE);
-} else {
+    applyBgmVolumeNow();
+    playBgm(BGM_FULGURANT_FORGE);
+    return;
+  }
+
+  // ✅ 그 외 필드: BGM 없음(원하면 추후 확장)
   stopBgm();
-}
 }
 
   // ✅ 모바일 자동재생 차단 대응: 첫 사용자 입력에서 BGM 재시도
