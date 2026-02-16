@@ -8491,28 +8491,28 @@ if (warGodWin) {
     if(weaponType === "dagger") changed = grantTitleOnceNoSave("end_dagger") || changed;
   }
 
-    // 🏹 활 전용 칭호
-  if (weaponType === "bow" && maxSwordLevel >= 21) {
+      // 🏹 활 전용 칭호
+  const curLv = Number(sword || 0);
+
+  if (weaponType === "bow" && curLv >= 21) {
     if (grantTitleOnceNoSave("bow21")) changed = true;
   }
-
-  if (weaponType === "bow" && maxSwordLevel >= 30) {
+  if (weaponType === "bow" && curLv >= 30) {
     if (grantTitleOnceNoSave("bow30")) changed = true;
   }
 
-    // 🔮 스태프 전용 칭호
-  if (weaponType === "staff" && maxSwordLevel >= 21) {
+  // 🔮 스태프 전용 칭호
+  if (weaponType === "staff" && curLv >= 21) {
     if (grantTitleOnceNoSave("staff21")) changed = true;
   }
-
-  if (weaponType === "staff" && maxSwordLevel >= 30) {
+  if (weaponType === "staff" && curLv >= 30) {
     if (grantTitleOnceNoSave("staff30")) changed = true;
   }
 
   // 🗡 단검 전용 칭호
-if (weaponType === "dagger" && maxSwordLevel >= 21) {
-  if (grantTitleOnceNoSave("assassin")) changed = true;
-}
+  if (weaponType === "dagger" && curLv >= 21) {
+    if (grantTitleOnceNoSave("assassin")) changed = true;
+  }
  
   return changed;
 }
