@@ -8574,6 +8574,7 @@ if (warGodWin) {
 }
   
 function openTitleOverlay(){
+   playUiClickCommon();
   const npcImg = document.getElementById("titleNpcImg");
 if (npcImg) npcImg.src = "images/npc/linea_idle.png";
 
@@ -8587,18 +8588,18 @@ if (npcImg) npcImg.src = "images/npc/linea_idle.png";
 const sortBtn = document.getElementById("titleSortBtn");
 if (sortBtn) {
   sortBtn.onclick = () => {
-  playUiClick();
-  titleSortMode = (titleSortMode === "default") ? "recent" : "default";
-  sortBtn.textContent = (titleSortMode === "recent") ? "기본정렬" : "최근획득순";
-  renderTitleGrid();
-};
+    playUiClickCommon();
+    titleSortMode = (titleSortMode === "default") ? "recent" : "default";
+    sortBtn.textContent = (titleSortMode === "recent") ? "기본정렬" : "최근획득순";
+    renderTitleGrid();
+  };
 }
   
   renderTitleGrid();
 }
 
 function closeTitleOverlay(){
-  playUiClick();
+  playUiClickCommon();
   const ov = document.getElementById("titleOverlay");
   if(ov) ov.style.display = "none";
   hideActionPopup();
@@ -8661,7 +8662,7 @@ function showActionPopupAt(x, y, html){
   // ✅ actionPopup에서 쓰는 버튼 HTML 생성 (없으면 획득 칭호 클릭 시 팝업이 안뜸)
 function popupBtn(label, onClickJs){
   return `
-    <button class="actionBtn" onclick="playUiClick(); ${onClickJs}">
+    <button class="actionBtn" onclick="playUiClickCommon(); ${onClickJs}">
       ${label}
     </button>
   `;
@@ -8730,6 +8731,7 @@ grid.innerHTML = defs.map(def => {
   // 클릭 바인딩
   grid.querySelectorAll(".titleCell").forEach(el => {
     el.addEventListener("click", (e) => {
+      playUiClickCommon();
   const id = el.getAttribute("data-id");
   onTitleClick(id, e);
 });
