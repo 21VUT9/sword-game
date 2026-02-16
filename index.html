@@ -5755,6 +5755,48 @@ const WEAPON_INFO_DAGGER = {
   30: { name: "어둠의 계율 「녹스(Nox)」", desc: "태고의 어둠.\n이 이름은 곧 어둠의 법칙이다.", img: "images/weapons/dagger_30.png" }
 };
 
+  // 🥊 건틀릿 강화 단계별 이름/설명/이미지
+const WEAPON_INFO_GAUNTLET = {
+  0:  { name:"제련되지 않은 금속괴", desc:"아직 아무것도 되지 못했지만, 세상 어디에도 없는 가능성을 조용히 품고 있다.", img:"images/weapons/sword_00.png" },
+
+  1:  { name:"낡은 가죽 마법설계도", desc:"오래된 가죽으로 만든 마법설계도.", img:"images/weapons/gauntlet_01.png" },
+  2:  { name:"철판 건틀릿", desc:"손등에 철판이 덧대어져 타격의 무게가 달라진다.", img:"images/weapons/gauntlet_02.png" },
+  3:  { name:"보강형 건틀릿", desc:"충격을 견디기 위해 내부가 보강되었다.", img:"images/weapons/gauntlet_03.png" },
+  4:  { name:"격투용 건틀릿", desc:"실전 전투를 위해 제작된 근접 격투 장비.", img:"images/weapons/gauntlet_04.png" },
+  5:  { name:"중갑 건틀릿", desc:"묵직한 철갑이 손 전체를 감싼다.", img:"images/weapons/gauntlet_05.png" },
+  6:  { name:"충격 흡수 건틀릿", desc:"반동을 줄여 연속 타격이 가능해진다.", img:"images/weapons/gauntlet_06.png" },
+  7:  { name:"강화 철갑 건틀릿", desc:"더 높은 강도의 합금으로 재구성되었다.", img:"images/weapons/gauntlet_07.png" },
+  8:  { name:"압착 건틀릿", desc:"힘을 한 점으로 집중시킨다.", img:"images/weapons/gauntlet_08.png" },
+  9:  { name:"파쇄 건틀릿", desc:"타격 지점이 무너지기 시작한다.", img:"images/weapons/gauntlet_09.png" },
+  10: { name:"베테랑 파이터 건틀릿", desc:"숙련된 격투가들이 사용하는 장비.", img:"images/weapons/gauntlet_10.png" },
+
+  11: { name:"매스 그립", desc:"쥐는 순간, 타격의 무게가 달라진다.", img:"images/weapons/gauntlet_11.png" },
+  12: { name:"덴스 코어", desc:"밀도가 높아질수록 파괴력은 증폭된다.", img:"images/weapons/gauntlet_12.png" },
+  13: { name:"그라비티 너클", desc:"주먹이 스스로 끌어당겨진다.", img:"images/weapons/gauntlet_13.png" },
+  14: { name:"폴라 인듀서", desc:"보이지 않는 힘이 주변을 압박한다.", img:"images/weapons/gauntlet_14.png" },
+  15: { name:"벡터 로드", desc:"타격의 방향성이 조정되기 시작한다.", img:"images/weapons/gauntlet_15.png" },
+  16: { name:"컨버전 임팩트", desc:"움직임이 곧 힘으로 전환된다.", img:"images/weapons/gauntlet_16.png" },
+  17: { name:"이너 필드", desc:"보이지 않는 장이 손끝에 형성된다.", img:"images/weapons/gauntlet_17.png" },
+
+  18: { name:"데몬 앵커", desc:"지옥의 질량이 손에 고정된다.", img:"images/weapons/gauntlet_18.png" },
+  19: { name:"어비스 컴프레서", desc:"심연의 무게가 압축된다.", img:"images/weapons/gauntlet_19.png" },
+  20: { name:"임팩트 오브 헬", desc:"타격의 여파가 바닥을 짓누른다.", img:"images/weapons/gauntlet_20.png" },
+
+  21: { name:"다운폴 오브 헤븐", desc:"하늘의 존재조차 끌어내린다.", img:"images/weapons/gauntlet_21.png" },
+  22: { name:"생츄어리 크러쉬", desc:"성역의 구조가 무너지기 시작한다.", img:"images/weapons/gauntlet_22.png" },
+  23: { name:"세라픽 드롭", desc:"신성한 것들이 추락한다.", img:"images/weapons/gauntlet_23.png" },
+
+  24: { name:"디바인 콜랩스", desc:"신격이 붕괴하는 순간.", img:"images/weapons/gauntlet_24.png" },
+  25: { name:"갓폴", desc:"신이 낙하한다.", img:"images/weapons/gauntlet_25.png" },
+
+  26: { name:"이벤트 호라이즌", desc:"접촉한 것이 빠져나오지 못한다.", img:"images/weapons/gauntlet_26.png" },
+  27: { name:"싱귤러 스트라이크", desc:"타격이 중심을 만들어낸다.", img:"images/weapons/gauntlet_27.png" },
+  28: { name:"그래비톤 펄스", desc:"중력이 파동처럼 퍼진다.", img:"images/weapons/gauntlet_28.png" },
+  29: { name:"로 오브 매스", desc:"무게가 곧 규칙이 된다.", img:"images/weapons/gauntlet_29.png" },
+
+  30: { name:"중력의 계율 「그라비티스」", desc:"이 이름은 곧 — 끌어당김이라는 법칙이다.", img:"images/weapons/gauntlet_30.png" }
+};
+
 // 현재 강화 수치 & 타입 기준으로 안전하게 정보 가져오기
 function getWeaponInfo(level, type) {
   const lv = Math.max(0, Math.min(30, level | 0));
@@ -5782,6 +5824,10 @@ function getWeaponInfo(level, type) {
   return WEAPON_INFO_DAGGER[lv] || WEAPON_INFO_DAGGER[0];
 }
 
+    if (t === "gauntlet") {
+    return WEAPON_INFO_GAUNTLET[lv] || WEAPON_INFO_GAUNTLET[0];
+  }
+
   // 기본: 검
   return WEAPON_INFO[lv] || WEAPON_INFO[0];
 }
@@ -5790,7 +5836,7 @@ function getWeaponInfo(level, type) {
 function ensureWeaponTypeAfterUpgrade(beforeLevel, afterLevel) {
   if (beforeLevel <= 0 && afterLevel >= 1) {
     if (!weaponType) {
-      const types = ["sword", "spear", "axe", "bow", "staff", "dagger"];
+      cconst types = ["sword", "spear", "axe", "bow", "staff", "dagger", "gauntlet"];
       const idx = Math.floor(Math.random() * types.length);
       weaponType = types[idx];
     }
@@ -8203,6 +8249,7 @@ const TITLE_DEFS = [
   { id:"warrior",  name:"전사",   how:"창으로 21강 달성" },
   { id:"viking",   name:"바이킹", how:"도끼로 21강 달성" },
   { id:"assassin", name:"어쌔신", how:"단검으로 21강 달성" },
+  { id:"fighter", name:"파이터", how:"건틀릿 21강 달성" },
 
   { id:"destroy100", name:"파괴왕", how:"무기 파괴 횟수 100회" },
   { id:"destroy500", name:"파괴신", how:"무기 파괴 횟수 500회" },
@@ -8215,6 +8262,7 @@ const TITLE_DEFS = [
   { id:"end_axe",   name:"도끼의 종착지",how:"도끼로 30강 달성", color:"gold" },
   { id:"end_spear", name:"창의 종착지",  how:"창으로 30강 달성",  color:"gold" },
   { id:"end_dagger", name:"단검의 종착지", how:"단검으로 30강 달성", color:"gold" },
+  { id:"end_gauntlet", name:"건틀릿 종착지", how:"건틀릿 30강 달성", color:"gold" },
 
   // ✅ 역병쥐 (반짝 초록) + 방법 숨김
   { id:"plague", name:"역병쥐", how:"???", color:"plague" },
@@ -8489,6 +8537,8 @@ if (warGodWin) {
     if(weaponType === "axe")   changed = grantTitleOnceNoSave("end_axe")   || changed;
     if(weaponType === "spear") changed = grantTitleOnceNoSave("end_spear") || changed;
     if(weaponType === "dagger") changed = grantTitleOnceNoSave("end_dagger") || changed;
+    if(weaponType === "gauntlet") changed = grantTitleOnceNoSave("end_gauntlet") || changed;
+
   }
 
       // 🏹 활 전용 칭호
@@ -8512,6 +8562,14 @@ if (warGodWin) {
   // 🗡 단검 전용 칭호
   if (weaponType === "dagger" && curLv >= 21) {
     if (grantTitleOnceNoSave("assassin")) changed = true;
+  }
+
+    // 🥊 건틀릿 전용 칭호
+  if (weaponType === "gauntlet" && curLv >= 21) {
+    if (grantTitleOnceNoSave("fighter")) changed = true;
+  }
+  if (weaponType === "gauntlet" && curLv >= 30) {
+    if (grantTitleOnceNoSave("end_gauntlet")) changed = true;
   }
  
   return changed;
@@ -16264,6 +16322,7 @@ const totalDamage = Math.max(1, hpDealt + shieldDealt);
       if (t === "bow") return "활";
       if (t === "staff") return "스태프";
       if (t === "dagger") return "단검";
+      if (t === "gauntlet") return "건틀릿";
       return "검";
     };
 
@@ -16633,6 +16692,7 @@ function getBossWeaponProfile(){
   let dmgLabel = "공격력"; // 표시용(스태프는 주문력)
 
   if (t === "staff") { coef = 1.0; dmgLabel = "주문력"; }
+  else if (t === "gauntlet") { coef = 0.95; ignoreDef = 0.10; dmgLabel = "주문력"; }
   else if (t === "spear") { coef = 0.9; ignoreDef = 0.10; }
   else if (t === "axe") { coef = 0.9; critRate = 0.10; }
   else if (t === "bow") { coef = 0.9; ignoreEvade = 0.10; }
@@ -16650,6 +16710,7 @@ function weaponTypeKor(t){
   if (t === "bow") return "활";
   if (t === "staff") return "스태프";
   if (t === "dagger") return "단검";
+  if (t === "gauntlet") return "건틀릿";
   return t;
 }
 
@@ -16667,7 +16728,8 @@ function getPassiveLevels(){
     axe:    getLv("axe"),
     bow:    getLv("bow"),
     staff:  getLv("staff"),
-    dagger: getLv("dagger")
+    dagger: getLv("dagger"),
+    gauntlet: getLv("gauntlet")
   };
 }
 
@@ -16738,7 +16800,7 @@ function getPlayerFinalCombatStats(){
   const mainPower = Math.floor(rawPower * wp.coef * mainMul * (1 + engrMainPct));
 
   // 2) 서브 스탯(0%여도 표기 대상)
-  const penetration   = Number(wp.ignoreDef || 0)   + (lv.spear  * 0.10) + engrPen;
+  const penetration   = Number(wp.ignoreDef || 0) + (lv.spear * 0.10) + (lv.gauntlet * 0.10) + engrPen;
   const ignoreEvade   = Number(wp.ignoreEvade || 0) + (lv.bow    * 0.10) + engrIgnoreEv;
   const critRate      = Number(wp.critRate || 0)    + (lv.axe    * 0.10) + engrCritRate;
   const critDmgBonus  = Number(wp.critDmgBonus || 0)+ (lv.dagger * 0.10) + engrCritDmg;
@@ -16816,7 +16878,7 @@ function calcBossAttackResult(bossId){
   const effPhysDef = Math.max(0, Number(stats.physDef || 0) - Number(my.penetration || 0));
   const effMagicRes = Math.max(0, Number(stats.magicRes || 0));
 
-  if (my.weaponType === "staff") {
+  if (my.weaponType === "staff" || my.weaponType === "gauntlet") {
     dmg = dmg * (1 - effMagicRes);
   } else {
     dmg = dmg * (1 - effPhysDef);
@@ -19036,6 +19098,7 @@ if (invBtn) {
   const lvBow    = getLv("bow");
   const lvStaff  = getLv("staff");
   const lvDagger = getLv("dagger");
+  const lvGauntlet = getLv("gauntlet");
 
   // ✅ 2) 진짜 최종치(절대수치) 계산 결과 불러오기
   const my = getPlayerFinalCombatStats();
@@ -19188,6 +19251,13 @@ if (invBtn) {
       `치명타데미지 +${lvDagger * 10}%`,
       lvDagger,
       lvDagger <= 0
+    ));
+        items.push(row(
+      "images/skills/passive_fighter_gauntlet.png",
+      "파이터의 혼",
+      `관통력 +${lvGauntlet * 10}%`,
+      lvGauntlet,
+      lvGauntlet <= 0
     ));
 
     listEl.innerHTML = items.join("");
