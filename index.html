@@ -8188,8 +8188,8 @@ listEl.innerHTML = arr.map((r, i) => {
     ? new Date(Number(r.achievedAt)).toLocaleString("ko-KR")
     : "-";
 
-  const starCount = Math.min(10, Number(r.stars || 0));
-  const stars = "★".repeat(starCount);
+  const starCount = Number(r.stars || 0);
+const stars = (starCount <= 4) ? "★".repeat(starCount) : `★★${starCount}★★`;
 
   return `
     <div style="padding:6px 0; border-bottom:1px solid #333;">
@@ -8328,14 +8328,12 @@ function formatNicknameWithTitle(id, titleId, reach30Count) {
   const safeId = (id ?? "-");
   const n = Math.max(0, Number(reach30Count || 0));
 
-  // ★ 문자열 만들기 (너무 길면 5개까지만 +N)
-  let starHtml = "";
-  if (n > 0) {
-    const show = Math.min(n, 5);
-    const more = n - show;
-    const starText = "★".repeat(show) + (more > 0 ? `+${more}` : "");
-    starHtml = ` <span class="rainbow">${starText}</span>`;
-  }
+  // ★ 문자열 만들기 (1~4는 누적, 5부터는 ★★n★★)
+let starHtml = "";
+if (n > 0) {
+  const starText = (n <= 4) ? "★".repeat(n) : `★★${n}★★`;
+  starHtml = ` <span class="rainbowStar">${starText}</span>`;
+}
 
   if (!titleId) return `${safeId}${starHtml}`;
 
