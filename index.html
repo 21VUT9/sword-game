@@ -13666,8 +13666,9 @@ function openOtherUserProfilePopup(targetId) {
     }
 
     // ✅ 공격력/주문력 라벨
-    const isStaff = (String(weaponTypeOther).toLowerCase() === "staff");
-    if (powerLabelEl) powerLabelEl.textContent = isStaff ? "주문력" : "공격력";
+    const wtLower = String(weaponTypeOther).toLowerCase();
+    const isMagicWeapon = (wtLower === "staff" || wtLower === "gauntlet");
+    if (powerLabelEl) powerLabelEl.textContent = isMagicWeapon ? "주문력" : "공격력";
 
     // ✅ 공격력/주문력 값 표시
     if (powerEl) powerEl.textContent = formatGold(mainPowerVal);
@@ -16075,7 +16076,7 @@ function openBossBattleHelp(){
   const ignoreDef = Number(wp.ignoreDef || 0);
   const ignoreEvade = Number(wp.ignoreEvade || 0);
   const critRate = Number(wp.critRate || 0);
-  const dmgLabel = String(wp.dmgLabel || (t === "staff" ? "주문력" : "공격력"));
+  const dmgLabel = String(wp.dmgLabel || ((t === "staff" || t === "gauntlet") ? "주문력" : "공격력"));
 
   let wName = "무기";
   try {
@@ -16097,7 +16098,7 @@ function openBossBattleHelp(){
   const effMagicRes = Math.max(0, magicRes);
 
   let base = adjPower * coef;
-  if (t === "staff") base = base * (1 - effMagicRes);
+  if (t === "staff" || t === "gauntlet") base = base * (1 - effMagicRes);
   else base = base * (1 - effPhysDef);
   base = Math.max(0, Math.floor(base));
 
@@ -16886,7 +16887,7 @@ function calcBossAttackResult(bossId){
   let dmg = Number(my.mainPower || 0) * powerMul;
 
   // ✅ 서리여왕 전용: 주문력 무기(스태프) 10% 상승
-  if (bossId === "frost_queen" && my.weaponType === "staff") {
+  if (bossId === "frost_queen" && (my.weaponType === "staff" || my.weaponType === "gauntlet")) {
     dmg = dmg * 1.10;
   }
 
