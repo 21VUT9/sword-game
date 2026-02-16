@@ -16834,7 +16834,7 @@ function getPlayerFinalCombatStats(){
    const mainMul = 1 + (lv.sword * 0.10);
 
   // ✅ 메인(공격력/주문력) 각인 % 적용
-  const engrMainPct = (wp.t === "staff") ? engrSpellPct : engrAtkPct;
+  const engrMainPct = (wp.t === "staff" || wp.t === "gauntlet") ? engrSpellPct : engrAtkPct;
   const mainPower = Math.floor(rawPower * wp.coef * mainMul * (1 + engrMainPct));
 
   // 2) 서브 스탯(0%여도 표기 대상)
