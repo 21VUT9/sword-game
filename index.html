@@ -3506,7 +3506,7 @@ html, body {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.392)
+    (v4.394)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -8937,6 +8937,10 @@ function playUiDockTap(){
   }catch(e){}
 }
 
+  const uiRunTransitionSound = new Audio("sounds/ui_run_transition.mp3");
+uiRunTransitionSound.loop = true;
+uiRunTransitionSound.volume = 0.45;
+  
 // ✅ 첫 사용자 입력에서 오디오 컨텍스트 활성화(모바일 대응)
 // (이미 열려있으면 아무 일도 안 함)
 document.addEventListener("pointerdown", () => {
@@ -13038,6 +13042,9 @@ function renderMap() {
       // "사냥터 이동 중..." 팝업 표시
       showMovePopup();
 
+      uiRunTransitionSound.currentTime = 0;
+      uiRunTransitionSound.play().catch(()=>{});
+
       const delay = 1000 + Math.random() * 1000; // 1~2초 랜덤
 
       setTimeout(() => {
@@ -13053,6 +13060,8 @@ function renderMap() {
         // 맵 패널 닫기 + 이동 팝업 닫기
         toggleMap();
         closeMovePopup();
+        uiRunTransitionSound.pause();
+        uiRunTransitionSound.currentTime = 0;
 
         isMoving = false;
       }, delay);
@@ -13179,6 +13188,9 @@ function moveToFieldFromWorldMap(fieldId, onArrive){
   // "사냥터 이동 중..." 팝업 표시 (기존 함수 재사용)
   showMovePopup();
 
+  uiRunTransitionSound.currentTime = 0;
+  uiRunTransitionSound.play().catch(()=>{});
+  
   const delay = 1000 + Math.random() * 1000; // 1~2초 랜덤
 
   setTimeout(() => {
@@ -13200,6 +13212,9 @@ function moveToFieldFromWorldMap(fieldId, onArrive){
 
     // 이동 팝업 닫기
     closeMovePopup();
+
+    uiRunTransitionSound.pause();
+uiRunTransitionSound.currentTime = 0;
 
     isMoving = false;
 
@@ -13229,6 +13244,9 @@ function startBossBattleMove(){
   // ✅ "이동중..." 팝업 (기존 월드맵 이동 팝업 재사용)
   showMovePopup();
 
+  uiRunTransitionSound.currentTime = 0;
+uiRunTransitionSound.play().catch(()=>{});
+
   // 월드맵 이동과 비슷한 템포로 (원하면 900 고정도 OK)
   const delay = 900;
 
@@ -13238,6 +13256,10 @@ function startBossBattleMove(){
 
     // 이동 팝업 닫기
     closeMovePopup();
+
+    uiRunTransitionSound.pause();
+uiRunTransitionSound.currentTime = 0;
+
     isMoving = false;
 
     // ✅ 이동 완료 → 보스전 오버레이
