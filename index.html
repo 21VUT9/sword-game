@@ -7628,6 +7628,31 @@ const BGM_MUSHROOM_VILLAGE = new Audio("sounds/bgm_mushroom_village.mp3");
 BGM_MUSHROOM_VILLAGE.loop = true;
 BGM_MUSHROOM_VILLAGE.volume = 0.5; // 기본 볼륨(최종은 applyBgmVolumeNow()에서 스케일 반영됨)
 
+// ✅ 역병쥐가 들끓는 시궁창 (fieldId: 2)
+const BGM_SEWER_PLAGUE = new Audio("sounds/bgm_sewer_plague.mp3");
+BGM_SEWER_PLAGUE.loop = true;
+BGM_SEWER_PLAGUE.volume = 0.5;
+
+// ✅ 무법자들의 황야 (fieldId: 3)
+const BGM_OUTLAW_WASTELAND = new Audio("sounds/bgm_outlaw_wasteland.mp3");
+BGM_OUTLAW_WASTELAND.loop = true;
+BGM_OUTLAW_WASTELAND.volume = 0.5;
+
+// ✅ 늪엘프의 숲 (fieldId: 4)
+const BGM_SWAMP_ELF_FOREST = new Audio("sounds/bgm_swamp_elf_forest.mp3");
+BGM_SWAMP_ELF_FOREST.loop = true;
+BGM_SWAMP_ELF_FOREST.volume = 0.5;
+
+// ✅ 서리여왕의 동굴 (fieldId: 5)
+const BGM_FROST_QUEEN_CAVE = new Audio("sounds/bgm_frost_queen_cave.mp3");
+BGM_FROST_QUEEN_CAVE.loop = true;
+BGM_FROST_QUEEN_CAVE.volume = 0.5;
+
+// ✅ 망령왕의 죽음세계 (fieldId: 6)
+const BGM_DEATH_WORLD = new Audio("sounds/bgm_death_world.mp3");
+BGM_DEATH_WORLD.loop = true;
+BGM_DEATH_WORLD.volume = 0.5;
+
   // ============================
 // 🗺 MAP Open SFX
 // ============================
@@ -7705,6 +7730,41 @@ function updateBgmByField(){
   if (Number(currentField) === 1) {
     applyBgmVolumeNow();
     playBgm(BGM_MUSHROOM_VILLAGE);
+    return;
+  }
+
+    // ✅ 2번 필드 = 역병쥐가 들끓는 시궁창
+  if (Number(currentField) === 2) {
+    applyBgmVolumeNow();
+    playBgm(BGM_SEWER_PLAGUE);
+    return;
+  }
+
+  // ✅ 3번 필드 = 무법자들의 황야
+  if (Number(currentField) === 3) {
+    applyBgmVolumeNow();
+    playBgm(BGM_OUTLAW_WASTELAND);
+    return;
+  }
+
+  // ✅ 4번 필드 = 늪엘프의 숲
+  if (Number(currentField) === 4) {
+    applyBgmVolumeNow();
+    playBgm(BGM_SWAMP_ELF_FOREST);
+    return;
+  }
+
+  // ✅ 5번 필드 = 서리여왕의 동굴
+  if (Number(currentField) === 5) {
+    applyBgmVolumeNow();
+    playBgm(BGM_FROST_QUEEN_CAVE);
+    return;
+  }
+
+  // ✅ 6번 필드 = 망령왕의 죽음세계
+  if (Number(currentField) === 6) {
+    applyBgmVolumeNow();
+    playBgm(BGM_DEATH_WORLD);
     return;
   }
 
