@@ -8939,7 +8939,7 @@ function playUiDockTap(){
 
   const uiRunTransitionSound = new Audio("sounds/ui_run_transition.mp3");
 uiRunTransitionSound.loop = true;
-uiRunTransitionSound.volume = 0.45;
+uiRunTransitionSound.volume = Math.min(1, 0.45 * 3);
   
 // ✅ 첫 사용자 입력에서 오디오 컨텍스트 활성화(모바일 대응)
 // (이미 열려있으면 아무 일도 안 함)
