@@ -5836,7 +5836,7 @@ function getWeaponInfo(level, type) {
 function ensureWeaponTypeAfterUpgrade(beforeLevel, afterLevel) {
   if (beforeLevel <= 0 && afterLevel >= 1) {
     if (!weaponType) {
-      cconst types = ["sword", "spear", "axe", "bow", "staff", "dagger", "gauntlet"];
+      const types = ["sword", "spear", "axe", "bow", "staff", "dagger", "gauntlet"];
       const idx = Math.floor(Math.random() * types.length);
       weaponType = types[idx];
     }
