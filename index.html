@@ -17103,7 +17103,7 @@ const result = calcBossAttackResult(bossId);
 const dmg = Number(result.damage || 0);
 
 // ✅ (신규 FX) 보스 화면 내부 전용 레이어에 이펙트/숫자 생성
-const isMagic = (weaponType === "staff");
+const isMagic = (weaponType === "staff" || weaponType === "gauntlet");
 const kind = result.isMiss ? "miss" : (result.isCrit ? "crit" : "hit");
 
 // ✅ (표기용 데미지) 실드 중 + 공격력무기면 숫자도 1로 보이게
@@ -17163,7 +17163,7 @@ if (isFrostQueen && shieldMax0 > 0 && shieldHp0 > 0) {
 }
 
 if (isFrostQueen && shieldMax0 > 0 && shieldHp0 > 0) {
-  const isMagic = (String(weaponType || "") === "staff");
+  const isMagic = (String(weaponType || "") === "staff" || String(weaponType || "") === "gauntlet");
 
   if (!isMagic) {
     // 공격력 무기: 데미지 1만 들어감(실드에도 영향 X, HP도 영향 X)
