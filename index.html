@@ -8378,6 +8378,7 @@ const TITLE_DEFS = [
   { id:"viking",   name:"바이킹", how:"도끼로 21강 달성" },
   { id:"assassin", name:"어쌔신", how:"단검으로 21강 달성" },
   { id:"fighter", name:"파이터", how:"건틀릿 21강 달성" },
+  { id:"captain", name:"캡틴", how:"마법공학 21강 달성" },
 
   { id:"destroy100", name:"파괴왕", how:"무기 파괴 횟수 100회" },
   { id:"destroy500", name:"파괴신", how:"무기 파괴 횟수 500회" },
@@ -8391,6 +8392,7 @@ const TITLE_DEFS = [
   { id:"end_spear", name:"창의 종착지",  how:"창으로 30강 달성",  color:"gold" },
   { id:"end_dagger", name:"단검의 종착지", how:"단검으로 30강 달성", color:"gold" },
   { id:"end_gauntlet", name:"건틀릿 종착지", how:"건틀릿 30강 달성", color:"gold" },
+  { id:"end_magitech", name:"마법공학 종찰지", how:"마법공학 30강 달성", color:"gold" },
 
   // ✅ 역병쥐 (반짝 초록) + 방법 숨김
   { id:"plague", name:"역병쥐", how:"???", color:"plague" },
@@ -16964,6 +16966,7 @@ function getPlayerFinalCombatStats(){
 
   // ✅ 메인(공격력/주문력) 각인 % 적용
   const engrMainPct = (wp.t === "staff" || wp.t === "gauntlet" || wp.t === "magitech") ? engrSpellPct : engrAtkPct;
+  const captainMul = (lv.magitech >= 1) ? 1.30 : 1.00; // ✅ 캡틴의 혼(마법공학 30강 1회라도) = 30% 상승
   const mainPower = Math.floor(rawPower * wp.coef * mainMul * (1 + engrMainPct));
 
   // 2) 서브 스탯(0%여도 표기 대상)
@@ -19365,7 +19368,8 @@ if (invBtn) {
   const listEl = document.getElementById("passiveSkillList");
   if (listEl) {
     const row = (icon, name, desc, lv, locked) => {
-      const lvTxt = (lv >= 5) ? "MAX" : `LV${lv}`;
+    const isOneMax = (name === "캡틴의 혼"); // magitech 전용
+    const lvTxt = locked ? "LOCK" : ((isOneMax && lv >= 1) ? "MAX" : ((lv >= 5) ? "MAX" : `LV${lv}`));
       return `
         <div class="passive-row ${locked ? "passive-locked" : ""}">
           <img class="passive-icon" src="${icon}" alt="">
@@ -19427,6 +19431,13 @@ if (invBtn) {
       `관통력 +${lvGauntlet * 10}%`,
       lvGauntlet,
       lvGauntlet <= 0
+    ));
+      items.push(row(
+      "images/skills/passive_captain_magitech.png",
+      "캡틴의 혼",
+      "공격력/주문력 +30%",
+      lvMagitech,
+      lvMagitech <= 0
     ));
 
     listEl.innerHTML = items.join("");
