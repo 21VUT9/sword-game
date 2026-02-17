@@ -16967,7 +16967,7 @@ function getPlayerFinalCombatStats(){
   // ✅ 메인(공격력/주문력) 각인 % 적용
   const engrMainPct = (wp.t === "staff" || wp.t === "gauntlet" || wp.t === "magitech") ? engrSpellPct : engrAtkPct;
   const captainMul = (lv.magitech >= 1) ? 1.30 : 1.00; // ✅ 캡틴의 혼(마법공학 30강 1회라도) = 30% 상승
-  const mainPower = Math.floor(rawPower * wp.coef * mainMul * (1 + engrMainPct));
+  const mainPower = Math.floor(rawPower * wp.coef * mainMul * captainMul * (1 + engrMainPct));
 
   // 2) 서브 스탯(0%여도 표기 대상)
   const penetration   = Number(wp.ignoreDef || 0) + (lv.spear * 0.10) + (lv.gauntlet * 0.10) + engrPen;
@@ -17235,7 +17235,7 @@ const result = calcBossAttackResult(bossId);
 const dmg = Number(result.damage || 0);
 
 // ✅ (신규 FX) 보스 화면 내부 전용 레이어에 이펙트/숫자 생성
-const isMagic = (weaponType === "staff" || weaponType === "gauntlet");
+const isMagic = (weaponType === "staff" || weaponType === "gauntlet" || weaponType === "magitech");
 const kind = result.isMiss ? "miss" : (result.isCrit ? "crit" : "hit");
 
 // ✅ (표기용 데미지) 실드 중 + 공격력무기면 숫자도 1로 보이게
