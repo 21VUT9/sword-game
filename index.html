@@ -766,9 +766,9 @@ button {
 .passive-icon{
   width:34px;
   height:34px;
+  flex:0 0 34px;
   border-radius:8px;
-  object-fit:cover;
-  flex:0 0 auto;
+  object-fit:contain;                 /* ✅ 아이콘마다 시각적 중심 정렬 */
   background: rgba(255,255,255,0.06);
 }
   
@@ -776,12 +776,14 @@ button {
   font-weight:900;
   color:#eaeaea;
   font-size:14px;
+  line-height:1.2;                    /* ✅ 제목 줄 정렬 */
 }
 
 .passive-desc{
   font-size:12px;
   color:#bdbdbd;
   margin-top:2px;
+  line-height:1.2;                    /* ✅ 설명 줄 정렬 */
 }
 
 .passive-lv{
@@ -793,12 +795,30 @@ button {
   background: rgba(255,255,255,0.08);
   color:#fff;
   flex:0 0 auto;
+
+  min-width:56px;                     /* ✅ LOCK / LV1 / MAX 폭 차이로 흔들림 방지 */
+  text-align:center;
+  line-height:1;
 }
 
 .passive-locked{
   opacity:0.35;
 }
 
+.passive-panel{
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+}
+
+.passive-panel #passiveSkillList{
+  flex:1 1 auto;
+  min-height:0;
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+  padding-right: 6px;
+}
+  
 #passiveSkillList{
   max-height: calc(100vh - 220px);
   overflow-y: auto;
@@ -20373,13 +20393,13 @@ document.addEventListener("click", function(e){
     </div>
 
     <!-- 우측 (2단계 패시브 영역) -->
-<div style="width:50%; padding:24px;">
+<div style="width:50%; padding:24px; display:flex; flex-direction:column; height:100%; min-height:0;">
   <div style="font-size:18px;font-weight:900;margin-bottom:12px;">
     패시브 스킬
   </div>
 
   <!-- 리스트 들어갈 자리 -->
-  <div id="passiveSkillList"></div>
+  <div id="passiveSkillList" style="flex:1 1 auto; min-height:0; overflow-y:auto; padding-right:6px;"></div>
 
   <div style="margin-top:12px; font-size:12px; color:#777; line-height:1.4;">
     • 획득조건: 무기 +30 달성 시 LV1
