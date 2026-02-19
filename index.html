@@ -5906,6 +5906,7 @@ function getWeaponInfo(level, type) {
 }
 
 // 0강에서 처음 무기가 생길 때, 타입(검/창/도끼) 랜덤 확정
+// 0강에서 처음 무기가 생길 때, 타입(검/창/도끼) 랜덤 확정
 function ensureWeaponTypeAfterUpgrade(beforeLevel, afterLevel) {
   if (beforeLevel <= 0 && afterLevel >= 1) {
     if (!weaponType) {
@@ -5914,13 +5915,24 @@ function ensureWeaponTypeAfterUpgrade(beforeLevel, afterLevel) {
       weaponType = types[idx];
     }
   }
+
   // ✅ 히든 무기(마법공학): 0강 → 1강 도달 시에만 0.5%
-if (beforeLevel === 0 && afterLevel === 1) {
-  if (Math.random() < 0.005) {
-    weaponType = "magitech";
-    return;
+  if (beforeLevel === 0 && afterLevel === 1) {
+    if (Math.random() < 0.005) {
+      weaponType = "magitech";
+
+      // ✅ (추가1) 뽑은 플레이어에게 NPC 안내 메시지
+      showNpcMessage(
+        "오오...! 이것은?! 아주 귀한 물건을 뽑았구만",
+        "images/npc/blacksmith_idle.png"
+      );
+
+      // ✅ (추가2) 실시간 로그(전 서버)
+      writeLog("유저중 누군가가 <span style=\"color:#d6a6ff; font-weight:bold;\">히든무기(마법공학)</span>를 개방하였습니다!");
+
+      return;
+    }
   }
-}
 }
 
 // 이미지 교체 함수
