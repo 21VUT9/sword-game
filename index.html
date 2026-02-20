@@ -5940,7 +5940,7 @@ function ensureWeaponTypeAfterUpgrade(beforeLevel, afterLevel) {
 
   // ✅ 히든 무기(마법공학): 0강 → 1강 도달 시에만 0.5%
   if (beforeLevel === 0 && afterLevel === 1) {
-    if (Math.random() < 0.005) {
+    if (Math.random() < 0.002) {
       weaponType = "magitech";
 
       // ✅ (추가1) 뽑은 플레이어에게 NPC 안내 메시지
