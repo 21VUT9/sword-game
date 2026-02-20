@@ -1675,6 +1675,8 @@ button {
 /* 좌측 아이콘 세로 위치 */
 #attendanceIconBtn{ top: var(--field-top-offset); }
 #achievementIconBtn{ top: calc(120px + var(--field-top-offset)); }
+#questIconBtn{ top: calc(240px + var(--field-top-offset)); }
+#storybookIconBtn{ top: calc(360px + var(--field-top-offset)); }
 
   /* ✅ 출석 미완료 알림 뱃지 (!) */
 #attendanceIconBtn{ overflow: visible; } /* (혹시 밖으로 삐져도 보이게) */
@@ -3638,6 +3640,24 @@ html, body {
   <div id="achievementAlertBadge" class="icon-alert-badge">!</div>
   <span class="map-icon-label">업적</span>
 </button>
+
+<!-- 🗨️ 퀘스트 (좌측 아이콘) -->
+<button id="questIconBtn"
+        class="map-icon-btn left-icon-btn"
+        onclick="showLockedFeaturePopup()" data-nosfx="1">
+  <img class="map-icon-img" src="images/ui/icon_quest.png" alt="퀘스트">
+  <div id="questAlertBadge" class="icon-alert-badge">!</div>
+  <span class="map-icon-label one-line">퀘스트</span>
+</button>
+
+<!-- 📖 스토리북 (좌측 아이콘) -->
+<button id="storybookIconBtn"
+        class="map-icon-btn left-icon-btn"
+        onclick="showLockedFeaturePopup()" data-nosfx="1">
+  <img class="map-icon-img" src="images/ui/icon_storybook.png" alt="스토리북">
+  <div id="storybookAlertBadge" class="icon-alert-badge">!</div>
+  <span class="map-icon-label one-line">기록</span>
+</button>
   
 </div>
 
@@ -4790,6 +4810,8 @@ document.addEventListener("DOMContentLoaded", () => {
     "hamburgerBtn",
     "attendanceIconBtn",
     "achievementIconBtn",
+    "questIconBtn",
+    "storybookIconBtn",
     "mapBtn",
     "duelIconBtn",
     "guildIconBtn",
@@ -7607,6 +7629,8 @@ destroyCount  = 0;
   // ✅ 좌/우 아이콘들
   setDisp("attendanceIconBtn", "none");
   setDisp("achievementIconBtn", "none");
+  setDisp("questIconBtn", "none");
+  setDisp("storybookIconBtn", "none");
 
   setDisp("duelIconBtn", "none");
   setDisp("guildIconBtn", "none");
@@ -12413,6 +12437,8 @@ setDisplay("mapBtn",          "block");
 setDisplay("userListIconBtn", "block");
 setDisplay("bossBattleIconBtn", "block");
 setDisplay("achievementIconBtn",  "block");
+setDisplay("questIconBtn",      "block");
+setDisplay("storybookIconBtn",  "block");
 
 setDisplay("toastLog",        "block");
 setDisplay("workbenchDock",   "block");
@@ -13721,6 +13747,8 @@ setDisplay("mapBtn",          "block");
 setDisplay("userListIconBtn", "block");
 setDisplay("bossBattleIconBtn", "block");
 setDisplay("achievementIconBtn",  "block");
+setDisplay("questIconBtn",      "block");
+setDisplay("storybookIconBtn",  "block");
 
 setDisplay("toastLog",        "block");
 setDisplay("workbenchDock",   "block");
