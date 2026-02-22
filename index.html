@@ -10795,9 +10795,15 @@ function playRouletteTick(strength = 1){
   osc.type = "square";
   osc.frequency.setValueAtTime(freq, t0);
 
-  const peak = (0.70 + (s * 0.70)) * getSfxScale();
+   const scale = (typeof getSfxScale === "function") ? getSfxScale() : 1;
+
+  // ✅ 효과음 0(뮤트)이면, 소리만 스킵하고 룰렛은 계속 진행
+  if (!scale || scale <= 0) return;
+
+  const peak = (0.70 + (s * 0.70)) * scale;
+
   gain.gain.setValueAtTime(0.0001, t0);
-  gain.gain.exponentialRampToValueAtTime(peak, t0 + 0.004);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, peak), t0 + 0.004);
   gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.03);
 
   osc.connect(gain);
