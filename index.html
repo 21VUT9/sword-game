@@ -2390,6 +2390,43 @@ hr.section-divider{
   padding: 0;
 }
 
+/* NPC 아이콘 아래 이름(좌/우 아이콘 버튼 라벨 느낌) */
+.talkNpcName{
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 900;
+  color: #fff;
+  text-align: center;
+  white-space: nowrap;
+
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000;
+
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 버튼을 "아이콘 + 라벨" 세로 배치로 */
+.talkNpcBtn{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+/* 아이콘 영역 높이 고정(라벨 때문에 버튼 높이 늘어나는 것 방지) */
+.talkNpcBtn .talkNpcImgBox{
+  width: 110px;
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .talkNpcBtn img{
   transition: transform 0.12s ease, filter 0.12s ease;
 }
@@ -8877,24 +8914,33 @@ function renderTalkNpcGrid(){
   grid.innerHTML = "";
 
   TALK_NPCS.forEach((npc) => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "talkNpcBtn";
-    btn.title = npc.name;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "talkNpcBtn";
+  btn.title = npc.name;
 
-    const img = document.createElement("img");
-    img.src = npc.img;
-    img.alt = npc.name;
+  const imgBox = document.createElement("div");
+  imgBox.className = "talkNpcImgBox";
 
-    // ✅ 현재는 미구현: NPC 아이콘 클릭 시 미구현 팝업
-    btn.addEventListener("click", () => {
-      playUiClickCommon();
-      showLockedFeaturePopup();
-    });
+  const img = document.createElement("img");
+  img.src = npc.img;
+  img.alt = npc.name;
 
-    btn.appendChild(img);
-    grid.appendChild(btn);
+  const nameEl = document.createElement("span");
+  nameEl.className = "talkNpcName";
+  nameEl.textContent = npc.name;
+
+  // ✅ 현재는 미구현: NPC 클릭 시 미구현 팝업
+  btn.addEventListener("click", () => {
+    playUiClickCommon();
+    showLockedFeaturePopup();
   });
+
+  imgBox.appendChild(img);
+  btn.appendChild(imgBox);
+  btn.appendChild(nameEl);
+  grid.appendChild(btn);
+});
 }
 
 function openTalkOverlay(){
