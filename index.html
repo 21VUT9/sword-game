@@ -2390,8 +2390,13 @@ hr.section-divider{
   padding: 0;
 }
 
-.talkNpcBtn:hover{
-  background: rgba(255,255,255,0.10);
+.talkNpcBtn img{
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+
+.talkNpcBtn:hover img{
+  filter: brightness(1.15);
+  transform: scale(1.05);
 }
 
 .talkNpcBtn img{
