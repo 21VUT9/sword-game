@@ -8989,14 +8989,68 @@ function openFulgurantDialogue(){
   const txt = document.getElementById("npcDialogueText");
 
   const rand = Math.floor(Math.random() * fulgurantDailyTalk.length);
-  txt.innerText = fulgurantDailyTalk[rand];
+  startNpcTypewriter(txt, fulgurantDailyTalk[rand], 22); // 22ms/글자 (원하면 숫자만 조절)
 
   ov.style.display = "flex";
 }
 
 function closeNpcDialogue(){
+  stopNpcTypewriter();
   const ov = document.getElementById("npcDialogueOverlay");
   if (ov) ov.style.display = "none";
+}
+
+  // =====================
+// ⌨️ NPC 대사 타자기 연출
+// =====================
+let npcTypingTimer = null;
+let npcTypingActive = false;
+let npcTypingEl = null;
+let npcTypingFullText = "";
+
+function stopNpcTypewriter(){
+  if (npcTypingTimer) {
+    clearInterval(npcTypingTimer);
+    npcTypingTimer = null;
+  }
+  npcTypingActive = false;
+  npcTypingEl = null;
+  npcTypingFullText = "";
+}
+
+function startNpcTypewriter(el, fullText, msPerChar){
+  stopNpcTypewriter();
+
+  npcTypingActive = true;
+  npcTypingEl = el;
+  npcTypingFullText = String(fullText ?? "");
+
+  const text = npcTypingFullText;
+  const stepMs = Math.max(10, Number(msPerChar || 22));
+
+  el.innerText = "";
+  el.scrollTop = 0;
+
+  let i = 0;
+  npcTypingTimer = setInterval(() => {
+    i += 1;
+    el.innerText = text.slice(0, i);
+
+    // 끝
+    if (i >= text.length) {
+      stopNpcTypewriter();
+    }
+  }, stepMs);
+}
+
+// 오버레이 클릭: 타이핑 중이면 즉시 완성, 아니면 닫기
+function onNpcDialogueOverlayClick(e){
+  if (npcTypingActive && npcTypingEl) {
+    npcTypingEl.innerText = npcTypingFullText;
+    stopNpcTypewriter();
+    return;
+  }
+  closeNpcDialogue();
 }
 
   // =====================
@@ -20545,7 +20599,7 @@ document.addEventListener("click", function(e){
 </div>
 
   <!-- 🧔 퍼그란트 대화창 -->
-<div id="npcDialogueOverlay" onclick="closeNpcDialogue()"
+<div id="npcDialogueOverlay" onclick="onNpcDialogueOverlayClick(event)"
      style="
        position:fixed;
        inset:0;
