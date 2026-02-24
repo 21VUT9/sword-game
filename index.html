@@ -9017,6 +9017,16 @@ function updateNpcDialogueNextBtn(){
   btn.textContent = hasNext ? "다음▶" : "닫기";
 }
 
+  function hideNpcDialogueNextBtn(){
+  const btn = document.getElementById("npcDialogueNextBtn");
+  if (btn) btn.style.display = "none";
+}
+
+function showNpcDialogueNextBtn(){
+  const btn = document.getElementById("npcDialogueNextBtn");
+  if (btn) btn.style.display = "block";
+}
+
 function openFulgurantDialogue(){
   closeTalkOverlay();
 
@@ -9030,6 +9040,7 @@ function openFulgurantDialogue(){
   npcDialogueIndex = 0;
 
   updateNpcDialogueNextBtn();
+  hideNpcDialogueNextBtn();
   startNpcTypewriter(txt, npcDialogueQueue[npcDialogueIndex], 22);
 
   if (ov) ov.style.display = "flex";
@@ -9088,7 +9099,27 @@ function stopNpcTypewriter(){
   npcTypingFullText = "";
 }
 
+  function finishNpcTypewriter(){
+
+  if(npcTypingTimer){
+    clearInterval(npcTypingTimer);
+    npcTypingTimer = null;
+  }
+
+  npcTypingActive = false;
+
+  if(npcTypingEl){
+    npcTypingEl.innerText = npcTypingFullText;
+  }
+
+  // ⭐ 여기서만 버튼 등장
+  updateNpcDialogueNextBtn();
+  const btn = document.getElementById("npcDialogueNextBtn");
+  if(btn) btn.style.display = "block";
+}
+
 function startNpcTypewriter(el, fullText, msPerChar){
+  hideNpcDialogueNextBtn();
   stopNpcTypewriter();
 
   npcTypingActive = true;
@@ -9108,7 +9139,7 @@ function startNpcTypewriter(el, fullText, msPerChar){
 
     // 끝
     if (i >= text.length) {
-      stopNpcTypewriter();
+      finishNpcTypewriter();  // ✅ 타이핑 완료 처리 + 버튼 표시
     }
   }, stepMs);
 }
@@ -9116,8 +9147,7 @@ function startNpcTypewriter(el, fullText, msPerChar){
 // 오버레이 클릭: 타이핑 중이면 즉시 완성, 아니면 닫기
 function onNpcDialogueOverlayClick(e){
   if (npcTypingActive && npcTypingEl) {
-    npcTypingEl.innerText = npcTypingFullText;
-    stopNpcTypewriter();
+    finishNpcTypewriter();
     return;
   }
   closeNpcDialogue();
@@ -9129,8 +9159,7 @@ function onNpcDialoguePanelClick(e){
   if (e) e.stopPropagation();
 
   if (npcTypingActive && npcTypingEl) {
-    npcTypingEl.innerText = npcTypingFullText;
-    stopNpcTypewriter();
+    finishNpcTypewriter();
   }
 }
 
@@ -20797,6 +20826,7 @@ document.addEventListener("click", function(e){
           color:#fff;
           font-weight:900;
           cursor:pointer;
+          display:none;
         ">
   닫기
 </button>
