@@ -8930,11 +8930,15 @@ function renderTalkNpcGrid(){
   nameEl.className = "talkNpcName";
   nameEl.textContent = npc.name;
 
-  // ✅ 현재는 미구현: NPC 클릭 시 미구현 팝업
-  btn.addEventListener("click", () => {
-    playUiClickCommon();
+btn.addEventListener("click", () => {
+  playUiClickCommon();
+
+  if (npc.key === "fulgurant") {
+    openFulgurantDialogue();
+  } else {
     showLockedFeaturePopup();
-  });
+  }
+});
 
   imgBox.appendChild(img);
   btn.appendChild(imgBox);
@@ -8963,6 +8967,35 @@ function openTalkOverlay(){
 function closeTalkOverlay(){
   playUiClickCommon();
   const ov = document.getElementById("talkOverlay");
+  if (ov) ov.style.display = "none";
+}
+
+  // =====================
+// 🧔 퍼그란트 일상대화
+// =====================
+
+const fulgurantDailyTalk = [
+  "…화로의 불꽃이 오늘따라 거칠게 일렁이는군.",
+  "강화는 힘이 아니라, 인내를 벼리는 과정이다.",
+  "금속이 떨리고 있다… 뭔가가 가까워지고 있어.",
+  "망치를 들기 전엔, 마음부터 다잡아라.",
+  "퍼그란트의 불꽃이 식는 날… 이 세계도 끝이다."
+];
+
+function openFulgurantDialogue(){
+  closeTalkOverlay();
+
+  const ov = document.getElementById("npcDialogueOverlay");
+  const txt = document.getElementById("npcDialogueText");
+
+  const rand = Math.floor(Math.random() * fulgurantDailyTalk.length);
+  txt.innerText = fulgurantDailyTalk[rand];
+
+  ov.style.display = "flex";
+}
+
+function closeNpcDialogue(){
+  const ov = document.getElementById("npcDialogueOverlay");
   if (ov) ov.style.display = "none";
 }
 
@@ -20507,6 +20540,59 @@ document.addEventListener("click", function(e){
 
     <!-- NPC 아이콘 리스트 -->
     <div id="talkNpcGrid" class="talkNpcGrid"></div>
+
+  </div>
+</div>
+
+  <!-- 🧔 퍼그란트 대화창 -->
+<div id="npcDialogueOverlay" onclick="closeNpcDialogue()"
+     style="
+       position:fixed;
+       inset:0;
+       z-index:11000;
+       display:none;
+       background:rgba(0,0,0,0.55);
+       align-items:flex-end;
+       justify-content:center;
+     ">
+
+  <div onclick="event.stopPropagation()"
+       style="
+         width:100%;
+         max-width:640px;
+         margin-bottom:24px;
+         display:flex;
+         gap:12px;
+         align-items:flex-end;
+       ">
+
+    <img id="npcDialogueImg"
+         src="images/npc/fulgurant_idle.png"
+         style="
+           width:120px;
+           height:auto;
+           object-fit:contain;
+           pointer-events:none;
+         ">
+
+    <div style="
+        flex:1;
+        background:rgba(10,10,10,0.92);
+        border:1px solid rgba(255,255,255,0.12);
+        border-radius:14px;
+        padding:12px;
+      ">
+
+      <div id="npcDialogueName"
+           style="font-weight:900; margin-bottom:6px;">
+        퍼그란트
+      </div>
+
+      <div id="npcDialogueText"
+           style="line-height:1.35;">
+      </div>
+
+    </div>
 
   </div>
 </div>
