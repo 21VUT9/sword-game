@@ -8975,11 +8975,24 @@ function closeTalkOverlay(){
 // =====================
 
 const fulgurantDailyTalk = [
-  "…화로의 불꽃이 오늘따라 거칠게 일렁이는군.",
-  "강화는 힘이 아니라, 인내를 벼리는 과정이다.",
-  "금속이 떨리고 있다… 뭔가가 가까워지고 있어.",
-  "망치를 들기 전엔, 마음부터 다잡아라.",
-  "퍼그란트의 불꽃이 식는 날… 이 세계도 끝이다."
+
+  // 단일 대화 (닫기)
+  ["…화로의 불꽃이 오늘따라 거칠게 일렁이는군."],
+
+  ["강화는 힘이 아니라, 인내를 벼리는 과정이다."],
+
+  ["금속이 떨리고 있다… 뭔가가 가까워지고 있어."],
+
+  ["망치를 들기 전엔, 마음부터 다잡아라."],
+
+  ["퍼그란트의 불꽃이 식는 날… 이 세계도 끝이다."],
+
+  // ✅ 연결 대화 (다음 ▶ 닫기)
+  [
+    "망치가 울리는 소리가… 평소보다 무겁게 들린다.",
+    "이건 단순한 금속의 반응이 아니야. 어딘가에서 균열이 시작되고 있다."
+  ]
+
 ];
 
 // ✅ 대화 진행 상태(큐)
@@ -9010,8 +9023,10 @@ function openFulgurantDialogue(){
   const ov = document.getElementById("npcDialogueOverlay");
   const txt = document.getElementById("npcDialogueText");
 
-  // ✅ 5개 랜덤(지금 배열이 5개라 사실상 전부지만, 추후 늘어나도 동작)
-  npcDialogueQueue = pickRandomTalks(fulgurantDailyTalk, 5);
+  // ✅ 대화 세트 하나 랜덤 선택
+  const rand = Math.floor(Math.random() * fulgurantDailyTalk.length);
+  npcDialogueQueue = fulgurantDailyTalk[rand]; // ← 여기 핵심
+
   npcDialogueIndex = 0;
 
   updateNpcDialogueNextBtn();
