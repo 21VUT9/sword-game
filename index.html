@@ -20587,6 +20587,9 @@ document.addEventListener("click", function(e){
 
     <div style="
         flex:1;
+        height:200px;
+        display:flex;
+        flex-direction:column;
         background: linear-gradient(
         145deg,
         rgba(40,40,40,0.78),
@@ -20615,7 +20618,10 @@ document.addEventListener("click", function(e){
       </div>
 
       <div id="npcDialogueText"
-           style="line-height:1.35;">
+           style="line-height:1.35;"
+           flex:1;
+            overflow-y:auto;
+            padding-right:4px;>
       </div>
 
     </div>
