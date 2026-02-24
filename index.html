@@ -20590,6 +20590,8 @@ document.addEventListener("click", function(e){
         height:160px;
         display:flex;
         flex-direction:column;
+        position:relative;
+        padding-top:22px;
         background: linear-gradient(
         145deg,
         rgba(40,40,40,0.78),
@@ -20613,9 +20615,21 @@ document.addEventListener("click", function(e){
       ">
 
       <div id="npcDialogueName"
-           style="font-weight:900; margin-bottom:6px;">
-        퍼그란트
-      </div>
+     style="
+       position:absolute;
+       top:8px;
+       right:12px;
+       font-weight:900;
+       font-size:14px;
+       color:#fff;
+       text-shadow:
+         -1px -1px 0 #000,
+          1px -1px 0 #000,
+         -1px  1px 0 #000,
+          1px  1px 0 #000;
+     ">
+  퍼그란트
+</div>
 
       <div id="npcDialogueText"
            style="line-height:1.35;"
