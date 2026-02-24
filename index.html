@@ -9053,6 +9053,17 @@ function onNpcDialogueOverlayClick(e){
   closeNpcDialogue();
 }
 
+  // 대화 패널(텍스트 영역) 클릭: 타이핑 중이면 즉시 완성
+function onNpcDialoguePanelClick(e){
+  // 혹시 부모로 이벤트 올라가며 닫히는 상황 방지
+  if (e) e.stopPropagation();
+
+  if (npcTypingActive && npcTypingEl) {
+    npcTypingEl.innerText = npcTypingFullText;
+    stopNpcTypewriter();
+  }
+}
+
   // =====================
 // 🪟 공용 액션 팝업 (프로필보기 스타일)
 // =====================
@@ -20687,7 +20698,8 @@ document.addEventListener("click", function(e){
       ">
 
       <div id="npcDialogueText"
-     style="
+       onclick="onNpcDialoguePanelClick(event)"
+       style="
        line-height:1.45;
        flex:1;
        display:flex;
