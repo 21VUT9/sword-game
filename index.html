@@ -10011,12 +10011,11 @@ updateDuelUI();
     // ✅ 강화 아이템 라벨 수량 갱신
   updateUpgradeItemLabels();
 
-    // ✅ v4.40 튜토리얼 퀘스트 지급
-if(!tutorialQuestInjected_v440){
+// ✅ v4.40 튜토리얼 퀘스트 지급 (기존/신규 공통: 상태가 없으면 1회만 OFFERED)
+if (questState["forge_tutorial_01"] == null) {
   questState["forge_tutorial_01"] = QUEST_STATE.OFFERED;
-  tutorialQuestInjected_v440 = true;
+  save();
 }
-    
 }
 
 // ⚔️ 결투 일자/카운트 초기화
