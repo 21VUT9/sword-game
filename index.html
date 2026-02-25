@@ -7706,6 +7706,7 @@ destroyCount  = 0;
   duelCountToday = 0;
   lastDuelDate = "";
   duelTargetsToday = {};
+  questState = {};
 
    // 화면 전환 (✅ 없는 요소가 있어도 절대 안 터지게)
   const setDisp = (id, disp) => {
@@ -9000,31 +9001,31 @@ function openTalkOverlay(){
 }
 
   function openQuestOverlay(){
-
+  const overlay = document.getElementById("questOverlay");
   const list = document.getElementById("questListArea");
-  if(!list) return;
+  if (!overlay || !list) return;
 
+  overlay.style.display = "block";
   list.innerHTML = "";
 
-  const st = questState["forge_tutorial_01"];
+  const st = questState?.forge_tutorial_01;
 
-  let status =
-    st === QUEST_STATE.OFFERED ? "진행중" :
-    st === QUEST_STATE.COMPLETE ? "완료 가능" :
-    st === QUEST_STATE.REWARDED ? "완료" :
-    "미수락";
+  // 아무 퀘스트도 없으면 안내만
+  if (!st) {
+    list.innerHTML = `<div style="padding:12px; color:#aaa; font-size:13px;">진행 중인 퀘스트가 없습니다.</div>`;
+    return;
+  }
 
-  const btn = document.createElement("button");
-  btn.className = "actionBtn";
-  btn.style.textAlign = "left";
-  btn.style.whiteSpace = "nowrap";
-  btn.innerText = `[대륙 최고의 대장장이] - ${status}`;
+  // 1개 퀘스트만 우선 표기 (추후 배열로 확장)
+  const row = document.createElement("button");
+  row.type = "button";
+  row.className = "questRowBtn";
+  row.textContent = "대륙 최고의 대장장이";
+  row.addEventListener("click", () => {
+    openQuestDetail_forgeTutorial01();
+  });
 
-  btn.onclick = () => openQuestDetail_forgeTutorial01();
-
-  list.appendChild(btn);
-
-  document.getElementById("questOverlay").style.display = "flex";
+  list.appendChild(row);
 }
 
 function closeQuestOverlay(){
@@ -9410,6 +9411,7 @@ function acceptForgeQuest(){
 
   save();
   updateQuestBadges();
+  if (typeof renderTalkNpcGrid === "function") renderTalkNpcGrid();
 
   openNpcDialogueFromTalkSets([npcDialogueQueue], "퍼그란트", "images/npc/blacksmith_talk.png");
 }
@@ -9434,6 +9436,7 @@ function completeForgeQuest(){
   questState["forge_tutorial_01"] = QUEST_STATE.REWARDED;
 
   save();
+  if (typeof update === "function") update();
   updateQuestBadges();
   try { renderTalkNpcGrid(); } catch(e) {}
 
@@ -13459,6 +13462,7 @@ function save() {
 aweUsedGlobal30EventId: Number(aweUsedGlobal30EventId || 0),
      engravePresetIdx: Number(engravePresetIdx || 0),
      engravePresets: engravePresets,
+    questState: questState,
      engraveLines: engraveLines // ✅ (구버전/외부표기 호환용) "현재 프리셋" 3줄
 
   };
