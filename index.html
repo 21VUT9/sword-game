@@ -9172,11 +9172,14 @@ function startNpcTypewriter(el, fullText, msPerChar){
 
 // 오버레이 클릭: 타이핑 중이면 즉시 완성, 아니면 닫기
 function onNpcDialogueOverlayClick(e){
+
+  // 대화 중엔 바깥 클릭으로 닫지 않음
   if (npcTypingActive && npcTypingEl) {
     finishNpcTypewriter();
     return;
   }
-  closeNpcDialogue();
+
+  // ⭐ 아무것도 안함 (닫기 금지)
 }
 
   // 대화 패널(텍스트 영역) 클릭: 타이핑 중이면 즉시 완성
