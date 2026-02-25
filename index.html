@@ -9190,10 +9190,65 @@ function openNpcDialogueFromTalkSets(talkSets, npcName, npcImg){
   if (ov) ov.style.display = "flex";
 }
 
+  // =====================
+// 📜 퀘스트 상태 관리
+// =====================
+const QUEST_STATE = {
+  NOT_STARTED: 0,
+  OFFERED: 1,
+  ACTIVE: 2,
+  COMPLETE: 3,
+  REWARDED: 4
+};
+
+if(!window.questState){
+  window.questState = {};
+}
+
+  const QUESTS = {
+  forge_tutorial_01: {
+    id: "forge_tutorial_01",
+    title: "대륙 최고의 대장장이",
+    npc: "fulgurant",
+    rewardGold: 50000
+  }
+};
+  
 // =====================
 // 🧔 퍼그란트 / 기타 NPC 대화 오픈
 // =====================
 function openFulgurantDialogue(){
+
+  const st = questState["forge_tutorial_01"];
+
+  // 📜 퀘스트 제안 상태
+  if(st === QUEST_STATE.OFFERED){
+    npcDialogueQueue = [
+      "응? 자네 꽤 좋은 물건을 갖고있군,",
+      "나한테 한번 맡겨보겠나?"
+    ];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "퍼그란트", "images/npc/blacksmith_talk.png");
+
+    setTimeout(()=>{
+      showQuestAcceptReject();
+    },500);
+    return;
+  }
+
+  // 📜 완료 상태
+  if(st === QUEST_STATE.COMPLETE){
+    npcDialogueQueue = [
+      "어때? 꽤 쓸만하지?"
+    ];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "퍼그란트", "images/npc/blacksmith_talk.png");
+
+    setTimeout(()=>{
+      showQuestRewardBtn();
+    },500);
+    return;
+  }
+
+  // 기본 일상대화
   openNpcDialogueFromTalkSets(
     fulgurantDailyTalk,
     "퍼그란트",
@@ -9276,6 +9331,44 @@ function closeNpcDialogue(){
   if (ov) ov.style.display = "none";
 }
 
+  function showQuestAcceptReject(){
+
+  const btnArea = document.getElementById("npcDialogueBtnArea");
+  if(!btnArea) return;
+
+  btnArea.innerHTML = `
+    <button class="actionBtn" onclick="acceptForgeQuest()">맡긴다</button>
+    <button class="actionBtn" onclick="closeNpcDialogue()">거절한다</button>
+  `;
+}
+
+function acceptForgeQuest(){
+  questState["forge_tutorial_01"] = QUEST_STATE.ACTIVE;
+
+  npcDialogueQueue = [
+    "좋아, 대륙 최고의 대장장이님께서 제련해주지.",
+    "[달성조건 : 강화 1회를 시도 하십시오]",
+    "완료보상 : 5만골드"
+  ];
+
+  openNpcDialogueFromTalkSets([npcDialogueQueue], "퍼그란트", "images/npc/blacksmith_talk.png");
+}
+
+  function showQuestRewardBtn(){
+  const btnArea = document.getElementById("npcDialogueBtnArea");
+  if(!btnArea) return;
+
+  btnArea.innerHTML = `
+    <button class="actionBtn" onclick="completeForgeQuest()">퀘스트 완료</button>
+  `;
+}
+
+function completeForgeQuest(){
+  gold += 50000;
+  questState["forge_tutorial_01"] = QUEST_STATE.REWARDED;
+  closeNpcDialogue();
+  save();
+}  
   // =====================
 // ⌨️ NPC 대사 타자기 연출
 // =====================
@@ -9918,6 +10011,12 @@ updateDuelUI();
     // ✅ 강화 아이템 라벨 수량 갱신
   updateUpgradeItemLabels();
 
+    // ✅ v4.40 튜토리얼 퀘스트 지급
+if(!tutorialQuestInjected_v440){
+  questState["forge_tutorial_01"] = QUEST_STATE.OFFERED;
+  tutorialQuestInjected_v440 = true;
+}
+    
 }
 
 // ⚔️ 결투 일자/카운트 초기화
@@ -11860,6 +11959,11 @@ showNpcMessage(
 
     /// 🎲 성공 / 실패 판정 (한 번만 굴리고 변수로 저장)
 const isSuccess = (Math.random() < chance / 100);
+
+    // 📜 퀘스트 완료 체크
+if(questState["forge_tutorial_01"] === QUEST_STATE.ACTIVE){
+  questState["forge_tutorial_01"] = QUEST_STATE.COMPLETE;
+}
 
 if (isSuccess) {
   // ✅ 성공
