@@ -13014,6 +13014,10 @@ weaponType   = null;
 maxSwordLevel = 0;
 destroyCount  = 0;
 
+  // ✅ 계정 전환 시 이전 계정 퀘스트 상태 잔존 방지
+questState = {};
+window.questState = questState;
+
   
   // 3️⃣ Firebase ref 세팅
   userRef = db.ref("users/" + userId);
@@ -14349,6 +14353,10 @@ function autoLoginFromStorage() {
 weaponType   = null;
 maxSwordLevel = 0;
 destroyCount  = 0;
+
+// ✅ 계정 전환 시 이전 계정 퀘스트 상태 잔존 방지
+questState = {};
+window.questState = questState;
 
   let savedId = null;
   try {
