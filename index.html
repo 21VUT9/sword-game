@@ -8994,10 +8994,41 @@ function openTalkOverlay(){
   if (questBtn) {
     questBtn.onclick = () => {
   playUiClickCommon();
-  const q = document.getElementById("questIconBtn");
-  if (q) q.click();  // ✅ 좌측 퀘스트 오버레이를 그대로 재사용
+  openQuestOverlay();
 };
   }
+}
+
+  function openQuestOverlay(){
+
+  const list = document.getElementById("questListArea");
+  if(!list) return;
+
+  list.innerHTML = "";
+
+  const st = questState["forge_tutorial_01"];
+
+  let status =
+    st === QUEST_STATE.OFFERED ? "진행중" :
+    st === QUEST_STATE.COMPLETE ? "완료 가능" :
+    st === QUEST_STATE.REWARDED ? "완료" :
+    "미수락";
+
+  const btn = document.createElement("button");
+  btn.className = "actionBtn";
+  btn.style.textAlign = "left";
+  btn.style.whiteSpace = "nowrap";
+  btn.innerText = `[대륙 최고의 대장장이] - ${status}`;
+
+  btn.onclick = () => openQuestDetail_forgeTutorial01();
+
+  list.appendChild(btn);
+
+  document.getElementById("questOverlay").style.display = "flex";
+}
+
+function closeQuestOverlay(){
+  document.getElementById("questOverlay").style.display = "none";
 }
 
 function closeTalkOverlay(){
@@ -9393,16 +9424,16 @@ function acceptForgeQuest(){
 }
 
 function completeForgeQuest(){
-  const st = getForgeQuestState();
-  if (st !== "READY_TO_COMPLETE") return;
+  const st = questState["forge_tutorial_01"];
+  if (st !== QUEST_STATE.COMPLETE) return;
 
-  setForgeQuestState("DONE");
-
-  // 보상 지급 (5만 골드)
+  // 보상 지급
   gold = Number(gold || 0) + 50000;
-  save();
 
-  // 뱃지 갱신
+  // 상태: 보상 수령 완료
+  questState["forge_tutorial_01"] = QUEST_STATE.REWARDED;
+
+  save();
   updateQuestBadges();
   try { renderTalkNpcGrid(); } catch(e) {}
 
@@ -9434,7 +9465,7 @@ function openQuestOverlay(){
   const statusText =
     (st === QUEST_STATE.OFFERED) ? "진행중" :
     (st === QUEST_STATE.COMPLETE) ? "완료 가능" :
-    (st === QUEST_STATE.DONE) ? "완료" :
+    (st === QUEST_STATE.REWARDED) ? "완료" :
     "미수락";
 
   showNpcMessage(
@@ -9469,7 +9500,7 @@ function openQuestDetail_forgeTutorial01(){
     body += `<div style="margin-top:10px; font-size:12px; color:#aaa;">※ 강화 1회를 시도하면 완료 가능 상태로 전환됩니다.</div>`;
   } else if (st === QUEST_STATE.COMPLETE) {
     body += `<div style="margin-top:10px; font-size:12px; color:#ffd54f;">※ 퍼그란트에게 돌아가서 퀘스트 완료를 진행하세요.</div>`;
-  } else if (st === QUEST_STATE.DONE) {
+  } else if (st === QUEST_STATE.REWARDED) {
     body += `<div style="margin-top:10px; font-size:12px; color:#7CFF7C;">※ 완료한 퀘스트입니다.</div>`;
   }
 
@@ -21156,6 +21187,22 @@ document.addEventListener("click", function(e){
 
     <!-- NPC 아이콘 리스트 -->
     <div id="talkNpcGrid" class="talkNpcGrid"></div>
+
+  </div>
+</div>
+
+  <!-- 📜 퀘스트현황 오버레이 -->
+<div id="questOverlay" class="overlay" style="display:none;">
+  <div class="overlay-content" style="width:320px;">
+
+    <div class="overlay-header">
+      <span>퀘스트 현황</span>
+      <button onclick="closeQuestOverlay()">✕</button>
+    </div>
+
+    <div id="questListArea"
+         style="padding:10px; display:flex; flex-direction:column; gap:6px;">
+    </div>
 
   </div>
 </div>
