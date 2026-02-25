@@ -9437,16 +9437,12 @@ function completeForgeQuest(){
   updateQuestBadges();
   try { renderTalkNpcGrid(); } catch(e) {}
 
-  // 완료 대사
-  openNpcDialogue(
-    "퍼그란트",
-    "images/npc/blacksmith_talk.png",
-    [
-      "어때? 꽤 쓸만하지?",
-      "[퀘스트 완료]\n보상 : 5만골드 지급!"
-    ],
-    true
-  );
+  // ✅ 완료 대사(기존 시스템 함수로 출력)
+  npcDialogueActionMode = null;
+  npcDialogueQueue = [
+    "어때? 꽤 쓸만하지?\n\n[퀘스트 완료]\n보상 : 5만골드 지급!"
+  ];
+  openNpcDialogueFromTalkSets([npcDialogueQueue], "퍼그란트", "images/npc/blacksmith_talk.png");
 }
 
   function shouldShowForgeQuestBadge(){
