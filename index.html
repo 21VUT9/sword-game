@@ -9387,15 +9387,30 @@ function acceptForgeQuest(){
 }
 
 function completeForgeQuest(){
-  gold += 50000;
-  questState["forge_tutorial_01"] = QUEST_STATE.REWARDED;
-  npcDialogueActionMode = null;
+  const st = getForgeQuestState();
+  if (st !== "READY_TO_COMPLETE") return;
 
+  setForgeQuestState("DONE");
+
+  // 보상 지급 (5만 골드)
+  gold = Number(gold || 0) + 50000;
   save();
+
+  // 뱃지 갱신
   updateQuestBadges();
-  closeNpcDialogue();
-});
-}  
+  try { renderTalkNpcGrid(); } catch(e) {}
+
+  // 완료 대사
+  openNpcDialogue(
+    "퍼그란트",
+    "images/npc/blacksmith_talk.png",
+    [
+      "어때? 꽤 쓸만하지?",
+      "[퀘스트 완료]\n보상 : 5만골드 지급!"
+    ],
+    true
+  );
+}
 
   function shouldShowForgeQuestBadge(){
   const st = questState["forge_tutorial_01"];
