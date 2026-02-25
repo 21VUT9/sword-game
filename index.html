@@ -7748,6 +7748,11 @@ equippedTitle = "";
     // ✅ 자동 새로고침 타이머 해제
   stopAutoRefreshTimer();
 
+  // ✅ 계정 변경 시 퀘스트 상태 섞임 방지
+questState = {};
+if (window.questState) window.questState = questState; // window.questState 쓰는 구조면 같이 맞춰줌
+updateQuestBadges();
+
   // 프로필 영역도 초기 상태로 갱신
   update();
 }
@@ -8923,6 +8928,7 @@ function renderTalkNpcGrid(){
   const imgBox = document.createElement("div");
   imgBox.className = "talkNpcImgBox";
   imgBox.style.position = "relative";
+  imgBox.style.overflow = "visible";
 
   const img = document.createElement("img");
   img.src = npc.img;
@@ -8959,17 +8965,17 @@ btn.addEventListener("click", () => {
       break;
   }
 });
-    
-  imgBox.appendChild(img);
-    
-        // ✅ 퍼그란트 퀘스트 뱃지
+
+  // ✅ 퍼그란트 퀘스트 뱃지 (대화 오버레이 NPC 아이콘용)
 if (npc.key === "fulgurant" && shouldShowForgeQuestBadge()) {
   const b = document.createElement("div");
   b.className = "icon-alert-badge";
   b.textContent = "!";
+  b.style.display = "flex"; // ✅ 핵심: .icon-alert-badge 기본 display:none 이라 강제로 켬
   imgBox.appendChild(b);
 }
     
+  imgBox.appendChild(img);   
   btn.appendChild(imgBox);
   btn.appendChild(nameEl);
   grid.appendChild(btn);
@@ -8987,9 +8993,10 @@ function openTalkOverlay(){
   const questBtn = document.getElementById("talkQuestBtn");
   if (questBtn) {
     questBtn.onclick = () => {
-      playUiClickCommon();
-      showLockedFeaturePopup(); // ✅ 현재는 미구현
-    };
+  playUiClickCommon();
+  const q = document.getElementById("questIconBtn");
+  if (q) q.click();  // ✅ 좌측 퀘스트 오버레이를 그대로 재사용
+};
   }
 }
 
@@ -9349,6 +9356,7 @@ function closeNpcDialogue(){
   btnArea.innerHTML = `
     <button class="actionBtn" type="button" onclick="acceptForgeQuest()">맡긴다</button>
     <button class="actionBtn" type="button" onclick="rejectForgeQuest()">거절한다</button>
+    rejectBtn.style.whiteSpace = "nowrap";
   `;
 }
 function rejectForgeQuest(){
