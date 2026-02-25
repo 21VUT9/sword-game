@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -8899,7 +8900,7 @@ function closeTitleOverlay(){
 // 🗨️ 대화(NPC 리스트) 오버레이
 // =====================
 const TALK_NPCS = [
-  { key: "fulgurant", name: "퍼그런트", img: "images/npc_icons/npc_fulgurant.png" },
+  { key: "fulgurant", name: "퍼그란트", img: "images/npc_icons/npc_fulgurant.png" },
   { key: "loren",     name: "로넨",     img: "images/npc_icons/npc_loren.png" },
   { key: "edelin",    name: "에델린",   img: "images/npc_icons/npc_edelin.png" },
   { key: "linea",     name: "리네아",   img: "images/npc_icons/npc_linea.png" },
@@ -8933,10 +8934,28 @@ function renderTalkNpcGrid(){
 btn.addEventListener("click", () => {
   playUiClickCommon();
 
-  if (npc.key === "fulgurant") {
-    openFulgurantDialogue();
-  } else {
-    showLockedFeaturePopup();
+  switch (npc.key) {
+    case "fulgurant":
+      openFulgurantDialogue();
+      break;
+    case "loren":
+      openLorenDialogue();
+      break;
+    case "edelin":
+      openEdelinDialogue();
+      break;
+    case "linea":
+      openLineaDialogue();
+      break;
+    case "carnia":
+      openCarniaDialogue();
+      break;
+    case "vallen":
+      openVallenDialogue();
+      break;
+    default:
+      showLockedFeaturePopup();
+      break;
   }
 });
 
@@ -9003,6 +9022,137 @@ const fulgurantDailyTalk = [
     "하늘에서 별이 떨어진 장소라던가 뭐라나…"
   ]
 
+
+
+// =====================
+// 🧑‍🤝‍🧑 기타 NPC 일상대화 세트
+// =====================
+
+// 🧔 바르톨 로넨 (무기상인) — 상냥하지만 현실적인 장사꾼
+const lorenDailyTalk = [
+
+  ["오, 또 왔군. 오늘은 뭘 팔아치울 생각이지?"],
+
+  ["검도 좋지만… 손에 쥐는 건 결국 골드지. 하하."],
+
+  ["그 장비, 네 손에선 아직 ‘물건’이 아니라 ‘이야기’더군."],
+
+  ["손님, 가격 흥정은 좋아. 근데 네 목숨값은 깎지 마라."],
+
+  ["여기서 팔고… 다시 강화해서… 또 팔고… 음, 나쁘지 않은 순환이군."],
+
+  // ✅ 연결 대화 (다음 ▶ 닫기)
+  [
+    "그래, 그건 내가 사주지.",
+    "대신 다음에 들고 올 땐… 더 큰 전설을 붙여서 와라."
+  ],
+
+  [
+    "퍼그란트? 그 친구는 불꽃에 인생을 걸었지.",
+    "난… 장부에 걸었고."
+  ]
+];
+
+// 🌙 세레나 에델린 (스크롤 상인) — 차분, 우아, 살짝 도발
+const edelinDailyTalk = [
+
+  ["어서 와요. 오늘은… ‘안전한 선택’과 ‘재미있는 선택’ 중 뭐로 할래요?"],
+
+  ["확률이란 건요. 믿는 순간, 이미 반쯤은 지는 거예요."],
+
+  ["후후… 손이 떨려요? 그럼 더 좋은 거죠. 진짜로 진지하단 뜻이니까."],
+
+  ["주문서를 아낀다고요? 그럼 마음은 이미… 강화 버튼에 가 있겠네요."],
+
+  ["실패해도 괜찮아요. 당신은… 다시 오니까."],
+
+  // ✅ 연결 대화 (다음 ▶ 닫기)
+  [
+    "오늘은 왠지… 당신이 이길 것 같아요.",
+    "그러니 한 번만 더. 딱 한 번만 더 눌러봐요."
+  ],
+
+  [
+    "레온하르트가 또 서 있었어요.",
+    "아무것도 안 사면서… ‘그냥’ 말이에요."
+  ]
+];
+
+// 📚 리네아 (서기관) — 귀엽고 수다, 기록엔 완벽주의
+const lineaDailyTalk = [
+
+  ["왔어? 잠깐만! 이 줄만 쓰고! …자, 뭐 얘기해줄 건데?"],
+
+  ["오늘 강화 표정… 음, 기록해둘게. ‘희망 → 절망 → 침착한 척’."],
+
+  ["규칙은 지키라고 있는 거야! …근데 예외도 기록하면 규칙이 되지!"],
+
+  ["아, 혹시 방금 ‘이번엔 붙을 것 같아’ 했어? 그거… 플래그야. 플래그!"],
+
+  ["나? 수다? 아니거든? 난 ‘정보 공유’ 중이거든?"],
+
+  // ✅ 연결 대화 (다음 ▶ 닫기)
+  [
+    "칭호는 멋있게 보이려고 다는 게 아니야.",
+    "…물론 멋있어 보이는 건 엄청 중요하지만!"
+  ],
+
+  [
+    "카르니아는 절대 먼저 말 안 걸어.",
+    "그래도 칭찬할 땐… 얼굴이 살짝 풀리더라? 비밀이야!"
+  ]
+];
+
+// ⚔️ 카르니아 (결투 심판) — 호탕, 명예, 전투광
+const carniaDailyTalk = [
+
+  ["좋다! 오늘도 심장이 뛰는 얼굴이군! 하하하핫!"],
+
+  ["정정당당하게 붙어라. 편법은… 내가 먼저 베어버린다."],
+
+  ["패배했나? 고개 숙일 필요 없다. 제대로 맞선 자는 이미 강하다."],
+
+  ["강한 상대일수록 즐겁지! 네가 더 세게 와라, 더 세게!"],
+
+  ["겁이 나면? 좋다. 그게 ‘살아있다’는 증거다."],
+
+  // ✅ 연결 대화 (다음 ▶ 닫기)
+  [
+    "검을 뽑았으면… 끝까지 가라!",
+    "도망치지 않는 자, 그게 진짜 전사다."
+  ],
+
+  [
+    "레온하르트? 그 녀석은 규율만큼 단단하지.",
+    "근데… 마법사 앞에선 왜 그렇게 약해지지? 하하!"
+  ]
+];
+
+// 🛡️ 레온하르트 발렌 (길드장) — 엄격, 진지 / 에델린 앞에선 빙구
+const vallenDailyTalk = [
+
+  ["보스 의뢰는 장난이 아니다. 준비가 없다면… 돌아가라."],
+
+  ["파티는 신뢰다. 신뢰가 없다면 전원 죽는다. 잊지 마."],
+
+  ["장비는 너를 살릴 수도, 죽일 수도 있다. 점검부터 해."],
+
+  ["무모함과 용기는 다르다. 너는… 어느 쪽이지?"],
+
+  ["오늘은 훈련을 했나? 안 했다면… 지금이라도 해라."],
+
+  // ✅ 연결 대화 (다음 ▶ 닫기) : 에델린 앞에서만 빙구 모드
+  [
+    "세, 세레나… 그… 오늘도… (기침) 장사가…",
+    "…아니다. 아무것도 아니다. 임무에 복귀한다."
+  ],
+
+  [
+    "카르니아가 또 날 놀리더군.",
+    "…전장보다 그게 더 위험하다."
+  ]
+};
+
 ];
 
 // ✅ 대화 진행 상태(큐)
@@ -9037,14 +9187,25 @@ function showNpcDialogueNextBtn(){
   if (btn) btn.style.display = "block";
 }
 
-function openFulgurantDialogue(){
+function setNpcDialogueIdentity(npcName, npcImg){
+  const nameEl = document.getElementById("npcDialogueName");
+  if (nameEl) nameEl.textContent = String(npcName ?? "");
+
+  const imgEl = document.getElementById("npcDialogueImg");
+  if (imgEl && npcImg) imgEl.src = npcImg;
+}
+
+function openNpcDialogueFromTalkSets(talkSets, npcName, npcImg){
+  setNpcDialogueIdentity(npcName, npcImg);
 
   const ov = document.getElementById("npcDialogueOverlay");
   const txt = document.getElementById("npcDialogueText");
 
+  if (!Array.isArray(talkSets) || talkSets.length <= 0) return;
+
   // ✅ 대화 세트 하나 랜덤 선택
-  const rand = Math.floor(Math.random() * fulgurantDailyTalk.length);
-  npcDialogueQueue = fulgurantDailyTalk[rand]; // ← 여기 핵심
+  const rand = Math.floor(Math.random() * talkSets.length);
+  npcDialogueQueue = talkSets[rand];
 
   npcDialogueIndex = 0;
 
@@ -9053,6 +9214,57 @@ function openFulgurantDialogue(){
   startNpcTypewriter(txt, npcDialogueQueue[npcDialogueIndex], 22);
 
   if (ov) ov.style.display = "flex";
+}
+
+// =====================
+// 🧔 퍼그란트 / 기타 NPC 대화 오픈
+// =====================
+function openFulgurantDialogue(){
+  openNpcDialogueFromTalkSets(
+    fulgurantDailyTalk,
+    "퍼그란트",
+    "images/npc/blacksmith_talk.png"
+  );
+}
+
+function openLorenDialogue(){
+  openNpcDialogueFromTalkSets(
+    lorenDailyTalk,
+    "바르톨 로넨",
+    "images/npc/ronen_talk.png"
+  );
+}
+
+function openEdelinDialogue(){
+  openNpcDialogueFromTalkSets(
+    edelinDailyTalk,
+    "세레나 에델린",
+    "images/npc/edelin_talk.png"
+  );
+}
+
+function openLineaDialogue(){
+  openNpcDialogueFromTalkSets(
+    lineaDailyTalk,
+    "리네아",
+    "images/npc/linea_talk.png"
+  );
+}
+
+function openCarniaDialogue(){
+  openNpcDialogueFromTalkSets(
+    carniaDailyTalk,
+    "카르니아 발크라이트",
+    "images/npc/karnia_talk.png"
+  );
+}
+
+function openVallenDialogue(){
+  openNpcDialogueFromTalkSets(
+    vallenDailyTalk,
+    "레온하르트 발렌",
+    "images/npc/vallen_talk.png"
+  );
 }
 
 function onNpcDialogueNextClick(e){
