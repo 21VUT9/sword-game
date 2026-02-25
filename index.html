@@ -9354,9 +9354,9 @@ function closeNpcDialogue(){
   if(!btnArea) return;
 
   btnArea.innerHTML = `
-  <button class="actionBtn" type="button" onclick="acceptForgeQuest()" style="white-space:nowrap;">맡긴다</button>
-  <button class="actionBtn" type="button" onclick="declineForgeQuest()" style="white-space:nowrap;">거절한다</button>
-`;
+    <button class="actionBtn" type="button" onclick="acceptForgeQuest()" style="white-space:nowrap;">맡긴다</button>
+    <button class="actionBtn" type="button" onclick="rejectForgeQuest()" style="white-space:nowrap;">거절한다</button>
+  `;
 }
   
 function rejectForgeQuest(){
@@ -9374,10 +9374,8 @@ function acceptForgeQuest(){
   npcDialogueActionMode = null; // 이제부터는 안내 대사라 기본 next 흐름
 
   npcDialogueQueue = [
-    "좋아, 대륙 최고의 대장장이님께서 제련해주지.",
-    "[달성조건 : 강화 1회를 시도 하십시오]",
-    "완료보상 : 5만골드"
-  ];
+  "좋아, 대륙 최고의 대장장이님께서 제련해주지.\n\n[달성조건 : 강화 1회를 시도 하십시오]\n완료보상 : 5만골드"
+];
 
   save();
   updateQuestBadges();
