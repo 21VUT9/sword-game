@@ -8922,6 +8922,7 @@ function renderTalkNpcGrid(){
 
   const imgBox = document.createElement("div");
   imgBox.className = "talkNpcImgBox";
+  imgBox.style.position = "relative";
 
   const img = document.createElement("img");
   img.src = npc.img;
@@ -8958,8 +8959,17 @@ btn.addEventListener("click", () => {
       break;
   }
 });
-
+    
   imgBox.appendChild(img);
+    
+        // ✅ 퍼그란트 퀘스트 뱃지
+if (npc.key === "fulgurant" && shouldShowForgeQuestBadge()) {
+  const b = document.createElement("div");
+  b.className = "icon-alert-badge";
+  b.textContent = "!";
+  imgBox.appendChild(b);
+}
+    
   btn.appendChild(imgBox);
   btn.appendChild(nameEl);
   grid.appendChild(btn);
@@ -9182,6 +9192,8 @@ function openNpcDialogueFromTalkSets(talkSets, npcName, npcImg){
   npcDialogueQueue = talkSets[rand];
 
   npcDialogueIndex = 0;
+  clearNpcDialogueBtnArea();
+  showNpcDialogueNextBtn(); // 기본은 next/닫기 버튼 흐름 사용
 
   updateNpcDialogueNextBtn();
   hideNpcDialogueNextBtn();
@@ -9218,37 +9230,35 @@ if(!window.questState){
 // 🧔 퍼그란트 / 기타 NPC 대화 오픈
 // =====================
 function openFulgurantDialogue(){
-
   const st = questState["forge_tutorial_01"];
 
   // 📜 퀘스트 제안 상태
-  if(st === QUEST_STATE.OFFERED){
+  if (st === QUEST_STATE.OFFERED) {
+    npcDialogueActionMode = "offer_forge_01";
+
     npcDialogueQueue = [
       "응? 자네 꽤 좋은 물건을 갖고있군,",
       "나한테 한번 맡겨보겠나?"
     ];
-    openNpcDialogueFromTalkSets([npcDialogueQueue], "퍼그란트", "images/npc/blacksmith_talk.png");
 
-    setTimeout(()=>{
-      showQuestAcceptReject();
-    },500);
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "퍼그란트", "images/npc/blacksmith_talk.png");
     return;
   }
 
-  // 📜 완료 상태
-  if(st === QUEST_STATE.COMPLETE){
+  // 📜 완료 상태 (강화 1회 시도 후)
+  if (st === QUEST_STATE.COMPLETE) {
+    npcDialogueActionMode = "reward_forge_01";
+
     npcDialogueQueue = [
       "어때? 꽤 쓸만하지?"
     ];
-    openNpcDialogueFromTalkSets([npcDialogueQueue], "퍼그란트", "images/npc/blacksmith_talk.png");
 
-    setTimeout(()=>{
-      showQuestRewardBtn();
-    },500);
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "퍼그란트", "images/npc/blacksmith_talk.png");
     return;
   }
 
-  // 기본 일상대화
+  // 그 외: 일상대화
+  npcDialogueActionMode = null;
   openNpcDialogueFromTalkSets(
     fulgurantDailyTalk,
     "퍼그란트",
@@ -9329,27 +9339,40 @@ function closeNpcDialogue(){
 
   const ov = document.getElementById("npcDialogueOverlay");
   if (ov) ov.style.display = "none";
+  clearNpcDialogueBtnArea();
 }
 
   function showQuestAcceptReject(){
-
   const btnArea = document.getElementById("npcDialogueBtnArea");
   if(!btnArea) return;
 
   btnArea.innerHTML = `
-    <button class="actionBtn" onclick="acceptForgeQuest()">맡긴다</button>
-    <button class="actionBtn" onclick="closeNpcDialogue()">거절한다</button>
+    <button class="actionBtn" type="button" onclick="acceptForgeQuest()">맡긴다</button>
+    <button class="actionBtn" type="button" onclick="rejectForgeQuest()">거절한다</button>
   `;
+}
+function rejectForgeQuest(){
+  // 거절: 그냥 닫고 ! 유지
+  closeNpcDialogue();
+}
+
+  function clearNpcDialogueBtnArea(){
+  const a = document.getElementById("npcDialogueBtnArea");
+  if (a) a.innerHTML = "";
 }
 
 function acceptForgeQuest(){
   questState["forge_tutorial_01"] = QUEST_STATE.ACTIVE;
+  npcDialogueActionMode = null; // 이제부터는 안내 대사라 기본 next 흐름
 
   npcDialogueQueue = [
     "좋아, 대륙 최고의 대장장이님께서 제련해주지.",
     "[달성조건 : 강화 1회를 시도 하십시오]",
     "완료보상 : 5만골드"
   ];
+
+  save();
+  updateQuestBadges();
 
   openNpcDialogueFromTalkSets([npcDialogueQueue], "퍼그란트", "images/npc/blacksmith_talk.png");
 }
@@ -9359,19 +9382,35 @@ function acceptForgeQuest(){
   if(!btnArea) return;
 
   btnArea.innerHTML = `
-    <button class="actionBtn" onclick="completeForgeQuest()">퀘스트 완료</button>
+    <button class="actionBtn" type="button" onclick="completeForgeQuest()">퀘스트 완료</button>
   `;
 }
 
 function completeForgeQuest(){
   gold += 50000;
   questState["forge_tutorial_01"] = QUEST_STATE.REWARDED;
-  closeNpcDialogue();
+  npcDialogueActionMode = null;
+
   save();
+  updateQuestBadges();
+  closeNpcDialogue();
+});
 }  
+
+  function shouldShowForgeQuestBadge(){
+  const st = questState["forge_tutorial_01"];
+  return (st === QUEST_STATE.OFFERED || st === QUEST_STATE.COMPLETE);
+}
+
+function updateQuestBadges(){
+  const badge = document.getElementById("questAlertBadge");
+  if (badge) badge.style.display = shouldShowForgeQuestBadge() ? "flex" : "none";
+}
+  
   // =====================
 // ⌨️ NPC 대사 타자기 연출
 // =====================
+let npcDialogueActionMode = null; // null | "offer_forge_01" | "reward_forge_01"
 let npcTypingTimer = null;
 let npcTypingActive = false;
 let npcTypingEl = null;
@@ -9401,9 +9440,28 @@ function stopNpcTypewriter(){
   }
 
   // ⭐ 여기서만 버튼 등장
-  updateNpcDialogueNextBtn();
-  const btn = document.getElementById("npcDialogueNextBtn");
-  if(btn) btn.style.display = "block";
+updateNpcDialogueNextBtn();
+
+const hasNext = npcDialogueIndex < npcDialogueQueue.length - 1;
+
+clearNpcDialogueBtnArea();
+
+const nextBtn = document.getElementById("npcDialogueNextBtn");
+if (nextBtn) nextBtn.style.display = hasNext ? "block" : "block"; // 기본 유지 (아래에서 퀘스트면 교체)
+
+if (!hasNext) {
+  // ✅ 마지막 문장까지 출력 완료된 순간에만 퀘스트 버튼으로 교체
+  if (npcDialogueActionMode === "offer_forge_01") {
+    if (nextBtn) nextBtn.style.display = "none";
+    showQuestAcceptReject();
+    return;
+  }
+  if (npcDialogueActionMode === "reward_forge_01") {
+    if (nextBtn) nextBtn.style.display = "none";
+    showQuestRewardBtn();
+    return;
+  }
+}
 }
 
 function startNpcTypewriter(el, fullText, msPerChar){
@@ -10011,11 +10069,14 @@ updateDuelUI();
     // ✅ 강화 아이템 라벨 수량 갱신
   updateUpgradeItemLabels();
 
-// ✅ v4.40 튜토리얼 퀘스트 지급 (기존/신규 공통: 상태가 없으면 1회만 OFFERED)
-if (questState["forge_tutorial_01"] == null) {
+// ✅ v4.40 튜토리얼 퀘스트 지급 (기존유저 포함 1회 주입)
+// - undefined일 때만 OFFERED 세팅 (이미 진행/완료/보상받은 유저는 유지)
+const _st = questState["forge_tutorial_01"];
+if (_st === undefined) {
   questState["forge_tutorial_01"] = QUEST_STATE.OFFERED;
   save();
 }
+updateQuestBadges();
 }
 
 // ⚔️ 결투 일자/카운트 초기화
@@ -11736,6 +11797,13 @@ if (!isInFulgurantForge()) {
   
   // 이미 강화 중이면 중복 클릭 방지
   if (isUpgrading) return;
+
+  // ✅ 튜토리얼 퀘스트: 강화 1회 "시도"하면 완료 상태로 전환
+if (questState["forge_tutorial_01"] === QUEST_STATE.ACTIVE) {
+  questState["forge_tutorial_01"] = QUEST_STATE.COMPLETE;
+  save();
+  updateQuestBadges();
+}
 
   playWeaponAnim("weapon-flash-charge");
 
@@ -21111,6 +21179,19 @@ document.addEventListener("click", function(e){
        box-sizing:border-box;
      ">
       </div>
+
+      <!-- ✅ 퀘스트용 버튼 영역 (수락/거절/완료 등) -->
+<div id="npcDialogueBtnArea"
+     style="
+       position:absolute;
+       right:12px;
+       bottom:10px;
+       display:flex;
+       gap:8px;
+       align-items:center;
+       justify-content:flex-end;
+       z-index:2;
+     "></div>
 
       <!-- ✅ 우측 하단: 다음/닫기 버튼 -->
 <button id="npcDialogueNextBtn"
