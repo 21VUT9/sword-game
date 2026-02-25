@@ -9459,33 +9459,8 @@ function updateQuestBadges(){
   if (badge) badge.style.display = shouldShowForgeQuestBadge() ? "flex" : "none";
 }
 
-function openQuestOverlay(){
-  // 지금은 튜토 퀘스트 1개만 표시
-  const st = getForgeQuestState();
-  const statusText =
-    (st === QUEST_STATE.OFFERED) ? "진행중" :
-    (st === QUEST_STATE.COMPLETE) ? "완료 가능" :
-    (st === QUEST_STATE.REWARDED) ? "완료" :
-    "미수락";
-
-  showNpcMessage(
-    `
-      <div style="font-weight:900; font-size:16px; margin-bottom:10px;">퀘스트 현황</div>
-
-      <button class="actionBtn" type="button"
-        onclick="openQuestDetail_forgeTutorial01()"
-        style="width:100%; text-align:left; white-space:nowrap;">
-        [대륙 최고의 대장장이] - ${statusText}
-      </button>
-    `,
-    null,
-    true,
-    "퀘스트"
-  );
-}
-
 function openQuestDetail_forgeTutorial01(){
-  const st = getForgeQuestState();
+  const st = questState["forge_tutorial_01"];
 
   let body = `
     <div style="font-weight:900; font-size:15px; margin-bottom:8px;">대륙 최고의 대장장이</div>
