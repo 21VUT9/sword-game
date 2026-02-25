@@ -9354,11 +9354,11 @@ function closeNpcDialogue(){
   if(!btnArea) return;
 
   btnArea.innerHTML = `
-    <button class="actionBtn" type="button" onclick="acceptForgeQuest()">맡긴다</button>
-    <button class="actionBtn" type="button" onclick="rejectForgeQuest()">거절한다</button>
-    rejectBtn.style.whiteSpace = "nowrap";
-  `;
+  <button class="actionBtn" type="button" onclick="acceptForgeQuest()" style="white-space:nowrap;">맡긴다</button>
+  <button class="actionBtn" type="button" onclick="declineForgeQuest()" style="white-space:nowrap;">거절한다</button>
+`;
 }
+  
 function rejectForgeQuest(){
   // 거절: 그냥 닫고 ! 유지
   closeNpcDialogue();
@@ -9428,6 +9428,54 @@ function completeForgeQuest(){
 function updateQuestBadges(){
   const badge = document.getElementById("questAlertBadge");
   if (badge) badge.style.display = shouldShowForgeQuestBadge() ? "flex" : "none";
+}
+
+function openQuestOverlay(){
+  // 지금은 튜토 퀘스트 1개만 표시
+  const st = getForgeQuestState();
+  const statusText =
+    (st === QUEST_STATE.OFFERED) ? "진행중" :
+    (st === QUEST_STATE.COMPLETE) ? "완료 가능" :
+    (st === QUEST_STATE.DONE) ? "완료" :
+    "미수락";
+
+  showNpcMessage(
+    `
+      <div style="font-weight:900; font-size:16px; margin-bottom:10px;">퀘스트 현황</div>
+
+      <button class="actionBtn" type="button"
+        onclick="openQuestDetail_forgeTutorial01()"
+        style="width:100%; text-align:left; white-space:nowrap;">
+        [대륙 최고의 대장장이] - ${statusText}
+      </button>
+    `,
+    null,
+    true,
+    "퀘스트"
+  );
+}
+
+function openQuestDetail_forgeTutorial01(){
+  const st = getForgeQuestState();
+
+  let body = `
+    <div style="font-weight:900; font-size:15px; margin-bottom:8px;">대륙 최고의 대장장이</div>
+    <div style="font-size:13px; line-height:1.6;">
+      퍼그란트가 자네에게 제련을 제안했다.<br><br>
+      <b>달성조건</b> : 강화 1회를 시도하십시오<br>
+      <b>완료보상</b> : 5만 골드
+    </div>
+  `;
+
+  if (st === QUEST_STATE.OFFERED) {
+    body += `<div style="margin-top:10px; font-size:12px; color:#aaa;">※ 강화 1회를 시도하면 완료 가능 상태로 전환됩니다.</div>`;
+  } else if (st === QUEST_STATE.COMPLETE) {
+    body += `<div style="margin-top:10px; font-size:12px; color:#ffd54f;">※ 퍼그란트에게 돌아가서 퀘스트 완료를 진행하세요.</div>`;
+  } else if (st === QUEST_STATE.DONE) {
+    body += `<div style="margin-top:10px; font-size:12px; color:#7CFF7C;">※ 완료한 퀘스트입니다.</div>`;
+  }
+
+  showNpcMessage(body, null, true, "퀘스트 상세");
 }
   
   // =====================
@@ -13122,6 +13170,9 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
       itemEngraveNormal = Number(data.itemEngraveNormal || 0);
       itemEngraveAdvanced = Number(data.itemEngraveAdvanced || 0);
       couponUsedMap = data.couponUsed || {};
+  // ✅ 퀘스트 상태(계정별) 로드
+questState = (data.questState && typeof data.questState === "object") ? data.questState : {};
+window.questState = questState; // (디버깅/전역참조 안전)
       // ✅ 명예의전당(30강) / 글로벌 30강 이벤트 상태 로드
       hofDeadline = Number(data.hofDeadline || 0);
       hofAchievedAt = Number(data.hofAchievedAt || 0);
@@ -14460,6 +14511,9 @@ if (!power || power <= 20) {
     itemEngraveNormal = Number(data.itemEngraveNormal || 0);
     itemEngraveAdvanced = Number(data.itemEngraveAdvanced || 0);
     couponUsedMap = data.couponUsed || {};
+    // ✅ 퀘스트 상태(계정별) 로드
+questState = (data.questState && typeof data.questState === "object") ? data.questState : {};
+window.questState = questState; // (디버깅/전역참조 안전)
     // ✅ 명예의전당(30강) / 글로벌 30강 이벤트 상태 로드
     hofDeadline = Number(data.hofDeadline || 0);
     hofAchievedAt = Number(data.hofAchievedAt || 0);
