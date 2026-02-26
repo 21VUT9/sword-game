@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -6279,8 +6278,6 @@ function playEngraveSound() {
 /* 상태 */
 let sword = 0, power = 10, gold = 100;
 let userId="", userPassword="", userRef=null;
-let questState = {};
-window.questState = questState; // 기존 코드 호환용(questState를 전역으로도 접근)
 let attendanceCount = 0;
 let lastAttendanceDate = "";
 let attendanceStreak = 0;     // 연속 출석 수
@@ -9083,7 +9080,35 @@ function openTalkOverlay(){
     rows.push(row);
   }
 
+  
   // =====================
+  // 1-2) 퍼그란트 - 에델린의 불꽃
+  // =====================
+  const stForge2 = questState?.forge_tutorial_02;
+
+  // ✅ 수락 이후 상태만 현황에 표시 (ACTIVE/COMPLETE/REWARDED)
+  if (stForge2 && stForge2 !== QUEST_STATE.OFFERED) {
+    let status =
+      stForge2 === QUEST_STATE.ACTIVE ? "진행중" :
+      stForge2 === QUEST_STATE.COMPLETE ? "완료 가능" :
+      stForge2 === QUEST_STATE.REWARDED ? "완료" :
+      "미수락";
+
+    const row = document.createElement("div");
+
+    if (stForge2 === QUEST_STATE.REWARDED) {
+      row.className = "questRowText questRowDone";
+      row.textContent = `에델린의 불꽃  -  완료`;
+    } else {
+      row.className = "questRowText";
+      row.textContent = `에델린의 불꽃  -  ${status}`;
+      row.addEventListener("click", () => openQuestDetail_forgeTutorial02());
+    }
+
+    rows.push(row);
+  }
+
+// =====================
   // 2) 발렌 - 발렌의 첫번째 의뢰
   // =====================
   const stVallen = questState?.vallen_tutorial_01;
@@ -9108,28 +9133,6 @@ function openTalkOverlay(){
 
     rows.push(row);
   }
-    const stForge2 = questState?.forge_tutorial_02;
-
-if (stForge2 && stForge2 !== QUEST_STATE.OFFERED) {
-
-  let status =
-    stForge2 === QUEST_STATE.ACTIVE ? "진행중" :
-    stForge2 === QUEST_STATE.COMPLETE ? "완료 가능" :
-    stForge2 === QUEST_STATE.REWARDED ? "완료" :
-    "미수락";
-
-  const row = document.createElement("div");
-
-  if (stForge2 === QUEST_STATE.REWARDED) {
-    row.className = "questRowText questRowDone";
-    row.textContent = `에델린의 불꽃  -  완료`;
-  } else {
-    row.className = "questRowText";
-    row.textContent = `에델린의 불꽃  -  ${status}`;
-    row.addEventListener("click", () => openQuestDetail_forgeTutorial02());
-  }
-
-  rows.push(row);}
 
   if (rows.length === 0) {
     list.innerHTML = `<div style="padding:12px; color:#aaa; font-size:13px;">진행 중인 퀘스트가 없습니다.</div>`;
@@ -9138,7 +9141,6 @@ if (stForge2 && stForge2 !== QUEST_STATE.OFFERED) {
 
   rows.forEach(r => list.appendChild(r));
 }
-
 
 function closeQuestOverlay(){
   document.getElementById("questOverlay").style.display = "none";
@@ -9382,27 +9384,18 @@ if(!window.questState){
     rewardItem: "itemScroll15",
     rewardItemCount: 1
   },
-forge_tutorial_02: {
-  id: "forge_tutorial_02",
-  title: "에델린의 불꽃",
-  npc: "fulgurant",
-  rewardGold: 3000000
-} 
+  forge_tutorial_02: {
+    id: "forge_tutorial_02",
+    title: "에델린의 불꽃",
+    npc: "fulgurant",
+    rewardGold: 3000000
+  }
 };
   
 // =====================
 // 🧔 퍼그란트 / 기타 NPC 대화 오픈
 // =====================
 function openFulgurantDialogue(){
-    // ✅ 튜토리얼3(에델린의 불꽃) 언락 보정:
-  // 발렌 퀘스트를 보상수령(REWARDED)까지 했는데 3퀘가 아직 없으면 OFFERED로 생성
-  if (questState?.vallen_tutorial_01 === QUEST_STATE.REWARDED &&
-      questState?.forge_tutorial_02 === undefined) {
-    questState["forge_tutorial_02"] = QUEST_STATE.OFFERED;
-    save();
-    updateQuestBadges();
-    try { renderTalkNpcGrid(); } catch(e) {}
-  }
   const st = questState["forge_tutorial_01"];
 
   // 📜 퀘스트 제안 상태
@@ -9430,44 +9423,35 @@ function openFulgurantDialogue(){
     return;
   }
 
-  // 📜 튜토리얼3 제안
-const st3 = questState["forge_tutorial_02"];
-if (st3 === QUEST_STATE.OFFERED) {
+  
+  // 📜 (튜토리얼3) 에델린의 불꽃 - 퀘스트 제안 상태
+  const st2 = questState["forge_tutorial_02"];
 
-  npcDialogueActionMode = "offer_forge_02";
+  if (st2 === QUEST_STATE.OFFERED) {
+    npcDialogueActionMode = "offer_forge_02";
 
-  npcDialogueQueue = [
-    "오? 자네, 꽤 귀한 물건을 손에 넣었구만.",
-    "그 '15강 강화주문서' 말이야…",
-    "마법사 세레나 에델린의 불꽃을 담은 특수 주문서지.",
-    "무기를 제련할 때도 큰 도움이 된다네.",
-    "어때, 나한테 한번 맡겨보겠나?"
-  ];
+    npcDialogueQueue = [
+      "오 자네 귀한물건을 구했구만,",
+      "'15강강화주문서'는 마법사 세레나, 에델린의 불꽃을 강화하는 특수한 힘을 가진 마법주문서지.",
+      "그 불꽃은 무기를 제련할 때도 큰 도움이 된다네.",
+      "어때, 나한테 한번 맡겨보겠나?"
+    ];
 
-  openNpcDialogueFromTalkSets(
-    [npcDialogueQueue],
-    "퍼그란트",
-    "images/npc/blacksmith_talk.png"
-  );
-  return;
-}
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "퍼그란트", "images/npc/blacksmith_talk.png");
+    return;
+  }
 
-// 📜 튜토리얼3 완료
-if (st3 === QUEST_STATE.COMPLETE) {
+  // 📜 (튜토리얼3) 완료 가능 상태
+  if (st2 === QUEST_STATE.COMPLETE) {
+    npcDialogueActionMode = "reward_forge_02";
 
-  npcDialogueActionMode = "reward_forge_02";
+    npcDialogueQueue = [
+      "굉장한 물건이 만들어졌구만!"
+    ];
 
-  npcDialogueQueue = [
-    "굉장한 물건이 만들어졌구만!"
-  ];
-
-  openNpcDialogueFromTalkSets(
-    [npcDialogueQueue],
-    "퍼그란트",
-    "images/npc/blacksmith_talk.png"
-  );
-  return;
-}
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "퍼그란트", "images/npc/blacksmith_talk.png");
+    return;
+  }
 
   // 그 외: 일상대화
   npcDialogueActionMode = null;
@@ -9583,10 +9567,6 @@ function closeNpcDialogue(){
   const ov = document.getElementById("npcDialogueOverlay");
   if (ov) ov.style.display = "none";
   clearNpcDialogueBtnArea();
-    // ✅ 대화 닫힐 때 퀘스트 뱃지/그리드 즉시 갱신
-  try { updateQuestBadges(); } catch(e) {}
-  try { renderTalkNpcGrid(); } catch(e) {}
-  try { renderQuestOverlayList(); } catch(e) {}
 }
 
   function showQuestAcceptReject(){
@@ -9602,69 +9582,6 @@ function closeNpcDialogue(){
 function rejectForgeQuest(){
   // 거절: 그냥 닫고 ! 유지
   closeNpcDialogue();
-}
-  function showForge2AcceptReject(){
-  const btnArea = document.getElementById("npcDialogueBtnArea");
-  if (!btnArea) return;
-
-  btnArea.innerHTML = `
-    <button class="actionBtn" type="button" onclick="acceptForge2Quest()" style="white-space:nowrap;">맡긴다</button>
-    <button class="actionBtn" type="button" onclick="rejectForge2Quest()" style="white-space:nowrap;">그만둔다</button>
-  `;
-}
-
-function rejectForge2Quest(){
-  closeNpcDialogue();
-}
-
-function acceptForge2Quest(){
-
-  questState["forge_tutorial_02"] = QUEST_STATE.ACTIVE;
-  save();
-  updateQuestBadges();
-  try { renderTalkNpcGrid(); } catch(e) {}
-
-  npcDialogueActionMode = null;
-  npcDialogueQueue = [
-  "좋아! 순식간에 올려주지!\n\n[달성조건] : 15강 강화주문서를 사용하여 강화\n[보상] : 300만 골드"
-];
-
-  openNpcDialogueFromTalkSets(
-    [npcDialogueQueue],
-    "퍼그란트",
-    "images/npc/blacksmith_talk.png"
-  );
-}
-
-function showForge2RewardBtn(){
-  showNpcChoiceButtons([
-    { text: "퀘스트 완료", onClick: completeForge2Quest }
-  ]);
-}
-
-function completeForge2Quest(){
-
-  if (questState["forge_tutorial_02"] !== QUEST_STATE.COMPLETE) return;
-
-  gold += 3000000;
-  questState["forge_tutorial_02"] = QUEST_STATE.REWARDED;
-
-  save();
-  updateQuestBadges();
-  try { renderTalkNpcGrid(); } catch(e) {}
-  update();
-
-  npcDialogueActionMode = null;
-  npcDialogueQueue = [
-    "퀘스트 완료!",
-    "보상 300만 골드 지급!"
-  ];
-
-  openNpcDialogueFromTalkSets(
-    [npcDialogueQueue],
-    "퍼그란트",
-    "images/npc/blacksmith_talk.png"
-  );
 }
 
 // =====================
@@ -9726,12 +9643,12 @@ function completeVallenQuest(){
   // 상태: 보상 수령 완료
   questState["vallen_tutorial_01"] = QUEST_STATE.REWARDED;
 
-  if (questState["vallen_tutorial_01"] === QUEST_STATE.REWARDED
- && questState["forge_tutorial_02"] === undefined) {
+  // ✅ 튜토리얼2 완료 → 튜토리얼3(에델린의 불꽃) 오픈
+  if (!questState["forge_tutorial_02"]) {
+    questState["forge_tutorial_02"] = QUEST_STATE.OFFERED;
+  }
 
-  questState["forge_tutorial_02"] = QUEST_STATE.OFFERED;
-  save();
-}
+
   save();
   if (typeof update === "function") update();
   updateQuestBadges();
@@ -9799,10 +9716,8 @@ function completeForgeQuest(){
   function shouldShowForgeQuestBadge(){
   const st1 = questState["forge_tutorial_01"];
   const st2 = questState["forge_tutorial_02"];
-
   const on1 = (st1 === QUEST_STATE.OFFERED || st1 === QUEST_STATE.COMPLETE);
   const on2 = (st2 === QUEST_STATE.OFFERED || st2 === QUEST_STATE.COMPLETE);
-
   return (on1 || on2);
 }
 
@@ -9811,12 +9726,112 @@ function shouldShowVallenQuestBadge(){
   return (st === QUEST_STATE.OFFERED || st === QUEST_STATE.COMPLETE);
 }
 
+
+function syncQuestUnlocks(){
+  // ✅ 튜토리얼2 완료(보상 수령) 상태인데 튜토리얼3가 아직 없으면 자동 오픈
+  const stVallen = questState?.vallen_tutorial_01;
+  if (stVallen === QUEST_STATE.REWARDED && !questState["forge_tutorial_02"]) {
+    questState["forge_tutorial_02"] = QUEST_STATE.OFFERED;
+    save();
+  }
+}
+
 function updateQuestBadges(){
+  syncQuestUnlocks();
   const badge = document.getElementById("questAlertBadge");
   const on = (shouldShowForgeQuestBadge() || shouldShowVallenQuestBadge());
   if (badge) badge.style.display = on ? "flex" : "none";
 }
 
+
+
+// =====================
+// 🔥 튜토리얼3: 에델린의 불꽃 (15강 주문서 사용)
+// =====================
+function showForge2AcceptReject(){
+  const btnArea = document.getElementById("npcDialogueBtnArea");
+  if (!btnArea) return;
+
+  btnArea.innerHTML = `
+    <button class="actionBtn" type="button" onclick="acceptForge2Quest()" style="white-space:nowrap;">맡긴다</button>
+    <button class="actionBtn" type="button" onclick="rejectForge2Quest()" style="white-space:nowrap;">그만둔다</button>
+  `;
+}
+
+function acceptForge2Quest(){
+  questState["forge_tutorial_02"] = QUEST_STATE.ACTIVE;
+  npcDialogueActionMode = null;
+
+  npcDialogueQueue = [
+`좋아! 순식간에 올려주지!
+
+[달성조건] : 15강 강화주문서를 사용하여 강화
+[보상] : 300만 골드`
+  ];
+
+  save();
+  updateQuestBadges();
+  if (typeof renderTalkNpcGrid === "function") renderTalkNpcGrid();
+
+  openNpcDialogueFromTalkSets([npcDialogueQueue], "퍼그란트", "images/npc/blacksmith_talk.png");
+}
+
+function rejectForge2Quest(){
+  // 거절: 그냥 닫고 ! 유지
+  closeNpcDialogue();
+}
+
+function showForge2RewardBtn(){
+  const btnArea = document.getElementById("npcDialogueBtnArea");
+  if (!btnArea) return;
+
+  btnArea.innerHTML = `
+    <button class="actionBtn" type="button" onclick="completeForge2Quest()" style="white-space:nowrap;">퀘스트 완료</button>
+  `;
+}
+
+function completeForge2Quest(){
+  // 보상 지급
+  gold += 3000000;
+
+  questState["forge_tutorial_02"] = QUEST_STATE.REWARDED;
+
+  npcDialogueActionMode = null;
+  npcDialogueQueue = [
+`퀘스트 완료!
+보상 : 300만 골드 지급!`
+  ];
+
+  save();
+  update();
+  updateQuestBadges();
+  if (typeof renderTalkNpcGrid === "function") renderTalkNpcGrid();
+
+  openNpcDialogueFromTalkSets([npcDialogueQueue], "퍼그란트", "images/npc/blacksmith_talk.png");
+}
+
+function openQuestDetail_forgeTutorial02(){
+  const st = questState?.forge_tutorial_02;
+
+  let body = `
+    <div style="font-weight:900; font-size:15px; margin-bottom:8px;">에델린의 불꽃</div>
+    <div style="font-size:13px; line-height:1.6;">
+      퍼그란트가 ‘15강 강화주문서’의 힘을 설명하며 제련을 제안했다.<br><br>
+      <b>달성조건</b> : 15강 강화주문서를 사용하여 강화<br>
+      <b>완료보상</b> : 300만 골드
+    </div>
+  `;
+
+  if (st === QUEST_STATE.ACTIVE) {
+    body += `<div style="margin-top:10px; font-size:12px; color:#aaa;">※ 15강 강화주문서를 사용하면 완료 가능 상태로 전환됩니다.</div>`;
+  } else if (st === QUEST_STATE.COMPLETE) {
+    body += `<div style="margin-top:10px; font-size:12px; color:#ffd54f;">※ 퍼그란트에게 돌아가서 퀘스트 완료를 진행하세요.</div>`;
+  } else if (st === QUEST_STATE.REWARDED) {
+    body += `<div style="margin-top:10px; font-size:12px; color:#7CFF7C;">※ 완료한 퀘스트입니다.</div>`;
+  }
+
+  showNpcMessage(body, null, true, "퀘스트 상세");
+}
 function openQuestDetail_forgeTutorial01(){
   const st = questState["forge_tutorial_01"];
 
@@ -9868,28 +9883,6 @@ function openQuestDetail_vallenTutorial01(){
   showNpcMessage(body, null, true, "퀘스트 상세");
 }
 
-  function openQuestDetail_forgeTutorial02(){
-  const st = questState["forge_tutorial_02"];
-
-  let body = `
-    <div style="font-weight:900; font-size:15px; margin-bottom:8px;">에델린의 불꽃</div>
-    <div style="font-size:13px; line-height:1.6;">
-      퍼그란트가 주문서를 시험해보자고 한다.<br><br>
-      <b>달성조건</b> : 15강 강화주문서를 사용하여 강화<br>
-      <b>완료보상</b> : 300만 골드
-    </div>
-  `;
-
-  if (st === QUEST_STATE.ACTIVE) {
-    body += `<div style="margin-top:10px; font-size:12px; color:#aaa;">※ 주문서를 사용하면 완료 가능 상태로 전환됩니다.</div>`;
-  } else if (st === QUEST_STATE.COMPLETE) {
-    body += `<div style="margin-top:10px; font-size:12px; color:#ffd54f;">※ 퍼그란트에게 돌아가세요.</div>`;
-  } else if (st === QUEST_STATE.REWARDED) {
-    body += `<div style="margin-top:10px; font-size:12px; color:#7CFF7C;">※ 완료한 퀘스트입니다.</div>`;
-  }
-
-  showNpcMessage(body, null, true, "퀘스트 상세");
-}
   
   // =====================
 // ⌨️ NPC 대사 타자기 연출
@@ -9924,21 +9917,17 @@ function stopNpcTypewriter(){
   }
 
   // ⭐ 여기서만 버튼 등장
-  updateNpcDialogueNextBtn();
+updateNpcDialogueNextBtn();
 
-  const hasNext = npcDialogueIndex < npcDialogueQueue.length - 1;
+const hasNext = npcDialogueIndex < npcDialogueQueue.length - 1;
 
-  clearNpcDialogueBtnArea();
+clearNpcDialogueBtnArea();
 
-  const nextBtn = document.getElementById("npcDialogueNextBtn");
+const nextBtn = document.getElementById("npcDialogueNextBtn");
+if (nextBtn) nextBtn.style.display = hasNext ? "block" : "block"; // 기본 유지 (아래에서 퀘스트면 교체)
 
-  // ✅ 기본: 다음이 있으면 Next 보여줌
-  if (hasNext) {
-    if (nextBtn) nextBtn.style.display = "block";
-    return;
-  }
-
-  // ✅ 마지막 문장인데 "퀘스트 액션 모드"면: Next/닫기 숨기고 선택지/완료 버튼 표시
+if (!hasNext) {
+  // ✅ 마지막 문장까지 출력 완료된 순간에만 퀘스트 버튼으로 교체
   if (npcDialogueActionMode === "offer_forge_01") {
     if (nextBtn) nextBtn.style.display = "none";
     showQuestAcceptReject();
@@ -9949,8 +9938,16 @@ function stopNpcTypewriter(){
     showQuestRewardBtn();
     return;
   }
-
-  // ✅ (추가) 3번째 퀘스트 offer/reward 처리
+  if (npcDialogueActionMode === "offer_vallen_01") {
+    if (nextBtn) nextBtn.style.display = "none";
+    showVallenQuestAcceptReject();
+    return;
+  }
+  if (npcDialogueActionMode === "reward_vallen_01") {
+    if (nextBtn) nextBtn.style.display = "none";
+    showVallenQuestRewardBtn();
+    return;
+  }
   if (npcDialogueActionMode === "offer_forge_02") {
     if (nextBtn) nextBtn.style.display = "none";
     showForge2AcceptReject();
@@ -9961,9 +9958,8 @@ function stopNpcTypewriter(){
     showForge2RewardBtn();
     return;
   }
-
-  // ✅ 그 외: 마지막 문장이면 닫기 버튼만 노출
-  if (nextBtn) nextBtn.style.display = "block";
+}
+}
 }
 
 function startNpcTypewriter(el, fullText, msPerChar){
@@ -12384,15 +12380,15 @@ if (questState["forge_tutorial_01"] === QUEST_STATE.ACTIVE) {
     const before = sword;          // 🔹 추가: 주문서 사용 전 레벨 기억
 
     itemScroll15 -= 1;
-
-    if (questState["forge_tutorial_02"] === QUEST_STATE.ACTIVE) {
-  questState["forge_tutorial_02"] = QUEST_STATE.COMPLETE;
-  save();
-  updateQuestBadges();
-  try { renderTalkNpcGrid(); } catch(e) {}
-}
-
     sword = 15;
+
+    // ✅ 튜토리얼3 진행중이면: 15강 주문서 사용으로 완료 가능 전환
+    if (questState && questState["forge_tutorial_02"] === QUEST_STATE.ACTIVE) {
+      questState["forge_tutorial_02"] = QUEST_STATE.COMPLETE;
+      save();
+      updateQuestBadges();
+      if (typeof renderTalkNpcGrid === "function") renderTalkNpcGrid();
+    }
 
       // 🔹 0강 → 15강으로 점프했다면 여기서 검/창 랜덤 확정
   ensureWeaponTypeAfterUpgrade(before, sword);
