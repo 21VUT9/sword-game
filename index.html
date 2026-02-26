@@ -6279,6 +6279,8 @@ function playEngraveSound() {
 /* 상태 */
 let sword = 0, power = 10, gold = 100;
 let userId="", userPassword="", userRef=null;
+let questState = {};
+window.questState = questState; // 기존 코드 호환용(questState를 전역으로도 접근)
 let attendanceCount = 0;
 let lastAttendanceDate = "";
 let attendanceStreak = 0;     // 연속 출석 수
@@ -9106,16 +9108,7 @@ function openTalkOverlay(){
 
     rows.push(row);
   }
-
-  if (rows.length === 0) {
-    list.innerHTML = `<div style="padding:12px; color:#aaa; font-size:13px;">진행 중인 퀘스트가 없습니다.</div>`;
-    return;
-  }
-
-  rows.forEach(r => list.appendChild(r));
-}
-
-  const stForge2 = questState?.forge_tutorial_02;
+    const stForge2 = questState?.forge_tutorial_02;
 
 if (stForge2 && stForge2 !== QUEST_STATE.OFFERED) {
 
@@ -9136,8 +9129,16 @@ if (stForge2 && stForge2 !== QUEST_STATE.OFFERED) {
     row.addEventListener("click", () => openQuestDetail_forgeTutorial02());
   }
 
-  rows.push(row);
+  rows.push(row);}
+
+  if (rows.length === 0) {
+    list.innerHTML = `<div style="padding:12px; color:#aaa; font-size:13px;">진행 중인 퀘스트가 없습니다.</div>`;
+    return;
+  }
+
+  rows.forEach(r => list.appendChild(r));
 }
+
 
 function closeQuestOverlay(){
   document.getElementById("questOverlay").style.display = "none";
