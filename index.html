@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -9019,7 +9020,16 @@ if (npc.key === "vallen" && shouldShowVallenQuestBadge()) {
   imgBox.appendChild(b);
 }
     
-  imgBox.appendChild(img);   
+  // ✅ 로넨 퀘스트 뱃지 (대화 오버레이 NPC 아이콘용)
+if (npc.key === "loren" && shouldShowLorenQuestBadge()) {
+  const b = document.createElement("div");
+  b.className = "icon-alert-badge";
+  b.textContent = "!";
+  b.style.display = "flex";
+  imgBox.appendChild(b);
+}
+
+imgBox.appendChild(img);   
   btn.appendChild(imgBox);
   btn.appendChild(nameEl);
   grid.appendChild(btn);
@@ -9129,6 +9139,35 @@ function openTalkOverlay(){
       row.className = "questRowText";
       row.textContent = `발렌의 첫번째 의뢰  -  ${status}`;
       row.addEventListener("click", () => openQuestDetail_vallenTutorial01());
+    }
+
+    rows.push(row);
+  }
+
+
+
+  // =====================
+  // 3) 로넨 - 로넨의 취미생활
+  // =====================
+  const stLoren = questState?.loren_tutorial_01;
+
+  // ✅ 수락 이후 상태만 현황에 표시 (ACTIVE/COMPLETE/REWARDED)
+  if (stLoren && stLoren !== QUEST_STATE.OFFERED) {
+    let status =
+      stLoren === QUEST_STATE.ACTIVE ? "진행중" :
+      stLoren === QUEST_STATE.COMPLETE ? "완료 가능" :
+      stLoren === QUEST_STATE.REWARDED ? "완료" :
+      "미수락";
+
+    const row = document.createElement("div");
+
+    if (stLoren === QUEST_STATE.REWARDED) {
+      row.className = "questRowText questRowDone";
+      row.textContent = `로넨의 취미생활  -  완료`;
+    } else {
+      row.className = "questRowText";
+      row.textContent = `로넨의 취미생활  -  ${status}`;
+      row.addEventListener("click", () => openQuestDetail_lorenTutorial01());
     }
 
     rows.push(row);
@@ -9463,6 +9502,36 @@ function openFulgurantDialogue(){
 }
 
 function openLorenDialogue(){
+
+  const st = questState["loren_tutorial_01"];
+
+  // 📜 퀘스트 제안 상태 (튜토리얼 3 완료 후)
+  if (st === QUEST_STATE.OFFERED) {
+    npcDialogueActionMode = "offer_loren_01";
+
+    npcDialogueQueue = [
+      "자네 무기, 정말 멋지구만.",
+      "그래… 그 무기에도 많은 이야기를 담고 있겠군.",
+      "나는 무기를 수집하는 게 아니라, 이야기를 수집하는 걸 좋아하지.",
+      "어때, 나한테 팔아보겠나?"
+    ];
+
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "바르톨 로넨", "images/npc/ronen_talk.png");
+    return;
+  }
+
+  // 📜 완료 상태 (15강 이상 무기 판매)
+  if (st === QUEST_STATE.COMPLETE) {
+    npcDialogueActionMode = "reward_loren_01";
+
+    npcDialogueQueue = [
+      "이건 내가 잘 맡아두지!"
+    ];
+
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "바르톨 로넨", "images/npc/ronen_talk.png");
+    return;
+  }
+
   openNpcDialogueFromTalkSets(
     lorenDailyTalk,
     "바르톨 로넨",
@@ -9726,6 +9795,11 @@ function shouldShowVallenQuestBadge(){
   return (st === QUEST_STATE.OFFERED || st === QUEST_STATE.COMPLETE);
 }
 
+function shouldShowLorenQuestBadge(){
+  const st = questState["loren_tutorial_01"];
+  return (st === QUEST_STATE.OFFERED || st === QUEST_STATE.COMPLETE);
+}
+
 
 function syncQuestUnlocks(){
   // ✅ 튜토리얼2 완료(보상 수령) 상태인데 튜토리얼3가 아직 없으면 자동 오픈
@@ -9734,12 +9808,19 @@ function syncQuestUnlocks(){
     questState["forge_tutorial_02"] = QUEST_STATE.OFFERED;
     save();
   }
+
+  // ✅ 튜토리얼3 완료(보상 수령) 상태인데 튜토리얼4가 아직 없으면 자동 오픈
+  const stForge2 = questState?.forge_tutorial_02;
+  if (stForge2 === QUEST_STATE.REWARDED && !questState["loren_tutorial_01"]) {
+    questState["loren_tutorial_01"] = QUEST_STATE.OFFERED;
+    save();
+  }
 }
 
 function updateQuestBadges(){
   syncQuestUnlocks();
   const badge = document.getElementById("questAlertBadge");
-  const on = (shouldShowForgeQuestBadge() || shouldShowVallenQuestBadge());
+  const on = (shouldShowForgeQuestBadge() || shouldShowVallenQuestBadge() || shouldShowLorenQuestBadge());
   if (badge) badge.style.display = on ? "flex" : "none";
 }
 
@@ -9809,6 +9890,76 @@ function completeForge2Quest(){
 
   openNpcDialogueFromTalkSets([npcDialogueQueue], "퍼그란트", "images/npc/blacksmith_talk.png");
 }
+
+// =====================
+// 📜 튜토리얼4: 로넨의 취미생활 (15강 이상 무기 판매)
+// =====================
+function showLorenQuestAcceptReject(){
+  const btnArea = document.getElementById("npcDialogueBtnArea");
+  if(!btnArea) return;
+
+  btnArea.innerHTML = `
+    <button class="actionBtn" type="button" onclick="acceptLorenQuest()" style="white-space:nowrap;">좋아!</button>
+    <button class="actionBtn" type="button" onclick="rejectLorenQuest()" style="white-space:nowrap;">안돼</button>
+  `;
+}
+
+function acceptLorenQuest(){
+  questState["loren_tutorial_01"] = QUEST_STATE.ACTIVE;
+  npcDialogueActionMode = null;
+
+  npcDialogueQueue = [
+`내 가게에서 보자구.
+[달성조건] : 15강 이상의 무기를 판매
+[보상] : 파괴방지주문서 1개`
+  ];
+
+  save();
+  updateQuestBadges();
+  try { renderTalkNpcGrid(); } catch(e) {}
+  openNpcDialogueFromTalkSets([npcDialogueQueue], "바르톨 로넨", "images/npc/ronen_talk.png");
+}
+
+function rejectLorenQuest(){
+  // 거절 시: 그냥 닫고 ! 유지
+  npcDialogueActionMode = null;
+  closeNpcPopup();
+  updateQuestBadges();
+  try { renderTalkNpcGrid(); } catch(e) {}
+}
+
+function showLorenQuestRewardBtn(){
+  const btnArea = document.getElementById("npcDialogueBtnArea");
+  if (!btnArea) return;
+
+  btnArea.innerHTML = `
+    <button class="actionBtn" type="button" onclick="completeLorenQuest()" style="white-space:nowrap;">퀘스트 완료</button>
+  `;
+}
+
+function completeLorenQuest(){
+  const st = questState["loren_tutorial_01"];
+  if (st !== QUEST_STATE.COMPLETE) return;
+
+  // 보상 지급
+  itemProtect = Number(itemProtect || 0) + 1;
+
+  // 상태: 보상 수령 완료
+  questState["loren_tutorial_01"] = QUEST_STATE.REWARDED;
+
+  save();
+  if (typeof update === "function") update();
+  updateQuestBadges();
+  try { renderTalkNpcGrid(); } catch(e) {}
+
+  npcDialogueActionMode = null;
+  npcDialogueQueue = [
+`퀘스트 완료!
+보상 : 파괴방지주문서 1개 지급!`
+  ];
+  openNpcDialogueFromTalkSets([npcDialogueQueue], "바르톨 로넨", "images/npc/ronen_talk.png");
+}
+
 
 function openQuestDetail_forgeTutorial02(){
   const st = questState?.forge_tutorial_02;
@@ -9883,6 +10034,30 @@ function openQuestDetail_vallenTutorial01(){
   showNpcMessage(body, null, true, "퀘스트 상세");
 }
 
+function openQuestDetail_lorenTutorial01(){
+  const st = questState?.loren_tutorial_01;
+
+  let body = `
+    <div style="font-weight:900; font-size:15px; margin-bottom:8px;">로넨의 취미생활</div>
+    <div style="font-size:13px; line-height:1.6;">
+      로넨이 “이야기가 담긴 무기”를 팔아보라며 제안했다.<br><br>
+      <b>달성조건</b> : 15강 이상의 무기를 판매<br>
+      <b>완료보상</b> : 파괴방지주문서 1개
+    </div>
+  `;
+
+  if (st === QUEST_STATE.ACTIVE) {
+    body += `<div style="margin-top:10px; font-size:12px; color:#aaa;">※ 15강 이상 무기를 판매하면 완료 가능 상태로 전환됩니다.</div>`;
+  } else if (st === QUEST_STATE.COMPLETE) {
+    body += `<div style="margin-top:10px; font-size:12px; color:#ffd54f;">※ 로넨에게 돌아가서 퀘스트 완료를 진행하세요.</div>`;
+  } else if (st === QUEST_STATE.REWARDED) {
+    body += `<div style="margin-top:10px; font-size:12px; color:#7CFF7C;">※ 완료한 퀘스트입니다.</div>`;
+  }
+
+  showNpcMessage(body, null, true, "퀘스트 상세");
+}
+
+
   
   // =====================
 // ⌨️ NPC 대사 타자기 연출
@@ -9956,6 +10131,16 @@ if (!hasNext) {
   if (npcDialogueActionMode === "reward_forge_02") {
     if (nextBtn) nextBtn.style.display = "none";
     showForge2RewardBtn();
+    return;
+  }
+  if (npcDialogueActionMode === "offer_loren_01") {
+    if (nextBtn) nextBtn.style.display = "none";
+    showLorenQuestAcceptReject();
+    return;
+  }
+  if (npcDialogueActionMode === "reward_loren_01") {
+    if (nextBtn) nextBtn.style.display = "none";
+    showLorenQuestRewardBtn();
     return;
   }
 }
@@ -10808,6 +10993,15 @@ function performDuel(targetUserId, isRandomMatch) {
     // 내 전투력도 안전하게 보정
     if (!power || power <= 0) {
       rollPowerForCurrentSword();
+
+  // ✅ 튜토리얼4(로넨): 15강 이상 무기 판매 시 완료 가능 상태로 전환
+  if (questState?.loren_tutorial_01 === QUEST_STATE.ACTIVE && Number(beforeLevel || 0) >= 15) {
+    questState["loren_tutorial_01"] = QUEST_STATE.COMPLETE;
+    save();
+    updateQuestBadges();
+    try { renderTalkNpcGrid(); } catch(e) {}
+  }
+
     }
 
     const A = Math.max(1, Number(power));
