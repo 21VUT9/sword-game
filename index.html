@@ -9614,7 +9614,6 @@ function rejectForgeQuest(){
 }
 
 function rejectForge2Quest(){
-  // 거절: 그냥 닫고 ! 유지
   closeNpcDialogue();
 }
 
@@ -9627,10 +9626,8 @@ function acceptForge2Quest(){
 
   npcDialogueActionMode = null;
   npcDialogueQueue = [
-    "좋아! 순식간에 올려주지!",
-    "[달성조건] : 15강 강화주문서를 사용하여 강화",
-    "[보상] : 300만 골드"
-  ];
+  "좋아! 순식간에 올려주지!\n\n[달성조건] : 15강 강화주문서를 사용하여 강화\n[보상] : 300만 골드"
+];
 
   openNpcDialogueFromTalkSets(
     [npcDialogueQueue],
@@ -9933,40 +9930,47 @@ const hasNext = npcDialogueIndex < npcDialogueQueue.length - 1;
 
 clearNpcDialogueBtnArea();
 
-const nextBtn = document.getElementById("npcDialogueNextBtn");
-if (nextBtn) nextBtn.style.display = hasNext ? "block" : "block"; // 기본 유지 (아래에서 퀘스트면 교체)
+  // ⭐ 여기서만 버튼 등장
+  updateNpcDialogueNextBtn();
 
-if (!hasNext) {
-  // ✅ 마지막 문장까지 출력 완료된 순간에만 퀘스트 버튼으로 교체
+  const hasNext = npcDialogueIndex < npcDialogueQueue.length - 1;
+
+  clearNpcDialogueBtnArea();
+
+  const nextBtn = document.getElementById("npcDialogueNextBtn");
+
+  // ✅ 기본: 다음이 있으면 Next 보여줌
+  if (hasNext) {
+    if (nextBtn) nextBtn.style.display = "block";
+    return;
+  }
+
+  // ✅ 마지막 문장인데 "퀘스트 액션 모드"면: Next/닫기 숨기고 선택지/완료 버튼 표시
   if (npcDialogueActionMode === "offer_forge_01") {
     if (nextBtn) nextBtn.style.display = "none";
     showQuestAcceptReject();
     return;
   }
-  if (npcDialogueActionMode === "offer_forge_02") {
-  showForge2AcceptReject();
-  return;
-}
-if (npcDialogueActionMode === "reward_forge_02") {
-  showForge2RewardBtn();
-  return;
-}
   if (npcDialogueActionMode === "reward_forge_01") {
     if (nextBtn) nextBtn.style.display = "none";
     showQuestRewardBtn();
     return;
   }
-  if (npcDialogueActionMode === "offer_vallen_01") {
+
+  // ✅ (추가) 3번째 퀘스트 offer/reward 처리
+  if (npcDialogueActionMode === "offer_forge_02") {
     if (nextBtn) nextBtn.style.display = "none";
-    showVallenQuestAcceptReject();
+    showForge2AcceptReject();
     return;
   }
-  if (npcDialogueActionMode === "reward_vallen_01") {
+  if (npcDialogueActionMode === "reward_forge_02") {
     if (nextBtn) nextBtn.style.display = "none";
-    showVallenQuestRewardBtn();
+    showForge2RewardBtn();
     return;
   }
-}
+
+  // ✅ 그 외: 마지막 문장이면 닫기 버튼만 노출
+  if (nextBtn) nextBtn.style.display = "block";
 }
 
 function startNpcTypewriter(el, fullText, msPerChar){
