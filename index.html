@@ -2220,6 +2220,16 @@ hr.section-divider{
   background: rgba(0,0,0,0.65);
 }
 
+  /* ✅ 퀘스트현황 오버레이가 NPC리스트(talkOverlay) 위로 오도록 */
+#questOverlay{
+  position: fixed;
+  inset: 0;
+  z-index: 10050; /* talkOverlay(9999)보다 크게 */
+  display: none;  /* JS에서 flex로 켬 */
+  align-items: center;
+  justify-content: center;
+}
+  
 .titlePanel{
   position: relative;
   width: min(860px, 92vw);
@@ -9005,7 +9015,7 @@ function openTalkOverlay(){
   const list = document.getElementById("questListArea");
   if (!overlay || !list) return;
 
-  overlay.style.display = "block";
+  overlay.style.display = "flex";
   list.innerHTML = "";
 
   const st = questState?.forge_tutorial_01;
@@ -21167,8 +21177,9 @@ document.addEventListener("click", function(e){
 </div>
 
   <!-- 📜 퀘스트현황 오버레이 -->
-<div id="questOverlay" class="overlay" style="display:none;">
-  <div class="overlay-content" style="width:320px;">
+<div id="questOverlay" class="overlay" style="display:none;"
+     onclick="if(event.target===this) closeQuestOverlay();">
+  <div class="overlay-content" style="width:320px;" onclick="event.stopPropagation();">
 
     <div class="overlay-header">
       <span>퀘스트 현황</span>
