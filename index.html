@@ -10993,15 +10993,6 @@ function performDuel(targetUserId, isRandomMatch) {
     // 내 전투력도 안전하게 보정
     if (!power || power <= 0) {
       rollPowerForCurrentSword();
-
-  // ✅ 튜토리얼4(로넨): 15강 이상 무기 판매 시 완료 가능 상태로 전환
-  if (questState?.loren_tutorial_01 === QUEST_STATE.ACTIVE && Number(beforeLevel || 0) >= 15) {
-    questState["loren_tutorial_01"] = QUEST_STATE.COMPLETE;
-    save();
-    updateQuestBadges();
-    try { renderTalkNpcGrid(); } catch(e) {}
-  }
-
     }
 
     const A = Math.max(1, Number(power));
@@ -13288,6 +13279,14 @@ function completeSell(beforeLevel, rewardGold) {
   sword = 0;
   weaponType = null;
   rollPowerForCurrentSword();
+
+  // ✅ 튜토리얼4(로넨): 15강 이상 무기 판매 시 완료 가능 상태로 전환
+if (questState?.loren_tutorial_01 === QUEST_STATE.ACTIVE && Number(beforeLevel || 0) >= 15) {
+  questState["loren_tutorial_01"] = QUEST_STATE.COMPLETE;
+  save();
+  updateQuestBadges();
+  try { renderTalkNpcGrid(); } catch(e) {}
+}
 
   // 20강 이상 전용 완료 멘트
   if (beforeLevel >= 20) {
