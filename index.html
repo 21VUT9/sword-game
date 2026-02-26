@@ -65,6 +65,15 @@ body {
   color: #ffd54f;
 }
 
+  /* ✅ 완료된 퀘스트(클릭 불가) */
+.questRowDone{
+  color: #8a8a8a;
+  cursor: default;
+}
+.questRowDone:hover{
+  color: #8a8a8a; /* hover 변화 없음 */
+}
+
 /* 공용 액션 팝업 버튼 (게임 버튼 느낌) */
 .actionBtn{
   width: 100%;
@@ -9050,11 +9059,18 @@ function openTalkOverlay(){
     "미수락";
 
   const row = document.createElement("div");
+
+// ✅ 완료(REWARDED)는 회색 + 클릭 불가
+if (st === QUEST_STATE.REWARDED) {
+  row.className = "questRowText questRowDone";
+  row.textContent = `대륙 최고의 대장장이  -  완료`;
+} else {
   row.className = "questRowText";
   row.textContent = `대륙 최고의 대장장이  -  ${status}`;
   row.addEventListener("click", () => openQuestDetail_forgeTutorial01());
+}
 
-  list.appendChild(row);
+list.appendChild(row);
 }
 
 function closeQuestOverlay(){
