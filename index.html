@@ -9034,27 +9034,27 @@ function openTalkOverlay(){
   overlay.style.display = "flex";
   list.innerHTML = "";
 
-  const st = questState?.forge_tutorial_01;
+    const st = questState?.forge_tutorial_01;
 
-  // 아무 퀘스트도 없으면 안내만
-  if (!st) {
+  // ✅ 수락 전(OFFERED)이거나 없으면: "진행 중인 퀘스트 없음"
+  if (!st || st === QUEST_STATE.OFFERED) {
     list.innerHTML = `<div style="padding:12px; color:#aaa; font-size:13px;">진행 중인 퀘스트가 없습니다.</div>`;
     return;
   }
 
-  // 1개 퀘스트만 우선 표기 (추후 배열로 확장)
+  // ✅ 수락 이후 상태만 현황에 표시
   let status =
-  st === QUEST_STATE.OFFERED ? "진행중" :
-  st === QUEST_STATE.COMPLETE ? "완료 가능" :
-  st === QUEST_STATE.REWARDED ? "완료" :
-  "미수락";
+    st === QUEST_STATE.ACTIVE ? "진행중" :
+    st === QUEST_STATE.COMPLETE ? "완료 가능" :
+    st === QUEST_STATE.REWARDED ? "완료" :
+    "미수락";
 
-const row = document.createElement("div");
-row.className = "questRowText";
-row.textContent = `대륙 최고의 대장장이  -  ${status}`;
-row.addEventListener("click", () => openQuestDetail_forgeTutorial01());
+  const row = document.createElement("div");
+  row.className = "questRowText";
+  row.textContent = `대륙 최고의 대장장이  -  ${status}`;
+  row.addEventListener("click", () => openQuestDetail_forgeTutorial01());
 
-list.appendChild(row);
+  list.appendChild(row);
 }
 
 function closeQuestOverlay(){
