@@ -9583,6 +9583,10 @@ function closeNpcDialogue(){
   const ov = document.getElementById("npcDialogueOverlay");
   if (ov) ov.style.display = "none";
   clearNpcDialogueBtnArea();
+    // ✅ 대화 닫힐 때 퀘스트 뱃지/그리드 즉시 갱신
+  try { updateQuestBadges(); } catch(e) {}
+  try { renderTalkNpcGrid(); } catch(e) {}
+  try { renderQuestOverlayList(); } catch(e) {}
 }
 
   function showQuestAcceptReject(){
@@ -9600,14 +9604,18 @@ function rejectForgeQuest(){
   closeNpcDialogue();
 }
   function showForge2AcceptReject(){
-  showNpcChoiceButtons([
-    { text: "맡긴다", onClick: acceptForge2Quest },
-    { text: "그만둔다", onClick: rejectForge2Quest }
-  ]);
+  const btnArea = document.getElementById("npcDialogueBtnArea");
+  if (!btnArea) return;
+
+  btnArea.innerHTML = `
+    <button class="actionBtn" type="button" onclick="acceptForge2Quest()" style="white-space:nowrap;">맡긴다</button>
+    <button class="actionBtn" type="button" onclick="rejectForge2Quest()" style="white-space:nowrap;">그만둔다</button>
+  `;
 }
 
 function rejectForge2Quest(){
-  closeNpcPopup();
+  // 거절: 그냥 닫고 ! 유지
+  closeNpcDialogue();
 }
 
 function acceptForge2Quest(){
