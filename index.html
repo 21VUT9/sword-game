@@ -9394,6 +9394,15 @@ forge_tutorial_02: {
 // 🧔 퍼그란트 / 기타 NPC 대화 오픈
 // =====================
 function openFulgurantDialogue(){
+    // ✅ 튜토리얼3(에델린의 불꽃) 언락 보정:
+  // 발렌 퀘스트를 보상수령(REWARDED)까지 했는데 3퀘가 아직 없으면 OFFERED로 생성
+  if (questState?.vallen_tutorial_01 === QUEST_STATE.REWARDED &&
+      questState?.forge_tutorial_02 === undefined) {
+    questState["forge_tutorial_02"] = QUEST_STATE.OFFERED;
+    save();
+    updateQuestBadges();
+    try { renderTalkNpcGrid(); } catch(e) {}
+  }
   const st = questState["forge_tutorial_01"];
 
   // 📜 퀘스트 제안 상태
@@ -9783,8 +9792,13 @@ function completeForgeQuest(){
 }
 
   function shouldShowForgeQuestBadge(){
-  const st = questState["forge_tutorial_01"];
-  return (st === QUEST_STATE.OFFERED || st === QUEST_STATE.COMPLETE);
+  const st1 = questState["forge_tutorial_01"];
+  const st2 = questState["forge_tutorial_02"];
+
+  const on1 = (st1 === QUEST_STATE.OFFERED || st1 === QUEST_STATE.COMPLETE);
+  const on2 = (st2 === QUEST_STATE.OFFERED || st2 === QUEST_STATE.COMPLETE);
+
+  return (on1 || on2);
 }
 
 function shouldShowVallenQuestBadge(){
