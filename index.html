@@ -49,6 +49,22 @@ body {
   white-space: nowrap;       /* 🔥 라벨 안에서 줄바꿈 금지 (항상 한 줄) */
 }
 
+  /* 📜 퀘스트 현황 - 텍스트형 목록 */
+.questRowText{
+  font-size: 14px;
+  font-weight: 800;
+  color: #eaeaea;
+  padding: 10px 6px;
+  cursor: pointer;
+  white-space: nowrap;          /* ✅ 1줄 고정 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid rgba(255,255,255,0.10);  /* 은은한 구분선 */
+}
+.questRowText:hover{
+  color: #ffd54f;
+}
+
 /* 공용 액션 팝업 버튼 (게임 버튼 느낌) */
 .actionBtn{
   width: 100%;
@@ -9027,15 +9043,18 @@ function openTalkOverlay(){
   }
 
   // 1개 퀘스트만 우선 표기 (추후 배열로 확장)
-  const row = document.createElement("button");
-  row.type = "button";
-  row.className = "questRowBtn";
-  row.textContent = "대륙 최고의 대장장이";
-  row.addEventListener("click", () => {
-    openQuestDetail_forgeTutorial01();
-  });
+  let status =
+  st === QUEST_STATE.OFFERED ? "진행중" :
+  st === QUEST_STATE.COMPLETE ? "완료 가능" :
+  st === QUEST_STATE.REWARDED ? "완료" :
+  "미수락";
 
-  list.appendChild(row);
+const row = document.createElement("div");
+row.className = "questRowText";
+row.textContent = `대륙 최고의 대장장이  -  ${status}`;
+row.addEventListener("click", () => openQuestDetail_forgeTutorial01());
+
+list.appendChild(row);
 }
 
 function closeQuestOverlay(){
@@ -21177,17 +21196,21 @@ document.addEventListener("click", function(e){
 </div>
 
   <!-- 📜 퀘스트현황 오버레이 -->
-<div id="questOverlay" class="overlay" style="display:none;"
+<div id="questOverlay" class="titleOverlay" style="display:none;"
      onclick="if(event.target===this) closeQuestOverlay();">
-  <div class="overlay-content" style="width:320px;" onclick="event.stopPropagation();">
+  <div class="titlePanel" onclick="event.stopPropagation();">
 
-    <div class="overlay-header">
-      <span>퀘스트 현황</span>
-      <button onclick="closeQuestOverlay()">✕</button>
+    <!-- 헤더 -->
+    <div class="titleHeader">
+      <div class="titleHeaderLeft">퀘스트 현황</div>
+      <div class="titleHeaderRight">
+        <button class="titleBtn titleBtnClose" onclick="closeQuestOverlay()">✕</button>
+      </div>
     </div>
 
+    <!-- 목록 -->
     <div id="questListArea"
-         style="padding:10px; display:flex; flex-direction:column; gap:6px;">
+         style="padding:12px 14px; display:flex; flex-direction:column; gap:10px;">
     </div>
 
   </div>
