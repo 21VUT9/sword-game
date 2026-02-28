@@ -1,6 +1,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -4891,7 +4892,8 @@ function playUiClickCommon(){
       uiClickCommonAudio.volume = 0.7; // 필요하면 조절
     }
     uiClickCommonAudio.currentTime = 0;
-    uiClickCommonAudio.play();
+    const p = uiClickCommonAudio.play();
+    if (p && typeof p.catch === "function") p.catch(()=>{});
   }catch(e){}
 }
   
@@ -9858,6 +9860,7 @@ function syncQuestUnlocks(){
 
 function updateQuestBadges(){
   syncQuestUnlocks();
+  ensureRepeatQuestResets(false);
   const badge = document.getElementById("questAlertBadge");
   const on = (shouldShowForgeQuestBadge() || shouldShowVallenQuestBadge() || shouldShowLorenQuestBadge() || shouldShowRepeatQuestBadge());
   if (badge) badge.style.display = on ? "flex" : "none";
@@ -9938,8 +9941,6 @@ function ensureRepeatQuestResets(shouldSave){
 
 // ✅ 배지 표시 조건
 function shouldShowRepeatQuestBadge(){
-  ensureRepeatQuestResets(false);
-
   const d = repeatQuestState.daily;
   const w = repeatQuestState.weekly;
 
@@ -9964,9 +9965,6 @@ function updateRepeatQuestBadges(){
   // ✅ 대화(좌측 아이콘) !딱지 / 상단 버튼 !딱지
   const dailyBadgeEl = document.getElementById("dailyQuestBadge");
   const weeklyBadgeEl = document.getElementById("weeklyQuestBadge");
-
-  ensureRepeatQuestResets(false);
-
   const d = repeatQuestState.daily;
   const w = repeatQuestState.weekly;
 
