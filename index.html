@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -1728,6 +1729,24 @@ button {
   box-shadow: 0 2px 6px rgba(0,0,0,0.45);
   z-index: 6;
   pointer-events: none;       /* ✅ 클릭 방해 X */
+}
+
+/* ✅ 대화 오버레이 상단(일일/주간) 버튼용 작은 !딱지 */
+.mini-alert-badge{
+  display:none;
+  margin-left:6px;
+  width:16px;
+  height:16px;
+  border-radius:999px;
+  align-items:center;
+  justify-content:center;
+  font-weight:900;
+  font-size:12px;
+  line-height:16px;
+  background:#ff3b30;
+  color:#fff;
+  box-shadow:0 2px 6px rgba(0,0,0,0.45);
+  pointer-events:none;
 }
 
   /* ✅ 칭호(업적) 그리드 셀 내부용 !딱지 (작게) */
@@ -7743,6 +7762,10 @@ destroyCount  = 0;
   lastDuelDate = "";
   duelTargetsToday = {};
   questState = {};
+  repeatQuestState = {
+    daily:{ resetKey:"", progress:{ hunt:0, duel:0, attendance:0, upgrade:0 }, claimed:{ hunt:false, duel:false, attendance:false, upgrade:false, all:false } },
+    weekly:{ resetKey:"", progress:{ hunt:0, duel:0, bossClear:0, engrave:0, upgrade:0 }, claimed:{ hunt:false, duel:false, bossClear:false, engrave:false, upgrade:false } }
+  };
 
    // 화면 전환 (✅ 없는 요소가 있어도 절대 안 터지게)
   const setDisp = (id, disp) => {
@@ -9044,12 +9067,28 @@ function openTalkOverlay(){
   ov.style.display = "flex";
   renderTalkNpcGrid();
 
+  const dailyBtn = document.getElementById("talkDailyQuestBtn");
+  if (dailyBtn) {
+    dailyBtn.onclick = () => {
+      playUiClickCommon();
+      openDailyQuestOverlay();
+    };
+  }
+
+  const weeklyBtn = document.getElementById("talkWeeklyQuestBtn");
+  if (weeklyBtn) {
+    weeklyBtn.onclick = () => {
+      playUiClickCommon();
+      openWeeklyQuestOverlay();
+    };
+  }
+
   const questBtn = document.getElementById("talkQuestBtn");
   if (questBtn) {
     questBtn.onclick = () => {
-  playUiClickCommon();
-  openQuestOverlay();
-};
+      playUiClickCommon();
+      openQuestOverlay();
+    };
   }
 }
 
@@ -9820,8 +9859,352 @@ function syncQuestUnlocks(){
 function updateQuestBadges(){
   syncQuestUnlocks();
   const badge = document.getElementById("questAlertBadge");
-  const on = (shouldShowForgeQuestBadge() || shouldShowVallenQuestBadge() || shouldShowLorenQuestBadge());
+  const on = (shouldShowForgeQuestBadge() || shouldShowVallenQuestBadge() || shouldShowLorenQuestBadge() || shouldShowRepeatQuestBadge());
   if (badge) badge.style.display = on ? "flex" : "none";
+  updateRepeatQuestBadges();
+}
+
+
+// =====================
+// 🔁 일일/주간 퀘스트(반복형)
+// =====================
+
+// ✅ Firebase 저장용 상태
+// repeatQuestState = { daily:{resetKey, progress, claimed}, weekly:{resetKey, progress, claimed} }
+let repeatQuestState = {
+  daily: {
+    resetKey: "",
+    progress: { hunt:0, duel:0, attendance:0, upgrade:0 },
+    claimed:  { hunt:false, duel:false, attendance:false, upgrade:false, all:false }
+  },
+  weekly: {
+    resetKey: "",
+    progress: { hunt:0, duel:0, bossClear:0, engrave:0, upgrade:0 },
+    claimed:  { hunt:false, duel:false, bossClear:false, engrave:false, upgrade:false }
+  }
+};
+
+// ✅ KST 기준 “오늘 키”
+function getKstTodayKey(){
+  // 이 프로젝트에서 이미 쓰는 getTodayDateString()는 한국시간 기준(UTC+9)로 날짜 문자열을 만듦
+  return getTodayDateString();
+}
+
+// ✅ KST 기준 “이번 주 키”(월요일 날짜)
+function getKstMondayKey(){
+  // 파일 내에 이미 있는 getKstWeekKey()는 (월요일 날짜 기준) "YYYY-MM-DD"를 반환
+  return getKstWeekKey();
+}
+
+function resetDailyRepeatQuests(){
+  repeatQuestState.daily.progress = { hunt:0, duel:0, attendance:0, upgrade:0 };
+  repeatQuestState.daily.claimed  = { hunt:false, duel:false, attendance:false, upgrade:false, all:false };
+  repeatQuestState.daily.resetKey = getKstTodayKey();
+}
+
+function resetWeeklyRepeatQuests(){
+  repeatQuestState.weekly.progress = { hunt:0, duel:0, bossClear:0, engrave:0, upgrade:0 };
+  repeatQuestState.weekly.claimed  = { hunt:false, duel:false, bossClear:false, engrave:false, upgrade:false };
+  repeatQuestState.weekly.resetKey = getKstMondayKey();
+}
+
+// ✅ 로그인/행동 시마다 호출 (00:00 KST 경계에서 자동 리셋)
+function ensureRepeatQuestResets(shouldSave){
+  const todayKey = getKstTodayKey();
+  const mondayKey = getKstMondayKey();
+
+  if (!repeatQuestState || typeof repeatQuestState !== "object") {
+    repeatQuestState = {
+      daily: { resetKey:"", progress:{ hunt:0, duel:0, attendance:0, upgrade:0 }, claimed:{ hunt:false, duel:false, attendance:false, upgrade:false, all:false } },
+      weekly:{ resetKey:"", progress:{ hunt:0, duel:0, bossClear:0, engrave:0, upgrade:0 }, claimed:{ hunt:false, duel:false, bossClear:false, engrave:false, upgrade:false } }
+    };
+  }
+  if (!repeatQuestState.daily) repeatQuestState.daily = { resetKey:"", progress:{ hunt:0, duel:0, attendance:0, upgrade:0 }, claimed:{ hunt:false, duel:false, attendance:false, upgrade:false, all:false } };
+  if (!repeatQuestState.weekly) repeatQuestState.weekly = { resetKey:"", progress:{ hunt:0, duel:0, bossClear:0, engrave:0, upgrade:0 }, claimed:{ hunt:false, duel:false, bossClear:false, engrave:false, upgrade:false } };
+
+  if (repeatQuestState.daily.resetKey !== todayKey) resetDailyRepeatQuests();
+  if (repeatQuestState.weekly.resetKey !== mondayKey) resetWeeklyRepeatQuests();
+
+  // “일일 모두 완료”는 4개 개별 보상 수령 기준으로 열림
+  const d = repeatQuestState.daily;
+  const allBaseClaimed = !!(d.claimed.hunt && d.claimed.duel && d.claimed.attendance && d.claimed.upgrade);
+  if (allBaseClaimed && d.claimed.all !== true) {
+    // 상태만 유지 (수령 버튼은 render에서 활성화)
+  }
+
+  if (shouldSave && typeof save === "function") save();
+  updateRepeatQuestBadges();
+}
+
+// ✅ 배지 표시 조건
+function shouldShowRepeatQuestBadge(){
+  ensureRepeatQuestResets(false);
+
+  const d = repeatQuestState.daily;
+  const w = repeatQuestState.weekly;
+
+  const dailyClaimable =
+    (!d.claimed.hunt && d.progress.hunt >= 30) ||
+    (!d.claimed.duel && d.progress.duel >= 5) ||
+    (!d.claimed.attendance && d.progress.attendance >= 1) ||
+    (!d.claimed.upgrade && d.progress.upgrade >= 1) ||
+    (!d.claimed.all && d.claimed.hunt && d.claimed.duel && d.claimed.attendance && d.claimed.upgrade);
+
+  const weeklyClaimable =
+    (!w.claimed.hunt && w.progress.hunt >= 300) ||
+    (!w.claimed.duel && w.progress.duel >= 40) ||
+    (!w.claimed.bossClear && w.progress.bossClear >= 2) ||
+    (!w.claimed.engrave && w.progress.engrave >= 5) ||
+    (!w.claimed.upgrade && w.progress.upgrade >= 5);
+
+  return (dailyClaimable || weeklyClaimable);
+}
+
+function updateRepeatQuestBadges(){
+  // ✅ 대화(좌측 아이콘) !딱지 / 상단 버튼 !딱지
+  const dailyBadgeEl = document.getElementById("dailyQuestBadge");
+  const weeklyBadgeEl = document.getElementById("weeklyQuestBadge");
+
+  ensureRepeatQuestResets(false);
+
+  const d = repeatQuestState.daily;
+  const w = repeatQuestState.weekly;
+
+  const dailyClaimable =
+    (!d.claimed.hunt && d.progress.hunt >= 30) ||
+    (!d.claimed.duel && d.progress.duel >= 5) ||
+    (!d.claimed.attendance && d.progress.attendance >= 1) ||
+    (!d.claimed.upgrade && d.progress.upgrade >= 1) ||
+    (!d.claimed.all && d.claimed.hunt && d.claimed.duel && d.claimed.attendance && d.claimed.upgrade);
+
+  const weeklyClaimable =
+    (!w.claimed.hunt && w.progress.hunt >= 300) ||
+    (!w.claimed.duel && w.progress.duel >= 40) ||
+    (!w.claimed.bossClear && w.progress.bossClear >= 2) ||
+    (!w.claimed.engrave && w.progress.engrave >= 5) ||
+    (!w.claimed.upgrade && w.progress.upgrade >= 5);
+
+  if (dailyBadgeEl) dailyBadgeEl.style.display = dailyClaimable ? "inline-flex" : "none";
+  if (weeklyBadgeEl) weeklyBadgeEl.style.display = weeklyClaimable ? "inline-flex" : "none";
+}
+
+// ✅ 공통: 진행 카운트 증가
+function incRepeatProgress(which, key, amount){
+  ensureRepeatQuestResets(false);
+  const target = (which === "weekly") ? repeatQuestState.weekly : repeatQuestState.daily;
+  if (!target || !target.progress) return;
+  target.progress[key] = Number(target.progress[key] || 0) + Number(amount || 0);
+  if (typeof save === "function") save();
+  updateQuestBadges(); // 기존 배지 + 반복 배지 동시 갱신
+}
+
+// ✅ 각 이벤트 훅
+function onRepeatQuestHuntAttempt(){ incRepeatProgress("daily","hunt",1); incRepeatProgress("weekly","hunt",1); }
+function onRepeatQuestDuelAttempt(){ incRepeatProgress("daily","duel",1); incRepeatProgress("weekly","duel",1); }
+function onRepeatQuestAttendance(){ incRepeatProgress("daily","attendance",1); }
+function onRepeatQuestUpgradeAttempt(){ incRepeatProgress("daily","upgrade",1); incRepeatProgress("weekly","upgrade",1); }
+function onRepeatQuestEngraveAttempt(){ incRepeatProgress("weekly","engrave",1); }
+function onRepeatQuestBossClear(){ incRepeatProgress("weekly","bossClear",1); }
+
+// ✅ 오버레이(일일)
+function openDailyQuestOverlay(){
+  ensureRepeatQuestResets(false);
+
+  const overlay = document.getElementById("dailyQuestOverlay");
+  const list = document.getElementById("dailyQuestListArea");
+  if (!overlay || !list) return;
+
+  overlay.style.display = "flex";
+  renderDailyQuestList();
+}
+
+function closeDailyQuestOverlay(){
+  const overlay = document.getElementById("dailyQuestOverlay");
+  if (overlay) overlay.style.display = "none";
+}
+
+function renderDailyQuestList(){
+  ensureRepeatQuestResets(false);
+
+  const list = document.getElementById("dailyQuestListArea");
+  if (!list) return;
+  list.innerHTML = "";
+
+  const d = repeatQuestState.daily;
+
+  const rows = [
+    { key:"hunt", title:"사냥 30회 시도", prog:`${Math.min(d.progress.hunt,30)} / 30`, done:(d.progress.hunt>=30), claimed:d.claimed.hunt,
+      rewardText:"빛나지못한별의조각 5개",
+      onClaim: () => { starShard = Number(starShard||0) + 5; } },
+    { key:"duel", title:"결투 5회 시도", prog:`${Math.min(d.progress.duel,5)} / 5`, done:(d.progress.duel>=5), claimed:d.claimed.duel,
+      rewardText:"명예의훈장 30개",
+      onClaim: () => { itemHonorMedal = Number(itemHonorMedal||0) + 30; } },
+    { key:"attendance", title:"출석체크", prog:(d.progress.attendance>=1 ? "완료" : "미완료"), done:(d.progress.attendance>=1), claimed:d.claimed.attendance,
+      rewardText:"200,000골드",
+      onClaim: () => { gold = Number(gold||0) + 200000; } },
+    { key:"upgrade", title:"강화시도 1회", prog:`${Math.min(d.progress.upgrade,1)} / 1`, done:(d.progress.upgrade>=1), claimed:d.claimed.upgrade,
+      rewardText:"마력이 깃든 종이 5개",
+      onClaim: () => { itemMagicPaper = Number(itemMagicPaper||0) + 5; } }
+  ];
+
+  const allClaimable = (!d.claimed.all && d.claimed.hunt && d.claimed.duel && d.claimed.attendance && d.claimed.upgrade);
+  rows.push({
+    key:"all",
+    title:"일일퀘스트 모두 완료",
+    prog: allClaimable ? "수령 가능" : "미완료",
+    done: allClaimable,
+    claimed: d.claimed.all,
+    rewardText:"강화확률 +5%주문서 1개",
+    onClaim: () => { itemRateUp5 = Number(itemRateUp5||0) + 1; }
+  });
+
+  rows.forEach(r => {
+    const row = document.createElement("div");
+    row.style.display = "flex";
+    row.style.alignItems = "center";
+    row.style.justifyContent = "space-between";
+    row.style.gap = "10px";
+
+    const left = document.createElement("div");
+    left.className = "questRowText";
+    left.style.flex = "1";
+    left.style.cursor = "default";
+    left.textContent = `${r.title}  -  ${r.claimed ? "수령완료" : (r.done ? "완료" : r.prog)}  (보상: ${r.rewardText})`;
+
+    const btn = document.createElement("button");
+    btn.textContent = "[수령]";
+    btn.style.border = "none";
+    btn.style.background = "transparent";
+    btn.style.color = "#ffd54f";
+    btn.style.fontWeight = "900";
+    btn.style.cursor = "pointer";
+    btn.style.padding = "0";
+    btn.style.whiteSpace = "nowrap";
+
+    const canClaim = (!!r.done && !r.claimed);
+    btn.style.opacity = canClaim ? "1" : "0.35";
+    btn.style.pointerEvents = canClaim ? "auto" : "none";
+
+    btn.onclick = () => {
+      playUiClickCommon();
+      ensureRepeatQuestResets(false);
+
+      if (r.key === "all") {
+        if (repeatQuestState.daily.claimed.all) return;
+        const ok = (repeatQuestState.daily.claimed.hunt && repeatQuestState.daily.claimed.duel && repeatQuestState.daily.claimed.attendance && repeatQuestState.daily.claimed.upgrade);
+        if (!ok) return;
+        r.onClaim();
+        repeatQuestState.daily.claimed.all = true;
+      } else {
+        if (repeatQuestState.daily.claimed[r.key]) return;
+        if (!r.done) return;
+        r.onClaim();
+        repeatQuestState.daily.claimed[r.key] = true;
+      }
+
+      save();
+      update();
+      updateQuestBadges();
+      renderDailyQuestList();
+    };
+
+    row.appendChild(left);
+    row.appendChild(btn);
+    list.appendChild(row);
+  });
+}
+
+// ✅ 오버레이(주간)
+function openWeeklyQuestOverlay(){
+  ensureRepeatQuestResets(false);
+
+  const overlay = document.getElementById("weeklyQuestOverlay");
+  const list = document.getElementById("weeklyQuestListArea");
+  if (!overlay || !list) return;
+
+  overlay.style.display = "flex";
+  renderWeeklyQuestList();
+}
+
+function closeWeeklyQuestOverlay(){
+  const overlay = document.getElementById("weeklyQuestOverlay");
+  if (overlay) overlay.style.display = "none";
+}
+
+function renderWeeklyQuestList(){
+  ensureRepeatQuestResets(false);
+
+  const list = document.getElementById("weeklyQuestListArea");
+  if (!list) return;
+  list.innerHTML = "";
+
+  const w = repeatQuestState.weekly;
+
+  const rows = [
+    { key:"hunt", title:"사냥 300회 시도", prog:`${Math.min(w.progress.hunt,300)} / 300`, done:(w.progress.hunt>=300), claimed:w.claimed.hunt,
+      rewardText:"파괴방지 주문서 3개",
+      onClaim: () => { itemProtect = Number(itemProtect||0) + 3; } },
+    { key:"duel", title:"결투 40회 시도", prog:`${Math.min(w.progress.duel,40)} / 40`, done:(w.progress.duel>=40), claimed:w.claimed.duel,
+      rewardText:"강화확률 +5%주문서 5개",
+      onClaim: () => { itemRateUp5 = Number(itemRateUp5||0) + 5; } },
+    { key:"bossClear", title:"보스 토벌 2회 성공", prog:`${Math.min(w.progress.bossClear,2)} / 2`, done:(w.progress.bossClear>=2), claimed:w.claimed.bossClear,
+      rewardText:"슈퍼강화주문서 1개",
+      onClaim: () => { itemSuper = Number(itemSuper||0) + 1; } },
+    { key:"engrave", title:"각인 5회 시도", prog:`${Math.min(w.progress.engrave,5)} / 5`, done:(w.progress.engrave>=5), claimed:w.claimed.engrave,
+      rewardText:"고급각인의 주문서 5개",
+      onClaim: () => { itemEngraveAdvanced = Number(itemEngraveAdvanced||0) + 5; } },
+    { key:"upgrade", title:"강화시도 5회", prog:`${Math.min(w.progress.upgrade,5)} / 5`, done:(w.progress.upgrade>=5), claimed:w.claimed.upgrade,
+      rewardText:"빛나지 못한 별의조각 30개",
+      onClaim: () => { starShard = Number(starShard||0) + 30; } }
+  ];
+
+  rows.forEach(r => {
+    const row = document.createElement("div");
+    row.style.display = "flex";
+    row.style.alignItems = "center";
+    row.style.justifyContent = "space-between";
+    row.style.gap = "10px";
+
+    const left = document.createElement("div");
+    left.className = "questRowText";
+    left.style.flex = "1";
+    left.style.cursor = "default";
+    left.textContent = `${r.title}  -  ${r.claimed ? "수령완료" : (r.done ? "완료" : r.prog)}  (보상: ${r.rewardText})`;
+
+    const btn = document.createElement("button");
+    btn.textContent = "[수령]";
+    btn.style.border = "none";
+    btn.style.background = "transparent";
+    btn.style.color = "#ffd54f";
+    btn.style.fontWeight = "900";
+    btn.style.cursor = "pointer";
+    btn.style.padding = "0";
+    btn.style.whiteSpace = "nowrap";
+
+    const canClaim = (!!r.done && !r.claimed);
+    btn.style.opacity = canClaim ? "1" : "0.35";
+    btn.style.pointerEvents = canClaim ? "auto" : "none";
+
+    btn.onclick = () => {
+      playUiClickCommon();
+      ensureRepeatQuestResets(false);
+
+      if (repeatQuestState.weekly.claimed[r.key]) return;
+      if (!r.done) return;
+
+      r.onClaim();
+      repeatQuestState.weekly.claimed[r.key] = true;
+
+      save();
+      update();
+      updateQuestBadges();
+      renderWeeklyQuestList();
+    };
+
+    row.appendChild(left);
+    row.appendChild(btn);
+    list.appendChild(row);
+  });
 }
 
 
@@ -10552,6 +10935,8 @@ function updateTopCurrencyBar(){
 }
 
   function update() {
+  ensureRepeatQuestResets(false);
+
 
    /* 🧾 유저 프로필 영역 갱신 */
   const nameEl = document.getElementById("profileNickname");
@@ -12488,6 +12873,9 @@ if (!isInFulgurantForge()) {
   // 이미 강화 중이면 중복 클릭 방지
   if (isUpgrading) return;
 
+  // 🔁 (반복형 퀘스트) 강화 시도 카운트
+  onRepeatQuestUpgradeAttempt();
+
   // ✅ 튜토리얼 퀘스트: 강화 1회 "시도"하면 완료 상태로 전환
 if (questState["forge_tutorial_01"] === QUEST_STATE.ACTIVE) {
   questState["forge_tutorial_01"] = QUEST_STATE.COMPLETE;
@@ -13825,6 +14213,11 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
   // ✅ 퀘스트 상태(계정별) 로드
 questState = (data.questState && typeof data.questState === "object") ? data.questState : {};
 window.questState = questState; // (디버깅/전역참조 안전)
+
+// ✅ 반복형(일일/주간) 퀘스트 상태 로드
+repeatQuestState = (data.repeatQuestState && typeof data.repeatQuestState === "object") ? data.repeatQuestState : repeatQuestState;
+ensureRepeatQuestResets(false);
+
       // ✅ 명예의전당(30강) / 글로벌 30강 이벤트 상태 로드
       hofDeadline = Number(data.hofDeadline || 0);
       hofAchievedAt = Number(data.hofAchievedAt || 0);
@@ -14108,6 +14501,7 @@ aweUsedGlobal30EventId: Number(aweUsedGlobal30EventId || 0),
      engravePresetIdx: Number(engravePresetIdx || 0),
      engravePresets: engravePresets,
     questState: questState,
+    repeatQuestState: repeatQuestState,
      engraveLines: engraveLines // ✅ (구버전/외부표기 호환용) "현재 프리셋" 3줄
 
   };
@@ -19559,6 +19953,9 @@ function claimBossReward(){
     const run = snap && snap.val ? snap.val() : null;
     if (!run) return;
 
+    // 🔁 (반복형 퀘스트) 보스 토벌 성공 카운트 (보상 수령 시점=중복 방지)
+    onRepeatQuestBossClear();
+
     // ✅ 기여도 계산
     const members = run.members || {};
     const arr = Object.keys(members).map(uid => ({
@@ -21514,6 +21911,9 @@ if (mode === "advanced") {
     return;
   }
   itemEngraveAdvanced = Number(itemEngraveAdvanced || 0) - 1;
+
+  // 🔁 (반복형 퀘스트) 각인 시도 카운트 (일반/고급 공통)
+  onRepeatQuestEngraveAttempt();
 } else {
   if (Number(itemEngraveNormal || 0) < 1) {
     showNpcMessage("일반 각인의 주문서가 부족합니다.", null, true, "");
@@ -21800,6 +22200,8 @@ document.addEventListener("click", function(e){
       <div class="titleHeaderLeft">대화</div>
 
       <div class="titleHeaderRight">
+        <button id="talkDailyQuestBtn" class="titleBtn">일일퀘스트 <span id="dailyQuestBadge" class="mini-alert-badge">!</span></button>
+        <button id="talkWeeklyQuestBtn" class="titleBtn">주간퀘스트 <span id="weeklyQuestBadge" class="mini-alert-badge">!</span></button>
         <button id="talkQuestBtn" class="titleBtn">퀘스트현황</button>
         <button class="titleBtn titleBtnClose" onclick="closeTalkOverlay()">✕</button>
       </div>
@@ -21826,6 +22228,49 @@ document.addEventListener("click", function(e){
 
     <!-- 목록 -->
     <div id="questListArea"
+         style="padding:12px 14px; display:flex; flex-direction:column; gap:10px;">
+    </div>
+
+  </div>
+</div>
+
+
+  <!-- 📅 일일퀘스트 오버레이 -->
+<div id="dailyQuestOverlay" class="titleOverlay" style="display:none;"
+     onclick="if(event.target===this) closeDailyQuestOverlay();">
+  <div class="titlePanel" onclick="event.stopPropagation();">
+
+    <!-- 헤더 -->
+    <div class="titleHeader">
+      <div class="titleHeaderLeft">일일퀘스트</div>
+      <div class="titleHeaderRight">
+        <button class="titleBtn titleBtnClose" onclick="closeDailyQuestOverlay()">✕</button>
+      </div>
+    </div>
+
+    <!-- 목록 -->
+    <div id="dailyQuestListArea"
+         style="padding:12px 14px; display:flex; flex-direction:column; gap:10px;">
+    </div>
+
+  </div>
+</div>
+
+  <!-- 🗓 주간퀘스트 오버레이 -->
+<div id="weeklyQuestOverlay" class="titleOverlay" style="display:none;"
+     onclick="if(event.target===this) closeWeeklyQuestOverlay();">
+  <div class="titlePanel" onclick="event.stopPropagation();">
+
+    <!-- 헤더 -->
+    <div class="titleHeader">
+      <div class="titleHeaderLeft">주간퀘스트</div>
+      <div class="titleHeaderRight">
+        <button class="titleBtn titleBtnClose" onclick="closeWeeklyQuestOverlay()">✕</button>
+      </div>
+    </div>
+
+    <!-- 목록 -->
+    <div id="weeklyQuestListArea"
          style="padding:12px 14px; display:flex; flex-direction:column; gap:10px;">
     </div>
 
