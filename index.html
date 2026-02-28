@@ -11396,7 +11396,9 @@ function performDuel(targetUserId, isRandomMatch) {
     const myWeaponInfo     = getWeaponInfo(sword, weaponType || "sword");           // 내 타입
     const targetWeaponInfo = getWeaponInfo(targetSword, targetWeaponType || "sword"); // 상대 타입
 
-
+        // ✅ 반복퀘스트: 결투 시도 1회 카운트 (지정/랜덤 공통)
+    onRepeatQuestDuelAttempt();
+    
     // 🧾 VS 오버레이 먼저 띄우기
     showDuelBattleOverlay({
       myName: userId,
@@ -12752,6 +12754,9 @@ if (lastAttendanceDate === today) {
   attendanceCount++;
   updateAttendanceBadge();
 
+    // ✅ 반복퀘스트: 출석체크 1회 카운트
+  onRepeatQuestAttendance();
+
   // ✅ 여기서 바로 “가챠 연출 + 보상 지급”
   preloadAttendanceGachaImages();
   playAttendanceGachaAnimationAndGrant();
@@ -13846,6 +13851,9 @@ if (currentField === 0) {
     );
     return;
   }
+
+    // ✅ 반복퀘스트: 사냥 시도 1회 카운트
+  onRepeatQuestHuntAttempt();
 
    spawnHuntCoinPop();
 
