@@ -77,6 +77,16 @@ body {
   color: #8a8a8a; /* hover 변화 없음 */
 }
 
+/* 🟡 수령 가능 상태 */
+.questRowReady{
+  color:#ffd54f;
+}
+
+/* ⚪ 완료 상태 */
+.questRowCompleted{
+  color:#8a8a8a;
+}
+
 /* 공용 액션 팝업 버튼 (게임 버튼 느낌) */
 .actionBtn{
   width: 100%;
@@ -10065,12 +10075,31 @@ function renderDailyQuestList(){
 
     const left = document.createElement("div");
     left.className = "questRowText";
+
+    // 🟡 완료 가능
+if(r.done && !r.claimed){
+  left.style.color = "#ffd54f";
+}
+// ⚪ 완료됨
+else if(r.claimed){
+  left.style.color = "#8a8a8a";
+}
+// 기본
+else{
+  left.style.color = "#ffffff";
+}
+    
     left.style.flex = "1";
     left.style.cursor = "default";
     left.textContent = `${r.title}  -  ${r.claimed ? "수령완료" : (r.done ? "완료" : r.prog)}  (보상: ${r.rewardText})`;
 
     const btn = document.createElement("button");
     btn.textContent = "[수령]";
+
+    if(r.claimed){
+  btn.textContent = "[완료]";
+}
+    
     btn.style.border = "none";
     btn.style.background = "transparent";
     btn.style.color = "#ffd54f";
@@ -10165,12 +10194,28 @@ function renderWeeklyQuestList(){
 
     const left = document.createElement("div");
     left.className = "questRowText";
+
+    if(r.done && !r.claimed){
+  left.style.color = "#ffd54f";
+}
+else if(r.claimed){
+  left.style.color = "#8a8a8a";
+}
+else{
+  left.style.color = "#ffffff";
+}
+    
     left.style.flex = "1";
     left.style.cursor = "default";
     left.textContent = `${r.title}  -  ${r.claimed ? "수령완료" : (r.done ? "완료" : r.prog)}  (보상: ${r.rewardText})`;
 
     const btn = document.createElement("button");
     btn.textContent = "[수령]";
+
+    if(r.claimed){
+  btn.textContent = "[완료]";
+}
+    
     btn.style.border = "none";
     btn.style.background = "transparent";
     btn.style.color = "#ffd54f";
