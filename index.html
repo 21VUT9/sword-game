@@ -2360,6 +2360,147 @@ hr.section-divider{
   padding: 6px 2px 10px;         /* ✅ 상점처럼 촘촘 */
 }
 
+/* =========================
+   📚 스토리북 오버레이
+   ========================= */
+.storybookGrid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap:16px;
+  flex:1;
+  overflow-y:auto;
+  padding:10px 4px 12px;
+  align-content:start;
+}
+
+.storybookCell{
+  position:relative;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,0.10);
+  background:rgba(255,255,255,0.04);
+  padding:14px 12px 12px;
+  min-height:220px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  gap:10px;
+  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+}
+
+.storybookCell.unlocked{
+  cursor:pointer;
+}
+
+.storybookCell.unlocked:hover{
+  transform:translateY(-2px);
+  background:rgba(255,255,255,0.07);
+  border-color:rgba(255,255,255,0.18);
+}
+
+.storybookCell.locked{
+  cursor:default;
+}
+
+.storybookIconWrap{
+  position:relative;
+  width:120px;
+  height:120px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.storybookIcon{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  display:block;
+}
+
+.storybookCell.locked .storybookIcon{
+  filter: grayscale(1) saturate(0.1) brightness(0.45);
+  opacity:0.95;
+}
+
+.storybookLock{
+  position:absolute;
+  inset:50% auto auto 50%;
+  width:68px;
+  height:68px;
+  transform:translate(-50%, -50%);
+  object-fit:contain;
+  pointer-events:none;
+}
+
+.storybookCell.unlocked .storybookLock{
+  display:none;
+}
+
+.storybookChap{
+  font-size:12px;
+  font-weight:900;
+  color:#ffd54f;
+  letter-spacing:0.2px;
+}
+
+.storybookCell.locked .storybookChap{
+  color:#8c8c8c;
+}
+
+.storybookTitle{
+  font-size:15px;
+  font-weight:900;
+  color:#f2f2f2;
+  text-align:center;
+  line-height:1.35;
+}
+
+.storybookCell.locked .storybookTitle{
+  color:#9a9a9a;
+}
+
+.storybookDesc{
+  font-size:12px;
+  color:#bdbdbd;
+  text-align:center;
+  line-height:1.5;
+}
+
+.storybookCell.locked .storybookDesc{
+  color:#6f6f6f;
+}
+
+.storybookStatus{
+  margin-top:auto;
+  font-size:12px;
+  font-weight:800;
+  color:#7cff99;
+}
+
+.storybookCell.locked .storybookStatus{
+  color:#8a8a8a;
+}
+
+#storybookOverlay{
+  z-index:10020;
+}
+
+@media (max-width: 760px){
+  .storybookGrid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap:12px;
+  }
+  .storybookCell{
+    min-height:200px;
+    padding:12px 10px 10px;
+  }
+  .storybookIconWrap{
+    width:100px;
+    height:100px;
+  }
+}
+
 /* 카드 셀 공통(기존 inline style보다 우선되게 하려면 !important도 가능) */
 .titleCell{
   border-radius: 14px;
@@ -3805,7 +3946,7 @@ html, body {
 <!-- 📖 스토리북 (좌측 아이콘) -->
 <button id="storybookIconBtn"
         class="map-icon-btn left-icon-btn"
-        onclick="showLockedFeaturePopup()" data-nosfx="1">
+        onclick="openStorybookOverlay()" data-nosfx="1">
   <img class="map-icon-img" src="images/ui/icon_storybook.png" alt="스토리북">
   <div id="storybookAlertBadge" class="icon-alert-badge">!</div>
   <span class="map-icon-label one-line">기록</span>
@@ -7721,6 +7862,7 @@ function hideDuelBattleOverlay() {
   
 function logout() {
   isUserDataLoaded = false;
+  storybookState = normalizeStorybookState(null);
 
 
   // 🔐 서버에 남아있는 세션ID 제거
@@ -9897,6 +10039,133 @@ let repeatQuestState = {
   }
 };
 
+const STORYBOOK_DEFS = [
+  { key:"chapter1", chapter:1, title:"엘프 역사서", icon:"images/storybooks/book_elven_history.png", desc:"늪엘프의 비극과 위대한 숲의 기록." },
+  { key:"chapter2", chapter:2, title:"서리여왕의 기록", icon:"images/storybooks/book_frost_queen_record.png", desc:"얼어붙은 분노와 봉인의 흔적을 담은 서책." },
+  { key:"chapter3", chapter:3, title:"발테리온 역사서", icon:"images/storybooks/book_valterion_history.png", desc:"망각된 왕국의 연대기와 전쟁의 시작." },
+  { key:"chapter4", chapter:4, title:"아르켄의 모험일지", icon:"images/storybooks/book_arken_journal.png", desc:"한 인간 모험가가 세상을 걸으며 남긴 기록." },
+  { key:"chapter5", chapter:5, title:"레오나르트 모험일지", icon:"images/storybooks/book_leonart_journal.png", desc:"빛의 왕이 남긴 여정과 선택의 흔적." },
+  { key:"chapter6", chapter:6, title:"창세신화", icon:"images/storybooks/book_creation_myth.png", desc:"세상의 시작과 인간의 숙명을 전하는 금서." }
+];
+
+const STORYBOOK_DEFAULT_STATE = {
+  unlocked: { chapter1:false, chapter2:false, chapter3:false, chapter4:false, chapter5:false, chapter6:false },
+  read:     { chapter1:false, chapter2:false, chapter3:false, chapter4:false, chapter5:false, chapter6:false }
+};
+
+let storybookState = JSON.parse(JSON.stringify(STORYBOOK_DEFAULT_STATE));
+
+function normalizeStorybookState(raw){
+  const next = JSON.parse(JSON.stringify(STORYBOOK_DEFAULT_STATE));
+  const src = (raw && typeof raw === "object") ? raw : {};
+  const unlocked = (src.unlocked && typeof src.unlocked === "object") ? src.unlocked : {};
+  const read = (src.read && typeof src.read === "object") ? src.read : {};
+  STORYBOOK_DEFS.forEach(def => {
+    next.unlocked[def.key] = !!unlocked[def.key];
+    next.read[def.key] = !!read[def.key];
+  });
+  return next;
+}
+
+function isStorybookUnlocked(key){
+  return !!(storybookState && storybookState.unlocked && storybookState.unlocked[key]);
+}
+
+function hasUnreadStorybook(){
+  return STORYBOOK_DEFS.some(def => isStorybookUnlocked(def.key) && !storybookState.read[def.key]);
+}
+
+function updateStorybookBadge(){
+  const badge = document.getElementById("storybookAlertBadge");
+  if (!badge) return;
+  badge.style.display = hasUnreadStorybook() ? "flex" : "none";
+}
+
+function unlockStorybookChapter(key, shouldSave = true){
+  if (!storybookState || !storybookState.unlocked || !(key in storybookState.unlocked)) return false;
+  if (storybookState.unlocked[key]) return false;
+  storybookState.unlocked[key] = true;
+  storybookState.read[key] = false;
+  updateStorybookBadge();
+  if (shouldSave && typeof save === "function") save();
+  return true;
+}
+
+function markStorybookRead(key, shouldSave = true){
+  if (!storybookState || !storybookState.read || !(key in storybookState.read)) return false;
+  if (storybookState.read[key]) return false;
+  storybookState.read[key] = true;
+  updateStorybookBadge();
+  if (shouldSave && typeof save === "function") save();
+  return true;
+}
+
+function renderStorybookGrid(){
+  const grid = document.getElementById("storybookGrid");
+  if (!grid) return;
+  grid.innerHTML = "";
+
+  STORYBOOK_DEFS.forEach(def => {
+    const unlocked = isStorybookUnlocked(def.key);
+
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = `storybookCell ${unlocked ? "unlocked" : "locked"}`;
+    cell.style.border = "1px solid rgba(255,255,255,0.10)";
+    cell.style.margin = "0";
+    cell.style.padding = "14px 12px 12px";
+
+    cell.innerHTML = `
+      <div class="storybookChap">CHAPTER ${def.chapter}</div>
+      <div class="storybookIconWrap">
+        <img class="storybookIcon" src="${def.icon}" alt="${def.title}">
+        <img class="storybookLock" src="images/storybooks/lock_overlay.png" alt="잠금">
+      </div>
+      <div class="storybookTitle">${def.title}</div>
+      <div class="storybookDesc">${unlocked ? def.desc : "아직 잠겨 있는 기록이다."}</div>
+      <div class="storybookStatus">${unlocked ? (storybookState.read[def.key] ? "열람 가능" : "새 기록") : "잠금"}</div>
+    `;
+
+    if (unlocked) {
+      cell.onclick = () => {
+        playUiClickCommon();
+        markStorybookRead(def.key);
+        renderStorybookGrid();
+        showNpcMessage(
+          `<div style="font-weight:900; font-size:16px; margin-bottom:8px;">${def.title}</div>` +
+          `<div style="font-size:13px; line-height:1.7; color:#cfcfcf;">` +
+          `이 기록은 해금되었지만, 본문은 다음 메인 퀘스트 업데이트와 함께 열릴 예정이다.<br><br>` +
+          `<span style="color:#ffd54f;">CHAPTER ${def.chapter}</span> - ${def.desc}` +
+          `</div>`,
+          null,
+          true,
+          "기록 열람"
+        );
+      };
+    } else {
+      cell.disabled = true;
+    }
+
+    grid.appendChild(cell);
+  });
+
+  updateStorybookBadge();
+}
+
+function openStorybookOverlay(){
+  playUiClickCommon();
+  const ov = document.getElementById("storybookOverlay");
+  if (!ov) return;
+  ov.style.display = "flex";
+  renderStorybookGrid();
+}
+
+function closeStorybookOverlay(){
+  playUiClickCommon();
+  const ov = document.getElementById("storybookOverlay");
+  if (ov) ov.style.display = "none";
+}
+
 // ✅ KST 기준 “오늘 키”
 function getKstTodayKey(){
   // 이 프로젝트에서 이미 쓰는 getTodayDateString()는 한국시간 기준(UTC+9)로 날짜 문자열을 만듦
@@ -10979,6 +11248,7 @@ function updateTopCurrencyBar(){
 
   function update() {
   ensureRepeatQuestResets(false);
+  updateStorybookBadge();
 
 
    /* 🧾 유저 프로필 영역 갱신 */
@@ -14267,7 +14537,12 @@ window.questState = questState; // (디버깅/전역참조 안전)
 
 // ✅ 반복형(일일/주간) 퀘스트 상태 로드
 repeatQuestState = (data.repeatQuestState && typeof data.repeatQuestState === "object") ? data.repeatQuestState : repeatQuestState;
+
+// ✅ 스토리북 상태 로드
+storybookState = normalizeStorybookState(data.storybookState);
+
 ensureRepeatQuestResets(false);
+updateStorybookBadge();
 isUserDataLoaded = true;
 
       // ✅ 명예의전당(30강) / 글로벌 30강 이벤트 상태 로드
@@ -14555,6 +14830,7 @@ aweUsedGlobal30EventId: Number(aweUsedGlobal30EventId || 0),
      engravePresets: engravePresets,
     questState: questState,
     repeatQuestState: repeatQuestState,
+    storybookState: storybookState,
      engraveLines: engraveLines // ✅ (구버전/외부표기 호환용) "현재 프리셋" 3줄
 
   };
@@ -15621,7 +15897,12 @@ window.questState = questState; // (디버깅/전역참조 안전)
 
 // ✅ 반복형(일일/주간) 퀘스트 상태 로드
 repeatQuestState = (data.repeatQuestState && typeof data.repeatQuestState === "object") ? data.repeatQuestState : repeatQuestState;
+
+// ✅ 스토리북 상태 로드
+storybookState = normalizeStorybookState(data.storybookState);
+
 ensureRepeatQuestResets(false);
+updateStorybookBadge();
 isUserDataLoaded = true;
 
     // ✅ 명예의전당(30강) / 글로벌 30강 이벤트 상태 로드
@@ -22333,6 +22614,27 @@ document.addEventListener("click", function(e){
          style="padding:12px 14px; display:flex; flex-direction:column; gap:10px;">
     </div>
 
+  </div>
+</div>
+
+
+<!-- 📚 스토리북 오버레이 -->
+<div id="storybookOverlay" class="titleOverlay" style="display:none;"
+     onclick="if(event.target===this) closeStorybookOverlay();">
+  <div class="titlePanel" onclick="event.stopPropagation();">
+
+    <div class="titleHeader">
+      <div class="titleHeaderLeft">기록</div>
+      <div class="titleHeaderRight">
+        <button class="titleBtn titleBtnClose" onclick="closeStorybookOverlay()">✕</button>
+      </div>
+    </div>
+
+    <div class="titleEquippedRow" style="margin-top:0; margin-bottom:8px; color:#bdbdbd;">
+      잊혀진 역사와 전설이 책의 형태로 정리되어 있다. 메인 퀘스트를 통해 하나씩 해금된다.
+    </div>
+
+    <div id="storybookGrid" class="storybookGrid"></div>
   </div>
 </div>
 
