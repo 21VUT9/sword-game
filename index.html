@@ -10116,12 +10116,12 @@ function renderStorybookGrid(){
     cell.style.padding = "14px 12px 12px";
 
     cell.innerHTML = `
-      <div class="storybookChap">CHAPTER ${def.chapter}</div>
+      <div class="storybookChap">CHAPTER ${unlocked ? def.chapter : "?"}</div>
       <div class="storybookIconWrap">
         <img class="storybookIcon" src="${def.icon}" alt="${def.title}">
         <img class="storybookLock" src="images/storybooks/lock_overlay.png" alt="잠금">
       </div>
-      <div class="storybookTitle">${def.title}</div>
+      <div class="storybookTitle">${unlocked ? def.title : "???"}</div>
       <div class="storybookDesc">${unlocked ? def.desc : "아직 잠겨 있는 기록이다."}</div>
          `;
 
