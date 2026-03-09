@@ -10123,8 +10123,7 @@ function renderStorybookGrid(){
       </div>
       <div class="storybookTitle">${def.title}</div>
       <div class="storybookDesc">${unlocked ? def.desc : "아직 잠겨 있는 기록이다."}</div>
-      <div class="storybookStatus">${unlocked ? (storybookState.read[def.key] ? "열람 가능" : "새 기록") : "잠금"}</div>
-    `;
+         `;
 
     if (unlocked) {
       cell.onclick = () => {
@@ -22628,10 +22627,6 @@ document.addEventListener("click", function(e){
       <div class="titleHeaderRight">
         <button class="titleBtn titleBtnClose" onclick="closeStorybookOverlay()">✕</button>
       </div>
-    </div>
-
-    <div class="titleEquippedRow" style="margin-top:0; margin-bottom:8px; color:#bdbdbd;">
-      잊혀진 역사와 전설이 책의 형태로 정리되어 있다. 메인 퀘스트를 통해 하나씩 해금된다.
     </div>
 
     <div id="storybookGrid" class="storybookGrid"></div>
