@@ -6755,6 +6755,8 @@ let itemEssence = 0; // 🟣 마력의 정수
 let itemScroll21 = 0;     // 21강 강화 주문서
 let itemRateUp5  = 0;   // 강화 확률 +5% 주문서
 let itemMagicPaper = 0; // 🆕 마력이 깃든 종이
+let itemElfHunterBow = 0; // 🌿 인간사냥꾼의 활 (퀘스트)
+let itemMysteriousPaper = 0; // 📜 의문의 종이 (퀘스트)
 let itemEngraveNormal = 0;  // 🪬 일반각인의 주문서
 let itemEngraveAdvanced = 0; // 🪬 고급각인의 주문서
 
@@ -7909,6 +7911,8 @@ destroyCount  = 0;
   itemSuper          = 0;
   itemDownProtect    = 0;
   itemMagicPaper = 0;
+  itemElfHunterBow = 0;
+  itemMysteriousPaper = 0;
   starShard          = 0;
   duelWin = 0;
   duelLose = 0;
@@ -9366,6 +9370,32 @@ function openTalkOverlay(){
     rows.push(row);
   }
 
+  // =====================
+  // 4) 메인퀘스트 CH1-01 - [늪의기억] 01 _ 로넨의 수집 활동
+  // =====================
+  const stMainCh1Loren = questState?.["main_ch1_loren_01"];
+
+  if (stMainCh1Loren && stMainCh1Loren !== QUEST_STATE.OFFERED) {
+    let status =
+      stMainCh1Loren === QUEST_STATE.ACTIVE ? "진행중" :
+      stMainCh1Loren === QUEST_STATE.COMPLETE ? "완료 가능" :
+      stMainCh1Loren === QUEST_STATE.REWARDED ? "완료" :
+      "미수락";
+
+    const row = document.createElement("div");
+
+    if (stMainCh1Loren === QUEST_STATE.REWARDED) {
+      row.className = "questRowText questRowDone";
+      row.textContent = `[늪의기억] 01 _ 로넨의 수집 활동  -  완료`;
+    } else {
+      row.className = "questRowText";
+      row.textContent = `[늪의기억] 01 _ 로넨의 수집 활동  -  ${status}`;
+      row.addEventListener("click", () => openQuestDetail_mainCh1Loren01());
+    }
+
+    rows.push(row);
+  }
+
   if (rows.length === 0) {
     list.innerHTML = `<div style="padding:12px; color:#aaa; font-size:13px;">진행 중인 퀘스트가 없습니다.</div>`;
     return;
@@ -9538,12 +9568,21 @@ function pickRandomTalks(arr, count){
   return src.slice(0, Math.min(count, src.length));
 }
 
+function getNpcDialogueNextLabel(){
+  if (npcDialogueActionMode === "offer_main_ch1_loren_01") {
+    const labels = ["무슨 일인데?", "그래서?", "하지만…", "다음", "맞아"];
+    if (npcDialogueIndex >= 0 && npcDialogueIndex < labels.length) return labels[npcDialogueIndex];
+  }
+  return null;
+}
+
 function updateNpcDialogueNextBtn(){
   const btn = document.getElementById("npcDialogueNextBtn");
   if (!btn) return;
 
   const hasNext = npcDialogueIndex < npcDialogueQueue.length - 1;
-  btn.textContent = hasNext ? "다음▶" : "닫기";
+  const customLabel = getNpcDialogueNextLabel();
+  btn.textContent = hasNext ? (customLabel || "다음▶") : "닫기";
 }
 
   function hideNpcDialogueNextBtn(){
@@ -9697,8 +9736,8 @@ function openFulgurantDialogue(){
 function openLorenDialogue(){
 
   const st = questState["loren_tutorial_01"];
+  const stMain = questState["main_ch1_loren_01"];
 
-  // 📜 퀘스트 제안 상태 (튜토리얼 3 완료 후)
   if (st === QUEST_STATE.OFFERED) {
     npcDialogueActionMode = "offer_loren_01";
 
@@ -9713,12 +9752,41 @@ function openLorenDialogue(){
     return;
   }
 
-  // 📜 완료 상태 (15강 이상 무기 판매)
   if (st === QUEST_STATE.COMPLETE) {
     npcDialogueActionMode = "reward_loren_01";
 
     npcDialogueQueue = [
       "이건 내가 잘 맡아두지!"
+    ];
+
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "바르톨 로넨", "images/npc/ronen_talk.png");
+    return;
+  }
+
+  if (stMain === QUEST_STATE.OFFERED) {
+    npcDialogueActionMode = "offer_main_ch1_loren_01";
+
+    npcDialogueQueue = [
+      "흐음… 정말 탐나는 물건인데…\n문제는 그걸 얻으려면 목숨을 걸어야 한다는 거지.",
+      "자네 활의 원리를 아나?\n좋은 활은 나무의 탄성에서 나오지.",
+      "중앙 숲에는 신성력이 깃든 나무가 있어.\n엘프들이 그걸로 활을 만들지.",
+      "문제는 그 숲 말이야…\n인간을 보면 사냥하는 엘프들이 숨어 있다는 거지.",
+      "그래서 말인데…\n자네 무기가 꽤 쓸만하다고 들었어.",
+      "시험 삼아 숲에 들어가\n엘프 활 하나만 가져와 줄 수 있겠나?"
+    ];
+
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "바르톨 로넨", "images/npc/ronen_talk.png");
+    return;
+  }
+
+  if (stMain === QUEST_STATE.COMPLETE) {
+    npcDialogueActionMode = "reward_main_ch1_loren_01";
+
+    npcDialogueQueue = [
+      "하하하하! 역시 자네라면 해낼 줄 알았어.",
+      "그런데 말이야…\n활에 종이 하나가 묶여 있더군.",
+      "엘프 문자 같은데…\n나는 이런 건 잘 모르니 자네가 가져가게.",
+      "혹시 모르지.\n어디 쓸모 있는 정보일지도."
     ];
 
     openNpcDialogueFromTalkSets([npcDialogueQueue], "바르톨 로넨", "images/npc/ronen_talk.png");
@@ -9990,7 +10058,8 @@ function shouldShowVallenQuestBadge(){
 
 function shouldShowLorenQuestBadge(){
   const st = questState["loren_tutorial_01"];
-  return (st === QUEST_STATE.OFFERED || st === QUEST_STATE.COMPLETE);
+  const stMain = questState["main_ch1_loren_01"];
+  return (st === QUEST_STATE.OFFERED || st === QUEST_STATE.COMPLETE || stMain === QUEST_STATE.OFFERED || stMain === QUEST_STATE.COMPLETE);
 }
 
 
@@ -10006,6 +10075,18 @@ function syncQuestUnlocks(){
   const stForge2 = questState?.forge_tutorial_02;
   if (stForge2 === QUEST_STATE.REWARDED && !questState["loren_tutorial_01"]) {
     questState["loren_tutorial_01"] = QUEST_STATE.OFFERED;
+    save();
+  }
+
+  // ✅ 메인퀘스트 CH1-01 : 로넨의 수집 활동
+  const stLoren = questState?.loren_tutorial_01;
+  const canOpenMainCh1Loren =
+    stForge2 === QUEST_STATE.REWARDED &&
+    Number(sword || 0) >= 9 &&
+    (!stLoren || stLoren === QUEST_STATE.REWARDED);
+
+  if (canOpenMainCh1Loren && !questState["main_ch1_loren_01"]) {
+    questState["main_ch1_loren_01"] = QUEST_STATE.OFFERED;
     save();
   }
 }
@@ -10654,6 +10735,77 @@ function completeLorenQuest(){
   openNpcDialogueFromTalkSets([npcDialogueQueue], "바르톨 로넨", "images/npc/ronen_talk.png");
 }
 
+// =====================
+// 📜 메인퀘스트 CH1-01 : [늪의기억] 01 _ 로넨의 수집 활동
+// =====================
+function showMainCh1LorenQuestAcceptReject(){
+  const btnArea = document.getElementById("npcDialogueBtnArea");
+  if(!btnArea) return;
+
+  btnArea.innerHTML = `
+    <button class="actionBtn" type="button" onclick="acceptMainCh1LorenQuest()" style="white-space:nowrap;">좋아</button>
+    <button class="actionBtn" type="button" onclick="rejectMainCh1LorenQuest()" style="white-space:nowrap;">그건 좀..</button>
+  `;
+}
+
+function acceptMainCh1LorenQuest(){
+  questState["main_ch1_loren_01"] = QUEST_STATE.ACTIVE;
+  npcDialogueActionMode = null;
+
+  npcDialogueQueue = [
+`[달성조건] : 늪엘프의 숲에서 특정 확률로 드랍되는 인간사냥꾼의 활 1개를 로넨에게 가져다주자.
+
+[보상] : 60만골드, 빛나지 못한 별의 조각 10개, 명예의 훈장 30개, 의문의 종이`
+  ];
+
+  save();
+  updateQuestBadges();
+  try { renderTalkNpcGrid(); } catch(e) {}
+  openNpcDialogueFromTalkSets([npcDialogueQueue], "바르톨 로넨", "images/npc/ronen_talk.png");
+}
+
+function rejectMainCh1LorenQuest(){
+  npcDialogueActionMode = null;
+  closeNpcDialogue();
+  updateQuestBadges();
+  try { renderTalkNpcGrid(); } catch(e) {}
+}
+
+function showMainCh1LorenQuestRewardBtn(){
+  const btnArea = document.getElementById("npcDialogueBtnArea");
+  if (!btnArea) return;
+
+  btnArea.innerHTML = `
+    <button class="actionBtn" type="button" onclick="completeMainCh1LorenQuest()" style="white-space:nowrap;">퀘스트 완료</button>
+  `;
+}
+
+function completeMainCh1LorenQuest(){
+  const st = questState["main_ch1_loren_01"];
+  if (st !== QUEST_STATE.COMPLETE) return;
+  if (Number(itemElfHunterBow || 0) < 1) return;
+
+  gold = Number(gold || 0) + 600000;
+  starShard = Number(starShard || 0) + 10;
+  itemHonorMedal = Number(itemHonorMedal || 0) + 30;
+  itemMysteriousPaper = Number(itemMysteriousPaper || 0) + 1;
+  itemElfHunterBow = 0;
+
+  questState["main_ch1_loren_01"] = QUEST_STATE.REWARDED;
+
+  save();
+  if (typeof update === "function") update();
+  updateQuestBadges();
+  try { renderTalkNpcGrid(); } catch(e) {}
+
+  npcDialogueActionMode = null;
+  npcDialogueQueue = [
+`퀘스트 완료!
+보상 : 60만골드, 빛나지 못한 별의 조각 10개, 명예의 훈장 30개, 의문의 종이 지급!`
+  ];
+  openNpcDialogueFromTalkSets([npcDialogueQueue], "바르톨 로넨", "images/npc/ronen_talk.png");
+}
+
 
 function openQuestDetail_forgeTutorial02(){
   const st = questState?.forge_tutorial_02;
@@ -10751,6 +10903,31 @@ function openQuestDetail_lorenTutorial01(){
   showNpcMessage(body, null, true, "퀘스트 상세");
 }
 
+function openQuestDetail_mainCh1Loren01(){
+  const st = questState?.["main_ch1_loren_01"];
+  const hasBow = Number(itemElfHunterBow || 0);
+
+  let body = `
+    <div style="font-weight:900; font-size:15px; margin-bottom:8px;">[늪의기억] 01 _ 로넨의 수집 활동</div>
+    <div style="font-size:13px; line-height:1.6;">
+      로넨이 늪엘프의 숲에서 엘프 활을 구해달라고 부탁했다.<br><br>
+      <b>달성조건</b> : 늪엘프의 숲에서 인간사냥꾼의 활 1개 획득<br>
+      <b>진행도</b> : ${Math.min(hasBow, 1)} / 1<br>
+      <b>완료보상</b> : 60만골드, 빛나지 못한 별의 조각 10개, 명예의 훈장 30개, 의문의 종이
+    </div>
+  `;
+
+  if (st === QUEST_STATE.ACTIVE) {
+    body += `<div style="margin-top:10px; font-size:12px; color:#aaa;">※ 늪엘프의 숲에서 인간사냥꾼의 활을 획득하면 완료 가능 상태로 전환됩니다.</div>`;
+  } else if (st === QUEST_STATE.COMPLETE) {
+    body += `<div style="margin-top:10px; font-size:12px; color:#ffd54f;">※ 로넨에게 돌아가서 퀘스트 완료를 진행하세요.</div>`;
+  } else if (st === QUEST_STATE.REWARDED) {
+    body += `<div style="margin-top:10px; font-size:12px; color:#7CFF7C;">※ 완료한 퀘스트입니다.</div>`;
+  }
+
+  showNpcMessage(body, null, true, "퀘스트 상세");
+}
+
 
   
   // =====================
@@ -10835,6 +11012,16 @@ if (!hasNext) {
   if (npcDialogueActionMode === "reward_loren_01") {
     if (nextBtn) nextBtn.style.display = "none";
     showLorenQuestRewardBtn();
+    return;
+  }
+  if (npcDialogueActionMode === "offer_main_ch1_loren_01") {
+    if (nextBtn) nextBtn.style.display = "none";
+    showMainCh1LorenQuestAcceptReject();
+    return;
+  }
+  if (npcDialogueActionMode === "reward_main_ch1_loren_01") {
+    if (nextBtn) nextBtn.style.display = "none";
+    showMainCh1LorenQuestRewardBtn();
     return;
   }
 }
@@ -14274,8 +14461,34 @@ if (r < successChance) {
     );
   }
 
+  // ✅ 메인퀘스트 CH1-01 : 인간사냥꾼의 활 드랍 (늪엘프의 숲 전용)
+  let foundElfHunterBow = false;
+  if (
+    currentField === 4 &&
+    questState["main_ch1_loren_01"] === QUEST_STATE.ACTIVE &&
+    Number(itemElfHunterBow || 0) < 1 &&
+    Math.random() < adjDrop(0.05)
+  ) {
+    itemElfHunterBow = 1;
+    questState["main_ch1_loren_01"] = QUEST_STATE.COMPLETE;
+    foundElfHunterBow = true;
+    updateQuestBadges();
+    try { renderTalkNpcGrid(); } catch(e) {}
+  }
+
   // ✅ 최종 팝업 한 번만 호출 (골드 + 드랍 결과 모두 포함)
   showHuntPopup(popupMsg, "#6CF");
+
+  if (foundElfHunterBow) {
+    setTimeout(() => {
+      showNpcMessage(
+        `[인간사냥꾼의 활]을 발견했다.\n낡은 종이가 활에 묶여 있다.`,
+        null,
+        true,
+        "획득"
+      );
+    }, 80);
+  }
 
 } else {
   // ❌ 실패
@@ -14527,6 +14740,8 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
       starShard          = data.starShard ?? 0;
       itemEssence = Number(data.itemEssence || 0);
       itemMagicPaper = Number(data.itemMagicPaper || 0);
+      itemElfHunterBow = Number(data.itemElfHunterBow || 0);
+      itemMysteriousPaper = Number(data.itemMysteriousPaper || 0);
       itemEngraveNormal = Number(data.itemEngraveNormal || 0);
       itemEngraveAdvanced = Number(data.itemEngraveAdvanced || 0);
       couponUsedMap = data.couponUsed || {};
@@ -14711,6 +14926,8 @@ if(titleChanged) save();
       itemProtect: Number(itemProtect),
       itemSuper: Number(itemSuper),
       itemDownProtect: Number(itemDownProtect),
+      itemElfHunterBow: 0,
+      itemMysteriousPaper: 0,
       starShard: Number(starShard),
       itemScroll21: 0,
       itemRateUp5: 0,
@@ -14785,6 +15002,8 @@ function save() {
     starShard: Number(starShard),
     itemEssence: Number(itemEssence || 0),
     itemMagicPaper: Number(itemMagicPaper || 0), 
+    itemElfHunterBow: Number(itemElfHunterBow || 0),
+    itemMysteriousPaper: Number(itemMysteriousPaper || 0),
     itemEngraveNormal: Number(itemEngraveNormal || 0),
     itemEngraveAdvanced: Number(itemEngraveAdvanced || 0),
     huntStamina: Number(huntStamina),
@@ -15887,6 +16106,8 @@ if (!power || power <= 20) {
     starShard = data.starShard ?? 0;
     itemEssence = Number(data.itemEssence || 0);
     itemMagicPaper = Number(data.itemMagicPaper || 0);
+    itemElfHunterBow = Number(data.itemElfHunterBow || 0);
+    itemMysteriousPaper = Number(data.itemMysteriousPaper || 0);
     itemEngraveNormal = Number(data.itemEngraveNormal || 0);
     itemEngraveAdvanced = Number(data.itemEngraveAdvanced || 0);
     couponUsedMap = data.couponUsed || {};
@@ -21176,6 +21397,26 @@ if (starShard > 0) {
       count: Number(itemMagicPaper || 0),
       img: "images/items/magic_paper.png",
       desc: "주문서제작에 사용되는 종이. 마력이 은은하게 남아있다."
+    });
+  }
+
+  if (Number(itemElfHunterBow || 0) > 0) {
+    items.push({
+      id: "elfHunterBow",
+      name: "인간사냥꾼의 활",
+      count: Number(itemElfHunterBow || 0),
+      img: "images/items/elf_hunter_bow.png",
+      desc: "늪엘프의 숲에서 얻은 기이한 활. 낡은 종이가 묶여 있다."
+    });
+  }
+
+  if (Number(itemMysteriousPaper || 0) > 0) {
+    items.push({
+      id: "mysteriousPaper",
+      name: "의문의 종이",
+      count: Number(itemMysteriousPaper || 0),
+      img: "images/items/mysterious_paper.png",
+      desc: "엘프 문자가 적힌 낡은 종이. 잊힌 기록의 단서처럼 보인다."
     });
   }
 
