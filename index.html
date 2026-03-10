@@ -14461,34 +14461,29 @@ if (r < successChance) {
     );
   }
 
-  // ✅ 메인퀘스트 CH1-01 : 인간사냥꾼의 활 드랍 (늪엘프의 숲 전용)
-  let foundElfHunterBow = false;
-  if (
-    currentField === 4 &&
-    questState["main_ch1_loren_01"] === QUEST_STATE.ACTIVE &&
-    Number(itemElfHunterBow || 0) < 1 &&
-    Math.random() < adjDrop(0.05)
-  ) {
-    itemElfHunterBow = 1;
-    questState["main_ch1_loren_01"] = QUEST_STATE.COMPLETE;
-    foundElfHunterBow = true;
-    updateQuestBadges();
-    try { renderTalkNpcGrid(); } catch(e) {}
-  }
+// ✅ 메인퀘스트 CH1-01 : 인간사냥꾼의 활 드랍 (늪엘프의 숲 전용)
+if (
+  currentField === 4 &&
+  questState["main_ch1_loren_01"] === QUEST_STATE.ACTIVE &&
+  Number(itemElfHunterBow || 0) < 1 &&
+  Math.random() < adjDrop(0.05)
+) {
+  itemElfHunterBow = 1;
+  questState["main_ch1_loren_01"] = QUEST_STATE.COMPLETE;
+
+  popupMsg += `<br>🏹 [인간사냥꾼의 활]을 발견했다!`;
+  popupMsg += `<br>📜 낡은 종이가 활에 묶여 있다.`;
+
+  writeLog(
+    `${userId}님이 사냥에서 <span style="color:#8be28b;">인간사냥꾼의 활</span>을 발견했습니다!`
+  );
+
+  updateQuestBadges();
+  try { renderTalkNpcGrid(); } catch (e) {}
+}
 
   // ✅ 최종 팝업 한 번만 호출 (골드 + 드랍 결과 모두 포함)
   showHuntPopup(popupMsg, "#6CF");
-
-  if (foundElfHunterBow) {
-    setTimeout(() => {
-      showNpcMessage(
-        `[인간사냥꾼의 활]을 발견했다.\n낡은 종이가 활에 묶여 있다.`,
-        null,
-        true,
-        "획득"
-      );
-    }, 80);
-  }
 
 } else {
   // ❌ 실패
