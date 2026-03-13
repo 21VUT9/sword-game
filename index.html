@@ -3816,6 +3816,115 @@ html, body {
   filter: grayscale(0.2);
 }
   
+
+
+/* =========================
+   📜 메인퀘스트 완료 연출
+   ========================= */
+#mainQuestCompleteOverlay{
+  position: fixed;
+  inset: 0;
+  z-index: 13050;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  overflow: hidden;
+}
+#mainQuestCompleteOverlay.mq-show{
+  display:flex;
+}
+#mainQuestCompleteOverlay .mq-backdrop{
+  position:absolute;
+  inset:0;
+  background: radial-gradient(circle at center,
+    rgba(70,120,255,0.10) 0%,
+    rgba(20,40,90,0.22) 22%,
+    rgba(0,0,0,0.72) 58%,
+    rgba(0,0,0,0.90) 100%);
+  opacity:0;
+}
+#mainQuestCompleteOverlay.mq-show .mq-backdrop{
+  animation: mqBackdropFade 1.9s ease-out forwards;
+}
+#mainQuestCompleteOverlay .mq-flash{
+  position:absolute;
+  left:50%; top:50%;
+  width:min(82vw, 720px);
+  height:min(42vw, 300px);
+  transform:translate(-50%,-50%);
+  background: radial-gradient(circle at center,
+    rgba(255,255,255,0.98) 0%,
+    rgba(145,195,255,0.82) 12%,
+    rgba(70,120,255,0.42) 28%,
+    rgba(70,120,255,0.00) 68%);
+  filter: blur(5px);
+  opacity:0;
+}
+#mainQuestCompleteOverlay.mq-show .mq-flash{
+  animation: mqFlashPulse 1.25s ease-out forwards;
+}
+#mainQuestCompleteOverlay .mq-panel{
+  position:relative;
+  width:min(92vw, 900px);
+  text-align:center;
+  opacity:0;
+  transform: translateY(8px) scale(0.985);
+}
+#mainQuestCompleteOverlay.mq-show .mq-panel{
+  animation: mqPanelIn 1.65s cubic-bezier(.16,.84,.28,1) forwards;
+}
+#mainQuestCompleteOverlay .mq-line{
+  height:1px;
+  width:min(88vw, 760px);
+  margin:0 auto;
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.00) 0%,
+    rgba(110,165,255,0.70) 22%,
+    rgba(255,255,255,0.95) 50%,
+    rgba(110,165,255,0.70) 78%,
+    rgba(255,255,255,0.00) 100%);
+  box-shadow:
+    0 0 10px rgba(120,180,255,0.50),
+    0 0 24px rgba(120,180,255,0.25);
+}
+#mainQuestCompleteOverlay .mq-title{
+  margin:18px 0 10px 0;
+  font-size: clamp(24px, 4vw, 42px);
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #f5fbff;
+  text-shadow:
+    0 0 10px rgba(140,190,255,0.95),
+    0 0 24px rgba(140,190,255,0.50),
+    0 0 46px rgba(80,130,255,0.24);
+}
+#mainQuestCompleteOverlay .mq-sub{
+  margin-top:10px;
+  font-size: clamp(12px, 1.8vw, 16px);
+  color:#d6e7ff;
+  opacity:0.92;
+  text-shadow: 0 0 10px rgba(100,150,255,0.25);
+}
+@keyframes mqBackdropFade{
+  0%{ opacity:0; }
+  14%{ opacity:1; }
+  84%{ opacity:1; }
+  100%{ opacity:0; }
+}
+@keyframes mqFlashPulse{
+  0%{ opacity:0; transform:translate(-50%,-50%) scale(0.45); }
+  22%{ opacity:1; transform:translate(-50%,-50%) scale(1.02); }
+  48%{ opacity:0.75; transform:translate(-50%,-50%) scale(1.16); }
+  100%{ opacity:0; transform:translate(-50%,-50%) scale(1.28); }
+}
+@keyframes mqPanelIn{
+  0%{ opacity:0; transform: translateY(8px) scale(0.985); }
+  22%{ opacity:1; transform: translateY(0) scale(1); }
+  84%{ opacity:1; transform: translateY(0) scale(1); }
+  100%{ opacity:0; transform: translateY(-3px) scale(1.01); }
+}
+
 </style>
 </head>
 
@@ -11286,10 +11395,16 @@ function completeMainCh1Linea06(){
   unlockStorybookChapter("chapter1", false);
   save(); if (typeof update === "function") update(); updateQuestBadges(); updateStorybookBadge(); try { renderTalkNpcGrid(); } catch(e) {}
   npcDialogueActionMode = null;
-  npcDialogueQueue = [`퀘스트 완료!
+  showMainQuestCompleteEffect(
+    "퀘스트 : [늪의기억] 완료",
+    "엘프 역사서가 해금되었습니다",
+    () => {
+      npcDialogueQueue = [`퀘스트 완료!
 보상 : 파괴방지 주문서 3개 지급!
 스토리북 CHAPTER 1 해금!`];
-  openNpcDialogueFromTalkSets([npcDialogueQueue], "리네아", "images/npc/linea_talk.png");
+      openNpcDialogueFromTalkSets([npcDialogueQueue], "리네아", "images/npc/linea_talk.png");
+    }
+  );
 }
 
 function addSwampElfKill(){
@@ -22305,6 +22420,37 @@ async function recalcUserPower(userIdToFix) {
   el.style.display = "block";
 }
   
+
+
+/* =========================
+   📜 메인퀘스트 완료 연출
+   ========================= */
+let mainQuestCompleteFxTimer = null;
+function showMainQuestCompleteEffect(titleText, subText = "", onDone = null){
+  const ov = document.getElementById("mainQuestCompleteOverlay");
+  const titleEl = document.getElementById("mainQuestCompleteTitle");
+  const subEl = document.getElementById("mainQuestCompleteSub");
+  if (!ov || !titleEl || !subEl) {
+    if (typeof onDone === "function") onDone();
+    return;
+  }
+  if (mainQuestCompleteFxTimer) {
+    clearTimeout(mainQuestCompleteFxTimer);
+    mainQuestCompleteFxTimer = null;
+  }
+  titleEl.textContent = titleText || "퀘스트 완료";
+  subEl.textContent = subText || "";
+  ov.classList.remove("mq-show");
+  void ov.offsetWidth;
+  ov.classList.add("mq-show");
+  try { playUiClickCommon(); } catch(e) {}
+  mainQuestCompleteFxTimer = setTimeout(() => {
+    ov.classList.remove("mq-show");
+    mainQuestCompleteFxTimer = null;
+    if (typeof onDone === "function") onDone();
+  }, 1900);
+}
+
 // 🔒 미구현 버튼 공용 안내 (기존 시스템 팝업 스타일)
 function showLockedFeaturePopup(){
   const html = `
@@ -23935,6 +24081,20 @@ document.addEventListener("click", function(e){
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+
+
+<!-- 📜 메인퀘스트 완료 연출 -->
+<div id="mainQuestCompleteOverlay" aria-hidden="true">
+  <div class="mq-backdrop"></div>
+  <div class="mq-flash"></div>
+  <div class="mq-panel">
+    <div class="mq-line"></div>
+    <div id="mainQuestCompleteTitle" class="mq-title">퀘스트 : [늪의기억] 완료</div>
+    <div id="mainQuestCompleteSub" class="mq-sub">엘프 역사서가 해금되었습니다</div>
+    <div class="mq-line" style="margin-top:18px;"></div>
   </div>
 </div>
 
