@@ -10773,6 +10773,34 @@ function setStorybookUnlockedPages(key, count, shouldSave = true){
   return true;
 }
 
+function syncStorybookUnlocksFromQuestState(shouldSave = false){
+  if (!storybookState || !questState) return false;
+
+  let changed = false;
+  const q05 = Number(questState["main_ch1_valen_05"] || 0);
+  const q06 = Number(questState["main_ch1_linea_06"] || 0);
+  const q05Done = q05 >= QUEST_STATE.REWARDED;
+  const q06Done = q06 >= QUEST_STATE.REWARDED;
+
+  if (q06Done) {
+    changed = setStorybookUnlockedPages("chapter1", STORYBOOK_CH1_PAGES.length, false) || changed;
+    if (storybookState.read && storybookState.read.chapter1 !== false) {
+      storybookState.read.chapter1 = false;
+      changed = true;
+    }
+  } else if (q05Done) {
+    changed = setStorybookUnlockedPages("chapter1", 1, false) || changed;
+    if (storybookState.read && storybookState.read.chapter1 !== false) {
+      storybookState.read.chapter1 = false;
+      changed = true;
+    }
+  }
+
+  updateStorybookBadge();
+  if (changed && shouldSave && typeof save === "function") save();
+  return changed;
+}
+
 const STORYBOOK_OPEN_BOOK_IMG = "images/storybooks/book_open_base.png";
 const STORYBOOK_CH1_PAGES = [
   {
@@ -16163,6 +16191,7 @@ storybookState = normalizeStorybookState(data.storybookState);
 ensureRepeatQuestResets(false);
 updateStorybookBadge();
 isUserDataLoaded = true;
+syncStorybookUnlocksFromQuestState(true);
 
       // ✅ 명예의전당(30강) / 글로벌 30강 이벤트 상태 로드
       hofDeadline = Number(data.hofDeadline || 0);
@@ -17538,6 +17567,7 @@ storybookState = normalizeStorybookState(data.storybookState);
 ensureRepeatQuestResets(false);
 updateStorybookBadge();
 isUserDataLoaded = true;
+syncStorybookUnlocksFromQuestState(true);
 
     // ✅ 명예의전당(30강) / 글로벌 30강 이벤트 상태 로드
     hofDeadline = Number(data.hofDeadline || 0);
