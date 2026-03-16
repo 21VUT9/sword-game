@@ -10777,27 +10777,40 @@ function syncStorybookUnlocksFromQuestState(shouldSave = false){
   if (!storybookState || !questState) return false;
 
   let changed = false;
+
   const q05 = Number(questState["main_ch1_valen_05"] || 0);
   const q06 = Number(questState["main_ch1_linea_06"] || 0);
+
   const q05Done = q05 >= QUEST_STATE.REWARDED;
   const q06Done = q06 >= QUEST_STATE.REWARDED;
 
+  // ✅ 이미 읽은 상태(read)는 절대 건드리지 않고
+  //    unlocked / pages 만 보정한다.
   if (q06Done) {
-    changed = setStorybookUnlockedPages("chapter1", STORYBOOK_CH1_PAGES.length, false) || changed;
-    if (storybookState.read && storybookState.read.chapter1 !== false) {
-      storybookState.read.chapter1 = false;
+    if (!storybookState.unlocked.chapter1) {
+      storybookState.unlocked.chapter1 = true;
+      changed = true;
+    }
+    if (Number(storybookState.pages.chapter1 || 0) < STORYBOOK_CH1_PAGES.length) {
+      storybookState.pages.chapter1 = STORYBOOK_CH1_PAGES.length;
       changed = true;
     }
   } else if (q05Done) {
-    changed = setStorybookUnlockedPages("chapter1", 1, false) || changed;
-    if (storybookState.read && storybookState.read.chapter1 !== false) {
-      storybookState.read.chapter1 = false;
+    if (!storybookState.unlocked.chapter1) {
+      storybookState.unlocked.chapter1 = true;
+      changed = true;
+    }
+    if (Number(storybookState.pages.chapter1 || 0) < 1) {
+      storybookState.pages.chapter1 = 1;
       changed = true;
     }
   }
 
-  updateStorybookBadge();
-  if (changed && shouldSave && typeof save === "function") save();
+  if (changed) {
+    updateStorybookBadge();
+    if (shouldSave && typeof save === "function") save();
+  }
+
   return changed;
 }
 
