@@ -2577,6 +2577,7 @@ hr.section-divider{
 }
 
 .storybookReaderIllust{
+  transform: translateX(18px);
   width:100%;
   height:100%;
   object-fit:contain;
@@ -11204,7 +11205,6 @@ function renderStorybookReaderPage(){
   const pageData = pages[currentStorybookPage - 1];
   if (!pageData) return;
 
-  chapterTitle.textContent = "CHAPTER 1 · 엘프 역사서";
   illust.src = pageData.image;
   illust.alt = `엘프 역사서 ${String(currentStorybookPage).padStart(2, "0")}페이지 삽화`;
   textEl.textContent = pageData.text;
@@ -24400,7 +24400,6 @@ document.addEventListener("click", function(e){
   <div class="storybookReaderFrame" onclick="event.stopPropagation();">
     <button class="storybookReaderClose" type="button" onclick="closeStorybookReader()">✕</button>
     <div id="storybookReaderBook" class="storybookReaderBook">
-      <div id="storybookReaderChapterTitle" class="storybookReaderChapterTitle">CHAPTER 1 · 엘프 역사서</div>
       <div class="storybookReaderLeft">
         <div class="storybookReaderIllustWrap">
           <img id="storybookReaderIllust" class="storybookReaderIllust" src="images/storybooks/chapter1_page01_illust.png" alt="스토리북 삽화">
