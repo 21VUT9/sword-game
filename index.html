@@ -8213,6 +8213,7 @@ function hideDuelBattleOverlay() {
   
 function logout() {
   isUserDataLoaded = false;
+  resetRankingBattleSessionState();
   storybookState = normalizeStorybookState(null);
 
 
@@ -16084,6 +16085,7 @@ function setDisplay(id, displayValue) {
 }
 
 function login() {
+  resetRankingBattleSessionState();
     
   // 1️⃣ DOM에서 직접 입력창 가져오기
   const idInput = document.getElementById("loginId");
@@ -17485,6 +17487,7 @@ document.addEventListener("keydown", function(e){
 
 // 🧷 새로고침 시 자동 로그인
 function autoLoginFromStorage() {
+  resetRankingBattleSessionState();
     
       // ✅ 자동로그인 시도 시작 전, 이전 계정 잔상 방지
   titlesOwned = {};
@@ -18188,6 +18191,22 @@ function bindRankingUsersCache(){
 
 var RANKING_BATTLE_WEEKLY_REF = null;
 var RANKING_BATTLE_ALLTIME_REF = null;
+
+function resetRankingBattleSessionState(){
+  rankingBattleMetaLoaded = false;
+  rankingBattleAttemptDate = "";
+  rankingBattleAttemptCount = 0;
+  rankingBattleAllTimeBest = 0;
+  rankingBattleWeeklyBest = 0;
+  rankingBattleWeekKey = "";
+  isRankingBattleMode = false;
+  rankingBattleRun = null;
+  if (rankingBattleTickTimer) {
+    clearInterval(rankingBattleTickTimer);
+    rankingBattleTickTimer = null;
+  }
+  try { closeRankingBattleOverlayOnly(); } catch(e) {}
+}
 
 function ensureRankingBattleRefs(){
   if (!RANKING_BATTLE_WEEKLY_REF && typeof db !== "undefined" && db) {
@@ -23393,6 +23412,7 @@ clearLocalSessionId(uid);
 
 ref.update({ sessionId: "", sessionUpdatedAt: 0 }).then(() => {
   // 2) 이 탭 기준 로그인 상태 확정
+  resetRankingBattleSessionState();
   userId = uid;
   userRef = ref;
 
@@ -24439,7 +24459,7 @@ function submitRankingBattleScore(damage){
 
   if (userRef) txs.push(userRef.update(userUpdates));
 
-  return Promise.all(txs).then(() => ({ updatedAllTime, updatedWeekly }));
+  return Promise.all(txs).then(() => ({ updatedAllTime, updatedWeekly, snap }));
 }
 
 function createRankingBattleRun(){
@@ -24486,7 +24506,11 @@ function restoreBossBattleOverlayUi(){
   }
 
   const rewardBtn = document.getElementById("bossBattleRewardBtn");
-  if (rewardBtn) rewardBtn.style.display = "none";
+  if (rewardBtn) {
+    rewardBtn.style.display = "none";
+    rewardBtn.textContent = "🎁 보상수령";
+    rewardBtn.onclick = function(){ openBossRewardOverlay(); };
+  }
 
   const bossImgEl = document.getElementById("bossBattleBossImg");
   if (bossImgEl) {
@@ -24506,7 +24530,18 @@ function showRankingBattleRecordPopup(allTimeValue, weeklyValue, currentValue){
       이번 나의 최고기록 : <b style="color:#ffffff;">${formatDamageKoUnits(Number(currentValue || 0))}</b>
     </div>
   `;
-  showNpcMessage(html, null, true, "기록 갱신");
+  showConfirmPopup(
+    html,
+    null,
+    "기록 갱신",
+    "확인",
+    function(){
+      closeNpcPopup();
+      closeRankingBattleOverlayOnly();
+      isRankingBattleMode = false;
+      rankingBattleRun = null;
+    }
+  );
 }
 
 function submitRankingBattleRecordUpdate(){
@@ -24517,15 +24552,23 @@ function submitRankingBattleRecordUpdate(){
   }
 
   const current = Math.max(0, Number(rankingBattleRun.myDamage || 0));
-  const prevAll = Math.max(0, Number(rankingBattleAllTimeBest || 0));
-  const prevWeek = Math.max(0, Number(rankingBattleWeeklyBest || 0));
 
-  submitRankingBattleScore(current).finally(() => {
+  submitRankingBattleScore(current).then((res) => {
+    const snap = (res && res.snap) ? Object.assign({}, res.snap) : buildRankingBattleSnapshot(current);
+    if (res && res.updatedAllTime) rankingAllTimeCache = upsertRankingCacheRow(rankingAllTimeCache, snap);
+    if (res && res.updatedWeekly) rankingWeeklyCache = upsertRankingCacheRow(rankingWeeklyCache, Object.assign({}, snap, { weekKey: getRankingBattleWeekKey() }));
+
     rankingBattleRun.recordSubmitted = true;
     rankingBattleRun.recordPending = false;
-    showRankingBattleRecordPopup(rankingBattleAllTimeBest, rankingBattleWeeklyBest, current);
-    prepareRankingBattleOverlayUi();
+
     renderMainRanking();
+    prepareRankingBattleOverlayUi();
+    showRankingBattleRecordPopup(rankingBattleAllTimeBest, rankingBattleWeeklyBest, current);
+  }).catch(() => {
+    rankingBattleRun.recordSubmitted = true;
+    rankingBattleRun.recordPending = false;
+    prepareRankingBattleOverlayUi();
+    showRankingBattleRecordPopup(rankingBattleAllTimeBest, rankingBattleWeeklyBest, current);
   });
 }
 
@@ -24542,11 +24585,8 @@ function prepareRankingBattleOverlayUi(){
 
   const headerButtons = ov.querySelectorAll(':scope > div > div:first-child button, div[style*="display:flex; gap:8px;"] button');
   if (headerButtons && headerButtons.length >= 3) {
-    const showRecordUpdate = !!(rankingBattleRun && rankingBattleRun.status !== "active" && !rankingBattleRun.recordSubmitted);
-    headerButtons[0].textContent = showRecordUpdate ? "기록갱신" : "주간보상";
-    headerButtons[0].onclick = showRecordUpdate
-      ? function(){ submitRankingBattleRecordUpdate(); }
-      : function(){ showLockedFeaturePopup(); };
+    headerButtons[0].textContent = "주간보상";
+    headerButtons[0].onclick = function(){ showLockedFeaturePopup(); };
     headerButtons[1].textContent = "보스정보";
     headerButtons[1].onclick = function(){ openRankingBattleInfo(); };
     headerButtons[2].textContent = "닫기";
@@ -24554,7 +24594,12 @@ function prepareRankingBattleOverlayUi(){
   }
 
   const rewardBtn = document.getElementById("bossBattleRewardBtn");
-  if (rewardBtn) rewardBtn.style.display = "none";
+  if (rewardBtn) {
+    const showRecordUpdate = !!(rankingBattleRun && rankingBattleRun.status !== "active" && !rankingBattleRun.recordSubmitted);
+    rewardBtn.style.display = showRecordUpdate ? "block" : "none";
+    rewardBtn.textContent = "기록갱신";
+    rewardBtn.onclick = function(){ submitRankingBattleRecordUpdate(); };
+  }
 }
 
 function openRankingBattleInfo(){
@@ -24631,6 +24676,8 @@ function closeRankingBattleOverlayOnly(){
   if (rankingBattleTickTimer) { clearInterval(rankingBattleTickTimer); rankingBattleTickTimer = null; }
   const banner = document.getElementById("bossBattleResultBanner");
   if (banner) banner.style.display = "none";
+  const rewardBtn = document.getElementById("bossBattleRewardBtn");
+  if (rewardBtn) rewardBtn.style.display = "none";
 }
 
 function finishRankingBattle(forceQuit){
@@ -24802,7 +24849,6 @@ renderBossBattle = function(){
   bossImgEl.style.top = "52%";
   bossImgEl.style.pointerEvents = (run.status === "active") ? "auto" : "none";
 }
-  if (rewardBtn) rewardBtn.style.display = "none";
   if (banner && run.status === "active") banner.style.display = "none";
 
   const hpPct = (run.maxHp > 0) ? Math.max(0, Math.min(100, (run.hp / run.maxHp) * 100)) : 0;
