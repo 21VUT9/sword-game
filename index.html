@@ -24419,47 +24419,47 @@ function buildRankingBattleSnapshot(damage){
 
 function submitRankingBattleScore(damage){
   damage = Math.max(0, Number(damage || 0));
-  if (!userId || damage <= 0) return Promise.resolve({ updatedAllTime:false, updatedWeekly:false });
-  if (!ensureRankingBattleRefs()) return Promise.resolve({ updatedAllTime:false, updatedWeekly:false });
 
-  const weekKey = getRankingBattleWeekKey();
+  if (!userId) {
+    return Promise.reject(new Error("userId_missing"));
+  }
+  if (damage <= 0) {
+    return Promise.reject(new Error("damage_invalid"));
+  }
+  if (!ensureRankingBattleRefs()) {
+    return Promise.reject(new Error("ranking_refs_missing"));
+  }
+
+  const weekKey = String(getRankingBattleWeekKey() || "");
   const snap = buildRankingBattleSnapshot(damage);
-  const allRef = RANKING_BATTLE_ALLTIME_REF.child(String(userId));
-  const weekRef = RANKING_BATTLE_WEEKLY_REF.child(weekKey).child(String(userId));
-  const prevAll = Number(rankingBattleAllTimeBest || 0);
-  const prevWeek = (String(rankingBattleWeekKey || "") === String(weekKey || "")) ? Number(rankingBattleWeeklyBest || 0) : 0;
+  const prevAll = Math.max(0, Number(rankingBattleAllTimeBest || 0));
+  const prevWeek = (String(rankingBattleWeekKey || "") === weekKey)
+    ? Math.max(0, Number(rankingBattleWeeklyBest || 0))
+    : 0;
   const updatedAllTime = damage > prevAll;
   const updatedWeekly = damage > prevWeek;
 
-  const txs = [];
+  const nextAllTimeBest = updatedAllTime ? damage : prevAll;
+  const nextWeeklyBest = updatedWeekly ? damage : prevWeek;
+  const nextWeekKey = weekKey;
+
+  const updates = {};
   if (updatedAllTime) {
-    txs.push(allRef.transaction((cur) => {
-      const prev = Number(cur && cur.damage || 0);
-      if (prev >= damage) return cur;
-      return Object.assign({}, snap);
-    }));
+    updates[`rankingBattleAllTime/${String(userId)}`] = Object.assign({}, snap);
   }
   if (updatedWeekly) {
-    txs.push(weekRef.transaction((cur) => {
-      const prev = Number(cur && cur.damage || 0);
-      if (prev >= damage) return cur;
-      return Object.assign({}, snap, { weekKey });
-    }));
+    updates[`rankingBattleWeekly/${nextWeekKey}/${String(userId)}`] = Object.assign({}, snap, { weekKey: nextWeekKey });
   }
+  updates[`users/${String(userId)}/rankingBattleWeekKey`] = nextWeekKey;
+  updates[`users/${String(userId)}/rankingBattleWeeklyBest`] = Number(nextWeeklyBest || 0);
+  updates[`users/${String(userId)}/rankingBattleAllTimeBest`] = Number(nextAllTimeBest || 0);
 
-  rankingBattleWeekKey = String(weekKey || "");
-  if (updatedAllTime) rankingBattleAllTimeBest = damage;
-  if (updatedWeekly) rankingBattleWeeklyBest = damage;
-
-  const userUpdates = {
-    rankingBattleWeekKey: rankingBattleWeekKey,
-    rankingBattleWeeklyBest: Number(rankingBattleWeeklyBest || 0),
-    rankingBattleAllTimeBest: Number(rankingBattleAllTimeBest || 0)
-  };
-
-  if (userRef) txs.push(userRef.update(userUpdates));
-
-  return Promise.all(txs).then(() => ({ updatedAllTime, updatedWeekly, snap }));
+  return db.ref().update(updates).then(() => {
+    rankingBattleWeekKey = nextWeekKey;
+    rankingBattleAllTimeBest = nextAllTimeBest;
+    rankingBattleWeeklyBest = nextWeeklyBest;
+    return { updatedAllTime, updatedWeekly, snap };
+  });
 }
 
 function createRankingBattleRun(){
@@ -24552,6 +24552,13 @@ function submitRankingBattleRecordUpdate(){
   }
 
   const current = Math.max(0, Number(rankingBattleRun.myDamage || 0));
+  if (current <= 0) {
+    showNpcMessage("기록할 딜량이 없습니다.", null, true, "기록 갱신");
+    return;
+  }
+
+  rankingBattleRun.recordPending = true;
+  prepareRankingBattleOverlayUi();
 
   submitRankingBattleScore(current).then((res) => {
     const snap = (res && res.snap) ? Object.assign({}, res.snap) : buildRankingBattleSnapshot(current);
@@ -24564,11 +24571,12 @@ function submitRankingBattleRecordUpdate(){
     renderMainRanking();
     prepareRankingBattleOverlayUi();
     showRankingBattleRecordPopup(rankingBattleAllTimeBest, rankingBattleWeeklyBest, current);
-  }).catch(() => {
-    rankingBattleRun.recordSubmitted = true;
+  }).catch((err) => {
+    console.error("[RankingBattle] record update failed:", err);
+    rankingBattleRun.recordSubmitted = false;
     rankingBattleRun.recordPending = false;
     prepareRankingBattleOverlayUi();
-    showRankingBattleRecordPopup(rankingBattleAllTimeBest, rankingBattleWeeklyBest, current);
+    showNpcMessage("기록 저장에 실패했습니다. 다시 시도해주세요.", null, true, "기록 갱신 실패");
   });
 }
 
@@ -24597,8 +24605,11 @@ function prepareRankingBattleOverlayUi(){
   if (rewardBtn) {
     const showRecordUpdate = !!(rankingBattleRun && rankingBattleRun.status !== "active" && !rankingBattleRun.recordSubmitted);
     rewardBtn.style.display = showRecordUpdate ? "block" : "none";
-    rewardBtn.textContent = "기록갱신";
-    rewardBtn.onclick = function(){ submitRankingBattleRecordUpdate(); };
+    rewardBtn.textContent = (rankingBattleRun && rankingBattleRun.recordPending) ? "저장중..." : "기록갱신";
+    rewardBtn.onclick = function(){
+      if (rankingBattleRun && rankingBattleRun.recordPending) return;
+      submitRankingBattleRecordUpdate();
+    };
   }
 }
 
