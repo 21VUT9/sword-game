@@ -24704,7 +24704,7 @@ function finishRankingBattle(forceQuit){
   const finalizeAfterAttempt = () => {
     if (!forceQuit && !alreadyFinished) {
       rankingBattleRun.status = "finished";
-      rankingBattleRun.recordPending = true;
+      rankingBattleRun.recordPending = false;
       rankingBattleRun.recordSubmitted = false;
       const banner = document.getElementById("bossBattleResultBanner");
       const bannerText = document.getElementById("bossBattleResultText");
