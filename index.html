@@ -24294,18 +24294,18 @@ document.addEventListener("click", function(e){
 const RANKING_BATTLE_BOSS_ID = "ranking_leviathan";
 const RANKING_BATTLE_MAX_HP = 200000000000000;
 const RANKING_BATTLE_DAILY_LIMIT = 2;
-RANKING_BATTLE_WEEKLY_REF = RANKING_BATTLE_WEEKLY_REF || db.ref("rankingBattleWeekly");
-RANKING_BATTLE_ALLTIME_REF = RANKING_BATTLE_ALLTIME_REF || db.ref("rankingBattleAllTime");
+var RANKING_BATTLE_WEEKLY_REF = (typeof RANKING_BATTLE_WEEKLY_REF !== "undefined" && RANKING_BATTLE_WEEKLY_REF) ? RANKING_BATTLE_WEEKLY_REF : db.ref("rankingBattleWeekly");
+var RANKING_BATTLE_ALLTIME_REF = (typeof RANKING_BATTLE_ALLTIME_REF !== "undefined" && RANKING_BATTLE_ALLTIME_REF) ? RANKING_BATTLE_ALLTIME_REF : db.ref("rankingBattleAllTime");
 
-let rankingBattleMetaLoaded = false;
-let rankingBattleAttemptDate = "";
-let rankingBattleAttemptCount = 0;
-let rankingBattleAllTimeBest = 0;
-let rankingBattleWeeklyBest = 0;
-let rankingBattleWeekKey = "";
-let isRankingBattleMode = false;
-let rankingBattleRun = null;
-let rankingBattleTickTimer = null;
+var rankingBattleMetaLoaded = false;
+var rankingBattleAttemptDate = "";
+var rankingBattleAttemptCount = 0;
+var rankingBattleAllTimeBest = 0;
+var rankingBattleWeeklyBest = 0;
+var rankingBattleWeekKey = "";
+var isRankingBattleMode = false;
+var rankingBattleRun = null;
+var rankingBattleTickTimer = null;
 
 function getRankingBattleWeekKey(){
   try {
