@@ -4419,6 +4419,11 @@ html, body {
   </div> <!-- 🔚 fieldBg : 배경은 여기까지만 -->
   
   <h2>🏆 랭킹 TOP 10</h2>
+  <div id="rankingTabs" style="margin:6px 0 10px 0; font-size:15px; text-align:center; user-select:none;">
+    <span id="rankingTabAllTime" onclick="setMainRankingTab('alltime')" style="cursor:pointer; font-weight:900; color:#ffd54f;">[역대랭킹]</span>
+    <span style="display:inline-block; width:10px;"></span>
+    <span id="rankingTabWeekly" onclick="setMainRankingTab('weekly')" style="cursor:pointer; font-weight:700; color:#bdbdbd;">[주간랭킹]</span>
+  </div>
   <div id="ranking">불러오는 중...</div>
   <div id="myRank" style="margin-top:8px; font-size:14px; color:#ccc;"></div>
 
@@ -18062,101 +18067,170 @@ let lastRankProfileUserId = null;
 })();
   
 /* 랭킹 */
-function loadRanking() {
+function getRankingSnapshotTitleHtml(snap){
+  const uid = String(snap && snap.uid || "");
+  const nick = String(snap && snap.nick || "-");
+  const titleId = String(snap && snap.titleId || "");
+  const starCount = Math.max(0, Number(snap && snap.reach30Count || 0));
+  const starText = starCount > 0 ? ((starCount <= 4) ? "★".repeat(starCount) : `★★${starCount}★★`) : "";
+  const starHtml = starText ? ` <span class="rainbowStar">${starText}</span>` : "";
+  const nickHtml = `<span class="rank-user" data-user-id="${uid}" onclick="openOtherUserProfilePopup('${uid}')" style="cursor:pointer;">${nick}</span>`;
+  if (!titleId) return `${nickHtml}${starHtml}`;
 
-  const usersRef = db.ref("users");
+  const def = (Array.isArray(TITLE_DEFS) ? TITLE_DEFS.find(t => String(t.id) === titleId) : null);
+  const titleName = def ? String(def.name || titleId) : titleId;
+  const colorKey = def?.color || "";
 
-  // 🔝 TOP 10 (once)
-  usersRef
-    .orderByChild("sword")
-    .limitToLast(10)
-    .on("value", s => {
-      const rankingEl = document.getElementById("ranking");
-      if (!rankingEl) return;
+  let titleHtml = `[${titleName}]`;
+  if (colorKey === "plague") {
+    titleHtml = `<span class="title-plague">[${titleName}]</span>`;
+  } else if (titleId === "god" || titleName === "신") {
+    titleHtml = `<span class="title-god">[${titleName}]</span>`;
+  } else if (colorKey === "redgold") {
+    titleHtml = `<span class="title-redglow">[${titleName}]</span>`;
+  } else {
+    titleHtml = `<span style="${getTitleColorStyle(colorKey)}">[${titleName}]</span>`;
+  }
+  return `${titleHtml}${nickHtml}${starHtml}`;
+}
 
-      const arr = [];
-      s.forEach(child => {
-        const d = child.val() || {};
-        arr.push({
-          id: child.key,
-          sword: Number(d.sword || 0),
-          updated: Number(d.updated || 0),
-          duelWin: Number(d.duelWin || 0),
-          duelLose: Number(d.duelLose || 0),
-          weaponType: d.weaponType || "sword",
-          equippedTitle: d.equippedTitle || "",
-          reach30Count: Number(d.reach30Count || 0)
-        });
-      });
+let mainRankingTab = "alltime";
+let rankingAllTimeCache = [];
+let rankingWeeklyCache = [];
+let rankingUsersCacheBound = false;
 
-      arr.sort((a, b) => {
-        if (b.sword !== a.sword) return b.sword - a.sword;
-        return a.updated - b.updated;
-      });
+function setMainRankingTab(mode){
+  mainRankingTab = (mode === "weekly") ? "weekly" : "alltime";
+  const allTab = document.getElementById("rankingTabAllTime");
+  const weekTab = document.getElementById("rankingTabWeekly");
+  if (allTab) {
+    allTab.style.color = (mainRankingTab === "alltime") ? "#ffd54f" : "#bdbdbd";
+    allTab.style.fontWeight = (mainRankingTab === "alltime") ? "900" : "700";
+  }
+  if (weekTab) {
+    weekTab.style.color = (mainRankingTab === "weekly") ? "#ffd54f" : "#bdbdbd";
+    weekTab.style.fontWeight = (mainRankingTab === "weekly") ? "900" : "700";
+  }
+  renderMainRanking();
+}
 
-rankingEl.innerHTML = arr.map((u, i) => {
-  const wInfo = getWeaponInfo(u.sword, u.weaponType || "sword");
-  const weaponNameStyled = coloredWeaponName(u.sword, wInfo.name);
-
+function buildMainRankingRowHtml(snap, rank){
+  const weaponNameStyled = coloredWeaponName(Number(snap.weaponLv || 0), String(snap.weaponName || "무기"));
+  const levelHtml = coloredLevel(Number(snap.weaponLv || 0));
   return `
-    <div class="ranking-row" style="font-weight:bold;">
-      ${i+1}. <span class="rank-user" data-user-id="${u.id}">${formatNicknameWithTitle(u.id, u.equippedTitle, u.reach30Count)
-}</span>
-      | ${weaponNameStyled} ${coloredLevel(u.sword)}
-      | 전적: ${u.duelWin}승 ${u.duelLose}패
+    <div class="ranking-row" style="font-weight:bold; line-height:1.5;">
+      ${rank}. ${getRankingSnapshotTitleHtml(snap)}
+      | ${weaponNameStyled} ${levelHtml}
+      | ${formatDamageKoUnits(Number(snap.damage || 0))}
     </div>
   `;
-}).join("");
+}
 
-    });
+function renderMainRanking(){
+  const rankingEl = document.getElementById("ranking");
+  const myRankEl = document.getElementById("myRank");
+  if (!rankingEl || !myRankEl) return;
 
-  // 👇 내 랭킹 + 결투 매칭 캐시 (on)
-  usersRef
-    .orderByChild("sword")
-    .on("value", s => {
-      const myRankEl = document.getElementById("myRank");
-      if (!myRankEl) return;
+  const arr = (mainRankingTab === "weekly") ? rankingWeeklyCache.slice() : rankingAllTimeCache.slice();
+  arr.sort((a, b) => {
+    const bd = Number(b.damage || 0), ad = Number(a.damage || 0);
+    if (bd !== ad) return bd - ad;
+    return Number(a.recordedAt || 0) - Number(b.recordedAt || 0);
+  });
 
-      const arr = [];
-      s.forEach(c => {
-        const d = c.val() || {};
-        arr.push({
-          id: c.key,
-          sword: Number(d.sword || 0),
-          updated: Number(d.updated || 0),
-          power: Number(d.power || 0),
-          weaponType: d.weaponType || "sword",
-          equippedTitle: d.equippedTitle || "",
-          reach30Count: Number(d.reach30Count || 0)
-        });
+  if (!arr.length) {
+    rankingEl.innerHTML = `<div style="color:#999; font-size:13px;">기록 없음</div>`;
+  } else {
+    rankingEl.innerHTML = arr.slice(0, 10).map((snap, i) => buildMainRankingRowHtml(snap, i + 1)).join("");
+  }
+
+  if (!userId) {
+    myRankEl.innerText = "";
+    return;
+  }
+
+  const idx = arr.findIndex(x => String(x.uid || "") === String(userId));
+  if (idx === -1) {
+    myRankEl.innerText = "내 랭킹: 기록 없음";
+    return;
+  }
+
+  const mine = arr[idx] || {};
+  const label = (mainRankingTab === "weekly") ? "주간 기록" : "최고 기록";
+  myRankEl.innerHTML = `내 랭킹: <b>${idx + 1}위</b> (${coloredLevel(Number(mine.weaponLv || 0))}, ${label}: ${formatDamageKoUnits(Number(mine.damage || 0))})`;
+}
+
+function bindRankingUsersCache(){
+  if (rankingUsersCacheBound) return;
+  rankingUsersCacheBound = true;
+  db.ref("users").on("value", s => {
+    const arr = [];
+    s.forEach(c => {
+      const d = c.val() || {};
+      arr.push({
+        id: c.key,
+        sword: Number(d.sword || 0),
+        updated: Number(d.updated || 0),
+        power: Number(d.power || 0),
+        weaponType: d.weaponType || "sword",
+        equippedTitle: d.equippedTitle || "",
+        reach30Count: Number(d.reach30Count || 0)
       });
-
-      arr.sort((a, b) => {
-        if (b.sword !== a.sword) return b.sword - a.sword;
-        return a.updated - b.updated;
-      });
-
-      // ⚔️ 결투용 캐시
-      allUsersCache = arr.slice();
-      refreshUserListOverlayIfOpen();
-
-      if (!userId) {
-        myRankEl.innerText = "";
-        return;
-      }
-
-      const idx = arr.findIndex(u => u.id === userId);
-
-      if (idx === -1) {
-        myRankEl.innerText = "내 랭킹: 기록 없음";
-      } else {
-        const myInfo = arr[idx];
-        myRankEl.innerHTML = `
-          내 랭킹: <b>${idx + 1}위</b>
-          (${coloredLevel(myInfo.sword)}, 전적: ${duelWin}승 ${duelLose}패)
-        `;
-      }
     });
+    arr.sort((a, b) => {
+      if (b.sword !== a.sword) return b.sword - a.sword;
+      return a.updated - b.updated;
+    });
+    allUsersCache = arr.slice();
+    refreshUserListOverlayIfOpen();
+  });
+}
+
+function loadRanking() {
+  bindRankingUsersCache();
+
+  RANKING_BATTLE_ALLTIME_REF.on("value", s => {
+    const arr = [];
+    s.forEach(child => {
+      const d = child.val() || {};
+      arr.push(Object.assign({}, d, {
+        uid: String(d.uid || child.key || ""),
+        nick: String(d.nick || "-"),
+        titleId: String(d.titleId || ""),
+        reach30Count: Number(d.reach30Count || 0),
+        weaponType: String(d.weaponType || "sword"),
+        weaponLv: Number(d.weaponLv || 0),
+        weaponName: String(d.weaponName || "무기"),
+        damage: Number(d.damage || 0),
+        recordedAt: Number(d.recordedAt || 0)
+      }));
+    });
+    rankingAllTimeCache = arr;
+    renderMainRanking();
+  });
+
+  const weekKey = getRankingBattleWeekKey();
+  RANKING_BATTLE_WEEKLY_REF.child(String(weekKey || "")).on("value", s => {
+    const arr = [];
+    s.forEach(child => {
+      const d = child.val() || {};
+      arr.push(Object.assign({}, d, {
+        uid: String(d.uid || child.key || ""),
+        nick: String(d.nick || "-"),
+        titleId: String(d.titleId || ""),
+        reach30Count: Number(d.reach30Count || 0),
+        weaponType: String(d.weaponType || "sword"),
+        weaponLv: Number(d.weaponLv || 0),
+        weaponName: String(d.weaponName || "무기"),
+        damage: Number(d.damage || 0),
+        recordedAt: Number(d.recordedAt || 0)
+      }));
+    });
+    rankingWeeklyCache = arr;
+    renderMainRanking();
+  });
+
+  setMainRankingTab(mainRankingTab);
 }
   
 // 오늘 날짜를 "YYYY-MM-DD" 형태로 반환 (출석 체크용)
@@ -24310,34 +24384,46 @@ function buildRankingBattleSnapshot(damage){
 
 function submitRankingBattleScore(damage){
   damage = Math.max(0, Number(damage || 0));
-  if (!userId || damage <= 0) return;
+  if (!userId || damage <= 0) return Promise.resolve({ updatedAllTime:false, updatedWeekly:false });
 
   const weekKey = getRankingBattleWeekKey();
   const snap = buildRankingBattleSnapshot(damage);
   const allRef = RANKING_BATTLE_ALLTIME_REF.child(String(userId));
   const weekRef = RANKING_BATTLE_WEEKLY_REF.child(weekKey).child(String(userId));
+  const prevAll = Number(rankingBattleAllTimeBest || 0);
+  const prevWeek = (String(rankingBattleWeekKey || "") === String(weekKey || "")) ? Number(rankingBattleWeeklyBest || 0) : 0;
+  const updatedAllTime = damage > prevAll;
+  const updatedWeekly = damage > prevWeek;
 
-  allRef.transaction((cur) => {
-    const prev = Number(cur && cur.damage || 0);
-    if (prev >= damage) return cur;
-    return Object.assign({}, snap);
-  });
+  const txs = [];
+  if (updatedAllTime) {
+    txs.push(allRef.transaction((cur) => {
+      const prev = Number(cur && cur.damage || 0);
+      if (prev >= damage) return cur;
+      return Object.assign({}, snap);
+    }));
+  }
+  if (updatedWeekly) {
+    txs.push(weekRef.transaction((cur) => {
+      const prev = Number(cur && cur.damage || 0);
+      if (prev >= damage) return cur;
+      return Object.assign({}, snap, { weekKey });
+    }));
+  }
 
-  weekRef.transaction((cur) => {
-    const prev = Number(cur && cur.damage || 0);
-    if (prev >= damage) return cur;
-    return Object.assign({}, snap, { weekKey });
-  });
+  rankingBattleWeekKey = String(weekKey || "");
+  if (updatedAllTime) rankingBattleAllTimeBest = damage;
+  if (updatedWeekly) rankingBattleWeeklyBest = damage;
 
   const userUpdates = {
-    rankingBattleWeekKey: weekKey,
-    rankingBattleWeeklyBest: Math.max(Number(rankingBattleWeeklyBest || 0), damage),
-    rankingBattleAllTimeBest: Math.max(Number(rankingBattleAllTimeBest || 0), damage)
+    rankingBattleWeekKey: rankingBattleWeekKey,
+    rankingBattleWeeklyBest: Number(rankingBattleWeeklyBest || 0),
+    rankingBattleAllTimeBest: Number(rankingBattleAllTimeBest || 0)
   };
-  rankingBattleWeeklyBest = Number(userUpdates.rankingBattleWeeklyBest || 0);
-  rankingBattleAllTimeBest = Number(userUpdates.rankingBattleAllTimeBest || 0);
 
-  if (userRef) userRef.update(userUpdates);
+  if (userRef) txs.push(userRef.update(userUpdates));
+
+  return Promise.all(txs).then(() => ({ updatedAllTime, updatedWeekly }));
 }
 
 function createRankingBattleRun(){
@@ -24356,7 +24442,9 @@ function createRankingBattleRun(){
     startedAt: Date.now(),
     defense: 0.60,
     magicRes: 0.60,
-    evade: 0.00
+    evade: 0.00,
+    recordSubmitted: false,
+    recordPending: false
   };
 }
 
@@ -24394,6 +24482,37 @@ function restoreBossBattleOverlayUi(){
   }
 }
 
+function showRankingBattleRecordPopup(allTimeValue, weeklyValue, currentValue){
+  const html = `
+    <div style="font-size:13px; line-height:1.8; text-align:left; white-space:pre-line;">
+      역대 나의 최고기록 : <b style="color:#ffd54f;">${formatDamageKoUnits(Number(allTimeValue || 0))}</b><br>
+      주간 나의 최고기록 : <b style="color:#9fd3ff;">${formatDamageKoUnits(Number(weeklyValue || 0))}</b><br>
+      이번 나의 최고기록 : <b style="color:#ffffff;">${formatDamageKoUnits(Number(currentValue || 0))}</b>
+    </div>
+  `;
+  showNpcMessage(html, null, true, "기록 갱신");
+}
+
+function submitRankingBattleRecordUpdate(){
+  if (!isRankingBattleMode || !rankingBattleRun) return;
+  if (rankingBattleRun.recordSubmitted) {
+    showRankingBattleRecordPopup(rankingBattleAllTimeBest, rankingBattleWeeklyBest, rankingBattleRun.myDamage || 0);
+    return;
+  }
+
+  const current = Math.max(0, Number(rankingBattleRun.myDamage || 0));
+  const prevAll = Math.max(0, Number(rankingBattleAllTimeBest || 0));
+  const prevWeek = Math.max(0, Number(rankingBattleWeeklyBest || 0));
+
+  submitRankingBattleScore(current).finally(() => {
+    rankingBattleRun.recordSubmitted = true;
+    rankingBattleRun.recordPending = false;
+    showRankingBattleRecordPopup(rankingBattleAllTimeBest, rankingBattleWeeklyBest, current);
+    prepareRankingBattleOverlayUi();
+    renderMainRanking();
+  });
+}
+
 function prepareRankingBattleOverlayUi(){
   const ov = document.getElementById("bossBattleOverlay");
   if (!ov) return;
@@ -24407,8 +24526,11 @@ function prepareRankingBattleOverlayUi(){
 
   const headerButtons = ov.querySelectorAll(':scope > div > div:first-child button, div[style*="display:flex; gap:8px;"] button');
   if (headerButtons && headerButtons.length >= 3) {
-    headerButtons[0].textContent = "주간보상";
-    headerButtons[0].onclick = function(){ showLockedFeaturePopup(); };
+    const showRecordUpdate = !!(rankingBattleRun && rankingBattleRun.status !== "active" && !rankingBattleRun.recordSubmitted);
+    headerButtons[0].textContent = showRecordUpdate ? "기록갱신" : "주간보상";
+    headerButtons[0].onclick = showRecordUpdate
+      ? function(){ submitRankingBattleRecordUpdate(); }
+      : function(){ showLockedFeaturePopup(); };
     headerButtons[1].textContent = "보스정보";
     headerButtons[1].onclick = function(){ openRankingBattleInfo(); };
     headerButtons[2].textContent = "닫기";
@@ -24507,8 +24629,9 @@ function finishRankingBattle(forceQuit){
 
   const finalizeAfterAttempt = () => {
     if (!forceQuit && !alreadyFinished) {
-      submitRankingBattleScore(Number(rankingBattleRun.myDamage || 0));
       rankingBattleRun.status = "finished";
+      rankingBattleRun.recordPending = true;
+      rankingBattleRun.recordSubmitted = false;
       const banner = document.getElementById("bossBattleResultBanner");
       const bannerText = document.getElementById("bossBattleResultText");
       if (banner) banner.style.display = "block";
@@ -24518,6 +24641,7 @@ function finishRankingBattle(forceQuit){
       }
       const bossImg = document.getElementById("bossBattleBossImg");
       if (bossImg) bossImg.style.pointerEvents = "none";
+      prepareRankingBattleOverlayUi();
       renderBossBattle();
       return;
     }
@@ -24538,13 +24662,22 @@ function finishRankingBattle(forceQuit){
 }
 
 function onBossBattleCloseClick(){
-  if (isRankingBattleMode && rankingBattleRun && rankingBattleRun.status === "active") {
+  if (isRankingBattleMode && rankingBattleRun && (rankingBattleRun.status === "active" || !rankingBattleRun.recordSubmitted)) {
     showConfirmPopup(
       "내 점수는 기록되지 않고, 횟수는 차감된다.<br>정말 종료할까?",
       "images/npc/leonhardt_focus.png",
       "랭킹전",
       "확인",
-      function(){ closeNpcPopup(); finishRankingBattle(true); },
+      function(){
+        closeNpcPopup();
+        if (rankingBattleRun && rankingBattleRun.status === "active") {
+          finishRankingBattle(true);
+        } else {
+          closeRankingBattleOverlayOnly();
+          isRankingBattleMode = false;
+          rankingBattleRun = null;
+        }
+      },
       "취소",
       closeNpcPopup
     );
@@ -24767,6 +24900,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (btn) {
     btn.setAttribute("onclick", "onRankingBattleIconClick()")
   }
+  setMainRankingTab(mainRankingTab);
 });
 
 </script>
