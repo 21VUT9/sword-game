@@ -3227,58 +3227,6 @@ hr.section-divider{
   filter: brightness(1.15);
 }
 
-/* 🌊 POI: 심연의 바다 (시궁창 좌측 하단 끝) */
-#poiAbyssalSea{
-  position: absolute;
-  left: 29.5%;
-  top: 73.5%;
-  transform: translate(-50%, -50%);
-  width: 58px;
-  height: 42px;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  cursor: pointer;
-  z-index: 5;
-  -webkit-tap-highlight-color: rgba(0,0,0,0);
-  outline: none;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-#poiAbyssalSea img{
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-#poiAbyssalSea:active{
-  transform: translate(-50%, -50%) scale(1.08);
-}
-
-#poiAbyssalSea .poi-label{
-  position: absolute;
-  bottom: -8px;
-  left: 52%;
-  transform: translateX(-50%);
-  font-size: 9px;
-  font-weight: 900;
-  color: #cfcfcf;
-  text-shadow:
-    -1px -1px 0 #000,
-     1px -1px 0 #000,
-    -1px  1px 0 #000,
-     1px  1px 0 #000,
-     0  2px 4px rgba(0,0,0,0.8);
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-#poiAbyssalSea:hover .poi-label{
-  color: #fff;
-  filter: brightness(1.15);
-}
-
   /* 🏜️ POI: 무법자들의 황야 (이그드라실 하단 평야) */
 #poiOutlawWasteland{
   position: absolute;
@@ -4152,7 +4100,7 @@ html, body {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.446)
+    (v4.438)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -4598,12 +4546,6 @@ html, body {
   <span class="poi-label">역병쥐가 들끓는 시궁창</span>
 </button>
 
-      <!-- 🌊 POI: 심연의 바다 (시궁창 좌측 하단 끝) -->
-<button id="poiAbyssalSea" onclick="playUiClickCommon(); moveToAbyssalSeaFromWorldMap(event)">
-  <img src="images/maps/poi_abyssal_sea_shipwreck.png" alt="심연의 바다">
-  <span class="poi-label">심연의 바다</span>
-</button>
-
       <!-- 🏜️ POI: 무법자들의 황야 (이그드라실 하단 평야) -->
 <button id="poiOutlawWasteland" onclick="playUiClickCommon(); moveToOutlawWastelandFromWorldMap(event)">
   <img src="images/maps/poi_outlaw_wasteland.png" alt="무법자들의 황야">
@@ -4895,7 +4837,7 @@ html, body {
     <div style="display:flex; gap:8px;">
     <button onclick="openBossBattleRewards()" style="padding:6px 10px; border-radius:10px;">보상</button>
     <button onclick="openBossBattleStat()" style="padding:6px 10px; border-radius:10px;">보스정보</button>
-    <button onclick="closeBossBattle()" style="padding:6px 10px; border-radius:10px;">닫기</button>
+    <button onclick="onBossBattleCloseClick()" style="padding:6px 10px; border-radius:10px;">닫기</button>
   </div>
 </div>
 
@@ -8114,8 +8056,7 @@ const HUNT_FIELDS = [
   { id: 7,  name: "베히모스의 불구덩이",     recLevel: 18 },
   { id: 8,  name: "대천사의 요람",           recLevel: 21 },
   { id: 9,  name: "신의 처소",               recLevel: 24 },
-  { id: 10, name: "차원의 틈새",             recLevel: 27 },
-  { id: 11, name: "심연의 바다",             recLevel: 0  }
+  { id: 10, name: "차원의 틈새",             recLevel: 27 }
 ];
   
   const FORGE_FIELD_ID = 0;
@@ -8132,8 +8073,7 @@ const FIELD_BACKGROUNDS = {
   7: "images/fields/field7_behemoth_hellpit.png",     // 베히모스의 불구덩이
   8: "images/fields/field8_archangel_cradle.png",     // 대천사의 요람
   9: "images/fields/field9_gods_throne.png",          // 신의 처소
-  10:"images/fields/field10_dimensional_rift.png",     // 차원의 틈새
-  11:"images/fields/field11_abyssal_sea.png"           // 심연의 바다
+  10:"images/fields/field10_dimensional_rift.png"     // 차원의 틈새
 };
 
 // ⚔️ VS 연출 표시
@@ -15844,14 +15784,6 @@ if (currentField === 0) {
   );
   return;
 }
-
-if (currentField === 11) {
-  showHuntPopup(
-    "여기엔 사냥감이 없다.",
-    "#9FB7D9"
-  );
-  return;
-}
     
   if (!userRef || !userId) {
     alert("로그인 후 이용 가능합니다.");
@@ -17165,7 +17097,7 @@ function renderMap() {
 
   listEl.innerHTML = "";
 
-  for (let i = 1; i <= 11; i++) {
+  for (let i = 1; i <= 10; i++) {
     const field = HUNT_FIELDS[i];
     const success = getHuntSuccessChance(sword, i);
 
@@ -17249,16 +17181,6 @@ function moveToMushroomVillageFromWorldMap(e){
     2,
     "역병쥐가 들끓는 시궁창",
     "+3강 이상 추천 사냥터"
-  );
-}
-
-function moveToAbyssalSeaFromWorldMap(e){
-  if (e) e.stopPropagation();
-
-  showWorldMapMoveConfirm(
-    11,
-    "심연의 바다",
-    "랭킹전 전용맵 / 사냥불가"
   );
 }
 
@@ -24179,7 +24101,536 @@ document.addEventListener("click", function(e){
   playUiClickCommon();
 });
 
-    </script>
+    
+
+// ===============================
+// 🏆 랭킹전: 레비아탄 (v1)
+// ===============================
+const RANKING_BATTLE_BOSS_ID = "ranking_leviathan";
+const RANKING_BATTLE_MAX_HP = 200000000000000;
+const RANKING_BATTLE_DAILY_LIMIT = 2;
+const RANKING_BATTLE_WEEKLY_REF = db.ref("rankingBattleWeekly");
+const RANKING_BATTLE_ALLTIME_REF = db.ref("rankingBattleAllTime");
+
+let rankingBattleMetaLoaded = false;
+let rankingBattleAttemptDate = "";
+let rankingBattleAttemptCount = 0;
+let rankingBattleAllTimeBest = 0;
+let rankingBattleWeeklyBest = 0;
+let rankingBattleWeekKey = "";
+let isRankingBattleMode = false;
+let rankingBattleRun = null;
+let rankingBattleTickTimer = null;
+
+function getRankingBattleWeekKey(){
+  try {
+    return (typeof getKstWeekKey === "function") ? String(getKstWeekKey() || "") : "";
+  } catch(e){
+    return "";
+  }
+}
+
+function getRankingBattleBossImage(){
+  return "images/bosses/leviathan_rank.png";
+}
+
+function getRankingBattleFieldImage(){
+  return "images/fields/field11_abyssal_sea_boss.png";
+}
+
+function getRankingBattleRemainCount(){
+  return Math.max(0, RANKING_BATTLE_DAILY_LIMIT - Number(rankingBattleAttemptCount || 0));
+}
+
+function getRankingBattleWeaponSnapshot(){
+  const wt = String(weaponType || "sword");
+  const wInfo = (typeof getWeaponInfo === "function") ? getWeaponInfo(Number(sword || 0), wt) : { name:"무기" };
+  return {
+    weaponType: wt,
+    weaponLv: Number(sword || 0),
+    weaponName: String((wInfo && wInfo.name) || "무기")
+  };
+}
+
+function ensureRankingBattleMetaLoaded(cb){
+  if (rankingBattleMetaLoaded || !userRef) {
+    if (typeof cb === "function") cb();
+    return;
+  }
+
+  userRef.once("value", (snap) => {
+    const data = snap.val() || {};
+    rankingBattleAttemptDate = String(data.rankingBattleAttemptDate || "");
+    rankingBattleAttemptCount = Number(data.rankingBattleAttemptCount || 0);
+    rankingBattleAllTimeBest = Number(data.rankingBattleAllTimeBest || 0);
+    rankingBattleWeeklyBest = Number(data.rankingBattleWeeklyBest || 0);
+    rankingBattleWeekKey = String(data.rankingBattleWeekKey || "");
+    rankingBattleMetaLoaded = true;
+    ensureRankingBattleResetState(cb);
+  }, () => {
+    rankingBattleMetaLoaded = true;
+    ensureRankingBattleResetState(cb);
+  });
+}
+
+function ensureRankingBattleResetState(cb){
+  const today = String(getTodayDateString() || "");
+  const weekKey = getRankingBattleWeekKey();
+  const updates = {};
+
+  if (rankingBattleAttemptDate !== today) {
+    rankingBattleAttemptDate = today;
+    rankingBattleAttemptCount = 0;
+    updates.rankingBattleAttemptDate = today;
+    updates.rankingBattleAttemptCount = 0;
+  }
+
+  if (rankingBattleWeekKey !== weekKey) {
+    rankingBattleWeekKey = weekKey;
+    rankingBattleWeeklyBest = 0;
+    updates.rankingBattleWeekKey = weekKey;
+    updates.rankingBattleWeeklyBest = 0;
+  }
+
+  if (userRef && Object.keys(updates).length) {
+    userRef.update(updates).finally(() => {
+      if (typeof cb === "function") cb();
+    });
+    return;
+  }
+
+  if (typeof cb === "function") cb();
+}
+
+function persistRankingBattleAttemptCount(){
+  if (!userRef) return Promise.resolve();
+  return userRef.update({
+    rankingBattleAttemptDate,
+    rankingBattleAttemptCount
+  });
+}
+
+function recordRankingBattleAttempt(){
+  rankingBattleAttemptDate = String(getTodayDateString() || rankingBattleAttemptDate || "");
+  rankingBattleAttemptCount = Math.min(RANKING_BATTLE_DAILY_LIMIT, Number(rankingBattleAttemptCount || 0) + 1);
+  return persistRankingBattleAttemptCount();
+}
+
+function buildRankingBattleSnapshot(damage){
+  const wt = getRankingBattleWeaponSnapshot();
+  return {
+    uid: String(userId || ""),
+    nick: String(getNickSafe() || "-"),
+    titleId: String(equippedTitle || ""),
+    reach30Count: Number(reach30Count || 0),
+    weaponType: wt.weaponType,
+    weaponLv: wt.weaponLv,
+    weaponName: wt.weaponName,
+    damage: Number(damage || 0),
+    recordedAt: Date.now()
+  };
+}
+
+function submitRankingBattleScore(damage){
+  damage = Math.max(0, Number(damage || 0));
+  if (!userId || damage <= 0) return;
+
+  const weekKey = getRankingBattleWeekKey();
+  const snap = buildRankingBattleSnapshot(damage);
+  const allRef = RANKING_BATTLE_ALLTIME_REF.child(String(userId));
+  const weekRef = RANKING_BATTLE_WEEKLY_REF.child(weekKey).child(String(userId));
+
+  allRef.transaction((cur) => {
+    const prev = Number(cur && cur.damage || 0);
+    if (prev >= damage) return cur;
+    return Object.assign({}, snap);
+  });
+
+  weekRef.transaction((cur) => {
+    const prev = Number(cur && cur.damage || 0);
+    if (prev >= damage) return cur;
+    return Object.assign({}, snap, { weekKey });
+  });
+
+  const userUpdates = {
+    rankingBattleWeekKey: weekKey,
+    rankingBattleWeeklyBest: Math.max(Number(rankingBattleWeeklyBest || 0), damage),
+    rankingBattleAllTimeBest: Math.max(Number(rankingBattleAllTimeBest || 0), damage)
+  };
+  rankingBattleWeeklyBest = Number(userUpdates.rankingBattleWeeklyBest || 0);
+  rankingBattleAllTimeBest = Number(userUpdates.rankingBattleAllTimeBest || 0);
+
+  if (userRef) userRef.update(userUpdates);
+}
+
+function createRankingBattleRun(){
+  const maxAttacks = Math.max(0, Number((typeof getHuntStaminaMax === "function") ? getHuntStaminaMax() : 20));
+  rankingBattleRun = {
+    status: "active",
+    bossId: RANKING_BATTLE_BOSS_ID,
+    mapName: "심연의 바다",
+    bossTitle: "심연의 재해",
+    bossName: "레비아탄",
+    maxHp: RANKING_BATTLE_MAX_HP,
+    hp: RANKING_BATTLE_MAX_HP,
+    myDamage: 0,
+    remainingAttacks: maxAttacks,
+    maxAttacks: maxAttacks,
+    startedAt: Date.now(),
+    defense: 0.60,
+    magicRes: 0.60,
+    evade: 0.00
+  };
+}
+
+function prepareRankingBattleOverlayUi(){
+  const ov = document.getElementById("bossBattleOverlay");
+  if (!ov) return;
+
+  const titleEl = ov.querySelector('div[style*="font-weight:900; font-size:16px; color:#ddd;"]');
+  if (titleEl) titleEl.textContent = "⚔️ 랭킹전";
+
+  const rightTitle = Array.from(ov.querySelectorAll('div[style*="font-weight:900; margin-bottom:8px;"]'));
+  if (rightTitle[0]) rightTitle[0].textContent = "현재 기록";
+  if (rightTitle[1]) rightTitle[1].textContent = "전투 진행 로그";
+
+  const headerButtons = ov.querySelectorAll(':scope > div > div:first-child button, div[style*="display:flex; gap:8px;"] button');
+  if (headerButtons && headerButtons.length >= 3) {
+    headerButtons[0].textContent = "주간보상";
+    headerButtons[0].onclick = function(){ showLockedFeaturePopup(); };
+    headerButtons[1].textContent = "보스정보";
+    headerButtons[1].onclick = function(){ openRankingBattleInfo(); };
+    headerButtons[2].textContent = "닫기";
+    headerButtons[2].onclick = function(){ onBossBattleCloseClick(); };
+  }
+
+  const rewardBtn = document.getElementById("bossBattleRewardBtn");
+  if (rewardBtn) rewardBtn.style.display = "none";
+}
+
+function openRankingBattleInfo(){
+  const html = `
+    <div style="font-size:13px; line-height:1.65;">
+      <div style="font-weight:900; margin-bottom:8px;">레비아탄</div>
+      체력: 200조<br>
+      방어력: 60%<br>
+      마법저항력: 60%<br>
+      회피율: 0%<br>
+      회피무시 n%당 추가 데미지 n% 적용<br>
+      강화 단계에 따른 보정 없음
+    </div>
+  `;
+  showNpcMessage(html, null, true, "랭킹전 정보");
+}
+
+function onRankingBattleIconClick(){
+  ensureRankingBattleMetaLoaded(() => {
+    const remain = getRankingBattleRemainCount();
+    if (remain <= 0) {
+      showSimpleMessage("오늘 남은 랭킹전 도전 가능 횟수가 없습니다.", "랭킹전");
+      return;
+    }
+
+    showConfirmPopup(
+      `랭킹전으로 이동하겠나?<br><span style="color:#aaa;">오늘 남은 도전 가능 횟수: ${remain}회</span>`,
+      "images/npc/leonhardt_apply.png",
+      "랭킹전",
+      "이동한다",
+      startRankingBattleMove,
+      "잠시만...",
+      closeNpcPopup
+    );
+  });
+}
+
+function startRankingBattleMove(){
+  closeNpcPopup();
+  moveToFieldFromWorldMap(11, () => {
+    openRankingBattle();
+  });
+}
+
+function openRankingBattle(){
+  ensureRankingBattleMetaLoaded(() => {
+    createRankingBattleRun();
+    isRankingBattleMode = true;
+
+    const ov = document.getElementById("bossBattleOverlay");
+    if (!ov) return;
+    ov.style.display = "flex";
+
+    prepareRankingBattleOverlayUi();
+    document.getElementById("bossBattleBossImg")?.classList.add("boss-breathe");
+    document.getElementById("bossBattleBossShadow")?.classList.add("boss-breathe-shadow");
+    renderBossBattle();
+
+    if (rankingBattleTickTimer) clearInterval(rankingBattleTickTimer);
+    rankingBattleTickTimer = setInterval(() => {
+      const ov2 = document.getElementById("bossBattleOverlay");
+      if (!ov2 || ov2.style.display === "none" || !isRankingBattleMode) return;
+      renderBossBattle();
+    }, 1000);
+  });
+}
+
+function closeRankingBattleOverlayOnly(){
+  const ov = document.getElementById("bossBattleOverlay");
+  if (ov) ov.style.display = "none";
+  document.getElementById("bossBattleBossImg")?.classList.remove("boss-breathe");
+  document.getElementById("bossBattleBossShadow")?.classList.remove("boss-breathe-shadow");
+  if (rankingBattleTickTimer) { clearInterval(rankingBattleTickTimer); rankingBattleTickTimer = null; }
+  const banner = document.getElementById("bossBattleResultBanner");
+  if (banner) banner.style.display = "none";
+}
+
+function finishRankingBattle(forceQuit){
+  if (!isRankingBattleMode || !rankingBattleRun) {
+    closeRankingBattleOverlayOnly();
+    isRankingBattleMode = false;
+    rankingBattleRun = null;
+    return;
+  }
+
+  const alreadyFinished = (rankingBattleRun.status !== "active");
+
+  const finalizeAfterAttempt = () => {
+    if (!forceQuit && !alreadyFinished) {
+      submitRankingBattleScore(Number(rankingBattleRun.myDamage || 0));
+      rankingBattleRun.status = "finished";
+      const banner = document.getElementById("bossBattleResultBanner");
+      const bannerText = document.getElementById("bossBattleResultText");
+      if (banner) banner.style.display = "block";
+      if (bannerText) {
+        bannerText.textContent = "토벌 종료";
+        bannerText.style.color = "#9fd3ff";
+      }
+      const bossImg = document.getElementById("bossBattleBossImg");
+      if (bossImg) bossImg.style.pointerEvents = "none";
+      renderBossBattle();
+      return;
+    }
+
+    closeRankingBattleOverlayOnly();
+    isRankingBattleMode = false;
+    rankingBattleRun = null;
+  };
+
+  if (alreadyFinished) {
+    closeRankingBattleOverlayOnly();
+    isRankingBattleMode = false;
+    rankingBattleRun = null;
+    return;
+  }
+
+  recordRankingBattleAttempt().finally(finalizeAfterAttempt);
+}
+
+function onBossBattleCloseClick(){
+  if (isRankingBattleMode && rankingBattleRun && rankingBattleRun.status === "active") {
+    showConfirmPopup(
+      "내 점수는 기록되지 않고, 횟수는 차감된다.<br>정말 종료할까?",
+      "images/npc/leonhardt_focus.png",
+      "랭킹전",
+      "확인",
+      function(){ closeNpcPopup(); finishRankingBattle(true); },
+      "취소",
+      closeNpcPopup
+    );
+    return;
+  }
+
+  closeBossBattle();
+}
+
+const __orig_closeBossBattle = closeBossBattle;
+closeBossBattle = function(){
+  if (isRankingBattleMode) {
+    closeRankingBattleOverlayOnly();
+    isRankingBattleMode = false;
+    rankingBattleRun = null;
+    return;
+  }
+  return __orig_closeBossBattle.apply(this, arguments);
+};
+
+const __orig_getBossBattleStats = getBossBattleStats;
+getBossBattleStats = function(bossId){
+  if (isRankingBattleMode || String(bossId || "") === RANKING_BATTLE_BOSS_ID) {
+    return { evade: 0.00, physDef: 0.60, magicRes: 0.60 };
+  }
+  return __orig_getBossBattleStats.apply(this, arguments);
+};
+
+const __orig_getBossPowerMultiplier = getBossPowerMultiplier;
+getBossPowerMultiplier = function(bossId, swordLv){
+  if (isRankingBattleMode || String(bossId || "") === RANKING_BATTLE_BOSS_ID) return 1;
+  return __orig_getBossPowerMultiplier.apply(this, arguments);
+};
+
+const __orig_calcBossAttackResult = calcBossAttackResult;
+calcBossAttackResult = function(bossId){
+  if (!(isRankingBattleMode || String(bossId || "") === RANKING_BATTLE_BOSS_ID)) {
+    return __orig_calcBossAttackResult.apply(this, arguments);
+  }
+
+  const stats = getBossBattleStats(RANKING_BATTLE_BOSS_ID);
+  const my = getPlayerFinalCombatStats();
+
+  let dmg = Number(my.mainPower || 0);
+
+  const effPhysDef = Math.max(0, Number(stats.physDef || 0) - Number(my.penetration || 0));
+  const effMagicRes = Math.max(0, Number(stats.magicRes || 0));
+  const isMagic = (my.weaponType === "staff" || my.weaponType === "gauntlet");
+
+  if (isMagic) dmg = dmg * (1 - effMagicRes);
+  else dmg = dmg * (1 - effPhysDef);
+
+  dmg = dmg * (1 + Math.max(0, Number(my.ignoreEvade || 0)));
+
+  const randMul = 0.85 + Math.random() * 0.15;
+  dmg = Math.floor(dmg * randMul);
+
+  const isCrit = (Math.random() < Number(my.critRate || 0));
+  if (isCrit) {
+    const cd = 0.20 + Number(my.critDmgBonus || 0);
+    dmg = Math.floor(dmg * (1 + cd));
+  }
+
+  if (dmg < 0) dmg = 0;
+  return { damage: dmg, isMiss: false, isCrit: !!isCrit, label: my.dmgLabel };
+};
+
+const __orig_renderBossBattle = renderBossBattle;
+renderBossBattle = function(){
+  if (!isRankingBattleMode || !rankingBattleRun) {
+    return __orig_renderBossBattle.apply(this, arguments);
+  }
+
+  prepareRankingBattleOverlayUi();
+
+  const run = rankingBattleRun;
+  const mapEl = document.getElementById("bossBattleMapName");
+  const nameEl = document.getElementById("bossBattleBossName");
+  const remainEl = document.getElementById("bossBattleRemain");
+  const bgEl = document.getElementById("bossBattleBg");
+  const bossImgEl = document.getElementById("bossBattleBossImg");
+  const huntRemainEl = document.getElementById("bossBattleHuntRemain");
+  const headHunt = document.getElementById("bossBattleHeaderHuntRemain");
+  const partyEl = document.getElementById("bossBattlePartyList");
+  const logEl = document.getElementById("bossBattleLogList");
+  const lineMainEl = document.getElementById("bossBattleBossLineMain");
+  const lineSubEl = document.getElementById("bossBattleBossLineSub");
+  const rewardBtn = document.getElementById("bossBattleRewardBtn");
+  const banner = document.getElementById("bossBattleResultBanner");
+  const hpFillWrap = document.getElementById("bossHpFillWrap");
+  const hpText = document.getElementById("bossHpText");
+  const shieldWrap = document.getElementById("bossShieldFillWrap");
+  const shieldText = document.getElementById("bossShieldText");
+
+  if (mapEl) mapEl.textContent = run.mapName;
+  if (nameEl) nameEl.textContent = `${run.bossTitle} - ${run.bossName}`;
+  if (remainEl) remainEl.textContent = `도전 ${getRankingBattleRemainCount()}/${RANKING_BATTLE_DAILY_LIMIT}`;
+  if (huntRemainEl) huntRemainEl.textContent = `공격횟수: ${run.remainingAttacks}/${run.maxAttacks}`;
+  if (headHunt) headHunt.textContent = `(공격횟수 ${run.remainingAttacks} / ${run.maxAttacks})`;
+  if (bgEl) bgEl.src = getRankingBattleFieldImage();
+  if (bossImgEl) {
+    bossImgEl.src = getRankingBattleBossImage();
+    bossImgEl.style.width = "min(860px, 150%)";
+    bossImgEl.style.maxWidth = "none";
+    bossImgEl.style.left = "52%";
+    bossImgEl.style.top = "56%";
+    bossImgEl.style.pointerEvents = (run.status === "active") ? "auto" : "none";
+  }
+  if (rewardBtn) rewardBtn.style.display = "none";
+  if (banner && run.status === "active") banner.style.display = "none";
+
+  const hpPct = (run.maxHp > 0) ? Math.max(0, Math.min(100, (run.hp / run.maxHp) * 100)) : 0;
+  if (hpFillWrap) hpFillWrap.style.width = `${Math.max(0, hpPct)}%`;
+  if (hpText) hpText.textContent = `${Number(run.hp || 0).toLocaleString()} / ${Number(run.maxHp || 0).toLocaleString()}`;
+  if (shieldWrap) shieldWrap.style.width = "0%";
+  if (shieldText) shieldText.style.display = "none";
+
+  const titleHtml = (function(){
+    const titleId = String(equippedTitle || "");
+    const starCount = Number(reach30Count || 0);
+    const starText = starCount > 0 ? ((starCount <= 4) ? "★".repeat(starCount) : `★★${starCount}★★`) : "";
+    const starHtml = starText ? ` <span class="rainbowStar">${starText}</span>` : "";
+    if (!titleId) return `${getNickSafe()}${starHtml}`;
+    const def = (typeof TITLE_DEFS !== "undefined" && Array.isArray(TITLE_DEFS)) ? TITLE_DEFS.find(t => String(t.id) === titleId) : null;
+    const titleName = def ? String(def.name || titleId) : titleId;
+    return `[${titleName}]<span class="rank-user" onclick="openOtherUserProfilePopup('${String(userId || '')}')" data-user-id="${String(userId || '')}" style="cursor:pointer;">${getNickSafe()}</span>${starHtml}`;
+  })();
+  const weaponSnap = getRankingBattleWeaponSnapshot();
+  if (partyEl) {
+    partyEl.innerHTML = `
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px dashed #333;">
+        <div style="min-width:0; flex:1;">
+          <div style="font-weight:900; color:#fff; line-height:1.45;">${titleHtml}</div>
+          <div style="font-size:11px; color:#9a9a9a; margin-top:2px;">${weaponSnap.weaponName} ${coloredLevel ? coloredLevel(weaponSnap.weaponLv) : ('+' + weaponSnap.weaponLv)}</div>
+        </div>
+        <div style="text-align:right; white-space:nowrap; color:#9fd3ff; font-weight:900;">${Number(run.myDamage || 0).toLocaleString()}</div>
+      </div>
+    `;
+  }
+
+  if (logEl) {
+    logEl.innerHTML = `
+      <div style="font-size:12px; line-height:1.6; color:#b8c7d9;">
+        심연의 바다가 고요히 꿈틀거린다.<br>
+        남은 공격횟수를 모두 소진하면 도전이 종료된다.<br>
+        현재 누적 딜량: <b style="color:#9fd3ff;">${Number(run.myDamage || 0).toLocaleString()}</b>
+      </div>
+    `;
+  }
+
+  if (lineMainEl) lineMainEl.textContent = "끝이 보이지 않는 거체가 심연을 가른다.";
+  if (lineSubEl) lineSubEl.textContent = "아무리 두들겨도 죽지 않는, 바다 그 자체와도 같은 재해";
+};
+
+const __orig_attackBossByClick = attackBossByClick;
+attackBossByClick = function(ev){
+  if (!isRankingBattleMode || !rankingBattleRun) {
+    return __orig_attackBossByClick.apply(this, arguments);
+  }
+
+  const run = rankingBattleRun;
+  if (run.status !== "active") return;
+  if (Number(run.remainingAttacks || 0) <= 0) return;
+
+  run.remainingAttacks = Math.max(0, Number(run.remainingAttacks || 0) - 1);
+
+  const result = calcBossAttackResult(RANKING_BATTLE_BOSS_ID);
+  const dmg = Number(result.damage || 0);
+  const isMagic = (weaponType === "staff" || weaponType === "gauntlet" || weaponType === "magitech");
+  const kind = result.isMiss ? "miss" : (result.isCrit ? "crit" : "hit");
+
+  if (typeof spawnBossHitEffectAt === "function") spawnBossHitEffectAt(ev.clientX, ev.clientY, kind, isMagic);
+  if (typeof spawnBossDamageFloatAt === "function") {
+    if (result.isMiss) spawnBossDamageFloatAt(ev.clientX, ev.clientY, "MISS", "miss");
+    else spawnBossDamageFloatAt(ev.clientX, ev.clientY, dmg, result.isCrit ? "crit" : "hit");
+  }
+  if (!result.isMiss && typeof playBossHitFx === "function") playBossHitFx();
+
+  if (dmg > 0) {
+    run.myDamage = Number(run.myDamage || 0) + dmg;
+    run.hp = Math.max(0, Number(run.hp || 0) - dmg);
+  }
+
+  renderBossBattle();
+
+  if (Number(run.remainingAttacks || 0) <= 0) {
+    finishRankingBattle(false);
+  }
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("rankingBattleIconBtn");
+  if (btn) {
+    btn.setAttribute("onclick", "onRankingBattleIconClick()")
+  }
+});
+
+</script>
 
 <!-- 📘 처음 접속 튜토리얼 (NPC 버전) -->
 <div id="tutorialOverlay">
