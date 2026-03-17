@@ -19825,6 +19825,7 @@ function openBossBattle(){
   const ov = document.getElementById("bossBattleOverlay");
   if (!ov) return;
 
+  restoreBossBattleOverlayUi();
   ov.style.display = "flex";
   markBossBattleLogsSeenNow(bossId);
   document.getElementById("bossBattleBossImg")?.classList.add("boss-breathe");
@@ -20345,32 +20346,29 @@ function formatNumberFullKR(num) {
   return formatNumberFullKR(n).replace(/\s+/g, "") + "골드";
 }
 
-// ✅ 데미지용: 16억4215만5512 형태 (쉼표 없음 / 만, 억 단위)
+// ✅ 데미지용: 경/조/억/만 단위 표기 (쉼표 없음)
 function formatDamageKoUnits(n){
   n = Math.floor(Number(n || 0));
   const sign = (n < 0) ? "-" : "";
   n = Math.abs(n);
 
-  const eok = Math.floor(n / 100000000);        // 억
-  const man = Math.floor((n % 100000000) / 10000); // 만(4자리)
-  const rest = n % 10000;                       // 나머지(4자리)
+  const gyeong = Math.floor(n / 10000000000000000);
+  n %= 10000000000000000;
+  const jo = Math.floor(n / 1000000000000);
+  n %= 1000000000000;
+  const eok = Math.floor(n / 100000000);
+  n %= 100000000;
+  const man = Math.floor(n / 10000);
+  const rest = n % 10000;
 
   let s = "";
+  if (gyeong > 0) s += gyeong + "경";
+  if (jo > 0) s += jo + "조";
+  if (eok > 0) s += eok + "억";
+  if (man > 0) s += man + "만";
+  if (rest > 0 || s === "") s += String(rest);
 
-  if (eok > 0) {
-    s += eok + "억";
-    s += String(man).padStart(4, "0") + "만";
-    s += String(rest).padStart(4, "0");
-    return sign + s;
-  }
-
-  if (man > 0) {
-    s += man + "만";
-    s += String(rest).padStart(4, "0");
-    return sign + s;
-  }
-
-  return sign + String(rest);
+  return sign + s;
 }
 
   function maybeCastManaShield(bossId, run){
@@ -24362,6 +24360,40 @@ function createRankingBattleRun(){
   };
 }
 
+function restoreBossBattleOverlayUi(){
+  const ov = document.getElementById("bossBattleOverlay");
+  if (!ov) return;
+
+  const titleEl = ov.querySelector('div[style*="font-weight:900; font-size:16px; color:#ddd;"]');
+  if (titleEl) titleEl.textContent = "⚔️ 보스전";
+
+  const rightTitle = Array.from(ov.querySelectorAll('div[style*="font-weight:900; margin-bottom:8px;"]'));
+  if (rightTitle[0]) rightTitle[0].textContent = "토벌대 진행상황";
+  if (rightTitle[1]) rightTitle[1].textContent = "전투 진행 로그";
+
+  const headerButtons = ov.querySelectorAll(':scope > div > div:first-child button, div[style*="display:flex; gap:8px;"] button');
+  if (headerButtons && headerButtons.length >= 3) {
+    headerButtons[0].textContent = "보상";
+    headerButtons[0].onclick = function(){ openBossBattleRewards(); };
+    headerButtons[1].textContent = "보스정보";
+    headerButtons[1].onclick = function(){ openBossBattleStat(); };
+    headerButtons[2].textContent = "닫기";
+    headerButtons[2].onclick = function(){ closeBossBattle(); };
+  }
+
+  const rewardBtn = document.getElementById("bossBattleRewardBtn");
+  if (rewardBtn) rewardBtn.style.display = "none";
+
+  const bossImgEl = document.getElementById("bossBattleBossImg");
+  if (bossImgEl) {
+    bossImgEl.style.width = "min(420px, 70vw)";
+    bossImgEl.style.maxWidth = "";
+    bossImgEl.style.left = "50%";
+    bossImgEl.style.top = "52%";
+    bossImgEl.style.pointerEvents = "auto";
+  }
+}
+
 function prepareRankingBattleOverlayUi(){
   const ov = document.getElementById("bossBattleOverlay");
   if (!ov) return;
@@ -24455,6 +24487,7 @@ function openRankingBattle(){
 function closeRankingBattleOverlayOnly(){
   const ov = document.getElementById("bossBattleOverlay");
   if (ov) ov.style.display = "none";
+  restoreBossBattleOverlayUi();
   document.getElementById("bossBattleBossImg")?.classList.remove("boss-breathe");
   document.getElementById("bossBattleBossShadow")?.classList.remove("boss-breathe-shadow");
   if (rankingBattleTickTimer) { clearInterval(rankingBattleTickTimer); rankingBattleTickTimer = null; }
@@ -24625,7 +24658,7 @@ renderBossBattle = function(){
 
   const hpPct = (run.maxHp > 0) ? Math.max(0, Math.min(100, (run.hp / run.maxHp) * 100)) : 0;
   if (hpFillWrap) hpFillWrap.style.width = `${Math.max(0, hpPct)}%`;
-  if (hpText) hpText.textContent = `${Number(run.hp || 0).toLocaleString()} / ${Number(run.maxHp || 0).toLocaleString()}`;
+  if (hpText) hpText.textContent = `${formatDamageKoUnits(run.hp || 0)} / ${formatDamageKoUnits(run.maxHp || 0)}`;
   if (shieldWrap) shieldWrap.style.width = "0%";
   if (shieldText) shieldText.style.display = "none";
 
@@ -24647,7 +24680,7 @@ renderBossBattle = function(){
           <div style="font-weight:900; color:#fff; line-height:1.45;">${titleHtml}</div>
           <div style="font-size:11px; color:#9a9a9a; margin-top:2px;">${weaponSnap.weaponName} ${coloredLevel ? coloredLevel(weaponSnap.weaponLv) : ('+' + weaponSnap.weaponLv)}</div>
         </div>
-        <div style="text-align:right; white-space:nowrap; color:#9fd3ff; font-weight:900;">${Number(run.myDamage || 0).toLocaleString()}</div>
+        <div style="text-align:right; white-space:nowrap; color:#9fd3ff; font-weight:900;">${formatDamageKoUnits(run.myDamage || 0)}</div>
       </div>
     `;
   }
@@ -24657,7 +24690,7 @@ renderBossBattle = function(){
       <div style="font-size:12px; line-height:1.6; color:#b8c7d9;">
         심연의 바다가 고요히 꿈틀거린다.<br>
         남은 공격횟수를 모두 소진하면 도전이 종료된다.<br>
-        현재 누적 딜량: <b style="color:#9fd3ff;">${Number(run.myDamage || 0).toLocaleString()}</b>
+        현재 누적 딜량: <b style="color:#9fd3ff;">${formatDamageKoUnits(run.myDamage || 0)}</b>
       </div>
     `;
   }
