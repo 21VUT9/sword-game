@@ -24430,35 +24430,52 @@ function submitRankingBattleScore(damage){
     return Promise.reject(new Error("ranking_refs_missing"));
   }
 
+  const uid = String(userId);
   const weekKey = String(getRankingBattleWeekKey() || "");
   const snap = buildRankingBattleSnapshot(damage);
-  const prevAll = Math.max(0, Number(rankingBattleAllTimeBest || 0));
-  const prevWeek = (String(rankingBattleWeekKey || "") === weekKey)
-    ? Math.max(0, Number(rankingBattleWeeklyBest || 0))
-    : 0;
-  const updatedAllTime = damage > prevAll;
-  const updatedWeekly = damage > prevWeek;
+  const allRef = RANKING_BATTLE_ALLTIME_REF.child(uid);
+  const weekRef = RANKING_BATTLE_WEEKLY_REF.child(weekKey).child(uid);
 
-  const nextAllTimeBest = updatedAllTime ? damage : prevAll;
-  const nextWeeklyBest = updatedWeekly ? damage : prevWeek;
-  const nextWeekKey = weekKey;
+  return Promise.all([
+    allRef.once("value"),
+    weekRef.once("value")
+  ]).then(([allSnap, weekSnap]) => {
+    const treeAll = Math.max(0, Number(allSnap && allSnap.val && allSnap.val() && allSnap.val().damage || 0));
+    const treeWeek = Math.max(0, Number(weekSnap && weekSnap.val && weekSnap.val() && weekSnap.val().damage || 0));
 
-  const updates = {};
-  if (updatedAllTime) {
-    updates[`rankingBattleAllTime/${String(userId)}`] = Object.assign({}, snap);
-  }
-  if (updatedWeekly) {
-    updates[`rankingBattleWeekly/${nextWeekKey}/${String(userId)}`] = Object.assign({}, snap, { weekKey: nextWeekKey });
-  }
-  updates[`users/${String(userId)}/rankingBattleWeekKey`] = nextWeekKey;
-  updates[`users/${String(userId)}/rankingBattleWeeklyBest`] = Number(nextWeeklyBest || 0);
-  updates[`users/${String(userId)}/rankingBattleAllTimeBest`] = Number(nextAllTimeBest || 0);
+    const updatedAllTime = damage > treeAll;
+    const updatedWeekly = damage > treeWeek;
 
-  return db.ref().update(updates).then(() => {
-    rankingBattleWeekKey = nextWeekKey;
-    rankingBattleAllTimeBest = nextAllTimeBest;
-    rankingBattleWeeklyBest = nextWeeklyBest;
-    return { updatedAllTime, updatedWeekly, snap };
+    const nextAllTimeBest = Math.max(treeAll, damage);
+    const nextWeeklyBest = Math.max(treeWeek, damage);
+
+    const updates = {};
+
+    if (updatedAllTime) {
+      updates[`rankingBattleAllTime/${uid}`] = Object.assign({}, snap);
+    }
+
+    if (updatedWeekly) {
+      updates[`rankingBattleWeekly/${weekKey}/${uid}`] = Object.assign({}, snap, {
+        weekKey: weekKey
+      });
+    }
+
+    updates[`users/${uid}/rankingBattleWeekKey`] = weekKey;
+    updates[`users/${uid}/rankingBattleWeeklyBest`] = Number(nextWeeklyBest || 0);
+    updates[`users/${uid}/rankingBattleAllTimeBest`] = Number(nextAllTimeBest || 0);
+
+    return db.ref().update(updates).then(() => {
+      rankingBattleWeekKey = weekKey;
+      rankingBattleAllTimeBest = nextAllTimeBest;
+      rankingBattleWeeklyBest = nextWeeklyBest;
+
+      return {
+        updatedAllTime,
+        updatedWeekly,
+        snap
+      };
+    });
   });
 }
 
