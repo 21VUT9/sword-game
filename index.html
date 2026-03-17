@@ -18186,8 +18186,23 @@ function bindRankingUsersCache(){
   });
 }
 
+var RANKING_BATTLE_WEEKLY_REF = null;
+var RANKING_BATTLE_ALLTIME_REF = null;
+
+function ensureRankingBattleRefs(){
+  if (!RANKING_BATTLE_WEEKLY_REF && typeof db !== "undefined" && db) {
+    RANKING_BATTLE_WEEKLY_REF = db.ref("rankingBattleWeekly");
+  }
+  if (!RANKING_BATTLE_ALLTIME_REF && typeof db !== "undefined" && db) {
+    RANKING_BATTLE_ALLTIME_REF = db.ref("rankingBattleAllTime");
+  }
+  return !!(RANKING_BATTLE_WEEKLY_REF && RANKING_BATTLE_ALLTIME_REF);
+}
+
 function loadRanking() {
   bindRankingUsersCache();
+
+  if (!ensureRankingBattleRefs()) return;
 
   RANKING_BATTLE_ALLTIME_REF.on("value", s => {
     const arr = [];
@@ -24259,8 +24274,8 @@ document.addEventListener("click", function(e){
 const RANKING_BATTLE_BOSS_ID = "ranking_leviathan";
 const RANKING_BATTLE_MAX_HP = 200000000000000;
 const RANKING_BATTLE_DAILY_LIMIT = 2;
-const RANKING_BATTLE_WEEKLY_REF = db.ref("rankingBattleWeekly");
-const RANKING_BATTLE_ALLTIME_REF = db.ref("rankingBattleAllTime");
+RANKING_BATTLE_WEEKLY_REF = RANKING_BATTLE_WEEKLY_REF || db.ref("rankingBattleWeekly");
+RANKING_BATTLE_ALLTIME_REF = RANKING_BATTLE_ALLTIME_REF || db.ref("rankingBattleAllTime");
 
 let rankingBattleMetaLoaded = false;
 let rankingBattleAttemptDate = "";
@@ -24385,6 +24400,7 @@ function buildRankingBattleSnapshot(damage){
 function submitRankingBattleScore(damage){
   damage = Math.max(0, Number(damage || 0));
   if (!userId || damage <= 0) return Promise.resolve({ updatedAllTime:false, updatedWeekly:false });
+  if (!ensureRankingBattleRefs()) return Promise.resolve({ updatedAllTime:false, updatedWeekly:false });
 
   const weekKey = getRankingBattleWeekKey();
   const snap = buildRankingBattleSnapshot(damage);
