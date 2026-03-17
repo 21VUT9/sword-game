@@ -1772,8 +1772,11 @@ button {
 #duelIconBtn{ top: calc(120px + var(--field-top-offset)); }
 #guildIconBtn{ top: calc(240px + var(--field-top-offset)); }
 #userListIconBtn{ top: calc(360px + var(--field-top-offset)); }
-  #bossBattleIconBtn{
+#bossBattleIconBtn{
   top: calc(480px + var(--field-top-offset));
+}
+#rankingBattleIconBtn{
+  top: calc(600px + var(--field-top-offset));
 }
 
 .map-icon-img{
@@ -4183,6 +4186,13 @@ html, body {
   <span class="map-icon-label">보스전</span>
 </button>
 
+  <button id="rankingBattleIconBtn"
+        class="map-icon-btn"
+        onclick="showLockedFeaturePopup()" data-nosfx="1">
+  <img src="images/ui/icon_ranking_battle.png" class="map-icon-img" alt="랭킹전">
+  <span class="map-icon-label one-line">랭킹전</span>
+</button>
+
   <!-- 📅 출석 (좌측 아이콘) -->
 <button id="attendanceIconBtn"
         class="map-icon-btn left-icon-btn"
@@ -5381,6 +5391,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "guildIconBtn",
     "userListIconBtn",
     "bossBattleIconBtn",
+    "rankingBattleIconBtn",
 
   ].forEach(bindIconTapSound);
 });
@@ -16278,6 +16289,7 @@ setDisplay("guildIconBtn",    "block");
 setDisplay("mapBtn",          "block");
 setDisplay("userListIconBtn", "block");
 setDisplay("bossBattleIconBtn", "block");
+setDisplay("rankingBattleIconBtn", "block");
 setDisplay("achievementIconBtn",  "block");
 setDisplay("questIconBtn",      "block");
 setDisplay("storybookIconBtn",  "block");
@@ -17626,6 +17638,7 @@ setDisplay("guildIconBtn",    "block");
 setDisplay("mapBtn",          "block");
 setDisplay("userListIconBtn", "block");
 setDisplay("bossBattleIconBtn", "block");
+setDisplay("rankingBattleIconBtn", "block");
 setDisplay("achievementIconBtn",  "block");
 setDisplay("questIconBtn",      "block");
 setDisplay("storybookIconBtn",  "block");
