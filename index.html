@@ -3227,6 +3227,58 @@ hr.section-divider{
   filter: brightness(1.15);
 }
 
+/* 🌊 POI: 심연의 바다 (시궁창 좌측 하단 끝) */
+#poiAbyssalSea{
+  position: absolute;
+  left: 29.5%;
+  top: 73.5%;
+  transform: translate(-50%, -50%);
+  width: 58px;
+  height: 42px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 5;
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#poiAbyssalSea img{
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#poiAbyssalSea:active{
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+#poiAbyssalSea .poi-label{
+  position: absolute;
+  bottom: -8px;
+  left: 52%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 900;
+  color: #cfcfcf;
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000,
+     0  2px 4px rgba(0,0,0,0.8);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+#poiAbyssalSea:hover .poi-label{
+  color: #fff;
+  filter: brightness(1.15);
+}
+
   /* 🏜️ POI: 무법자들의 황야 (이그드라실 하단 평야) */
 #poiOutlawWasteland{
   position: absolute;
@@ -4100,7 +4152,7 @@ html, body {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.438)
+    (v4.446)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -4544,6 +4596,12 @@ html, body {
 <button id="poiSewer" onclick="playUiClickCommon(); moveToSewerFromWorldMap(event)">
   <img src="images/maps/poi_sewer.png" alt="역병쥐가 들끓는 시궁창">
   <span class="poi-label">역병쥐가 들끓는 시궁창</span>
+</button>
+
+      <!-- 🌊 POI: 심연의 바다 (시궁창 좌측 하단 끝) -->
+<button id="poiAbyssalSea" onclick="playUiClickCommon(); moveToAbyssalSeaFromWorldMap(event)">
+  <img src="images/maps/poi_abyssal_sea_shipwreck.png" alt="심연의 바다">
+  <span class="poi-label">심연의 바다</span>
 </button>
 
       <!-- 🏜️ POI: 무법자들의 황야 (이그드라실 하단 평야) -->
@@ -8056,7 +8114,8 @@ const HUNT_FIELDS = [
   { id: 7,  name: "베히모스의 불구덩이",     recLevel: 18 },
   { id: 8,  name: "대천사의 요람",           recLevel: 21 },
   { id: 9,  name: "신의 처소",               recLevel: 24 },
-  { id: 10, name: "차원의 틈새",             recLevel: 27 }
+  { id: 10, name: "차원의 틈새",             recLevel: 27 },
+  { id: 11, name: "심연의 바다",             recLevel: 0  }
 ];
   
   const FORGE_FIELD_ID = 0;
@@ -8073,7 +8132,8 @@ const FIELD_BACKGROUNDS = {
   7: "images/fields/field7_behemoth_hellpit.png",     // 베히모스의 불구덩이
   8: "images/fields/field8_archangel_cradle.png",     // 대천사의 요람
   9: "images/fields/field9_gods_throne.png",          // 신의 처소
-  10:"images/fields/field10_dimensional_rift.png"     // 차원의 틈새
+  10:"images/fields/field10_dimensional_rift.png",     // 차원의 틈새
+  11:"images/fields/field11_abyssal_sea.png"           // 심연의 바다
 };
 
 // ⚔️ VS 연출 표시
@@ -15784,6 +15844,14 @@ if (currentField === 0) {
   );
   return;
 }
+
+if (currentField === 11) {
+  showHuntPopup(
+    "여기엔 사냥감이 없다.",
+    "#9FB7D9"
+  );
+  return;
+}
     
   if (!userRef || !userId) {
     alert("로그인 후 이용 가능합니다.");
@@ -17097,7 +17165,7 @@ function renderMap() {
 
   listEl.innerHTML = "";
 
-  for (let i = 1; i <= 10; i++) {
+  for (let i = 1; i <= 11; i++) {
     const field = HUNT_FIELDS[i];
     const success = getHuntSuccessChance(sword, i);
 
@@ -17181,6 +17249,16 @@ function moveToMushroomVillageFromWorldMap(e){
     2,
     "역병쥐가 들끓는 시궁창",
     "+3강 이상 추천 사냥터"
+  );
+}
+
+function moveToAbyssalSeaFromWorldMap(e){
+  if (e) e.stopPropagation();
+
+  showWorldMapMoveConfirm(
+    11,
+    "심연의 바다",
+    "랭킹전 전용맵 / 사냥불가"
   );
 }
 
