@@ -24613,13 +24613,13 @@ renderBossBattle = function(){
   if (headHunt) headHunt.textContent = `(공격횟수 ${run.remainingAttacks} / ${run.maxAttacks})`;
   if (bgEl) bgEl.src = getRankingBattleFieldImage();
   if (bossImgEl) {
-    bossImgEl.src = getRankingBattleBossImage();
-    bossImgEl.style.width = "min(860px, 150%)";
-    bossImgEl.style.maxWidth = "none";
-    bossImgEl.style.left = "52%";
-    bossImgEl.style.top = "56%";
-    bossImgEl.style.pointerEvents = (run.status === "active") ? "auto" : "none";
-  }
+  bossImgEl.src = getRankingBattleBossImage();
+  bossImgEl.style.width = "min(430px, 72vw)";
+  bossImgEl.style.maxWidth = "430px";
+  bossImgEl.style.left = "50%";
+  bossImgEl.style.top = "52%";
+  bossImgEl.style.pointerEvents = (run.status === "active") ? "auto" : "none";
+}
   if (rewardBtn) rewardBtn.style.display = "none";
   if (banner && run.status === "active") banner.style.display = "none";
 
