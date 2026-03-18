@@ -6861,6 +6861,9 @@ let duelPointWeekKey = "";           // 현재 내가 플레이 중인 주(월�
 let duelLastWeekPoint = 0;           // 지난주 내가 모았던 결투 포인트
 let duelLastWeekRank  = 0;           // 지난주 내 랭킹 (0이면 기록 없음)
 let duelLastWeekRewardClaimed = false; // 지난주 보상 이미 받았는지 여부
+let rankingBattleLastWeekRank = 0;        // 지난주 랭킹전 랭킹
+let rankingBattleLastWeekRewardClaimed = false; // 지난주 랭킹전 보상 수령 여부
+let rankingBattleLastRewardWeekKey = "";  // 마지막으로 처리한 랭킹전 보상 주차
 let duelUpdated = 0;          // 이번 주 결투 포인트가 마지막으로 바뀐 시각
 let duelLastWeekUpdated = 0;  // 지난주 결투 포인트 최종 기록 시각  
 let weaponType = null; 
@@ -16401,13 +16404,16 @@ syncStorybookUnlocksFromQuestState(true);
       duelLastWeekPoint = data.duelLastWeekPoint ?? 0;
       duelLastWeekRank  = data.duelLastWeekRank ?? 0;
       duelLastWeekRewardClaimed = data.duelLastWeekRewardClaimed ?? false;
+      rankingBattleLastWeekRank = data.rankingBattleLastWeekRank ?? 0;
+      rankingBattleLastWeekRewardClaimed = data.rankingBattleLastWeekRewardClaimed ?? false;
+      rankingBattleLastRewardWeekKey = data.rankingBattleLastRewardWeekKey || "";
       duelUpdated         = data.duelUpdated ?? 0;
       duelLastWeekUpdated = data.duelLastWeekUpdated ?? 0;
       
       // 🟢 주차 정리 (지난주 포인트 스냅샷 + 이번 주 초기화)
       ensureDuelWeek();
       // 🏆 지난주 보상 체크 & 지급
-      checkWeeklyDuelReward();
+      processWeeklyArenaRewards();
 
 // 🏛️ 명예의 전당 UI + 자동 전당행 스윕 + 글로벌 이벤트 구독 시작
 loadHallOfFame();
@@ -16556,6 +16562,9 @@ if(titleChanged) save();
       duelLastWeekPoint: 0,
       duelLastWeekRank: 0,
       duelLastWeekRewardClaimed: false,
+      rankingBattleLastWeekRank: 0,
+      rankingBattleLastWeekRewardClaimed: false,
+      rankingBattleLastRewardWeekKey: "",
       titlesOwned: {},
       equippedTitle: "",
       // ⚠️ 네가 쓰던 글로벌30 기본값도 여기 포함(있으면)
@@ -16635,6 +16644,9 @@ function save() {
     duelLastWeekPoint: Number(duelLastWeekPoint),
     duelLastWeekRank: Number(duelLastWeekRank),
     duelLastWeekRewardClaimed: Boolean(duelLastWeekRewardClaimed),
+    rankingBattleLastWeekRank: Number(rankingBattleLastWeekRank || 0),
+    rankingBattleLastWeekRewardClaimed: Boolean(rankingBattleLastWeekRewardClaimed),
+    rankingBattleLastRewardWeekKey: String(rankingBattleLastRewardWeekKey || ""),
     duelUpdated: Number(duelUpdated || 0),
     duelLastWeekUpdated: Number(duelLastWeekUpdated || 0),
     couponUsed: couponUsedMap,   // 🆕 사용 완료 쿠폰 기록
@@ -25051,6 +25063,419 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   setMainRankingTab(mainRankingTab);
 });
+
+
+// ===============================
+// 🏆 랭킹전 주간 보상 / 결투장 보상 순차 처리 (v1)
+// ===============================
+var weeklyArenaRewardProcessing = false;
+
+function isRankingBattleSettlementTimeKST(){
+  const now = getKstNow();
+  const day = now.getDay(); // 0=일, 1=월
+  const totalMinutes = now.getHours() * 60 + now.getMinutes();
+
+  // 일요일 23:50 ~ 23:59
+  if (day === 0 && totalMinutes >= (23 * 60 + 50)) return true;
+  // 월요일 00:00 ~ 00:09
+  if (day === 1 && totalMinutes < 10) return true;
+  return false;
+}
+
+function getPreviousKstWeekKey(){
+  const now = getKstNow();
+  const prev = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const day = prev.getDay();
+  const diffToMonday = (day + 6) % 7;
+  const monday = new Date(prev.getTime() - diffToMonday * 24 * 60 * 60 * 1000);
+  const y = monday.getFullYear();
+  const m = String(monday.getMonth() + 1).padStart(2, "0");
+  const d = String(monday.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function getRankingBattleWeeklyRewardByRank(rank){
+  const rw = {
+    itemProtect: 0,
+    itemDownProtect: 0,
+    itemScroll21: 0,
+    itemScroll15: 0,
+    itemSuper: 0
+  };
+
+  if (rank === 1) {
+    rw.itemProtect = 3;
+    rw.itemSuper = 2;
+  } else if (rank >= 2 && rank <= 3) {
+    rw.itemProtect = 3;
+  } else if (rank >= 4 && rank <= 6) {
+    rw.itemProtect = 2;
+  } else if (rank >= 7 && rank <= 10) {
+    rw.itemProtect = 1;
+  } else if (rank >= 11 && rank <= 20) {
+    rw.itemScroll21 = 2;
+  } else if (rank >= 21 && rank <= 50) {
+    rw.itemDownProtect = 10;
+  } else if (rank >= 51) {
+    rw.itemScroll15 = 1;
+  }
+
+  const lines = [];
+  if (rw.itemProtect) lines.push(`파괴방지 주문서 ${rw.itemProtect}개`);
+  if (rw.itemSuper) lines.push(`슈퍼강화 주문서 ${rw.itemSuper}개`);
+  if (rw.itemScroll21) lines.push(`21강 강화 주문서 ${rw.itemScroll21}개`);
+  if (rw.itemDownProtect) lines.push(`강등방지 주문서 ${rw.itemDownProtect}개`);
+  if (rw.itemScroll15) lines.push(`15강 강화 주문서 ${rw.itemScroll15}개`);
+
+  rw.text = lines.join(", ");
+  return rw;
+}
+
+function grantWeeklyRankingBattleReward(myRank){
+  const rw = getRankingBattleWeeklyRewardByRank(Number(myRank || 0));
+  itemProtect = Number(itemProtect || 0) + Number(rw.itemProtect || 0);
+  itemSuper = Number(itemSuper || 0) + Number(rw.itemSuper || 0);
+  itemScroll21 = Number(itemScroll21 || 0) + Number(rw.itemScroll21 || 0);
+  itemDownProtect = Number(itemDownProtect || 0) + Number(rw.itemDownProtect || 0);
+  itemScroll15 = Number(itemScroll15 || 0) + Number(rw.itemScroll15 || 0);
+
+  rankingBattleLastWeekRank = Number(myRank || 0);
+  rankingBattleLastWeekRewardClaimed = true;
+  rankingBattleLastRewardWeekKey = String(getPreviousKstWeekKey() || "");
+  save();
+
+  return rw.text || "";
+}
+
+function openRankingBattleWeeklyRewardInfo(){
+  const html = `
+    <div style="font-size:13px; line-height:1.75; text-align:left; white-space:pre-line;">
+      1위 : 파괴방지주문서 3개, 슈퍼강화주문서 2개<br>
+      2~3위 : 파괴방지주문서 3개<br>
+      4~6위 : 파괴방지주문서 2개<br>
+      7~10위 : 파괴방지주문서 1개<br>
+      11~20위 : 21강 강화주문서 2개<br>
+      21~50위 : 강등방지주문서 10개<br>
+      51위 이후 : 15강 강화주문서 1개
+    </div>
+  `;
+  showNpcMessage(html, null, true, "랭킹전 주간보상");
+}
+
+function checkWeeklyRankingBattleReward(afterFn){
+  if (!userId || !ensureRankingBattleRefs()) {
+    if (typeof afterFn === "function") afterFn();
+    return;
+  }
+
+  const prevWeekKey = getPreviousKstWeekKey();
+  if (!prevWeekKey) {
+    if (typeof afterFn === "function") afterFn();
+    return;
+  }
+
+  if (rankingBattleLastRewardWeekKey === prevWeekKey && rankingBattleLastWeekRewardClaimed) {
+    if (typeof afterFn === "function") afterFn();
+    return;
+  }
+
+  RANKING_BATTLE_WEEKLY_REF.child(prevWeekKey).once("value")
+    .then((snap) => {
+      const arr = [];
+      snap.forEach((child) => {
+        const val = child.val() || {};
+        const dmg = Math.max(0, Number(val.damage || 0));
+        if (dmg <= 0) return;
+        arr.push({
+          uid: String(child.key || ""),
+          damage: dmg,
+          recordedAt: Number(val.recordedAt || 0)
+        });
+      });
+
+      if (!arr.length) {
+        rankingBattleLastWeekRank = 0;
+        rankingBattleLastWeekRewardClaimed = true;
+        rankingBattleLastRewardWeekKey = prevWeekKey;
+        save();
+        if (typeof afterFn === "function") afterFn();
+        return;
+      }
+
+      arr.sort((a, b) => {
+        if (b.damage !== a.damage) return b.damage - a.damage;
+        return Number(a.recordedAt || 0) - Number(b.recordedAt || 0);
+      });
+
+      const myIndex = arr.findIndex((row) => String(row.uid) === String(userId));
+      if (myIndex === -1) {
+        rankingBattleLastWeekRank = 0;
+        rankingBattleLastWeekRewardClaimed = true;
+        rankingBattleLastRewardWeekKey = prevWeekKey;
+        save();
+        if (typeof afterFn === "function") afterFn();
+        return;
+      }
+
+      const myRank = myIndex + 1;
+      const rewardText = grantWeeklyRankingBattleReward(myRank);
+
+      showConfirmPopup(
+        `
+        <div style="font-size:16px; font-weight:bold; margin-bottom:4px;">
+          지난주 네 랭킹전 랭킹은 <span style="color:#ffd54f;">${myRank}위</span>였어.
+        </div>
+        <div style="font-size:13px; line-height:1.6;">
+          그 노력에 대한 보상으로,<br>
+          <span style="color:#a5e1ff;">${rewardText || "없음"}</span>를 지급해 둘게.
+        </div>
+        `,
+        "images/npc/leonhardt_focus.png",
+        "길드마스터 – 레온하르트 발렌",
+        "확인",
+        function(){
+          closeNpcPopup();
+          if (typeof afterFn === "function") afterFn();
+        }
+      );
+    })
+    .catch((err) => {
+      console.error("주간 랭킹전 보상 계산 실패:", err);
+      if (typeof afterFn === "function") afterFn();
+    });
+}
+
+function checkWeeklyDuelReward(afterFn) {
+  if (duelLastWeekRewardClaimed) {
+    if (typeof afterFn === "function") afterFn();
+    return;
+  }
+
+  const range = getLastWeekRangeKst();
+  const startTs = range.start;
+  const endTs   = range.end;
+
+  const thisWeekKey = getKstWeekKey();
+  const myWeekKey = duelPointWeekKey || "";
+  const myPoint =
+    myWeekKey === thisWeekKey
+      ? Number(duelLastWeekPoint || 0)
+      : Number(duelPoint || 0);
+
+  const myTime =
+    myWeekKey === thisWeekKey
+      ? Number(duelLastWeekUpdated || 0)
+      : Number(duelUpdated || 0);
+
+  if (myPoint <= 0 || !myTime || myTime < startTs || myTime >= endTs) {
+    duelLastWeekRewardClaimed = true;
+    save();
+    if (typeof afterFn === "function") afterFn();
+    return;
+  }
+
+  const usersRef = db.ref("users");
+  usersRef
+    .once("value")
+    .then((snap) => {
+      const arr = [];
+
+      snap.forEach((child) => {
+        const val = child.val() || {};
+        const uid = child.key;
+
+        const userWeekKey = val.duelPointWeekKey || "";
+
+        const p =
+          userWeekKey === thisWeekKey
+            ? Number(val.duelLastWeekPoint || 0)
+            : Number(val.duelPoint || 0);
+
+        const t =
+          userWeekKey === thisWeekKey
+            ? Number(val.duelLastWeekUpdated || 0)
+            : Number(val.duelUpdated || 0);
+
+        if (p <= 0) return;
+        if (!t || t < startTs || t >= endTs) return;
+
+        arr.push({
+          id: uid,
+          point: p,
+          updated: t
+        });
+      });
+
+      if (arr.length === 0) {
+        duelLastWeekRewardClaimed = true;
+        save();
+        if (typeof afterFn === "function") afterFn();
+        return;
+      }
+
+      arr.sort((a, b) => {
+        if (b.point !== a.point) return b.point - a.point;
+        const aTime = Number(a.updated || 0);
+        const bTime = Number(b.updated || 0);
+        return aTime - bTime;
+      });
+
+      const myIndex = arr.findIndex((u) => u.id === userId);
+      if (myIndex === -1) {
+        duelLastWeekRewardClaimed = true;
+        save();
+        if (typeof afterFn === "function") afterFn();
+        return;
+      }
+
+      const myRank = myIndex + 1;
+      duelLastWeekRank = myRank;
+
+      const rewardText = grantWeeklyDuelReward(myRank);
+      if (!rewardText) {
+        if (typeof afterFn === "function") afterFn();
+        return;
+      }
+
+      showConfirmPopup(
+        `
+        <div style="font-size:16px; font-weight:bold; margin-bottom:4px;">
+          지난주 네 결투장 랭킹은 <span style="color:#ffd54f;">${myRank}위</span>였어.
+        </div>
+        <div style="font-size:13px; line-height:1.6;">
+          그 노력에 대한 보상으로,<br>
+          <span style="color:#a5e1ff;">${rewardText}</span>를 지급해 둘게.
+        </div>
+        `,
+        "images/npc/duel_carnia.png",
+        "결투 심판관 – 카르니아 발크라이트",
+        "확인",
+        function(){
+          closeNpcPopup();
+          if (typeof afterFn === "function") afterFn();
+        }
+      );
+    })
+    .catch((err) => {
+      console.error("주간 결투 보상 계산 실패:", err);
+      if (typeof afterFn === "function") afterFn();
+    });
+}
+
+function processWeeklyArenaRewards(afterFn){
+  if (weeklyArenaRewardProcessing) return;
+  weeklyArenaRewardProcessing = true;
+
+  const finish = function(){
+    weeklyArenaRewardProcessing = false;
+    if (typeof afterFn === "function") afterFn();
+  };
+
+  checkWeeklyRankingBattleReward(function(){
+    checkWeeklyDuelReward(function(){
+      finish();
+    });
+  });
+}
+
+function prepareRankingBattleOverlayUi(){
+  const ov = document.getElementById("bossBattleOverlay");
+  if (!ov) return;
+
+  const titleEl = ov.querySelector('div[style*="font-weight:900; font-size:16px; color:#ddd;"]');
+  if (titleEl) titleEl.textContent = "⚔️ 랭킹전";
+
+  const rightTitle = Array.from(ov.querySelectorAll('div[style*="font-weight:900; margin-bottom:8px;"]'));
+  if (rightTitle[0]) rightTitle[0].textContent = "현재 기록";
+  if (rightTitle[1]) rightTitle[1].textContent = "전투 진행 로그";
+
+  const headerButtons = ov.querySelectorAll(':scope > div > div:first-child button, div[style*="display:flex; gap:8px;"] button');
+  if (headerButtons && headerButtons.length >= 3) {
+    headerButtons[0].textContent = "주간보상";
+    headerButtons[0].onclick = function(){ openRankingBattleWeeklyRewardInfo(); };
+    headerButtons[1].textContent = "보스정보";
+    headerButtons[1].onclick = function(){ openRankingBattleInfo(); };
+    headerButtons[2].textContent = "닫기";
+    headerButtons[2].onclick = function(){ onBossBattleCloseClick(); };
+  }
+
+  const rewardBtn = document.getElementById("bossBattleRewardBtn");
+  if (rewardBtn) {
+    const showRecordUpdate = !!(rankingBattleRun && rankingBattleRun.status !== "active" && !rankingBattleRun.recordSubmitted);
+    rewardBtn.style.display = showRecordUpdate ? "block" : "none";
+    rewardBtn.textContent = (rankingBattleRun && rankingBattleRun.recordPending) ? "저장중..." : "기록갱신";
+    rewardBtn.onclick = function(){
+      if (rankingBattleRun && rankingBattleRun.recordPending) return;
+      submitRankingBattleRecordUpdate();
+    };
+  }
+}
+
+function onRankingBattleIconClick(){
+  ensureRankingBattleMetaLoaded(() => {
+    if (isRankingBattleSettlementTimeKST()) {
+      showNpcMessage(
+        `<div style="text-align:center; line-height:1.6;">주간랭킹 집계중으로 이용불가합니다.</div>`,
+        null,
+        true,
+        "랭킹전"
+      );
+      return;
+    }
+
+    processWeeklyArenaRewards(function(){
+      const remain = getRankingBattleRemainCount();
+      if (remain <= 0) {
+        showNpcMessage(`<div style="text-align:center; line-height:1.6;">오늘 남은 랭킹전 도전 가능 횟수가 없습니다.</div>`, null, true, "랭킹전");
+        return;
+      }
+
+      showConfirmPopup(
+        `랭킹전으로 이동하겠나?<br><span style="color:#aaa;">오늘 남은 도전 가능 횟수: ${remain}회</span>`,
+        "images/npc/leonhardt_apply.png",
+        "랭킹전",
+        "이동한다",
+        startRankingBattleMove,
+        "잠시만...",
+        closeNpcPopup
+      );
+    });
+  });
+}
+
+function openDuelArena() {
+  if (isDuelSettlementTimeKST()) {
+    showNpcMessage(
+      `
+      <div style="font-size:16px; font-weight:bold;">
+        지금은 결투장 집계 중이야.
+      </div>
+      <div style="margin-top:4px; font-size:13px;">
+        매주 월요일 00:00 ~ 00:10 사이에는<br>
+        결투장에 입장할 수 없어.
+      </div>
+      `,
+      "images/npc/duel_carnia.png",
+      true,
+      "결투 심판관 – 카르니아 발크라이트"
+    );
+    return;
+  }
+
+  if (typeof ensureDuelWeek === "function") {
+    ensureDuelWeek();
+  }
+
+  processWeeklyArenaRewards(function(){
+    const overlay = document.getElementById("duelArenaOverlay");
+    if (!overlay) return;
+
+    overlay.style.display = "block";
+
+    updateDuelUI();
+    loadDuelArenaRanking();
+  });
+}
 
 </script>
 
