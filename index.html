@@ -20398,11 +20398,9 @@ function openBossBattleHelp(){
 
   const evade = Number(stats.evade || 0);
   const physDef = Number(stats.physDef || 0);
-  const magicRes = Number(stats.magicRes || 0);
 
   if (evade > 0)    bossLines.push(`• 회피율: <b>${Math.round(evade * 100)}%</b>`);
-  if (physDef > 0)  bossLines.push(`• 물리 방어력: <b>${Math.round(physDef * 100)}%</b>`);
-  if (magicRes > 0) bossLines.push(`• 마법 저항력: <b>${Math.round(magicRes * 100)}%</b>`);
+  if (physDef > 0)  bossLines.push(`• 방어력: <b>${Math.round(physDef * 100)}%</b>`);
 
   // (선택) 페이즈/스킬: BOSS_DEFS에 phases가 있으면만 표시
   if (def.phases && Array.isArray(def.phases) && def.phases.length) {
@@ -20442,12 +20440,10 @@ function openBossBattleHelp(){
   const powerMul = (typeof getBossPowerMultiplier === "function") ? Number(getBossPowerMultiplier(bossId, swordLv) || 1) : 1;
   const adjPower = rawPower * powerMul;
 
-  const effPhysDef = Math.max(0, physDef - ignoreDef); // 창 관통 반영
-  const effMagicRes = Math.max(0, magicRes);
+  const effDef = Math.max(0, physDef - ignoreDef); // 관통력 공통 반영
 
   let base = adjPower * coef;
-  if (t === "staff" || t === "gauntlet" || t === "magitech") base = base * (1 - effMagicRes);
-else base = base * (1 - effPhysDef);
+  base = base * (1 - effDef);
   base = Math.max(0, Math.floor(base));
 
   const myLines = [];
@@ -21263,15 +21259,9 @@ function calcBossAttackResult(bossId){
     }
   } catch (e) {}
 
-  // 4) 방어/저항
-  const effPhysDef = Math.max(0, Number(stats.physDef || 0) - Number(my.penetration || 0));
-  const effMagicRes = Math.max(0, Number(stats.magicRes || 0));
-
-  if (my.weaponType === "staff" || my.weaponType === "gauntlet") {
-    dmg = dmg * (1 - effMagicRes);
-  } else {
-    dmg = dmg * (1 - effPhysDef);
-  }
+  // 4) 방어력(공격력/주문력 공통)
+  const effDef = Math.max(0, Number(stats.physDef || 0) - Number(my.penetration || 0));
+  dmg = dmg * (1 - effDef);
 
   // 5) 랜덤 85~100%
   const randMul = 0.85 + Math.random() * 0.15;
@@ -24710,7 +24700,6 @@ function openRankingBattleInfo(){
       <div style="font-weight:900; margin-bottom:8px;">레비아탄</div>
       체력: 200조<br>
       방어력: 60%<br>
-      마법저항력: 60%<br>
       회피율: 0%<br>
       회피무시 n%당 추가 데미지 n% 적용<br>
       강화 단계에 따른 보정 없음
@@ -24866,7 +24855,7 @@ closeBossBattle = function(){
 const __orig_getBossBattleStats = getBossBattleStats;
 getBossBattleStats = function(bossId){
   if (isRankingBattleMode || String(bossId || "") === RANKING_BATTLE_BOSS_ID) {
-    return { evade: 0.00, physDef: 0.60, magicRes: 0.60 };
+    return { evade: 0.00, physDef: 0.60, magicRes: 0.00 };
   }
   return __orig_getBossBattleStats.apply(this, arguments);
 };
@@ -24888,12 +24877,8 @@ calcBossAttackResult = function(bossId){
 
   let dmg = Number(my.mainPower || 0);
 
-  const effPhysDef = Math.max(0, Number(stats.physDef || 0) - Number(my.penetration || 0));
-  const effMagicRes = Math.max(0, Number(stats.magicRes || 0));
-  const isMagic = (my.weaponType === "staff" || my.weaponType === "gauntlet");
-
-  if (isMagic) dmg = dmg * (1 - effMagicRes);
-  else dmg = dmg * (1 - effPhysDef);
+  const effDef = Math.max(0, Number(stats.physDef || 0) - Number(my.penetration || 0));
+  dmg = dmg * (1 - effDef);
 
   dmg = dmg * (1 + Math.max(0, Number(my.ignoreEvade || 0)));
 
