@@ -2526,6 +2526,27 @@ hr.section-divider{
   height:100%;
   background:url("images/storybooks/book_open_base.png") center center / contain no-repeat;
   transform-style:preserve-3d;
+  overflow:hidden;
+}
+
+.storybookTurnVignette{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  opacity:0;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(214,198,166,0.08) 0%, rgba(214,198,166,0.04) 14%, rgba(12,10,8,0.40) 40%, rgba(4,4,4,0.84) 74%, rgba(0,0,0,0.96) 100%),
+    linear-gradient(90deg, rgba(0,0,0,0.48) 0%, rgba(0,0,0,0.12) 18%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.18) 82%, rgba(0,0,0,0.56) 100%);
+  mix-blend-mode:multiply;
+  z-index:2;
+}
+
+.storybookReaderBook.turn-right .storybookTurnVignette{
+  animation: storybookSoulVignetteRight 0.54s ease;
+}
+
+.storybookReaderBook.turn-left .storybookTurnVignette{
+  animation: storybookSoulVignetteLeft 0.54s ease;
 }
 
 .storybookReaderBook.turn-right{
@@ -2546,6 +2567,30 @@ hr.section-divider{
   0%{ transform:perspective(1400px) rotateY(0deg) scale(1); }
   40%{ transform:perspective(1400px) rotateY(12deg) scale(0.992); }
   100%{ transform:perspective(1400px) rotateY(0deg) scale(1); }
+}
+
+@keyframes storybookSoulVignetteRight{
+  0%{ opacity:0; }
+  14%{ opacity:0.30; }
+  42%{ opacity:0.88; }
+  72%{ opacity:0.48; }
+  100%{ opacity:0; }
+}
+
+@keyframes storybookSoulVignetteLeft{
+  0%{ opacity:0; }
+  14%{ opacity:0.30; }
+  42%{ opacity:0.88; }
+  72%{ opacity:0.48; }
+  100%{ opacity:0; }
+}
+
+@keyframes storybookSoulPageFade{
+  0%{ opacity:1; filter:brightness(1) blur(0); transform:translateX(0); }
+  20%{ opacity:0.78; filter:brightness(0.72) blur(0.6px); }
+  48%{ opacity:0.16; filter:brightness(0.35) blur(1.8px); transform:translateX(var(--sb-shift, 0px)); }
+  75%{ opacity:0.74; filter:brightness(0.88) blur(0.4px); }
+  100%{ opacity:1; filter:brightness(1) blur(0); transform:translateX(0); }
 }
 
 .storybookReaderChapterTitle{
@@ -2571,6 +2616,18 @@ hr.section-divider{
 
 .storybookReaderLeft{ left:8.6%; }
 .storybookReaderRight{ right:8.2%; }
+
+.storybookReaderBook.turn-right .storybookReaderLeft,
+.storybookReaderBook.turn-right .storybookReaderRight{
+  --sb-shift:-10px;
+  animation:storybookSoulPageFade 0.54s ease;
+}
+
+.storybookReaderBook.turn-left .storybookReaderLeft,
+.storybookReaderBook.turn-left .storybookReaderRight{
+  --sb-shift:10px;
+  animation:storybookSoulPageFade 0.54s ease;
+}
 
 .storybookReaderIllustWrap{
   width:100%;
@@ -11254,6 +11311,22 @@ const STORYBOOK_CH1_PAGES = [
 let currentStorybookChapter = null;
 let currentStorybookPage = 1;
 let storybookTurnTimer = null;
+const STORYBOOK_TURN_SFX_SRC = "sounds/ui/storybook_page_parchment_dark.mp3";
+let storybookTurnAudio = null;
+
+function playStorybookTurnSfx(){
+  try{
+    if (!storybookTurnAudio) {
+      storybookTurnAudio = new Audio(STORYBOOK_TURN_SFX_SRC);
+      storybookTurnAudio.preload = "auto";
+      storybookTurnAudio.volume = 0.72;
+    }
+    storybookTurnAudio.pause();
+    storybookTurnAudio.currentTime = 0;
+    const p = storybookTurnAudio.play();
+    if (p && typeof p.catch === "function") p.catch(()=>{});
+  }catch(e){}
+}
 
 function getStorybookChapter1MaxPage(){
   const count = Math.min(STORYBOOK_CH1_PAGES.length, getStorybookUnlockedPages("chapter1"));
@@ -11283,7 +11356,7 @@ function renderStorybookReaderPage(){
   const pageData = pages[currentStorybookPage - 1];
   if (!pageData) return;
 
-  chapterTitle.textContent = "CHAPTER 1 · 엘프 역사서";
+  chapterTitle.textContent = "";
   illust.src = pageData.image;
   illust.alt = `엘프 역사서 ${String(currentStorybookPage).padStart(2, "0")}페이지 삽화`;
   textEl.textContent = pageData.text;
@@ -11342,6 +11415,7 @@ function turnStorybookPage(dir){
     storybookTurnTimer = null;
   }
 
+  playStorybookTurnSfx();
   book.classList.remove("turn-left", "turn-right");
   void book.offsetWidth;
   book.classList.add(dir > 0 ? "turn-right" : "turn-left");
@@ -11349,7 +11423,7 @@ function turnStorybookPage(dir){
   storybookTurnTimer = setTimeout(() => {
     currentStorybookPage = target;
     renderStorybookReaderPage();
-  }, 170);
+  }, 220);
 
   setTimeout(() => {
     book.classList.remove("turn-left", "turn-right");
@@ -25307,6 +25381,7 @@ document.addEventListener("DOMContentLoaded", () => {
   <div class="storybookReaderFrame" onclick="event.stopPropagation();">
     <button class="storybookReaderClose" type="button" onclick="closeStorybookReader()">✕</button>
     <div id="storybookReaderBook" class="storybookReaderBook">
+      <div class="storybookTurnVignette"></div>
       <div id="storybookReaderChapterTitle" class="storybookReaderChapterTitle">CHAPTER 1 · 엘프 역사서</div>
       <div class="storybookReaderLeft">
         <div class="storybookReaderIllustWrap">
