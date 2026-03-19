@@ -18648,27 +18648,26 @@ function grantWeeklyDuelReward(myRank) {
   let rewardText = "";
 
   if (myRank === 1) {
-    // 1위 - 파괴방지주문서 2개
-    itemProtect += 2;
-    rewardText = "파괴 방지 주문서 2개";
+    // 1위 - 파괴방지 주문서 4개 + 슈퍼강화 주문서 1개
+    itemProtect += 4;
+    itemSuper += 1;
+    rewardText = "파괴방지 주문서 4개, 슈퍼강화 주문서 1개";
   } else if (myRank === 2 || myRank === 3) {
-    // 2위, 3위 - 파괴방지주문서 1개
-    itemProtect += 1;
-    rewardText = "파괴 방지 주문서 1개";
+    // 2~3위 - 파괴방지 주문서 3개
+    itemProtect += 3;
+    rewardText = "파괴방지 주문서 3개";
   } else if (myRank >= 4 && myRank <= 6) {
-    // 4~6위 - 강등방어 5개 + 15강 주문서 3개
-    itemDownProtect += 5;
-    itemScroll15 += 3;
-    rewardText = "강등 방어 주문서 5개, 15강 강화 주문서 3개";
+    // 4~6위 - 파괴방지 주문서 2개
+    itemProtect += 2;
+    rewardText = "파괴방지 주문서 2개";
   } else if (myRank >= 7 && myRank <= 10) {
-    // 7~10위 - 강등방어 3개 + 15강 주문서 1개
-    itemDownProtect += 3;
-    itemScroll15 += 1;
-    rewardText = "강등 방어 주문서 3개, 15강 강화 주문서 1개";
+    // 7~10위 - 파괴방지 주문서 1개
+    itemProtect += 1;
+    rewardText = "파괴방지 주문서 1개";
   } else {
-    // 10위 이하(포인트는 있는 사람) - 강등방어 1개
-    itemDownProtect += 1;
-    rewardText = "강등 방어 주문서 1개";
+    // 10위 밖 - 21강 강화 주문서 2개
+    itemScroll21 += 2;
+    rewardText = "21강 강화 주문서 2개";
   }
 
   // ✅ 이번 주 보상 수령 플래그 세우고 저장
@@ -22751,11 +22750,11 @@ function openDuelHelpPopup() {
       </div>
       <div style="margin-top:8px; border-top:1px solid #444; padding-top:6px;">
         <div style="margin-bottom:4px;">[주간 보상]</div>
-        <div>1위 : 파괴방지 주문서 2개</div>
-        <div>2~3위 : 파괴방지 주문서 1개</div>
-        <div>4~6위 : 강등방어 주문서 5개, 15강 주문서 3개</div>
-        <div>7~10위 : 강등방어 주문서 3개, 15강 주문서 1개</div>
-        <div>10위 밖 : 강등방어 주문서 1개</div>
+        <div>1위 : 파괴방지 주문서 4개, 슈퍼강화 주문서 1개</div>
+        <div>2~3위 : 파괴방지 주문서 3개</div>
+        <div>4~6위 : 파괴방지 주문서 2개</div>
+        <div>7~10위 : 파괴방지 주문서 1개</div>
+        <div>10위 밖 : 21강 강화 주문서 2개</div>
       </div>
     </div>
   `;
