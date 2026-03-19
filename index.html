@@ -11202,7 +11202,6 @@ function claimDailyGift(dayKey){
   save();
   update();
   renderCumulativeRewardOverlay();
-  writeLog(`누적보상 - 데일리기프트로 ${today.rewardText}를 획득했습니다.`);
 }
 
 function claimAttendanceMilestoneReward(days){
@@ -11216,7 +11215,7 @@ function claimAttendanceMilestoneReward(days){
   save();
   update();
   renderCumulativeRewardOverlay();
-  writeLog(`누적보상 - 누적출석 ${target.days}일 보상으로 ${target.rewardText}를 획득했습니다.`);
+  writeLog(`${getNickSafe()}님이 누적출석 ${target.days}일 보상으로 ${target.rewardText}를 획득했습니다.`);
 }
 
 function renderCumulativeRewardOverlay(){
