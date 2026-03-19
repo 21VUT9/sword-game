@@ -2675,21 +2675,37 @@ hr.section-divider{
   bottom:7%;
   width:54px;
   height:54px;
-  border:none;
+  border:2px solid #000000;
   border-radius:999px;
-  background:rgba(95,69,44,0.12);
-  color:#4b3525;
+  background:rgba(0,0,0,0.42);
+  color:#ffffff;
   font-size:28px;
   font-weight:900;
   cursor:pointer;
   display:flex;
   align-items:center;
   justify-content:center;
-  transition:transform .12s ease, background .12s ease, opacity .12s ease;
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000;
+  box-shadow:0 0 6px rgba(0,0,0,0.55);
+  transition:transform .12s ease, background .12s ease, opacity .12s ease, box-shadow .12s ease;
 }
 
-.storybookReaderArrow:hover{ background:rgba(95,69,44,0.18); transform:translateY(-1px); }
-.storybookReaderArrow:disabled{ opacity:0.3; cursor:default; transform:none; }
+.storybookReaderArrow:hover{
+  background:rgba(0,0,0,0.58);
+  box-shadow:0 0 10px rgba(0,0,0,0.7);
+  transform:translateY(-1px);
+}
+
+.storybookReaderArrow:disabled{
+  opacity:0.38;
+  cursor:default;
+  transform:none;
+}
+
 .storybookReaderArrow.prev{ left:11%; }
 .storybookReaderArrow.next{ right:11%; }
 
