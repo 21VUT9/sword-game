@@ -83,6 +83,20 @@ body {
   color:#8a8a8a;
 }
 
+.questSectionTitle{
+  margin: 10px 0 4px;
+  padding: 4px 6px;
+  font-size: 12px;
+  font-weight: 900;
+  color: #ffd54f;
+  text-align: left;
+  letter-spacing: 0.2px;
+}
+
+.questSectionTitle.done{
+  color: #9a9a9a;
+}
+
 /* 공용 액션 팝업 버튼 (게임 버튼 느낌) */
 .actionBtn{
   width: 100%;
@@ -9709,6 +9723,48 @@ function openTalkOverlay(){
   }
 }
 
+
+function ensureQuestCompletedAtMap(){
+  if (!window.questCompletedAt || typeof window.questCompletedAt !== "object") {
+    window.questCompletedAt = {};
+  }
+  return window.questCompletedAt;
+}
+
+function markQuestRewarded(qid){
+  questState[qid] = QUEST_STATE.REWARDED;
+  const completedMap = ensureQuestCompletedAtMap();
+  completedMap[qid] = Date.now();
+}
+
+function backfillQuestCompletedAt(){
+  const completedMap = ensureQuestCompletedAtMap();
+  const orderedQuestIds = [
+    "forge_tutorial_01",
+    "vallen_tutorial_01",
+    "forge_tutorial_02",
+    "loren_tutorial_01",
+    "main_ch1_loren_01",
+    "main_ch1_serena_02",
+    "main_ch1_valen_03",
+    "main_ch1_linea_04",
+    "main_ch1_valen_05",
+    "main_ch1_linea_06"
+  ];
+
+  let changed = false;
+  let stampBase = Date.now() - (orderedQuestIds.length * 1000);
+
+  orderedQuestIds.forEach((qid, idx) => {
+    if (questState?.[qid] === QUEST_STATE.REWARDED && !Number(completedMap[qid] || 0)) {
+      completedMap[qid] = stampBase + (idx * 1000);
+      changed = true;
+    }
+  });
+
+  return changed;
+}
+
   function openQuestOverlay(){
   const overlay = document.getElementById("questOverlay");
   const list = document.getElementById("questListArea");
@@ -9717,180 +9773,118 @@ function openTalkOverlay(){
   overlay.style.display = "flex";
   list.innerHTML = "";
 
-  const rows = [];
+  backfillQuestCompletedAt();
 
-  // =====================
-  // 1) 퍼그란트 - 대륙 최고의 대장장이
-  // =====================
-  const stForge = questState?.forge_tutorial_01;
+  const inProgressRows = [];
+  const completedRows = [];
+  const completedMap = ensureQuestCompletedAtMap();
 
-  // ✅ 수락 이후 상태만 현황에 표시 (ACTIVE/COMPLETE/REWARDED)
-  if (stForge && stForge !== QUEST_STATE.OFFERED) {
-    let status =
-      stForge === QUEST_STATE.ACTIVE ? "진행중" :
-      stForge === QUEST_STATE.COMPLETE ? "완료 가능" :
-      stForge === QUEST_STATE.REWARDED ? "완료" :
+  function pushQuestRow({ qid, label, state, onClick }){
+    if (!state || state === QUEST_STATE.OFFERED) return;
+
+    const status =
+      state === QUEST_STATE.ACTIVE ? "진행중" :
+      state === QUEST_STATE.COMPLETE ? "완료 가능" :
+      state === QUEST_STATE.REWARDED ? "완료" :
       "미수락";
 
     const row = document.createElement("div");
 
-    if (stForge === QUEST_STATE.REWARDED) {
-      row.className = "questRowText questRowDone";
-      row.textContent = `대륙 최고의 대장장이  -  완료`;
-    } else {
-      row.className = "questRowText";
-      row.textContent = `대륙 최고의 대장장이  -  ${status}`;
-      row.addEventListener("click", () => openQuestDetail_forgeTutorial01());
-    }
-
-    rows.push(row);
-  }
-
-  
-  // =====================
-  // 1-2) 퍼그란트 - 에델린의 불꽃
-  // =====================
-  const stForge2 = questState?.forge_tutorial_02;
-
-  // ✅ 수락 이후 상태만 현황에 표시 (ACTIVE/COMPLETE/REWARDED)
-  if (stForge2 && stForge2 !== QUEST_STATE.OFFERED) {
-    let status =
-      stForge2 === QUEST_STATE.ACTIVE ? "진행중" :
-      stForge2 === QUEST_STATE.COMPLETE ? "완료 가능" :
-      stForge2 === QUEST_STATE.REWARDED ? "완료" :
-      "미수락";
-
-    const row = document.createElement("div");
-
-    if (stForge2 === QUEST_STATE.REWARDED) {
-      row.className = "questRowText questRowDone";
-      row.textContent = `에델린의 불꽃  -  완료`;
-    } else {
-      row.className = "questRowText";
-      row.textContent = `에델린의 불꽃  -  ${status}`;
-      row.addEventListener("click", () => openQuestDetail_forgeTutorial02());
-    }
-
-    rows.push(row);
-  }
-
-// =====================
-  // 2) 발렌 - 발렌의 첫번째 의뢰
-  // =====================
-  const stVallen = questState?.vallen_tutorial_01;
-
-  if (stVallen && stVallen !== QUEST_STATE.OFFERED) {
-    let status =
-      stVallen === QUEST_STATE.ACTIVE ? "진행중" :
-      stVallen === QUEST_STATE.COMPLETE ? "완료 가능" :
-      stVallen === QUEST_STATE.REWARDED ? "완료" :
-      "미수락";
-
-    const row = document.createElement("div");
-
-    if (stVallen === QUEST_STATE.REWARDED) {
-      row.className = "questRowText questRowDone";
-      row.textContent = `발렌의 첫번째 의뢰  -  완료`;
-    } else {
-      row.className = "questRowText";
-      row.textContent = `발렌의 첫번째 의뢰  -  ${status}`;
-      row.addEventListener("click", () => openQuestDetail_vallenTutorial01());
-    }
-
-    rows.push(row);
-  }
-
-
-
-  // =====================
-  // 3) 로넨 - 로넨의 취미생활
-  // =====================
-  const stLoren = questState?.loren_tutorial_01;
-
-  // ✅ 수락 이후 상태만 현황에 표시 (ACTIVE/COMPLETE/REWARDED)
-  if (stLoren && stLoren !== QUEST_STATE.OFFERED) {
-    let status =
-      stLoren === QUEST_STATE.ACTIVE ? "진행중" :
-      stLoren === QUEST_STATE.COMPLETE ? "완료 가능" :
-      stLoren === QUEST_STATE.REWARDED ? "완료" :
-      "미수락";
-
-    const row = document.createElement("div");
-
-    if (stLoren === QUEST_STATE.REWARDED) {
-      row.className = "questRowText questRowDone";
-      row.textContent = `로넨의 취미생활  -  완료`;
-    } else {
-      row.className = "questRowText";
-      row.textContent = `로넨의 취미생활  -  ${status}`;
-      row.addEventListener("click", () => openQuestDetail_lorenTutorial01());
-    }
-
-    rows.push(row);
-  }
-
-  // =====================
-  // 4) 메인퀘스트 CH1-01 - [늪의기억] 01 _ 로넨의 수집 활동
-  // =====================
-  const stMainCh1Loren = questState?.["main_ch1_loren_01"];
-
-  if (stMainCh1Loren && stMainCh1Loren !== QUEST_STATE.OFFERED) {
-    let status =
-      stMainCh1Loren === QUEST_STATE.ACTIVE ? "진행중" :
-      stMainCh1Loren === QUEST_STATE.COMPLETE ? "완료 가능" :
-      stMainCh1Loren === QUEST_STATE.REWARDED ? "완료" :
-      "미수락";
-
-    const row = document.createElement("div");
-
-    if (stMainCh1Loren === QUEST_STATE.REWARDED) {
-      row.className = "questRowText questRowDone";
-      row.textContent = `[늪의기억] 01 _ 로넨의 수집 활동  -  완료`;
-    } else {
-      row.className = "questRowText";
-      row.textContent = `[늪의기억] 01 _ 로넨의 수집 활동  -  ${status}`;
-      row.addEventListener("click", () => openQuestDetail_mainCh1Loren01());
-    }
-
-    rows.push(row);
-  }
-
-  const mainQuestDefs = [
-    ["main_ch1_serena_02", "[늪의기억] 02 _ 세레나의 걱정", "openQuestDetail_mainCh1Serena02()"],
-    ["main_ch1_valen_03", "[늪의기억] 03 _ 엘프 소탕 작전", "openQuestDetail_mainCh1Vallen03()"],
-    ["main_ch1_linea_04", "[늪의기억] 04 _ 엘프어 해독", "openQuestDetail_mainCh1Linea04()"],
-    ["main_ch1_valen_05", "[늪의기억] 05 _ 하이엘프퀸 토벌", "openQuestDetail_mainCh1Vallen05()"],
-    ["main_ch1_linea_06", "[늪의기억] 06 _ 엘프 역사", "openQuestDetail_mainCh1Linea06()"]
-  ];
-
-  mainQuestDefs.forEach(([qid, label, fnCall]) => {
-    const st = questState?.[qid];
-    if (!st || st === QUEST_STATE.OFFERED) return;
-
-    let status =
-      st === QUEST_STATE.ACTIVE ? "진행중" :
-      st === QUEST_STATE.COMPLETE ? "완료 가능" :
-      st === QUEST_STATE.REWARDED ? "완료" :
-      "미수락";
-
-    const row = document.createElement("div");
-    if (st === QUEST_STATE.REWARDED) {
+    if (state === QUEST_STATE.REWARDED) {
       row.className = "questRowText questRowDone";
       row.textContent = `${label}  -  완료`;
-    } else {
-      row.className = "questRowText";
-      row.textContent = `${label}  -  ${status}`;
-      row.addEventListener("click", () => { eval(fnCall); });
+      completedRows.push({
+        row,
+        completedAt: Number(completedMap[qid] || 0)
+      });
+      return;
     }
-    rows.push(row);
+
+    row.className = "questRowText";
+    row.textContent = `${label}  -  ${status}`;
+    if (state === QUEST_STATE.COMPLETE) {
+      row.classList.add("questRowReady");
+    }
+    if (typeof onClick === "function") {
+      row.addEventListener("click", onClick);
+    }
+    inProgressRows.push(row);
+  }
+
+  pushQuestRow({
+    qid: "forge_tutorial_01",
+    label: "대륙 최고의 대장장이",
+    state: questState?.forge_tutorial_01,
+    onClick: () => openQuestDetail_forgeTutorial01()
   });
 
-  if (rows.length === 0) {
+  pushQuestRow({
+    qid: "forge_tutorial_02",
+    label: "에델린의 불꽃",
+    state: questState?.forge_tutorial_02,
+    onClick: () => openQuestDetail_forgeTutorial02()
+  });
+
+  pushQuestRow({
+    qid: "vallen_tutorial_01",
+    label: "발렌의 첫번째 의뢰",
+    state: questState?.vallen_tutorial_01,
+    onClick: () => openQuestDetail_vallenTutorial01()
+  });
+
+  pushQuestRow({
+    qid: "loren_tutorial_01",
+    label: "로넨의 취미생활",
+    state: questState?.loren_tutorial_01,
+    onClick: () => openQuestDetail_lorenTutorial01()
+  });
+
+  pushQuestRow({
+    qid: "main_ch1_loren_01",
+    label: "[늪의기억] 01 _ 로넨의 수집 활동",
+    state: questState?.["main_ch1_loren_01"],
+    onClick: () => openQuestDetail_mainCh1Loren01()
+  });
+
+  [
+    ["main_ch1_serena_02", "[늪의기억] 02 _ 세레나의 걱정", () => openQuestDetail_mainCh1Serena02()],
+    ["main_ch1_valen_03", "[늪의기억] 03 _ 엘프 소탕 작전", () => openQuestDetail_mainCh1Vallen03()],
+    ["main_ch1_linea_04", "[늪의기억] 04 _ 엘프어 해독", () => openQuestDetail_mainCh1Linea04()],
+    ["main_ch1_valen_05", "[늪의기억] 05 _ 하이엘프퀸 토벌", () => openQuestDetail_mainCh1Vallen05()],
+    ["main_ch1_linea_06", "[늪의기억] 06 _ 엘프 역사", () => openQuestDetail_mainCh1Linea06()]
+  ].forEach(([qid, label, onClick]) => {
+    pushQuestRow({
+      qid,
+      label,
+      state: questState?.[qid],
+      onClick
+    });
+  });
+
+  if (inProgressRows.length === 0 && completedRows.length === 0) {
     list.innerHTML = `<div style="padding:12px; color:#aaa; font-size:13px;">진행 중인 퀘스트가 없습니다.</div>`;
     return;
   }
 
-  rows.forEach(r => list.appendChild(r));
+  if (inProgressRows.length > 0) {
+    const title = document.createElement("div");
+    title.className = "questSectionTitle";
+    title.textContent = "진행중 퀘스트";
+    list.appendChild(title);
+
+    inProgressRows.forEach(row => list.appendChild(row));
+  }
+
+  if (completedRows.length > 0) {
+    completedRows.sort((a, b) => Number(b.completedAt || 0) - Number(a.completedAt || 0));
+
+    const title = document.createElement("div");
+    title.className = "questSectionTitle done";
+    title.textContent = "완료된 퀘스트";
+    list.appendChild(title);
+
+    completedRows.forEach(item => list.appendChild(item.row));
+  }
 }
 
 function closeQuestOverlay(){
@@ -10207,6 +10201,9 @@ const QUEST_STATE = {
 
 if(!window.questState){
   window.questState = {};
+}
+if(!window.questCompletedAt || typeof window.questCompletedAt !== "object"){
+  window.questCompletedAt = {};
 }
 
   const QUESTS = {
@@ -10663,7 +10660,7 @@ function completeVallenQuest(){
   itemScroll15 = Number(itemScroll15 || 0) + 1;
 
   // 상태: 보상 수령 완료
-  questState["vallen_tutorial_01"] = QUEST_STATE.REWARDED;
+  markQuestRewarded("vallen_tutorial_01");
 
   // ✅ 튜토리얼2 완료 → 튜토리얼3(에델린의 불꽃) 오픈
   if (!questState["forge_tutorial_02"]) {
@@ -10720,7 +10717,7 @@ function completeForgeQuest(){
   gold = Number(gold || 0) + 50000;
 
   // 상태: 보상 수령 완료
-  questState["forge_tutorial_01"] = QUEST_STATE.REWARDED;
+  markQuestRewarded("forge_tutorial_01");
 
   save();
   if (typeof update === "function") update();
@@ -11929,7 +11926,7 @@ function completeForge2Quest(){
   // 보상 지급
   gold += 3000000;
 
-  questState["forge_tutorial_02"] = QUEST_STATE.REWARDED;
+  markQuestRewarded("forge_tutorial_02");
 
   npcDialogueActionMode = null;
   npcDialogueQueue = [
@@ -11999,7 +11996,7 @@ function completeLorenQuest(){
   itemProtect = Number(itemProtect || 0) + 1;
 
   // 상태: 보상 수령 완료
-  questState["loren_tutorial_01"] = QUEST_STATE.REWARDED;
+  markQuestRewarded("loren_tutorial_01");
 
   save();
   if (typeof update === "function") update();
@@ -12070,7 +12067,7 @@ function completeMainCh1LorenQuest(){
   itemMysteriousPaper = Number(itemMysteriousPaper || 0) + 1;
   itemElfHunterBow = 0;
 
-  questState["main_ch1_loren_01"] = QUEST_STATE.REWARDED;
+  markQuestRewarded("main_ch1_loren_01");
 
   save();
   if (typeof update === "function") update();
@@ -12115,7 +12112,7 @@ function completeMainCh1Serena02(){
   if (questState["main_ch1_serena_02"] !== QUEST_STATE.ACTIVE) return;
   itemScroll15 = Number(itemScroll15 || 0) + 1;
   itemHonorMedal = Number(itemHonorMedal || 0) + 20;
-  questState["main_ch1_serena_02"] = QUEST_STATE.REWARDED;
+  markQuestRewarded("main_ch1_serena_02");
   save(); if (typeof update === "function") update(); updateQuestBadges(); try { renderTalkNpcGrid(); } catch(e) {}
   npcDialogueActionMode = null;
   npcDialogueQueue = [`퀘스트 완료!
@@ -12154,7 +12151,7 @@ function completeMainCh1Vallen03(){
   itemDownProtect = Number(itemDownProtect || 0) + 5;
   gold = Number(gold || 0) + 6000000;
   itemHonorMedal = Number(itemHonorMedal || 0) + 30;
-  questState["main_ch1_valen_03"] = QUEST_STATE.REWARDED;
+  markQuestRewarded("main_ch1_valen_03");
   save(); if (typeof update === "function") update(); updateQuestBadges(); try { renderTalkNpcGrid(); } catch(e) {}
   npcDialogueActionMode = null;
   npcDialogueQueue = [`퀘스트 완료!
@@ -12194,7 +12191,7 @@ function completeMainCh1Linea04(){
   itemDecodedElfDoc = Math.max(0, Number(itemDecodedElfDoc || 0) - 1);
   gold = Number(gold || 0) + 5000000;
   itemHonorMedal = Number(itemHonorMedal || 0) + 20;
-  questState["main_ch1_linea_04"] = QUEST_STATE.REWARDED;
+  markQuestRewarded("main_ch1_linea_04");
   save(); if (typeof update === "function") update(); updateQuestBadges(); try { renderTalkNpcGrid(); } catch(e) {}
   npcDialogueActionMode = null;
   npcDialogueQueue = [`퀘스트 완료!
@@ -12234,7 +12231,7 @@ function completeMainCh1Vallen05(){
   itemHonorMedal = Number(itemHonorMedal || 0) + 100;
   itemScroll21 = Number(itemScroll21 || 0) + 1;
   itemElfQueenRecord = Number(itemElfQueenRecord || 0) + 1;
-  questState["main_ch1_valen_05"] = QUEST_STATE.REWARDED;
+  markQuestRewarded("main_ch1_valen_05");
   unlockStorybookChapter("chapter1", false);
   setStorybookUnlockedPages("chapter1", 1, false);
   save(); if (typeof update === "function") update(); updateQuestBadges(); updateStorybookBadge(); try { renderTalkNpcGrid(); } catch(e) {}
@@ -12270,7 +12267,7 @@ function completeMainCh1Linea06(){
   if (questState["main_ch1_linea_06"] !== QUEST_STATE.COMPLETE) return;
   itemProtect = Number(itemProtect || 0) + 3;
   itemElfQueenRecord = 0;
-  questState["main_ch1_linea_06"] = QUEST_STATE.REWARDED;
+  markQuestRewarded("main_ch1_linea_06");
   unlockStorybookChapter("chapter1", false);
   setStorybookUnlockedPages("chapter1", STORYBOOK_CH1_PAGES.length, false);
   save(); if (typeof update === "function") update(); updateQuestBadges(); updateStorybookBadge(); try { renderTalkNpcGrid(); } catch(e) {}
@@ -16403,6 +16400,8 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
   // ✅ 퀘스트 상태(계정별) 로드
 questState = (data.questState && typeof data.questState === "object") ? data.questState : {};
 window.questState = questState; // (디버깅/전역참조 안전)
+window.questCompletedAt = (data.questCompletedAt && typeof data.questCompletedAt === "object") ? data.questCompletedAt : {};
+backfillQuestCompletedAt();
 
 // ✅ 반복형(일일/주간) 퀘스트 상태 로드
 repeatQuestState = (data.repeatQuestState && typeof data.repeatQuestState === "object") ? data.repeatQuestState : repeatQuestState;
@@ -16719,6 +16718,7 @@ aweUsedGlobal30EventId: Number(aweUsedGlobal30EventId || 0),
      engravePresetIdx: Number(engravePresetIdx || 0),
      engravePresets: engravePresets,
     questState: questState,
+    questCompletedAt: ensureQuestCompletedAtMap(),
     repeatQuestState: repeatQuestState,
     storybookState: storybookState,
      engraveLines: engraveLines // ✅ (구버전/외부표기 호환용) "현재 프리셋" 3줄
@@ -17800,6 +17800,8 @@ if (!power || power <= 20) {
     // ✅ 퀘스트 상태(계정별) 로드
 questState = (data.questState && typeof data.questState === "object") ? data.questState : {};
 window.questState = questState; // (디버깅/전역참조 안전)
+window.questCompletedAt = (data.questCompletedAt && typeof data.questCompletedAt === "object") ? data.questCompletedAt : {};
+backfillQuestCompletedAt();
 
 // ✅ 반복형(일일/주간) 퀘스트 상태 로드
 repeatQuestState = (data.repeatQuestState && typeof data.repeatQuestState === "object") ? data.repeatQuestState : repeatQuestState;
