@@ -553,7 +553,8 @@ body {
 }
 
 /* 캡처 모드에서 숨기기 */
-.capture-mode #achievementIconBtn{
+.capture-mode #achievementIconBtn,
+.capture-mode #cumulativeRewardIconBtn{
   display:none !important;
 }
 
@@ -1726,11 +1727,13 @@ button {
 #achievementIconBtn{ top: calc(120px + var(--field-top-offset)); }
 #questIconBtn{ top: calc(240px + var(--field-top-offset)); }
 #storybookIconBtn{ top: calc(360px + var(--field-top-offset)); }
+#cumulativeRewardIconBtn{ top: calc(480px + var(--field-top-offset)); }
 
   /* ✅ 출석 미완료 알림 뱃지 (!) */
 #attendanceIconBtn{ overflow: visible; } /* (혹시 밖으로 삐져도 보이게) */
 #bossBattleIconBtn{ overflow: visible; }
 #guildIconBtn{ overflow: visible; }
+#cumulativeRewardIconBtn{ overflow: visible; }
 
 .icon-alert-badge{
   position: absolute;
@@ -1779,6 +1782,195 @@ button {
   top: 6px;
   right: 6px;
   z-index: 2;
+}
+
+
+/* 🎁 누적보상 오버레이 */
+#cumulativeRewardOverlay{
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.74);
+  z-index: 5100;
+}
+
+.cumulative-reward-panel{
+  width: min(920px, 94vw);
+  max-height: 82vh;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: linear-gradient(180deg, rgba(27,23,18,0.98), rgba(17,14,11,0.98));
+  box-shadow: 0 18px 40px rgba(0,0,0,0.55);
+  color: #f2eadf;
+}
+
+.cumulative-reward-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:16px 18px 12px;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+}
+
+.cumulative-reward-title{
+  font-size:18px;
+  font-weight:900;
+  letter-spacing:0.2px;
+}
+
+.cumulative-reward-close{
+  margin:0;
+  padding:0;
+  border:0;
+  background:none;
+  color:#f6f6f6;
+  font-size:22px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.cumulative-reward-body{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:0;
+}
+
+.cumulative-reward-col{
+  min-height: 520px;
+  padding: 16px 16px 18px;
+}
+
+.cumulative-reward-col + .cumulative-reward-col{
+  border-left:1px solid rgba(255,255,255,0.08);
+}
+
+.cumulative-section-title{
+  font-size:16px;
+  font-weight:900;
+  color:#ffd27a;
+  margin-bottom:6px;
+}
+
+.cumulative-section-sub{
+  font-size:12px;
+  color:#c9c0b4;
+  line-height:1.45;
+  margin-bottom:12px;
+}
+
+.cumulative-reward-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.cumulative-reward-list.scrollable{
+  max-height: 410px;
+  overflow-y:auto;
+  padding-right:6px;
+}
+
+.cumulative-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
+}
+
+.cumulative-row.today{
+  border-color: rgba(255,215,110,0.55);
+  box-shadow: 0 0 10px rgba(255,196,77,0.18);
+}
+
+.cumulative-row.claimed{ opacity:0.56; }
+.cumulative-row.locked{ opacity:0.34; }
+.cumulative-row.missed{ opacity:0.45; }
+.cumulative-row.claimable-milestone{
+  border-color: rgba(255,215,110,0.42);
+  box-shadow: 0 0 10px rgba(255,196,77,0.15);
+}
+
+.cumulative-main{
+  flex:1;
+  min-width:0;
+  text-align:left;
+}
+
+.cumulative-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:44px;
+  padding:4px 8px;
+  border-radius:999px;
+  background: rgba(255,255,255,0.08);
+  color:#fff;
+  font-weight:900;
+  font-size:13px;
+  margin-right:8px;
+}
+
+.cumulative-row-title{
+  font-size:14px;
+  font-weight:800;
+  color:#f4efe7;
+}
+
+.cumulative-row-desc{
+  margin-top:3px;
+  font-size:12px;
+  color:#cbc1b3;
+  line-height:1.4;
+}
+
+.cumulative-row-state{
+  flex:0 0 auto;
+  min-width:74px;
+  text-align:right;
+  font-size:12px;
+  font-weight:800;
+}
+
+.cumulative-row-state.claimed{ color:#9e9e9e; }
+.cumulative-row-state.missed{ color:#d08080; }
+.cumulative-row-state.locked{ color:#8c8c8c; }
+.cumulative-row-state.progress{ color:#ffd27a; }
+
+.cumulative-claim-btn{
+  margin:0;
+  padding:6px 12px;
+  border-radius:10px;
+  border:1px solid rgba(255,214,102,0.3);
+  background: rgba(255,214,102,0.12);
+  color:#ffe7a3;
+  font-weight:900;
+  cursor:pointer;
+  font-size:13px;
+}
+
+.cumulative-claim-btn:hover{
+  background: rgba(255,214,102,0.18);
+}
+
+@media (max-width: 760px){
+  .cumulative-reward-body{
+    grid-template-columns: 1fr;
+  }
+  .cumulative-reward-col{
+    min-height: unset;
+  }
+  .cumulative-reward-col + .cumulative-reward-col{
+    border-left:0;
+    border-top:1px solid rgba(255,255,255,0.08);
+  }
 }
 
   /* ✅ 지도 버튼 아래로 같은 규격으로 쌓기 (지도 스타일 유지) */
@@ -4370,6 +4562,15 @@ html, body {
   <div id="storybookAlertBadge" class="icon-alert-badge">!</div>
   <span class="map-icon-label one-line">기록</span>
 </button>
+
+<!-- 🎁 누적보상 (좌측 아이콘) -->
+<button id="cumulativeRewardIconBtn"
+        class="map-icon-btn left-icon-btn"
+        onclick="openCumulativeRewardOverlay()" data-nosfx="1">
+  <img class="map-icon-img" src="images/ui/icon_cumulative_rewards.png" alt="누적보상">
+  <div id="cumulativeRewardAlertBadge" class="icon-alert-badge">!</div>
+  <span class="map-icon-label one-line">누적보상</span>
+</button>
   
 </div>
 
@@ -5536,6 +5737,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "achievementIconBtn",
     "questIconBtn",
     "storybookIconBtn",
+    "cumulativeRewardIconBtn",
     "mapBtn",
     "duelIconBtn",
     "guildIconBtn",
@@ -8367,6 +8569,7 @@ destroyCount  = 0;
     daily:{ resetKey:"", progress:{ hunt:0, duel:0, attendance:0, upgrade:0 }, claimed:{ hunt:false, duel:false, attendance:false, upgrade:false, all:false } },
     weekly:{ resetKey:"", progress:{ hunt:0, duel:0, bossClear:0, engrave:0, upgrade:0 }, claimed:{ hunt:false, duel:false, bossClear:false, engrave:false, upgrade:false } }
   };
+  cumulativeRewardState = createDefaultCumulativeRewardState();
 
    // 화면 전환 (✅ 없는 요소가 있어도 절대 안 터지게)
   const setDisp = (id, disp) => {
@@ -8382,6 +8585,7 @@ destroyCount  = 0;
   setDisp("achievementIconBtn", "none");
   setDisp("questIconBtn", "none");
   setDisp("storybookIconBtn", "none");
+  setDisp("cumulativeRewardIconBtn", "none");
 
   setDisp("duelIconBtn", "none");
   setDisp("guildIconBtn", "none");
@@ -10859,6 +11063,249 @@ let repeatQuestState = {
   }
 };
 
+
+const DAILY_GIFT_DEFS = [
+  { key:"mon", label:"월", rewardText:"21강 강화주문서 1개", reward:{ type:"itemScroll21", count:1 } },
+  { key:"tue", label:"화", rewardText:"마력의정수 80개", reward:{ type:"itemEssence", count:80 } },
+  { key:"wed", label:"수", rewardText:"파괴방지주문서 1개", reward:{ type:"itemProtect", count:1 } },
+  { key:"thu", label:"목", rewardText:"고급각인의주문서 5개", reward:{ type:"itemEngraveAdvanced", count:5 } },
+  { key:"fri", label:"금", rewardText:"마력이 깃든 종이 15개", reward:{ type:"itemMagicPaper", count:15 } },
+  { key:"sat", label:"토", rewardText:"슈퍼강화주문서 1개", reward:{ type:"itemSuper", count:1 } },
+  { key:"sun", label:"일", rewardText:"파괴방지주문서 2개", reward:{ type:"itemProtect", count:2 } }
+];
+
+const CUMULATIVE_ATTENDANCE_REWARDS = [
+  { days:10, rewardText:"파괴방지주문서 1개", reward:{ type:"itemProtect", count:1 } },
+  { days:20, rewardText:"슈퍼강화주문서 1개", reward:{ type:"itemSuper", count:1 } },
+  { days:30, rewardText:"파괴방지주문서 3개", reward:{ type:"itemProtect", count:3 } },
+  { days:50, rewardText:"슈퍼강화주문서 3개", reward:{ type:"itemSuper", count:3 } },
+  { days:100, rewardText:"파괴방지주문서 5개", reward:{ type:"itemProtect", count:5 } },
+  { days:150, rewardText:"파괴방지주문서 10개", reward:{ type:"itemProtect", count:10 } },
+  { days:200, rewardText:"파괴방지주문서 20개", reward:{ type:"itemProtect", count:20 } },
+  { days:300, rewardText:"파괴방지주문서 50개", reward:{ type:"itemProtect", count:50 } },
+  { days:365, rewardText:"파괴방지주문서 100개", reward:{ type:"itemProtect", count:100 } }
+];
+
+function createDefaultCumulativeRewardState(){
+  return {
+    dailyWeekKey: "",
+    dailyClaims: { mon:false, tue:false, wed:false, thu:false, fri:false, sat:false, sun:false },
+    attendanceClaims: {}
+  };
+}
+
+let cumulativeRewardState = createDefaultCumulativeRewardState();
+
+function normalizeCumulativeRewardState(state){
+  const base = createDefaultCumulativeRewardState();
+  const src = (state && typeof state === "object") ? state : {};
+  base.dailyWeekKey = String(src.dailyWeekKey || "");
+  if (src.dailyClaims && typeof src.dailyClaims === "object") {
+    Object.keys(base.dailyClaims).forEach((k) => {
+      base.dailyClaims[k] = !!src.dailyClaims[k];
+    });
+  }
+  if (src.attendanceClaims && typeof src.attendanceClaims === "object") {
+    Object.keys(src.attendanceClaims).forEach((k) => {
+      base.attendanceClaims[String(k)] = !!src.attendanceClaims[k];
+    });
+  }
+  return base;
+}
+
+function ensureCumulativeRewardState(shouldSave){
+  cumulativeRewardState = normalizeCumulativeRewardState(cumulativeRewardState);
+  const thisWeekKey = (typeof getKstWeekKey === "function") ? String(getKstWeekKey() || "") : "";
+  if (cumulativeRewardState.dailyWeekKey !== thisWeekKey) {
+    cumulativeRewardState.dailyWeekKey = thisWeekKey;
+    cumulativeRewardState.dailyClaims = { mon:false, tue:false, wed:false, thu:false, fri:false, sat:false, sun:false };
+    if (shouldSave && typeof save === "function") save();
+  }
+}
+
+function getKstWeekdayIndexMondayFirst(){
+  const now = (typeof getKstNow === "function") ? getKstNow() : new Date();
+  const day = now.getDay();
+  return day === 0 ? 6 : day - 1;
+}
+
+function getTodayDailyGiftDef(){
+  return DAILY_GIFT_DEFS[getKstWeekdayIndexMondayFirst()] || DAILY_GIFT_DEFS[0];
+}
+
+function isDailyGiftClaimable(){
+  ensureCumulativeRewardState(false);
+  const today = getTodayDailyGiftDef();
+  return !!(today && !cumulativeRewardState.dailyClaims[today.key]);
+}
+
+function getClaimableAttendanceMilestones(){
+  ensureCumulativeRewardState(false);
+  return CUMULATIVE_ATTENDANCE_REWARDS.filter((entry) => Number(attendanceCount || 0) >= Number(entry.days) && !cumulativeRewardState.attendanceClaims[String(entry.days)]);
+}
+
+function shouldShowCumulativeRewardBadge(){
+  return isDailyGiftClaimable() || getClaimableAttendanceMilestones().length > 0;
+}
+
+function updateCumulativeRewardBadge(){
+  const badge = document.getElementById("cumulativeRewardAlertBadge");
+  if (badge) badge.style.display = shouldShowCumulativeRewardBadge() ? "inline-flex" : "none";
+}
+
+function grantCumulativeReward(reward){
+  if (!reward || !reward.type) return;
+  const count = Number(reward.count || 0);
+  switch (reward.type) {
+    case "itemScroll21":
+      itemScroll21 = Number(itemScroll21 || 0) + count;
+      break;
+    case "itemEssence":
+      itemEssence = Number(itemEssence || 0) + count;
+      break;
+    case "itemProtect":
+      itemProtect = Number(itemProtect || 0) + count;
+      break;
+    case "itemEngraveAdvanced":
+      itemEngraveAdvanced = Number(itemEngraveAdvanced || 0) + count;
+      break;
+    case "itemMagicPaper":
+      itemMagicPaper = Number(itemMagicPaper || 0) + count;
+      break;
+    case "itemSuper":
+      itemSuper = Number(itemSuper || 0) + count;
+      break;
+  }
+}
+
+function openCumulativeRewardOverlay(){
+  ensureCumulativeRewardState(false);
+  if (typeof playUiClickCommon === "function") playUiClickCommon();
+  const overlay = document.getElementById("cumulativeRewardOverlay");
+  if (!overlay) return;
+  overlay.style.display = "flex";
+  renderCumulativeRewardOverlay();
+}
+
+function closeCumulativeRewardOverlay(){
+  const overlay = document.getElementById("cumulativeRewardOverlay");
+  if (overlay) overlay.style.display = "none";
+}
+
+function claimDailyGift(dayKey){
+  ensureCumulativeRewardState(false);
+  const today = getTodayDailyGiftDef();
+  if (!today || today.key !== dayKey) return;
+  if (cumulativeRewardState.dailyClaims[dayKey]) return;
+  grantCumulativeReward(today.reward);
+  cumulativeRewardState.dailyClaims[dayKey] = true;
+  save();
+  update();
+  renderCumulativeRewardOverlay();
+  writeLog(`누적보상 - 데일리기프트로 ${today.rewardText}를 획득했습니다.`);
+}
+
+function claimAttendanceMilestoneReward(days){
+  ensureCumulativeRewardState(false);
+  const target = CUMULATIVE_ATTENDANCE_REWARDS.find((entry) => Number(entry.days) === Number(days));
+  if (!target) return;
+  if (Number(attendanceCount || 0) < Number(target.days)) return;
+  if (cumulativeRewardState.attendanceClaims[String(target.days)]) return;
+  grantCumulativeReward(target.reward);
+  cumulativeRewardState.attendanceClaims[String(target.days)] = true;
+  save();
+  update();
+  renderCumulativeRewardOverlay();
+  writeLog(`누적보상 - 누적출석 ${target.days}일 보상으로 ${target.rewardText}를 획득했습니다.`);
+}
+
+function renderCumulativeRewardOverlay(){
+  ensureCumulativeRewardState(false);
+  const dailyArea = document.getElementById("dailyGiftListArea");
+  const mileArea = document.getElementById("attendanceMilestoneListArea");
+  if (!dailyArea || !mileArea) return;
+
+  const todayIdx = getKstWeekdayIndexMondayFirst();
+  const todayDef = getTodayDailyGiftDef();
+  dailyArea.innerHTML = "";
+
+  DAILY_GIFT_DEFS.forEach((entry, idx) => {
+    const row = document.createElement("div");
+    let stateClass = "locked";
+    let stateText = "잠김";
+
+    const claimed = !!cumulativeRewardState.dailyClaims[entry.key];
+    if (claimed) {
+      stateClass = "claimed";
+      stateText = "수령완료";
+    } else if (idx === todayIdx) {
+      stateClass = "today";
+      stateText = "claimable";
+    } else if (idx < todayIdx) {
+      stateClass = "missed";
+      stateText = "지남";
+    }
+
+    row.className = `cumulative-row ${stateClass}`;
+    const left = document.createElement("div");
+    left.className = "cumulative-main";
+    left.innerHTML = `<div class="cumulative-row-title"><span class="cumulative-badge">[${entry.label}]</span>${entry.rewardText}</div>`;
+
+    const right = document.createElement("div");
+    right.className = `cumulative-row-state ${stateClass === "today" ? "progress" : stateClass}`;
+
+    if (stateText === "claimable") {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "cumulative-claim-btn";
+      btn.textContent = "[수령]";
+      btn.onclick = () => claimDailyGift(entry.key);
+      right.appendChild(btn);
+    } else {
+      right.textContent = stateText;
+    }
+
+    row.appendChild(left);
+    row.appendChild(right);
+    dailyArea.appendChild(row);
+  });
+
+  mileArea.innerHTML = "";
+  CUMULATIVE_ATTENDANCE_REWARDS.forEach((entry) => {
+    const claimed = !!cumulativeRewardState.attendanceClaims[String(entry.days)];
+    const canClaim = Number(attendanceCount || 0) >= Number(entry.days) && !claimed;
+    const row = document.createElement("div");
+    row.className = `cumulative-row ${claimed ? "claimed" : (canClaim ? "claimable-milestone" : "locked")}`;
+
+    const left = document.createElement("div");
+    left.className = "cumulative-main";
+    const progText = claimed ? "수령완료" : (canClaim ? "수령 가능" : `${Math.min(Number(attendanceCount || 0), Number(entry.days))} / ${entry.days}`);
+    left.innerHTML = `
+      <div class="cumulative-row-title"><span class="cumulative-badge">${entry.days}일</span>${entry.rewardText}</div>
+      <div class="cumulative-row-desc">현재 누적 출석: ${attendanceCount}일 · ${progText}</div>
+    `;
+
+    const right = document.createElement("div");
+    right.className = `cumulative-row-state ${claimed ? "claimed" : (canClaim ? "progress" : "locked")}`;
+    if (canClaim) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "cumulative-claim-btn";
+      btn.textContent = "[수령]";
+      btn.onclick = () => claimAttendanceMilestoneReward(entry.days);
+      right.appendChild(btn);
+    } else {
+      right.textContent = claimed ? "수령완료" : `${Math.min(Number(attendanceCount || 0), Number(entry.days))} / ${entry.days}`;
+    }
+
+    row.appendChild(left);
+    row.appendChild(right);
+    mileArea.appendChild(row);
+  });
+
+  updateCumulativeRewardBadge();
+}
+
 const STORYBOOK_DEFS = [
   { key:"chapter1", chapter:1, title:"엘프 역사서", icon:"images/storybooks/book_elven_history.png", desc:"늪엘프의 비극과 위대한 숲의 기록." },
   { key:"chapter2", chapter:2, title:"서리여왕의 기록", icon:"images/storybooks/book_frost_queen_record.png", desc:"얼어붙은 분노와 봉인의 흔적을 담은 서책." },
@@ -13063,7 +13510,9 @@ function updateTopCurrencyBar(){
 
   function update() {
   ensureRepeatQuestResets(false);
+  ensureCumulativeRewardState(false);
   updateStorybookBadge();
+  updateCumulativeRewardBadge();
 
 
    /* 🧾 유저 프로필 영역 갱신 */
@@ -16405,6 +16854,8 @@ backfillQuestCompletedAt();
 
 // ✅ 반복형(일일/주간) 퀘스트 상태 로드
 repeatQuestState = (data.repeatQuestState && typeof data.repeatQuestState === "object") ? data.repeatQuestState : repeatQuestState;
+cumulativeRewardState = normalizeCumulativeRewardState(data.cumulativeRewardState);
+ensureCumulativeRewardState(false);
 
 // ✅ 스토리북 상태 로드
 storybookState = normalizeStorybookState(data.storybookState);
@@ -16478,6 +16929,7 @@ if (gameScreen)  gameScreen.style.display  = "block";
 
 // ✅ 버튼/패널들(없어도 크래시 X)
 setDisplay("attendanceIconBtn",   "block");
+setDisplay("cumulativeRewardIconBtn", "block");
 setDisplay("logoutBtn",       "none");
 setDisplay("couponBtn",       "none");
 setDisplay("hamburgerBtn",    "block");
@@ -16491,6 +16943,7 @@ setDisplay("rankingBattleIconBtn", "block");
 setDisplay("achievementIconBtn",  "block");
 setDisplay("questIconBtn",      "block");
 setDisplay("storybookIconBtn",  "block");
+setDisplay("cumulativeRewardIconBtn", "block");
 
 setDisplay("toastLog",        "block");
 setDisplay("workbenchDock",   "block");
@@ -16610,6 +17063,7 @@ if(titleChanged) save();
       rankingBattleLastRewardWeekKey: "",
       titlesOwned: {},
       equippedTitle: "",
+      cumulativeRewardState: createDefaultCumulativeRewardState(),
       // ⚠️ 네가 쓰던 글로벌30 기본값도 여기 포함(있으면)
       // lastSeenGlobal30EventId: ...,
       // aweUsedGlobal30EventId: 0
@@ -16674,6 +17128,7 @@ function save() {
     swampElfHuntCount: Number(swampElfHuntCount || 0),
     itemEngraveNormal: Number(itemEngraveNormal || 0),
     itemEngraveAdvanced: Number(itemEngraveAdvanced || 0),
+    cumulativeRewardState: normalizeCumulativeRewardState(cumulativeRewardState),
     huntStamina: Number(huntStamina),
     lastStaminaUpdate: Number(lastStaminaUpdate),
     duelWin: Number(duelWin),
@@ -17805,6 +18260,8 @@ backfillQuestCompletedAt();
 
 // ✅ 반복형(일일/주간) 퀘스트 상태 로드
 repeatQuestState = (data.repeatQuestState && typeof data.repeatQuestState === "object") ? data.repeatQuestState : repeatQuestState;
+cumulativeRewardState = normalizeCumulativeRewardState(data.cumulativeRewardState);
+ensureCumulativeRewardState(false);
 
 // ✅ 스토리북 상태 로드
 storybookState = normalizeStorybookState(data.storybookState);
@@ -17847,6 +18304,7 @@ if (gameScreen)  gameScreen.style.display  = "block";
 
 // ✅ 버튼/패널들(없어도 크래시 X)
 setDisplay("attendanceIconBtn",   "block");
+setDisplay("cumulativeRewardIconBtn", "block");
 setDisplay("logoutBtn",       "none");
 setDisplay("couponBtn",       "none");
 setDisplay("hamburgerBtn",    "block");
@@ -17860,6 +18318,7 @@ setDisplay("rankingBattleIconBtn", "block");
 setDisplay("achievementIconBtn",  "block");
 setDisplay("questIconBtn",      "block");
 setDisplay("storybookIconBtn",  "block");
+setDisplay("cumulativeRewardIconBtn", "block");
 
 setDisplay("toastLog",        "block");
 setDisplay("workbenchDock",   "block");
@@ -26237,6 +26696,28 @@ function openDuelArena() {
   </div>
 </div>
 
+
+<!-- 🎁 누적보상 오버레이 -->
+<div id="cumulativeRewardOverlay" onclick="if(event.target===this) closeCumulativeRewardOverlay()">
+  <div class="cumulative-reward-panel">
+    <div class="cumulative-reward-header">
+      <div class="cumulative-reward-title">누적보상</div>
+      <button class="cumulative-reward-close" type="button" onclick="closeCumulativeRewardOverlay()">×</button>
+    </div>
+    <div class="cumulative-reward-body">
+      <div class="cumulative-reward-col">
+        <div class="cumulative-section-title">데일리기프트</div>
+        <div class="cumulative-section-sub">오늘의 요일 보상은 해당 요일에만 수령할 수 있습니다. 지나간 요일 보상은 받을 수 없습니다.</div>
+        <div id="dailyGiftListArea" class="cumulative-reward-list"></div>
+      </div>
+      <div class="cumulative-reward-col">
+        <div class="cumulative-section-title">누적출석보상</div>
+        <div class="cumulative-section-sub">누적 출석일이 쌓일수록 더 큰 보상을 획득할 수 있습니다.</div>
+        <div id="attendanceMilestoneListArea" class="cumulative-reward-list scrollable"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 
 <!-- 📜 메인퀘스트 완료 연출 -->
