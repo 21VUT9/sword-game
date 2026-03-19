@@ -20011,10 +20011,10 @@ function updateBossBattleBtn(){
   if (!btn) return;
 
   const bossId = String(activeBossId || "");
-  if (!bossId) { btn.style.display = "none"; return; }
+  if (!bossId) { btn.style.display = "none"; refreshBossBattleAlert(""); return; }
 
     const run = (bossRunsActiveCache || {})[bossId];
-  if (!run) { btn.style.display = "none"; return; }
+  if (!run) { btn.style.display = "none"; refreshBossBattleAlert(""); return; }
 
   const st = String(run.status || "");
   const mem = run.members && run.members[userId];
@@ -20029,6 +20029,8 @@ function updateBossBattleBtn(){
   } else {
     btn.style.display = "none";
   }
+
+  refreshBossBattleAlert(bossId);
 }
 
   // ✅ (스텝3-3) 보스전 종료 24시간 전 지원요청(메인 로그 1회 + 전용 로그 1회)
@@ -20238,6 +20240,7 @@ BOSS_RUNS_ACTIVE_REF.on("value", (snap) => {
   startBossRunWatchdog();
 
  refreshAdventureGuildAlert(); // ✅ 신규 보스전 있으면 메인 버튼에 ! 표시
+  updateBossBattleBtn();
 
   // ✅ (핵심) 새로고침/재접속 시: 내가 이미 참여중인 토벌이 있으면 activeBossId 복구
   const myUid = String(userId || "");
@@ -20378,10 +20381,27 @@ function setBossBattleAlertVisible(on){
   b.style.display = on ? "flex" : "none";
 }
 
-// 현재 activeBossId 기준으로 최신 로그 시각을 보고 ! 갱신
+function hasPendingBossReward(bossId){
+  const id = String(bossId || activeBossId || "");
+  if (!id || !userId) return false;
+
+  const run = (bossRunsActiveCache || {})[id];
+  if (!run) return false;
+  if (String(run.status || "") !== "cleared") return false;
+  if (!(run.members && run.members[userId])) return false;
+  return !(run.claimed && run.claimed[userId]);
+}
+
+// 현재 activeBossId 기준으로 최신 로그 시각 + 미수령 토벌보상을 보고 ! 갱신
 function refreshBossBattleAlert(bossId){
   const id = String(bossId || activeBossId || "");
   if (!id) { setBossBattleAlertVisible(false); return; }
+
+  // ✅ 토벌 완료 후 보상 미수령이면 로그 읽음 여부와 무관하게 계속 ! 유지
+  if (hasPendingBossReward(id)) {
+    setBossBattleAlertVisible(true);
+    return;
+  }
 
   const seenTs = getBossLogSeenTs(id);
   const arr = bossBattleLogsCache || [];
@@ -20408,7 +20428,7 @@ function markBossBattleLogsSeenNow(bossId){
   const latestTs = arr.length ? Number(arr[arr.length - 1].t || 0) : 0;
 
   setBossLogSeenTs(id, latestTs);
-  setBossBattleAlertVisible(false);
+  refreshBossBattleAlert(id);
 }
   
 // 로그 구독 시작(보스전 열 때/참여상태 복구 때 호출)
@@ -22823,6 +22843,7 @@ function claimBossReward(){
     // ✅ 내 귀속 해제 (보상 수령 전엔 계속 귀속)
     activeBossId = "";
     save();
+    refreshBossBattleAlert("");
     update();
 
     closeBossRewardOverlay();
