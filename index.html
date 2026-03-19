@@ -9100,6 +9100,7 @@ function loadHallOfFame() {
       }
 
 listEl.innerHTML = arr.map((r, i) => {
+  const displayNo = arr.length - i;
   const d = r.achievedAt
     ? new Date(Number(r.achievedAt)).toLocaleString("ko-KR")
     : "-";
@@ -9110,7 +9111,7 @@ const stars = (starCount <= 4) ? "★".repeat(starCount) : `★★${starCount}�
   return `
     <div style="padding:6px 0; border-bottom:1px solid #333;">
       <div style="font-size:12px; color:#ddd;">
-        <b>${i + 1}.</b>
+        <b>${displayNo}.</b>
         ${r.id}${starCount > 0 ? ` <span class="rainbowStar">${stars}</span>` : ""}
         <span style="color:#666;"> ㅣ </span>
         <span style="color:#ccc;">${r.weaponName} (+30강)</span>
@@ -9175,21 +9176,21 @@ const TITLE_DEFS = [
   { id:"worldchamp", name:"월드챔피언", how:"서버 최초 30강 달성", color:"redgold" },
 
   // ✅ 엔드(종착지) (금색)
-  { id:"end_sword", name:"검의 종착지",  how:"검으로 30강 달성",  color:"gold" },
-  { id:"end_axe",   name:"도끼의 종착지",how:"도끼로 30강 달성", color:"gold" },
-  { id:"end_spear", name:"창의 종착지",  how:"창으로 30강 달성",  color:"gold" },
-  { id:"end_dagger", name:"단검의 종착지", how:"단검으로 30강 달성", color:"gold" },
-  { id:"end_gauntlet", name:"건틀릿 종착지", how:"건틀릿 30강 달성", color:"gold" },
-  { id:"end_magitech", name:"마법공학 종착지", how:"마법공학 30강 달성", color:"gold" },
+  { id:"end_sword", name:"검성",  how:"검으로 30강 달성",  color:"gold" },
+  { id:"end_axe",   name:"버서커",how:"도끼로 30강 달성", color:"gold" },
+  { id:"end_spear", name:"용사냥꾼",  how:"창으로 30강 달성",  color:"gold" },
+  { id:"end_dagger", name:"나이트메어", how:"단검으로 30강 달성", color:"gold" },
+  { id:"end_gauntlet", name:"파천신권", how:"건틀릿 30강 달성", color:"gold" },
+  { id:"end_magitech", name:"노아", how:"마법공학 30강 달성", color:"gold" },
 
   // ✅ 역병쥐 (반짝 초록) + 방법 숨김
   { id:"plague", name:"역병쥐", how:"???", color:"plague" },
   
   { id:"bow21", name:"사냥꾼", how:"활 21강 달성", color:"" },
-  { id:"bow30", name:"활의 종착지", how:"활 30강 달성", color:"gold" },
+  { id:"bow30", name:"신궁", how:"활 30강 달성", color:"gold" },
 
   { id:"staff21", name:"마법사",       how:"스태프 21강 달성", color:"" },
-  { id:"staff30", name:"스태프 종착지", how:"스태프 30강 달성", color:"gold" },
+  { id:"staff30", name:"아크메이지", how:"스태프 30강 달성", color:"gold" },
 
     // ✅ 강화/파괴/강등 계열
   { id:"superstar", name:"슈퍼스타", how:"슈퍼강화 1회 성공" },
@@ -9410,16 +9411,16 @@ if (Number(plagueRatHuntCount || 0) >= 100) {
   }
   // ⚔️ 결투 업적
 if (Number(bully10Count || 0) >= 10) {
-  if (grantTitleOnceNoSave("bully10")) updated = true;
+  if (grantTitleOnceNoSave("bully10")) changed = true;
 }
 if (Number(challenger10Count || 0) >= 10) {
-  if (grantTitleOnceNoSave("challenger10")) updated = true;
+  if (grantTitleOnceNoSave("challenger10")) changed = true;
 }
 if (Number(brawl500Count || 0) >= 500) {
-  if (grantTitleOnceNoSave("brawl500")) updated = true;
+  if (grantTitleOnceNoSave("brawl500")) changed = true;
 }
 if (warGodWin) {
-  if (grantTitleOnceNoSave("warGod")) updated = true;
+  if (grantTitleOnceNoSave("warGod")) changed = true;
 }
   // 1) 새내기 대장장이: 최초 1회 강화 성공
   if(Number(maxSwordLevel || 0) >= 1 || Number(sword || 0) >= 1){
@@ -9432,6 +9433,21 @@ if (warGodWin) {
   if(maxLv >= 21) changed = grantTitleOnceNoSave("artisan21") || changed;  // [장인]
   if(maxLv >= 26) changed = grantTitleOnceNoSave("legend26") || changed;   // [전설]
   if(maxLv >= 30) changed = grantTitleOnceNoSave("best30") || changed;     // [최강자]
+
+  // 2-1) 30강 누적/무기별 반복 업적
+  const total30 = Number(reach30Count || 0);
+  const counts30 = (typeof weapon30Counts === "object" && weapon30Counts) ? weapon30Counts : {};
+  const sameWeaponBest = Math.max(0, ...Object.values(counts30).map(v => Number(v || 0)));
+
+  if(total30 >= 3) changed = grantTitleOnceNoSave("master30") || changed;   // [달인]
+  if(sameWeaponBest >= 2) changed = grantTitleOnceNoSave("oldwater") || changed; // [고인물]
+  if(sameWeaponBest >= 3) changed = grantTitleOnceNoSave("stale") || changed;    // [썩은물]
+
+  // 2-2) 폭죽놀이 소급 지급
+  const fw = fireworksDestroyed || { 21:false, 22:false, 23:false, 24:false, 25:false };
+  if (fw[21] && fw[22] && fw[23] && fw[24] && fw[25]) {
+    changed = grantTitleOnceNoSave("fireworks") || changed;
+  }
 
   // 3) 무기별 21강 칭호(검/창/도끼)
   // - weaponType 값은 네 랭킹에서도 쓰고 있음 (users list 정렬 데이터에 들어감) :contentReference[oaicite:1]{index=1}
@@ -15265,6 +15281,18 @@ if (before < 30 && sword >= 30) {
   const wt = weaponType || "sword";
   weapon30Counts = weapon30Counts || {};
   weapon30Counts[wt] = Number(weapon30Counts[wt] || 0) + 1;
+
+  // ✅ 30강 누적/같은 무기 반복 칭호 즉시 지급
+  if (grantTitleOnceNoSave("best30")) save();
+  if (Number(reach30Count || 0) >= 3) {
+    if (grantTitleOnceNoSave("master30")) save();
+  }
+  if (Number(weapon30Counts[wt] || 0) >= 2) {
+    if (grantTitleOnceNoSave("oldwater")) save();
+  }
+  if (Number(weapon30Counts[wt] || 0) >= 3) {
+    if (grantTitleOnceNoSave("stale")) save();
+  }
 
   // 🏛️ 전당 카운트 시작
   hofAchievedAt = Date.now();
