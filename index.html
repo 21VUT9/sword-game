@@ -26008,8 +26008,8 @@ function openDuelArena() {
    ========================= */
 (function(){
   const TWIN_BOSS_ID = "dawn_twin_knights";
-  const TWIN_A_MAX = 1100000000000; // 1조1천억
-  const TWIN_B_MAX = 1400000000000; // 1조4천억
+  const TWIN_A_MAX = 2100000000000; // 2조1천억
+  const TWIN_B_MAX = 1800000000000; // 1조8천억
   const TWIN_SYNC_INTERVAL = 60 * 60 * 1000; // 1시간
   const TWIN_SYNC_DELAY = 20 * 60 * 1000;    // 20분
   const TWIN_SYNC_CHANCE = 0.60;
@@ -26020,7 +26020,7 @@ function openDuelArena() {
       "아르셀리아의 죽음의 저주로 그들은 영겁의 시간에 갇혀버렸습니다.",
       "여명의쌍기사는 발테리온 왕국 말기, 가장 명망 깊었던 쌍둥이 기사였습니다.",
       "죽음세계의 국민들은 억겹의 세월동안 정신이 무너져 내려 지성을 잃었습니다.",
-      "라에온은 검술의 극의를, 카르벨은 마검술의 극의를 붙든 채 죽음에 침식되었습니다.",
+      "라에온은 검술의 극의를, 카르텔은 마검술의 극의를 붙든 채 죽음에 침식되었습니다.",
       "대화를 나누지 못하는 지금도, 둘의 합은 본능처럼 이어집니다."
     ];
   }
@@ -26043,7 +26043,7 @@ function openDuelArena() {
       id: TWIN_BOSS_ID,
       mapName: "망령왕의 죽음세계",
       bossTitle: "여명의쌍기사",
-      bossName: "라에온&카르벨",
+      bossName: "라에온&카르텔",
       desc: "대륙을 제패하고 찬란한 문명을 이룩한 황금기의 발테리온 왕국을 대표하던 쌍둥이 기사.",
       minSword: 25,
       applyCostGold: 70000000000,
@@ -26078,25 +26078,20 @@ function openDuelArena() {
     style.id = 'twinBossStyle';
     style.textContent = `
       #twinBossStage{position:absolute; inset:0; z-index:16; pointer-events:none;}
-      .twin-boss-unit{position:absolute; top:15%; width:44%; height:72%; pointer-events:none;}
+      .twin-boss-unit{position:absolute; top:10%; width:46%; height:80%; pointer-events:none;}
       .twin-boss-unit.left{left:1%;}
       .twin-boss-unit.right{right:1%;}
-      .twin-boss-hp{position:absolute; left:50%; top:0; transform:translateX(-50%); width:min(240px,88%); height:38px; pointer-events:none;}
-      .twin-boss-hp-track{position:absolute; inset:0; border-radius:999px; background:rgba(0,0,0,0.58); border:1px solid rgba(255,255,255,0.18); overflow:hidden; box-shadow:0 6px 14px rgba(0,0,0,0.45);}
-      .twin-boss-hp-fill{position:absolute; inset:0 auto 0 0; width:100%; background:linear-gradient(90deg,#8d1d1d,#d54242,#ff7f50);}
-      .twin-boss-hp.right .twin-boss-hp-fill{background:linear-gradient(90deg,#3b226b,#7b49d8,#b58bff);}
-      .twin-boss-hp-name{position:absolute; left:10px; top:-18px; color:#fff; font-weight:900; font-size:13px; text-shadow:0 2px 5px #000; white-space:nowrap;}
-      .twin-boss-hp-text{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; font-weight:900; text-shadow:0 2px 5px #000;}
-      .twin-boss-img{position:absolute; left:50%; bottom:0; transform:translateX(-50%); width:min(250px,76%); height:min(500px,92%); object-fit:contain; pointer-events:auto; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; filter:drop-shadow(0 10px 22px rgba(0,0,0,0.65));}
+      .twin-boss-hp{position:absolute; left:50%; top:0; transform:translateX(-50%); width:min(330px,92%); height:52px; pointer-events:none;}
+      .twin-boss-hp-name{position:absolute; left:50%; top:-18px; transform:translateX(-50%); color:#fff; font-weight:900; font-size:13px; text-shadow:0 2px 5px #000; white-space:nowrap;}
+      .twin-boss-hp-inner{position:absolute; inset:0;}
+      .twin-boss-hp-fillwrap{position:absolute; left:0; top:0; bottom:0; width:100%; overflow:hidden; z-index:1; padding-left:45px; box-sizing:border-box;}
+      .twin-boss-hp-fillimg{width:100%; height:100%; object-fit:fill; pointer-events:none;}
+      .twin-boss-hp-frameimg{position:absolute; inset:0; width:100%; height:100%; object-fit:fill; pointer-events:none; z-index:2;}
+      .twin-boss-hp-text{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; font-weight:900; text-shadow:0 2px 5px #000; z-index:3;}
+      .twin-boss-img{position:absolute; left:50%; bottom:0; transform:translateX(-50%); width:min(325px,84%); height:min(650px,98%); object-fit:contain; pointer-events:auto; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; filter:drop-shadow(0 10px 22px rgba(0,0,0,0.65));}
       .twin-boss-img.down{cursor:default; opacity:0.92; filter:grayscale(0.08) drop-shadow(0 8px 20px rgba(0,0,0,0.75));}
       .twin-boss-img.disabled{pointer-events:none;}
-      .twin-boss-float{position:absolute; left:50%; top:42%; transform:translate(-50%,-50%); pointer-events:none; z-index:4; font-weight:900; text-shadow:0 2px 10px rgba(0,0,0,0.9); white-space:nowrap; opacity:0; transition:transform .9s ease, opacity .9s ease;}
-      .twin-boss-float.show{opacity:1; transform:translate(-50%,-78px);}
-      .twin-boss-float.hit{color:#ffd54f; font-size:18px;}
-      .twin-boss-float.crit{color:#ff4a4a; font-size:24px;}
-      .twin-boss-float.miss{color:#d0d0d0; font-size:18px;}
-      .twin-boss-img.hitflash{animation:twinBossHitFlash .22s ease;}
-      @keyframes twinBossHitFlash{0%{filter:brightness(2.0) drop-shadow(0 0 18px rgba(255,255,255,.75));}100%{filter:drop-shadow(0 10px 22px rgba(0,0,0,.65));}}
+      .twin-boss-img.hit-flash{animation:bossHitFlash 160ms ease-out 1; will-change:filter;}
     `;
     document.head.appendChild(style);
   }
@@ -26113,20 +26108,26 @@ function openDuelArena() {
     stage.innerHTML = `
       <div class="twin-boss-unit left" id="twinBossUnitA">
         <div class="twin-boss-hp left" id="twinBossHpA">
-          <div class="twin-boss-hp-name">라에온</div>
-          <div class="twin-boss-hp-track"><div class="twin-boss-hp-fill" id="twinBossHpFillA"></div></div>
-          <div class="twin-boss-hp-text" id="twinBossHpTextA">-</div>
+          <div class="twin-boss-hp-name">검의기사 라에온</div>
+          <div class="twin-boss-hp-inner">
+            <div class="twin-boss-hp-fillwrap" id="twinBossHpFillWrapA"><img class="twin-boss-hp-fillimg" id="twinBossHpFillA" src="images/ui/boss_hp_fill.png" alt=""></div>
+            <img class="twin-boss-hp-frameimg" src="images/ui/boss_hp_frame.png" alt="">
+            <div class="twin-boss-hp-text" id="twinBossHpTextA">-</div>
+          </div>
         </div>
         <img id="twinBossImgA" class="twin-boss-img" alt="라에온">
         <div id="twinBossFloatA" class="twin-boss-float hit"></div>
       </div>
       <div class="twin-boss-unit right" id="twinBossUnitB">
         <div class="twin-boss-hp right" id="twinBossHpB">
-          <div class="twin-boss-hp-name">카르벨</div>
-          <div class="twin-boss-hp-track"><div class="twin-boss-hp-fill" id="twinBossHpFillB"></div></div>
-          <div class="twin-boss-hp-text" id="twinBossHpTextB">-</div>
+          <div class="twin-boss-hp-name">마검의기사 카르텔</div>
+          <div class="twin-boss-hp-inner">
+            <div class="twin-boss-hp-fillwrap" id="twinBossHpFillWrapB"><img class="twin-boss-hp-fillimg" id="twinBossHpFillB" src="images/ui/boss_hp_fill.png" alt=""></div>
+            <img class="twin-boss-hp-frameimg" src="images/ui/boss_hp_frame.png" alt="">
+            <div class="twin-boss-hp-text" id="twinBossHpTextB">-</div>
+          </div>
         </div>
-        <img id="twinBossImgB" class="twin-boss-img" alt="카르벨">
+        <img id="twinBossImgB" class="twin-boss-img" alt="카르텔">
         <div id="twinBossFloatB" class="twin-boss-float hit"></div>
       </div>
     `;
@@ -26173,7 +26174,7 @@ function openDuelArena() {
       };
     }
     return {
-      name: '카르벨',
+      name: '카르텔',
       hp: Math.max(0, Number(run.hpB || 0)),
       maxHp: TWIN_B_MAX,
       evade: 0.15,
@@ -26188,6 +26189,30 @@ function openDuelArena() {
     const table = { 25:1.00, 26:0.70, 27:0.50, 28:0.30, 29:0.25, 30:0.16 };
     swordLv = Number(swordLv || 0);
     return Object.prototype.hasOwnProperty.call(table, swordLv) ? table[swordLv] : 1;
+  }
+
+  function setTwinBossHpBarWidth(fillWrapId, ratio){
+    const fillWrap = document.getElementById(fillWrapId);
+    if (!fillWrap) return;
+    const LEFT_PAD = 45;
+    const r = Math.max(0, Math.min(1, Number(ratio) || 0));
+    const totalW = (fillWrap.parentElement ? fillWrap.parentElement.clientWidth : 0);
+    if (totalW > 0) {
+      const usable = Math.max(0, totalW - LEFT_PAD);
+      const w = LEFT_PAD + usable * r;
+      fillWrap.style.width = `${Math.round(w)}px`;
+    } else {
+      fillWrap.style.width = `${(r * 100).toFixed(3)}%`;
+    }
+  }
+
+  function playTwinBossHitFx(key){
+    const img = document.getElementById(key === 'a' ? 'twinBossImgA' : 'twinBossImgB');
+    if (!img) return;
+    img.classList.remove('hit-flash');
+    void img.offsetWidth;
+    img.classList.add('hit-flash');
+    setTimeout(() => img.classList.remove('hit-flash'), 220);
   }
 
   function calcTwinBossAttackResult(run, key){
@@ -26222,22 +26247,16 @@ function openDuelArena() {
     return { damage: 1, displayDamage: 1, isMiss: false, isCrit: false };
   }
 
-  function spawnTwinFloat(key, text, kind){
-    const el = document.getElementById(key === 'a' ? 'twinBossFloatA' : 'twinBossFloatB');
-    const img = document.getElementById(key === 'a' ? 'twinBossImgA' : 'twinBossImgB');
-    if (!el) return;
-    el.className = `twin-boss-float ${kind}`;
-    el.textContent = text;
-    el.classList.remove('show');
-    void el.offsetWidth;
-    el.classList.add('show');
-    if (img) {
-      img.classList.remove('hitflash');
-      void img.offsetWidth;
-      if (kind !== 'miss') img.classList.add('hitflash');
-      setTimeout(() => img.classList.remove('hitflash'), 260);
+  function spawnTwinFloat(key, ev, valueOrText, kind){
+    const isMagic = twinBossIsMagicWeapon();
+    if (typeof spawnBossHitEffectAt === 'function') {
+      spawnBossHitEffectAt(ev.clientX, ev.clientY, kind, isMagic);
     }
-    setTimeout(() => el.classList.remove('show'), 950);
+    if (typeof spawnBossDamageFloatAt === 'function') {
+      if (kind === 'miss') spawnBossDamageFloatAt(ev.clientX, ev.clientY, 'MISS', 'miss');
+      else spawnBossDamageFloatAt(ev.clientX, ev.clientY, valueOrText, kind);
+    }
+    if (kind !== 'miss') playTwinBossHitFx(key);
   }
 
   window.attackTwinBossByKey = function(ev, key){
@@ -26255,10 +26274,10 @@ function openDuelArena() {
 
     const result = calcTwinBossAttackResult(run, key);
     if (result.isMiss) {
-      spawnTwinFloat(key, 'MISS', 'miss');
+      spawnTwinFloat(key, ev, 'MISS', 'miss');
       return;
     }
-    spawnTwinFloat(key, formatDamageKoUnits(result.displayDamage) + (result.isCrit ? '!' : ''), result.isCrit ? 'crit' : 'hit');
+    spawnTwinFloat(key, ev, result.displayDamage, result.isCrit ? 'crit' : 'hit');
 
     const runRef = db.ref(`bossRunsActive/${bossId}`);
     runRef.transaction((cur) => {
@@ -26300,7 +26319,7 @@ function openDuelArena() {
           writeBossBattleLog(bossId, '라에온이 한쪽 무릎을 꿇고 검에 몸을 기댑니다.');
         }
         if (String(key) === 'b' && Number(v.hpB || 0) <= 0) {
-          writeBossBattleLog(bossId, '카르벨이 마검을 붙든 채 무릎을 꿇습니다.');
+          writeBossBattleLog(bossId, '카르텔이 마검을 붙든 채 무릎을 꿇습니다.');
         }
       }
     });
@@ -26386,15 +26405,15 @@ function openDuelArena() {
     if (bossId !== TWIN_BOSS_ID) return __orig_openBossBattleHelp_twin.apply(this, arguments);
     const html = `
       <div style="font-size:13px; line-height:1.65; text-align:left;">
-        <div style="font-weight:900; margin-bottom:8px;">여명의쌍기사 라에온&카르벨</div>
+        <div style="font-weight:900; margin-bottom:8px;">여명의쌍기사 라에온&카르텔</div>
         <div style="margin-bottom:8px; color:#cfcfcf;">대륙을 제패하고 찬란한 문명을 이룩한 황금기였던 발테리온 왕국을 대표하는 강자 중 한 쌍.</div>
         <div style="margin-bottom:8px;">
-          • 라에온: 체력 1조1천억 / 방어력 15% / 회피율 10%<br>
-          • 카르벨: 체력 1조4천억 / 방어력 10% / 회피율 15%
+          • 라에온: 체력 2조1천억 / 방어력 15% / 회피율 10%<br>
+          • 카르텔: 체력 1조8천억 / 방어력 10% / 회피율 15%
         </div>
         <div style="margin-bottom:8px; color:#ffd27a;">
           • 라에온은 주문력만 유효, 공격력은 1만 들어갑니다.<br>
-          • 카르벨은 공격력만 유효, 주문력은 1만 들어갑니다.
+          • 카르텔은 공격력만 유효, 주문력은 1만 들어갑니다.
         </div>
         <div>
           • 개설 비용: 700억 골드<br>
@@ -26551,7 +26570,7 @@ function openDuelArena() {
         }
         activeBossId = bossId;
         save();
-        writeLog(`${userNick}님이 여명의쌍기사 라에온&카르벨 토벌을 시작하였습니다.`, false, { tone:'boss_apply' });
+        writeLog(`${userNick}님이 여명의쌍기사 라에온&카르텔 토벌을 시작하였습니다.`, false, { tone:'boss_apply' });
         writeBossBattleLog(bossId, `토벌대가 결성되었습니다. (대장: ${getNickSafe()})`);
         showNpcMessage('✅ 토벌이 시작됐다.<br>망령왕의 죽음세계에서 여명의쌍기사가 그대들을 기다린다.', LEON_IMG.apply, true, '길드마스터 – 레온하르트 발렌');
       });
@@ -26606,13 +26625,13 @@ function openDuelArena() {
     const ratioB = Math.max(0, Math.min(1, hpB / TWIN_B_MAX));
     const imgA = document.getElementById('twinBossImgA');
     const imgB = document.getElementById('twinBossImgB');
-    const fillA = document.getElementById('twinBossHpFillA');
-    const fillB = document.getElementById('twinBossHpFillB');
+    const fillWrapA = document.getElementById('twinBossHpFillWrapA');
+    const fillWrapB = document.getElementById('twinBossHpFillWrapB');
     const txtA = document.getElementById('twinBossHpTextA');
     const txtB = document.getElementById('twinBossHpTextB');
 
-    if (fillA) fillA.style.width = `${(ratioA * 100).toFixed(3)}%`;
-    if (fillB) fillB.style.width = `${(ratioB * 100).toFixed(3)}%`;
+    setTwinBossHpBarWidth('twinBossHpFillWrapA', ratioA);
+    setTwinBossHpBarWidth('twinBossHpFillWrapB', ratioB);
     if (txtA) txtA.textContent = `${formatBossHpShort(hpA)} / ${formatBossHpShort(TWIN_A_MAX)}`;
     if (txtB) txtB.textContent = `${formatBossHpShort(hpB)} / ${formatBossHpShort(TWIN_B_MAX)}`;
 
