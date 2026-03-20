@@ -4711,6 +4711,8 @@ html, body {
     <span id="rankingTabAllTime" onclick="setMainRankingTab('alltime')" style="cursor:pointer; font-weight:900; color:#ffd54f;">[역대랭킹]</span>
     <span style="display:inline-block; width:10px;"></span>
     <span id="rankingTabWeekly" onclick="setMainRankingTab('weekly')" style="cursor:pointer; font-weight:700; color:#bdbdbd;">[주간랭킹]</span>
+    <span style="display:inline-block; width:10px;"></span>
+    <span id="rankingTabUpgrade" onclick="setMainRankingTab('upgrade')" style="cursor:pointer; font-weight:700; color:#bdbdbd;">[강화랭킹]</span>
   </div>
   <div id="ranking">불러오는 중...</div>
   <div id="myRank" style="margin-top:8px; font-size:14px; color:#ccc;"></div>
@@ -18692,9 +18694,10 @@ let rankingWeeklyCache = [];
 let rankingUsersCacheBound = false;
 
 function setMainRankingTab(mode){
-  mainRankingTab = (mode === "weekly") ? "weekly" : "alltime";
+  mainRankingTab = (["weekly", "upgrade"].includes(mode)) ? mode : "alltime";
   const allTab = document.getElementById("rankingTabAllTime");
   const weekTab = document.getElementById("rankingTabWeekly");
+  const upgradeTab = document.getElementById("rankingTabUpgrade");
   if (allTab) {
     allTab.style.color = (mainRankingTab === "alltime") ? "#ffd54f" : "#bdbdbd";
     allTab.style.fontWeight = (mainRankingTab === "alltime") ? "900" : "700";
@@ -18702,6 +18705,10 @@ function setMainRankingTab(mode){
   if (weekTab) {
     weekTab.style.color = (mainRankingTab === "weekly") ? "#ffd54f" : "#bdbdbd";
     weekTab.style.fontWeight = (mainRankingTab === "weekly") ? "900" : "700";
+  }
+  if (upgradeTab) {
+    upgradeTab.style.color = (mainRankingTab === "upgrade") ? "#ffd54f" : "#bdbdbd";
+    upgradeTab.style.fontWeight = (mainRankingTab === "upgrade") ? "900" : "700";
   }
   renderMainRanking();
 }
@@ -18718,10 +18725,50 @@ function buildMainRankingRowHtml(snap, rank){
   `;
 }
 
+function buildUpgradeRankingRowHtml(u, rank){
+  const wInfo = getWeaponInfo(Number(u.sword || 0), u.weaponType || "sword");
+  const weaponNameStyled = coloredWeaponName(Number(u.sword || 0), String((wInfo && wInfo.name) || "무기"));
+  return `
+    <div class="ranking-row" style="font-weight:bold; line-height:1.5;">
+      ${rank}. <span class="rank-user" data-user-id="${String(u.id || "")}" onclick="openOtherUserProfilePopup('${String(u.id || "")}')" style="cursor:pointer;">${formatNicknameWithTitle(u.id, u.equippedTitle, u.reach30Count)}</span>
+      | ${weaponNameStyled} ${coloredLevel(Number(u.sword || 0))}
+      | 전적: ${Number(u.duelWin || 0)}승 ${Number(u.duelLose || 0)}패
+    </div>
+  `;
+}
+
 function renderMainRanking(){
   const rankingEl = document.getElementById("ranking");
   const myRankEl = document.getElementById("myRank");
   if (!rankingEl || !myRankEl) return;
+
+  if (mainRankingTab === "upgrade") {
+    const arr = allUsersCache.slice().sort((a, b) => {
+      if (Number(b.sword || 0) !== Number(a.sword || 0)) return Number(b.sword || 0) - Number(a.sword || 0);
+      return Number(a.updated || 0) - Number(b.updated || 0);
+    });
+
+    if (!arr.length) {
+      rankingEl.innerHTML = `<div style="color:#999; font-size:13px;">기록 없음</div>`;
+    } else {
+      rankingEl.innerHTML = arr.slice(0, 10).map((u, i) => buildUpgradeRankingRowHtml(u, i + 1)).join("");
+    }
+
+    if (!userId) {
+      myRankEl.innerText = "";
+      return;
+    }
+
+    const idx = arr.findIndex(u => String(u.id || "") === String(userId));
+    if (idx === -1) {
+      myRankEl.innerText = "내 랭킹: 기록 없음";
+      return;
+    }
+
+    const mine = arr[idx] || {};
+    myRankEl.innerHTML = `내 랭킹: <b>${idx + 1}위</b> (${coloredLevel(Number(mine.sword || 0))}, 전적: ${Number(mine.duelWin || 0)}승 ${Number(mine.duelLose || 0)}패)`;
+    return;
+  }
 
   const arr = (mainRankingTab === "weekly") ? rankingWeeklyCache.slice() : rankingAllTimeCache.slice();
   arr.sort((a, b) => {
@@ -18764,17 +18811,20 @@ function bindRankingUsersCache(){
         sword: Number(d.sword || 0),
         updated: Number(d.updated || 0),
         power: Number(d.power || 0),
+        duelWin: Number(d.duelWin || 0),
+        duelLose: Number(d.duelLose || 0),
         weaponType: d.weaponType || "sword",
         equippedTitle: d.equippedTitle || "",
         reach30Count: Number(d.reach30Count || 0)
       });
     });
     arr.sort((a, b) => {
-      if (b.sword !== a.sword) return b.sword - a.sword;
-      return a.updated - b.updated;
+      if (Number(b.sword || 0) !== Number(a.sword || 0)) return Number(b.sword || 0) - Number(a.sword || 0);
+      return Number(a.updated || 0) - Number(b.updated || 0);
     });
     allUsersCache = arr.slice();
     refreshUserListOverlayIfOpen();
+    if (mainRankingTab === "upgrade") renderMainRanking();
   });
 }
 
