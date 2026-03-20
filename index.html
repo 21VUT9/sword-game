@@ -26660,6 +26660,26 @@ function openDuelArena() {
       showNpcMessage(`조건이 부족합니다. (필요: +${def.minSword}강)`, LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
       return;
     }
+
+    // ✅ 쌍기사 토벌 완료/실패 후 24시간 쿨다운 체크
+    const cd = (bossCooldownCache || {})[TWIN_BOSS_ID];
+    const nextAtRaw = cd ? cd.nextAt : 0;
+    let nextAt = 0;
+    if (typeof nextAtRaw === 'number') nextAt = nextAtRaw;
+    else if (typeof nextAtRaw === 'string') nextAt = Number(nextAtRaw);
+    if (!Number.isFinite(nextAt)) nextAt = 0;
+
+    const remainMs = Math.max(0, nextAt - Date.now());
+    if (remainMs > 0) {
+      showNpcMessage(
+        `아직 다시 토벌을 신청할 수 없습니다.<br><br>⏳ 신청 가능까지: <b>${formatHMS(remainMs)}</b>`,
+        LEON_IMG.focus,
+        true,
+        '길드마스터 – 레온하르트 발렌'
+      );
+      return;
+    }
+
     const userGoldRef = db.ref(`users/${userId}/gold`);
     userGoldRef.transaction((g) => {
       g = Number(g || 0);
