@@ -26088,7 +26088,7 @@ function openDuelArena() {
       .twin-boss-hp-fillimg{width:100%; height:100%; object-fit:fill; pointer-events:none;}
       .twin-boss-hp-frameimg{position:absolute; inset:0; width:100%; height:100%; object-fit:fill; pointer-events:none; z-index:2;}
       .twin-boss-hp-text{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; font-weight:900; text-shadow:0 2px 5px #000; z-index:3;}
-      .twin-boss-img{position:absolute; left:50%; bottom:0; transform:translateX(-50%) translateY(50px) scale(1.6); transform-origin:50% 100%; width:min(325px,84%); height:min(650px,98%); object-fit:contain; pointer-events:auto; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; filter:drop-shadow(0 10px 22px rgba(0,0,0,0.65));}
+      .twin-boss-img{position:absolute; left:50%; bottom:0; transform:translateX(-50%) translateY(90px) scale(1.6); transform-origin:50% 100%; width:min(325px,84%); height:min(650px,98%); object-fit:contain; pointer-events:auto; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; filter:drop-shadow(0 10px 22px rgba(0,0,0,0.65));}
       .twin-boss-img.down{cursor:default; opacity:0.92; filter:grayscale(0.08) drop-shadow(0 8px 20px rgba(0,0,0,0.75));}
       .twin-boss-img.disabled{pointer-events:none;}
       .twin-boss-img.hit-flash{animation:bossHitFlash 160ms ease-out 1; will-change:filter;}
@@ -26502,17 +26502,7 @@ function openDuelArena() {
           • 라에온: 체력 2조1천억 / 방어력 15% / 회피율 10%<br>
           • 카르텔: 체력 1조8천억 / 방어력 10% / 회피율 15%
         </div>
-        <div style="margin-bottom:8px; color:#ffd27a;">
-          • 라에온은 주문력만 유효, 공격력은 1만 들어갑니다.<br>
-          • 카르텔은 공격력만 유효, 주문력은 1만 들어갑니다.
-        </div>
-        <div>
-          • 개설 비용: 700억 골드<br>
-          • 최소 필요 강화: 25강<br>
-          • 토벌 기한: 72시간<br>
-          • 1시간마다 60% 확률로 동기화 예고 발생<br>
-          • 예고 후 20분이 지나면 더 높은 체력의 기사로 두 기사의 체력이 동기화됩니다.
-        </div>
+
       </div>
     `;
     showNpcMessage(html, LEON_IMG.focus, true, '보스정보');
