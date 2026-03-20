@@ -26036,6 +26036,18 @@ function openDuelArena() {
     }
   }
 
+  function twinRemainText(ts){
+    try{
+      const remain = Math.max(0, Number(ts || 0) - Date.now());
+      const totalSec = Math.ceil(remain / 1000);
+      const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
+      const ss = String(totalSec % 60).padStart(2, "0");
+      return `${mm}:${ss}`;
+    }catch(e){
+      return "00:00";
+    }
+  }
+
   function ensureTwinBossDef(){
     if (!Array.isArray(BOSS_DEFS)) return;
     if (BOSS_DEFS.some(b => String(b.id) === TWIN_BOSS_ID)) return;
@@ -26088,7 +26100,7 @@ function openDuelArena() {
       .twin-boss-hp-fillimg{width:100%; height:100%; object-fit:fill; pointer-events:none;}
       .twin-boss-hp-frameimg{position:absolute; inset:0; width:100%; height:100%; object-fit:fill; pointer-events:none; z-index:2;}
       .twin-boss-hp-text{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; font-weight:900; text-shadow:0 2px 5px #000; z-index:3;}
-      .twin-boss-img{position:absolute; left:50%; bottom:0; transform:translateX(-50%) translateY(90px) scale(1.6); transform-origin:50% 100%; width:min(325px,84%); height:min(650px,98%); object-fit:contain; pointer-events:auto; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; filter:drop-shadow(0 10px 22px rgba(0,0,0,0.65));}
+      .twin-boss-img{position:absolute; left:50%; bottom:0; transform:translateX(-50%) translateY(115px) scale(1.6); transform-origin:50% 100%; width:min(325px,84%); height:min(650px,98%); object-fit:contain; pointer-events:auto; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; filter:drop-shadow(0 10px 22px rgba(0,0,0,0.65));}
       .twin-boss-img.down{cursor:default; opacity:0.92; filter:grayscale(0.08) drop-shadow(0 8px 20px rgba(0,0,0,0.75));}
       .twin-boss-img.disabled{pointer-events:none;}
       .twin-boss-img.hit-flash{animation:bossHitFlash 160ms ease-out 1; will-change:filter;}
@@ -26466,7 +26478,7 @@ function openDuelArena() {
       if (err || !committed || !snap || !snap.val) return;
       const cur = snap.val() || {};
       if (cur.syncPending && Number(cur.syncNoticeAt || 0) > 0 && Math.abs(Number(cur.syncNoticeAt || 0) - now) < 15000) {
-        writeBossBattleLog(bossId, `두 기사가 서로를 바라봅니다. 죽음의 기운이 공명합니다. ${twinClockText(cur.syncReadyAt)}`, { tone:'yellow' });
+        writeBossBattleLog(bossId, '두 기사가 서로를 바라봅니다. 죽음의 기운이 공명합니다.', { tone:'yellow' });
       }
     });
   }
@@ -26475,6 +26487,18 @@ function openDuelArena() {
     const run = (bossRunsActiveCache || {})[TWIN_BOSS_ID];
     maybeHandleTwinBossSkill(run);
   }, 5000);
+
+  setInterval(function(){
+    try{
+      if (String(activeBossId || '') !== TWIN_BOSS_ID) return;
+      const run = (bossRunsActiveCache || {})[TWIN_BOSS_ID];
+      if (!run || !run.syncPending || Number(run.syncReadyAt || 0) <= 0) return;
+      const lineMainEl = document.getElementById('bossBattleBossLineMain');
+      const lineSubEl = document.getElementById('bossBattleBossLineSub');
+      if (lineMainEl) lineMainEl.textContent = '두 기사가 서로를 바라봅니다. 죽음의 기운이 공명합니다.';
+      if (lineSubEl) lineSubEl.textContent = `동기화까지 ${twinRemainText(run.syncReadyAt)}`;
+    }catch(e){}
+  }, 1000);
 
   const __orig_getBossBattleStats_twin = getBossBattleStats;
   getBossBattleStats = function(bossId){
@@ -26789,7 +26813,7 @@ function openDuelArena() {
       if (rewardBtn) rewardBtn.style.display = 'none';
       if (run.syncPending && Number(run.syncReadyAt || 0) > 0) {
         if (lineMainEl) lineMainEl.textContent = '두 기사가 서로를 바라봅니다. 죽음의 기운이 공명합니다.';
-        if (lineSubEl) lineSubEl.textContent = `${twinClockText(run.syncReadyAt)}에 동기화`;
+        if (lineSubEl) lineSubEl.textContent = `동기화까지 ${twinRemainText(run.syncReadyAt)}`;
       } else {
         if (lineSubEl) lineSubEl.textContent = '';
         if (lineMainEl && (!lineMainEl.textContent || Math.random() < 0.10)) {
