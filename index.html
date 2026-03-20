@@ -9320,7 +9320,6 @@ function loadHallOfFame() {
   if (!listEl) return;
 
   db.ref("hallOfFame")
-    .limitToLast(30)
     .on("value", (snap) => {
       const obj = snap.val() || {};
       const arr = Object.keys(obj).map(k => ({ key:k, ...obj[k] }));
@@ -26206,7 +26205,7 @@ function openDuelArena() {
   function setTwinBossHpBarWidth(fillWrapId, ratio){
     const fillWrap = document.getElementById(fillWrapId);
     if (!fillWrap) return;
-    const LEFT_PAD = 45;
+    const LEFT_PAD = 33;
     const r = Math.max(0, Math.min(1, Number(ratio) || 0));
     const totalW = (fillWrap.parentElement ? fillWrap.parentElement.clientWidth : 0);
     if (totalW > 0) {
