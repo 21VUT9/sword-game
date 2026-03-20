@@ -26088,7 +26088,7 @@ function openDuelArena() {
       .twin-boss-hp-fillimg{width:100%; height:100%; object-fit:fill; pointer-events:none;}
       .twin-boss-hp-frameimg{position:absolute; inset:0; width:100%; height:100%; object-fit:fill; pointer-events:none; z-index:2;}
       .twin-boss-hp-text{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; font-weight:900; text-shadow:0 2px 5px #000; z-index:3;}
-      .twin-boss-img{position:absolute; left:50%; bottom:0; transform:translateX(-50%); width:min(325px,84%); height:min(650px,98%); object-fit:contain; pointer-events:auto; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; filter:drop-shadow(0 10px 22px rgba(0,0,0,0.65));}
+      .twin-boss-img{position:absolute; left:50%; bottom:0; transform:translateX(-50%) scale(1.8); transform-origin:50% 100%; width:min(325px,84%); height:min(650px,98%); object-fit:contain; pointer-events:auto; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; filter:drop-shadow(0 10px 22px rgba(0,0,0,0.65));}
       .twin-boss-img.down{cursor:default; opacity:0.92; filter:grayscale(0.08) drop-shadow(0 8px 20px rgba(0,0,0,0.75));}
       .twin-boss-img.disabled{pointer-events:none;}
       .twin-boss-img.hit-flash{animation:bossHitFlash 160ms ease-out 1; will-change:filter;}
@@ -26247,15 +26247,106 @@ function openDuelArena() {
     return { damage: 1, displayDamage: 1, isMiss: false, isCrit: false };
   }
 
+  function spawnTwinBossHitEffectAt(clientX, clientY, kind, isMagic){
+    const layer = document.getElementById('twinBossStage');
+    if (!layer) return;
+    const rect = layer.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    const idx = String(1 + Math.floor(Math.random() * 7)).padStart(2, '0');
+    const src = isMagic
+      ? `images/effects/boss_hit_mag_${idx}.png`
+      : `images/effects/boss_hit_atk_${idx}.png`;
+
+    const img = document.createElement('img');
+    img.src = src;
+    img.style.position = 'absolute';
+    img.style.left = `${x}px`;
+    img.style.top = `${y}px`;
+    img.style.width = (kind === 'crit') ? '88px' : '76px';
+    img.style.height = img.style.width;
+    img.style.transform = 'translate(-50%, -50%) scale(0.85)';
+    img.style.opacity = (kind === 'miss') ? '0.55' : '0';
+    img.style.pointerEvents = 'none';
+    img.style.zIndex = '40';
+    img.style.filter = 'drop-shadow(0 2px 6px rgba(0,0,0,0.85))';
+    img.style.transition = 'transform 520ms ease, opacity 520ms ease';
+    layer.appendChild(img);
+
+    requestAnimationFrame(() => {
+      img.style.opacity = '1';
+      img.style.transform = 'translate(-50%, -50%) scale(1.15)';
+    });
+
+    setTimeout(() => {
+      img.style.opacity = '0';
+      img.style.transform = 'translate(-50%, -50%) scale(1.00)';
+    }, 240);
+
+    setTimeout(() => img.remove(), 620);
+  }
+
+  function spawnTwinBossDamageFloatAt(clientX, clientY, valueOrText, kind){
+    const layer = document.getElementById('twinBossStage');
+    if (!layer) return;
+    const rect = layer.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    const el = document.createElement('div');
+    el.style.position = 'absolute';
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    el.style.transform = 'translate(-50%, 0) scale(0.95)';
+    el.style.pointerEvents = 'none';
+    el.style.zIndex = '41';
+    el.style.fontWeight = '900';
+    el.style.whiteSpace = 'nowrap';
+    el.style.textShadow = '0 0 10px rgba(0,0,0,0.85)';
+    el.style.opacity = '0';
+
+    if (kind === 'miss') {
+      el.textContent = 'MISS';
+      el.style.color = '#bdbdbd';
+      el.style.fontSize = '18px';
+      el.style.letterSpacing = '1px';
+    } else {
+      const v = (typeof valueOrText === 'number') ? formatDamageKoUnits(valueOrText) : String(valueOrText);
+      if (kind === 'crit') {
+        el.textContent = v + '!';
+        el.style.color = '#ff3b3b';
+        el.style.fontSize = '24px';
+      } else {
+        el.textContent = v;
+        el.style.color = '#ffd700';
+        el.style.fontSize = '18px';
+      }
+    }
+
+    layer.appendChild(el);
+
+    const HOLD_MS = 1500;
+    const FADE_MS = 3000;
+    el.style.transition = 'opacity 180ms ease, transform 180ms ease';
+    requestAnimationFrame(() => {
+      el.style.opacity = '1';
+      el.style.transform = 'translate(-50%, 0) scale(1)';
+    });
+
+    setTimeout(() => {
+      el.style.transition = `opacity ${FADE_MS}ms ease`;
+      el.style.opacity = '0';
+    }, HOLD_MS);
+
+    setTimeout(() => el.remove(), HOLD_MS + FADE_MS + 80);
+  }
+
   function spawnTwinFloat(key, ev, valueOrText, kind){
     const isMagic = twinBossIsMagicWeapon();
-    if (typeof spawnBossHitEffectAt === 'function') {
-      spawnBossHitEffectAt(ev.clientX, ev.clientY, kind, isMagic);
-    }
-    if (typeof spawnBossDamageFloatAt === 'function') {
-      if (kind === 'miss') spawnBossDamageFloatAt(ev.clientX, ev.clientY, 'MISS', 'miss');
-      else spawnBossDamageFloatAt(ev.clientX, ev.clientY, valueOrText, kind);
-    }
+    spawnTwinBossHitEffectAt(ev.clientX, ev.clientY, kind, isMagic);
+    if (kind === 'miss') spawnTwinBossDamageFloatAt(ev.clientX, ev.clientY, 'MISS', 'miss');
+    else spawnTwinBossDamageFloatAt(ev.clientX, ev.clientY, valueOrText, kind);
     if (kind !== 'miss') playTwinBossHitFx(key);
   }
 
