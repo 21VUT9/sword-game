@@ -15985,7 +15985,9 @@ if (useRate5) {
     const logMsg =
       `${userId}이 ${coloredLevel(targetLevel)} 도전에 실패하여 ` +
       `<span style="color:red;font-weight:bold;">파괴</span> 되었습니다!`;
-    writeLog(logMsg, true);
+    if (targetLevel >= 21) {
+      writeLog(logMsg, true);
+    }
 
     showNpcMessage(
       `
@@ -16125,7 +16127,9 @@ if (targetLevel >= 21 && targetLevel <= 25) {
       `<span style="color:#ffb74d;">위대한 도전에 모두 묵념...</span>`;
   }
 
-  writeLog(logMsg, true);
+  if (targetLevel >= 21) {
+    writeLog(logMsg, true);
+  }
 
   // 💥 25강 이상 파괴 시 붉은 플래시 + 전체 연출
   if (before >= 25) {
