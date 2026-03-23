@@ -25711,18 +25711,50 @@ function getRankingBattleWeeklyRewardByRank(rank){
   return rw;
 }
 
+function getRankingBattleWeeklyRewardClaimLocalKey(weekKey){
+  const uid = String(userId || "guest");
+  const wk = String(weekKey || "");
+  return `pugrant_rankingBattleWeeklyRewardClaimed_${uid}_${wk}`;
+}
+
+function isRankingBattleWeeklyRewardAlreadyClaimed(weekKey){
+  const safeWeekKey = String(weekKey || getPreviousKstWeekKey() || "");
+  if (!safeWeekKey) return false;
+
+  if (rankingBattleLastWeekRewardClaimed && String(rankingBattleLastRewardWeekKey || "") === safeWeekKey) {
+    return true;
+  }
+
+  try {
+    return localStorage.getItem(getRankingBattleWeeklyRewardClaimLocalKey(safeWeekKey)) === "1";
+  } catch(e) {
+    return false;
+  }
+}
+
+function markRankingBattleWeeklyRewardClaimed(weekKey, rank){
+  const safeWeekKey = String(weekKey || getPreviousKstWeekKey() || "");
+  if (!safeWeekKey) return;
+
+  rankingBattleLastWeekRank = Number(rank || 0);
+  rankingBattleLastWeekRewardClaimed = true;
+  rankingBattleLastRewardWeekKey = safeWeekKey;
+
+  try {
+    localStorage.setItem(getRankingBattleWeeklyRewardClaimLocalKey(safeWeekKey), "1");
+  } catch(e) {}
+}
+
 function grantWeeklyRankingBattleReward(myRank, rewardWeekKey){
   const safeWeekKey = String(rewardWeekKey || getPreviousKstWeekKey() || "");
   if (!safeWeekKey) return "";
-  if (rankingBattleLastWeekRewardClaimed && rankingBattleLastRewardWeekKey === safeWeekKey) {
+  if (isRankingBattleWeeklyRewardAlreadyClaimed(safeWeekKey)) {
     return "";
   }
 
   const rw = getRankingBattleWeeklyRewardByRank(Number(myRank || 0));
 
-  rankingBattleLastWeekRank = Number(myRank || 0);
-  rankingBattleLastWeekRewardClaimed = true;
-  rankingBattleLastRewardWeekKey = safeWeekKey;
+  markRankingBattleWeeklyRewardClaimed(safeWeekKey, myRank);
 
   itemProtect = Number(itemProtect || 0) + Number(rw.itemProtect || 0);
   itemSuper = Number(itemSuper || 0) + Number(rw.itemSuper || 0);
@@ -25761,7 +25793,7 @@ function checkWeeklyRankingBattleReward(afterFn){
     return;
   }
 
-  if (rankingBattleLastRewardWeekKey === prevWeekKey && rankingBattleLastWeekRewardClaimed) {
+  if (isRankingBattleWeeklyRewardAlreadyClaimed(prevWeekKey)) {
     if (typeof afterFn === "function") afterFn();
     return;
   }
@@ -25781,9 +25813,7 @@ function checkWeeklyRankingBattleReward(afterFn){
       });
 
       if (!arr.length) {
-        rankingBattleLastWeekRank = 0;
-        rankingBattleLastWeekRewardClaimed = true;
-        rankingBattleLastRewardWeekKey = prevWeekKey;
+        markRankingBattleWeeklyRewardClaimed(prevWeekKey, 0);
         save();
         if (typeof afterFn === "function") afterFn();
         return;
@@ -25796,9 +25826,7 @@ function checkWeeklyRankingBattleReward(afterFn){
 
       const myIndex = arr.findIndex((row) => String(row.uid) === String(userId));
       if (myIndex === -1) {
-        rankingBattleLastWeekRank = 0;
-        rankingBattleLastWeekRewardClaimed = true;
-        rankingBattleLastRewardWeekKey = prevWeekKey;
+        markRankingBattleWeeklyRewardClaimed(prevWeekKey, 0);
         save();
         if (typeof afterFn === "function") afterFn();
         return;
@@ -25806,7 +25834,7 @@ function checkWeeklyRankingBattleReward(afterFn){
 
       const myRank = myIndex + 1;
       const rewardText = grantWeeklyRankingBattleReward(myRank, prevWeekKey);
-      if (rankingBattleLastWeekRewardClaimed && rankingBattleLastRewardWeekKey === prevWeekKey && !rewardText) {
+      if (isRankingBattleWeeklyRewardAlreadyClaimed(prevWeekKey) && !rewardText) {
         if (typeof afterFn === "function") afterFn();
         return;
       }
