@@ -23184,6 +23184,9 @@ function giveUpBossRun(){
   }
 
   db.ref().update(updates).then(() => {
+    if (bossId === 'dawn_twin_knights') {
+      ensureTwinCooldownReset(run);
+    }
     // 전투로그(보스전 전용 로그)에 남기기
     db.ref(`bossBattleLogs/${bossId}`).push({
       time: Date.now(),
@@ -26766,8 +26769,11 @@ function openDuelArena() {
       cur.members[userId].dmg = Number(cur.members[userId].dmg || 0) + Number(result.damage || 0);
 
       if (hpA <= 0 && hpB <= 0) {
+        const clearedAt = Date.now();
         cur.status = 'cleared';
-        cur.clearedAt = Date.now();
+        cur.clearedAt = clearedAt;
+        cur.cooldownFixed = true;
+        cur.cooldownFixedAt = clearedAt;
         cur.syncPending = false;
         if (!cur.bonusProtectUid) {
           const uids = Object.keys(cur.members || {});
@@ -26779,6 +26785,7 @@ function openDuelArena() {
       if (err || !committed || !snap || !snap.val) return;
       const v = snap.val() || {};
       if (String(v.status || '') === 'cleared') {
+        ensureTwinCooldownReset(v);
         writeBossBattleLog(bossId, '황금빛 문명의 아침을 열었던 쌍기사는, 마침내 황혼을 맞이합니다.', { tone:'yellow' });
       } else {
         if (String(key) === 'a' && Number(v.hpA || 0) <= 0) {
@@ -26876,6 +26883,35 @@ function openDuelArena() {
     if (String(bossId || '') === TWIN_BOSS_ID) return getTwinBossPowerMultiplier(swordLv);
     return __orig_getBossPowerMultiplier_twin.apply(this, arguments);
   };
+
+
+  function ensureTwinCooldownReset(runLike){
+    const status = String(runLike && runLike.status || '');
+    if (status !== 'cleared' && status !== 'failed') return;
+
+    const rawBaseTs = Number((runLike && (runLike.cooldownFixedAt || runLike.clearedAt || runLike.failedAt)) || 0);
+    if (!Number.isFinite(rawBaseTs) || rawBaseTs <= 0) return;
+
+    const runRef = db.ref(`bossRunsActive/${TWIN_BOSS_ID}`);
+    runRef.transaction((cur) => {
+      if (!cur) return;
+      const s = String(cur.status || '');
+      if (s !== 'cleared' && s !== 'failed') return;
+
+      const baseTs = Number(cur.cooldownFixedAt || cur.clearedAt || cur.failedAt || rawBaseTs || 0);
+      if (!Number.isFinite(baseTs) || baseTs <= 0) return;
+
+      cur.cooldownFixed = true;
+      cur.cooldownFixedAt = baseTs;
+      return cur;
+    }, (err, committed, snap) => {
+      if (err) return;
+      const finalRun = (snap && snap.val) ? snap.val() : runLike;
+      const finalBaseTs = Number((finalRun && (finalRun.cooldownFixedAt || finalRun.clearedAt || finalRun.failedAt)) || 0);
+      if (!Number.isFinite(finalBaseTs) || finalBaseTs <= 0) return;
+      db.ref(`bossCooldown/${TWIN_BOSS_ID}`).set({ nextAt: finalBaseTs + 24 * 60 * 60 * 1000 });
+    });
+  }
 
   const __orig_openBossBattleHelp_twin = openBossBattleHelp;
   openBossBattleHelp = function(){
@@ -27081,6 +27117,9 @@ function openDuelArena() {
         const baseTs = Number(run.cooldownFixedAt || run.clearedAt || run.failedAt || 0);
         if (Number.isFinite(baseTs) && baseTs > 0) {
           nextAt = Math.max(nextAt, baseTs + 24 * 60 * 60 * 1000);
+          if (Number(cd.nextAt || 0) !== nextAt) {
+            cooldownRef.set({ nextAt });
+          }
         }
       }
 
@@ -27115,6 +27154,9 @@ function openDuelArena() {
     const run = (bossRunsActiveCache || {})[bossId];
     if (!run) return;
     setTwinBossMode(true);
+    if (String(run.status || '') === 'cleared' || String(run.status || '') === 'failed') {
+      ensureTwinCooldownReset(run);
+    }
     maybeHandleTwinBossSkill(run);
 
     const def = BOSS_DEFS.find(b => String(b.id) === bossId) || {};
