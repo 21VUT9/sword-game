@@ -7160,9 +7160,9 @@ function nextLoginGeneration(){
   return loginGeneration;
 }
 
-function isLoginContextStale(gen, uid){
+function isLoginContextStale(gen, uid, requireCurrentUserMatch = true){
   if (gen !== loginGeneration) return true;
-  if (uid != null && String(uid) !== String(userId || "")) return true;
+  if (requireCurrentUserMatch && uid != null && String(uid) !== String(userId || "")) return true;
   return false;
 }
 
@@ -16747,19 +16747,19 @@ function login() {
   const loginRef = db.ref("users/" + loginUid);
 
   loginRef.once("value").then(s => {
-    if (isLoginContextStale(attemptGen, loginUid)) return;
+    if (isLoginContextStale(attemptGen, loginUid, false)) return;
 
     // ✅ (신규 계정) 서버에 올라와 있는 최신 +30 이벤트를 읽어서 "이미 본 것"으로 저장
     // Date.now()로 찍으면 신규유저 첫 로그인에 기존 +30 팝업이 뜰 수 있음
     function initNewUserGlobal30Seen() {
       return globalEventsRef.child(GLOBAL30_KEY).once("value").then(snap => {
-        if (isLoginContextStale(attemptGen, loginUid)) return;
+        if (isLoginContextStale(attemptGen, loginUid, false)) return;
         const v = snap.val() || {};
         lastSeenGlobal30EventId = Number(v.id || 0); // 이벤트 없으면 0
         aweUsedGlobal30EventId = 0;
         weaponLocked = {};
       }).catch(() => {
-        if (isLoginContextStale(attemptGen, loginUid)) return;
+        if (isLoginContextStale(attemptGen, loginUid, false)) return;
         lastSeenGlobal30EventId = 0;
         aweUsedGlobal30EventId = 0;
         weaponLocked = {};
@@ -16797,7 +16797,7 @@ function login() {
         return;
       }
 
-      if (isLoginContextStale(attemptGen, loginUid)) return;
+      if (isLoginContextStale(attemptGen, loginUid, false)) return;
 
       userId = loginUid;
       userPassword = loginPassword;
@@ -24261,7 +24261,7 @@ function confirmForceDisconnectAndContinue() {
 clearLocalSessionId(uid);
 
 ref.update({ sessionId: "", sessionUpdatedAt: 0 }).then(() => {
-  if (isLoginContextStale(forceGen, uid)) return;
+  if (isLoginContextStale(forceGen, uid, false)) return;
 
   // 2) 이 탭 기준 로그인 상태 확정
   resetRankingBattleSessionState();
@@ -24284,7 +24284,7 @@ try {
   location.reload();
 
 }).catch((e) => {
-  if (isLoginContextStale(forceGen, uid)) return;
+  if (isLoginContextStale(forceGen, uid, false)) return;
   console.error("❌ forceDisconnect 실패:", e);
   closeNpcPopup();
   showNpcMessage("접속끊기에 실패했습니다.", null, true, "");
