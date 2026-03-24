@@ -26722,97 +26722,126 @@ function openDuelArena() {
       return;
     }
 
-    // ✅ 쌍기사 토벌 완료/실패 후 24시간 쿨다운 체크
-    const cd = (bossCooldownCache || {})[TWIN_BOSS_ID];
-    const nextAtRaw = cd ? cd.nextAt : 0;
-    let nextAt = 0;
-    if (typeof nextAtRaw === 'number') nextAt = nextAtRaw;
-    else if (typeof nextAtRaw === 'string') nextAt = Number(nextAtRaw);
-    if (!Number.isFinite(nextAt)) nextAt = 0;
-
-    const remainMs = Math.max(0, nextAt - Date.now());
-    if (remainMs > 0) {
-      showNpcMessage(
-        `아직 다시 토벌을 신청할 수 없습니다.<br><br>⏳ 신청 가능까지: <b>${formatHMS(remainMs)}</b>`,
-        LEON_IMG.focus,
-        true,
-        '길드마스터 – 레온하르트 발렌'
-      );
-      return;
-    }
-
-    const userGoldRef = db.ref(`users/${userId}/gold`);
-    userGoldRef.transaction((g) => {
-      g = Number(g || 0);
-      if (g < Number(def.applyCostGold || 0)) return;
-      return g - Number(def.applyCostGold || 0);
-    }, (err, committed) => {
-      if (err) {
-        showNpcMessage('서버 처리 중 오류가 발생했습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+    const beginTwinRun = () => {
+      const localGold = Number(gold || 0);
+      const needGold = Number(def.applyCostGold || 0);
+      if (localGold < needGold) {
+        showNpcMessage(`골드가 부족합니다. (필요: ${formatGold(needGold)} 골드)`, LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
         return;
       }
-      if (!committed) {
-        showNpcMessage(`골드가 부족합니다. (필요: ${formatGold(def.applyCostGold)} 골드)`, LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
-        return;
-      }
-      const runRef = db.ref(`bossRunsActive/${bossId}`);
-      const now = Date.now();
-      const endsAt = now + Number(def.durationHours || 72) * 60 * 60 * 1000;
-      runRef.transaction((cur) => {
-        if (cur && String(cur.status || '') === 'active') return;
-        return {
-          bossId: def.id,
-          mapName: def.mapName,
-          bossTitle: def.bossTitle,
-          bossName: def.bossName,
-          desc: String(def.desc || ''),
-          status: 'active',
-          logKey: 'run_' + now,
-          createdAt: now,
-          endsAt,
-          maxHp: TWIN_A_MAX + TWIN_B_MAX,
-          hp: TWIN_A_MAX + TWIN_B_MAX,
-          maxHpA: TWIN_A_MAX,
-          maxHpB: TWIN_B_MAX,
-          hpA: TWIN_A_MAX,
-          hpB: TWIN_B_MAX,
-          downA: false,
-          downB: false,
-          syncPending: false,
-          syncReadyAt: 0,
-          syncNoticeAt: 0,
-          lastTwinSkillCheckAt: now,
-          leaderUid: userId,
-          leaderNick: getNickSafe(),
-          members: {
-            [userId]: {
-              uid: userId,
-              nick: getNickSafe(),
-              joinedAt: now,
-              dmg: 0,
-              titleId: String(equippedTitle || ''),
-              weaponType: String(weaponType || 'sword'),
-              weaponLv: Number(sword || 0)
-            }
-          },
-          lastAttackAt: 0
-        };
-      }, (err2, committed2) => {
-        if (err2) {
+
+      const userGoldRef = db.ref(`users/${userId}/gold`);
+      userGoldRef.transaction((g) => {
+        const serverGold = Math.max(Number(g || 0), localGold);
+        if (serverGold < needGold) return;
+        return serverGold - needGold;
+      }, (err, committed) => {
+        if (err) {
           showNpcMessage('서버 처리 중 오류가 발생했습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
           return;
         }
-        if (!committed2) {
-          userGoldRef.transaction((g) => Number(g || 0) + Number(def.applyCostGold || 0));
-          showNpcMessage('이미 진행중인 토벌이 있습니다. (소모된 골드는 환불 처리했습니다.)', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+        if (!committed) {
+          showNpcMessage(`골드가 부족합니다. (필요: ${formatGold(needGold)} 골드)`, LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
           return;
         }
-        activeBossId = bossId;
-        save();
-        writeLog(`${userNick}님이 여명의쌍기사 라에온&카르텔 토벌을 시작하였습니다.`, false, { tone:'boss_apply' });
-        writeBossBattleLog(bossId, `토벌대가 결성되었습니다. (대장: ${getNickSafe()})`);
-        showNpcMessage('✅ 토벌이 시작됐다.<br>망령왕의 죽음세계에서 여명의쌍기사가 그대들을 기다린다.', LEON_IMG.apply, true, '길드마스터 – 레온하르트 발렌');
+        const runRef = db.ref(`bossRunsActive/${bossId}`);
+        const now = Date.now();
+        const endsAt = now + Number(def.durationHours || 72) * 60 * 60 * 1000;
+        runRef.transaction((cur) => {
+          if (cur && String(cur.status || '') === 'active') return;
+          return {
+            bossId: def.id,
+            mapName: def.mapName,
+            bossTitle: def.bossTitle,
+            bossName: def.bossName,
+            desc: String(def.desc || ''),
+            status: 'active',
+            logKey: 'run_' + now,
+            createdAt: now,
+            endsAt,
+            maxHp: TWIN_A_MAX + TWIN_B_MAX,
+            hp: TWIN_A_MAX + TWIN_B_MAX,
+            maxHpA: TWIN_A_MAX,
+            maxHpB: TWIN_B_MAX,
+            hpA: TWIN_A_MAX,
+            hpB: TWIN_B_MAX,
+            downA: false,
+            downB: false,
+            syncPending: false,
+            syncReadyAt: 0,
+            syncNoticeAt: 0,
+            lastTwinSkillCheckAt: now,
+            leaderUid: userId,
+            leaderNick: getNickSafe(),
+            members: {
+              [userId]: {
+                uid: userId,
+                nick: getNickSafe(),
+                joinedAt: now,
+                dmg: 0,
+                titleId: String(equippedTitle || ''),
+                weaponType: String(weaponType || 'sword'),
+                weaponLv: Number(sword || 0)
+              }
+            },
+            lastAttackAt: 0
+          };
+        }, (err2, committed2) => {
+          if (err2) {
+            showNpcMessage('서버 처리 중 오류가 발생했습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+            return;
+          }
+          if (!committed2) {
+            userGoldRef.transaction((g) => Number(g || 0) + needGold);
+            showNpcMessage('이미 진행중인 토벌이 있습니다. (소모된 골드는 환불 처리했습니다.)', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+            return;
+          }
+          gold = Math.max(0, localGold - needGold);
+          activeBossId = bossId;
+          save();
+          writeLog(`${userNick}님이 여명의쌍기사 라에온&카르텔 토벌을 시작하였습니다.`, false, { tone:'boss_apply' });
+          writeBossBattleLog(bossId, `토벌대가 결성되었습니다. (대장: ${getNickSafe()})`);
+          showNpcMessage('✅ 토벌이 시작됐다.<br>망령왕의 죽음세계에서 여명의쌍기사가 그대들을 기다린다.', LEON_IMG.apply, true, '길드마스터 – 레온하르트 발렌');
+        });
       });
+    };
+
+    const cooldownRef = db.ref(`bossCooldown/${TWIN_BOSS_ID}`);
+    const runRefForCooldown = db.ref(`bossRunsActive/${TWIN_BOSS_ID}`);
+    Promise.all([
+      cooldownRef.once('value'),
+      runRefForCooldown.once('value')
+    ]).then(([cdSnap, runSnap]) => {
+      const cd = cdSnap.val() || {};
+      const run = runSnap.val() || {};
+      let nextAt = Number(cd.nextAt || 0);
+      if (!Number.isFinite(nextAt)) nextAt = 0;
+
+      const status = String(run.status || '');
+      if ((status === 'cleared' || status === 'failed')) {
+        const baseTs = Number(run.cooldownFixedAt || run.clearedAt || run.failedAt || 0);
+        if (Number.isFinite(baseTs) && baseTs > 0) {
+          nextAt = Math.max(nextAt, baseTs + 24 * 60 * 60 * 1000);
+        }
+      }
+
+      const remainMs = Math.max(0, nextAt - Date.now());
+      if (remainMs > 0) {
+        if (!Number(cd.nextAt || 0)) {
+          cooldownRef.set({ nextAt });
+        }
+        showNpcMessage(
+          `아직 다시 토벌을 신청할 수 없습니다.<br><br>⏳ 신청 가능까지: <b>${formatHMS(remainMs)}</b>`,
+          LEON_IMG.focus,
+          true,
+          '길드마스터 – 레온하르트 발렌'
+        );
+        return;
+      }
+
+      beginTwinRun();
+    }).catch(() => {
+      showNpcMessage('서버 처리 중 오류가 발생했습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
     });
   };
 
