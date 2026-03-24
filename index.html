@@ -26369,6 +26369,46 @@ function openDuelArena() {
 
 
 
+
+// =========================
+// 🔥 보스 런타임 확장 레지스트리
+// =========================
+window.BOSS_RUNTIME_EXTENSIONS = window.BOSS_RUNTIME_EXTENSIONS || {};
+function getBossRuntimeExtension(bossId){
+  return window.BOSS_RUNTIME_EXTENSIONS[String(bossId || '')] || null;
+}
+function registerBossRuntimeExtension(bossId, ext){
+  window.BOSS_RUNTIME_EXTENSIONS[String(bossId || '')] = Object.assign({}, ext || {});
+}
+function ensureBossCooldownResetByRun(bossId, runLike){
+  bossId = String(bossId || '');
+  const status = String(runLike && runLike.status || '');
+  if (!bossId || (status !== 'cleared' && status !== 'failed')) return;
+
+  const rawBaseTs = Number((runLike && (runLike.cooldownFixedAt || runLike.clearedAt || runLike.failedAt)) || 0);
+  if (!Number.isFinite(rawBaseTs) || rawBaseTs <= 0) return;
+
+  const runRef = db.ref(`bossRunsActive/${bossId}`);
+  runRef.transaction((cur) => {
+    if (!cur) return;
+    const s = String(cur.status || '');
+    if (s !== 'cleared' && s !== 'failed') return;
+
+    const baseTs = Number(cur.cooldownFixedAt || cur.clearedAt || cur.failedAt || rawBaseTs || 0);
+    if (!Number.isFinite(baseTs) || baseTs <= 0) return;
+
+    cur.cooldownFixed = true;
+    cur.cooldownFixedAt = baseTs;
+    return cur;
+  }, (err, committed, snap) => {
+    if (err) return;
+    const finalRun = (snap && snap.val) ? snap.val() : runLike;
+    const finalBaseTs = Number((finalRun && (finalRun.cooldownFixedAt || finalRun.clearedAt || finalRun.failedAt)) || 0);
+    if (!Number.isFinite(finalBaseTs) || finalBaseTs <= 0) return;
+    db.ref(`bossCooldown/${bossId}`).set({ nextAt: finalBaseTs + 24 * 60 * 60 * 1000 });
+  });
+}
+
 /* =========================
    👻 여명의쌍기사 - 확장 보스전
    ========================= */
@@ -26913,380 +26953,419 @@ function openDuelArena() {
     });
   }
 
-  const __orig_openBossBattleHelp_twin = openBossBattleHelp;
-  openBossBattleHelp = function(){
-    const bossId = String(activeBossId || '');
-    if (bossId !== TWIN_BOSS_ID) return __orig_openBossBattleHelp_twin.apply(this, arguments);
-    const html = `
-      <div style="font-size:13px; line-height:1.65; text-align:left;">
-        <div style="font-weight:900; margin-bottom:8px;">여명의쌍기사 라에온&카르텔</div>
-        <div style="margin-bottom:8px; color:#cfcfcf;">대륙을 제패하고 찬란한 문명을 이룩한 황금기였던 발테리온 왕국을 대표하는 강자 중 한 쌍.</div>
-        <div style="margin-bottom:8px;">
-          • 라에온: 체력 2조1천억 / 방어력 15% / 회피율 10%<br>
-          • 카르텔: 체력 1조8천억 / 방어력 10% / 회피율 15%
+  function ensureTwinCooldownReset(runLike){
+    return ensureBossCooldownResetByRun(TWIN_BOSS_ID, runLike);
+  }
+
+  const twinBossRuntimeExtension = {
+    type: 'twin',
+    powerMultiplier(swordLv){
+      return getTwinBossPowerMultiplier(swordLv);
+    },
+    openHelp(){
+      const html = `
+        <div style="font-size:13px; line-height:1.65; text-align:left;">
+          <div style="font-weight:900; margin-bottom:8px;">여명의쌍기사 라에온&카르텔</div>
+          <div style="margin-bottom:8px; color:#cfcfcf;">대륙을 제패하고 찬란한 문명을 이룩한 황금기였던 발테리온 왕국을 대표하는 강자 중 한 쌍.</div>
+          <div style="margin-bottom:8px;">
+            • 라에온: 체력 2조1천억 / 방어력 15% / 회피율 10%<br>
+            • 카르텔: 체력 1조8천억 / 방어력 10% / 회피율 15%
+          </div>
+
         </div>
-
-      </div>
-    `;
-    showNpcMessage(html, LEON_IMG.focus, true, '보스정보');
-  };
-
-  const __orig_openBossBattleRewards_twin = openBossBattleRewards;
-  openBossBattleRewards = function(){
-    const bossId = String(activeBossId || '');
-    if (bossId !== TWIN_BOSS_ID) return __orig_openBossBattleRewards_twin.apply(this, arguments);
-    const msg = `
-      <b>여명의쌍기사 보상</b><br><br>
-      • 30% 이상 : 파괴방지 주문서 6개, 슈퍼강화 주문서 2개, 마력의정수 140개<br>
-      • 25% 이상 : 파괴방지 주문서 5개, 마력의정수 110개<br>
-      • 20% 이상 : 파괴방지 주문서 4개, 마력의정수 80개<br>
-      • 10% 이상 : 파괴방지 주문서 3개, 마력의정수 50개<br>
-      • 1% 이상 : 파괴방지 주문서 1개, 21강 강화 주문서 2개, 마력의정수 30개<br>
-      • 1% 미만 : 21강 강화 주문서 3개, 마력의정수 20개<br><br>
-      • 토벌대장 보너스 : 슈퍼강화 주문서 1개, 파괴방지 주문서 1개, 마력의정수 50개<br>
-      • 참여자 중 랜덤 1명 추가보상 : 보스토벌신청우선권 1개
-    `;
-    showNpcMessage(msg, LEON_IMG.reward, true, '보상');
-  };
-
-  const __orig_getBossRewardByPct_twin = getBossRewardByPct;
-  getBossRewardByPct = function(bossId, pct, isLeader){
-    if (String(bossId || '') !== TWIN_BOSS_ID) return __orig_getBossRewardByPct_twin.apply(this, arguments);
-    const reward = {
-      itemProtect: 0,
-      itemDownProtect: 0,
-      itemScroll21: 0,
-      itemScroll15: 0,
-      itemEssence: 0,
-      itemSuper: 0,
-      itemBossPriority: 0,
-      itemEngraveNormal: 0,
-      itemEngraveAdvanced: 0
-    };
-    if (pct >= 30) {
-      reward.itemProtect += 6;
-      reward.itemSuper += 2;
-      reward.itemEssence += 140;
-    } else if (pct >= 25) {
-      reward.itemProtect += 5;
-      reward.itemEssence += 110;
-    } else if (pct >= 20) {
-      reward.itemProtect += 4;
-      reward.itemEssence += 80;
-    } else if (pct >= 10) {
-      reward.itemProtect += 3;
-      reward.itemEssence += 50;
-    } else if (pct >= 1) {
-      reward.itemProtect += 1;
-      reward.itemScroll21 += 2;
-      reward.itemEssence += 30;
-    } else {
-      reward.itemScroll21 += 3;
-      reward.itemEssence += 20;
-    }
-    if (isLeader) {
-      reward.itemSuper += 1;
-      reward.itemProtect += 1;
-      reward.itemEssence += 50;
-    }
-    const run = (bossRunsActiveCache || {})[TWIN_BOSS_ID];
-    if (run && String(run.bonusProtectUid || '') === String(userId || '')) reward.itemBossPriority += 1;
-    return reward;
-  };
-
-  const __orig_createBossRun_twin = createBossRun;
-  createBossRun = function(bossId, options = {}){
-    if (String(bossId || '') !== TWIN_BOSS_ID) return __orig_createBossRun_twin.apply(this, arguments);
-    const def = BOSS_DEFS.find(b => String(b.id) === TWIN_BOSS_ID);
-    if (!def) return;
-    const usePriorityTicket = !!(options && options.usePriorityTicket);
-    const curId = String(activeBossId || '');
-    if (curId && curId !== String(bossId)) {
-      showNpcMessage('이미 다른 보스 토벌대에 참여중입니다. 현재 보스전을 완료하거나 포기한 뒤 다시 신청해주세요.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
-      return;
-    }
-    if (Number(sword || 0) < Number(def.minSword || 0)) {
-      showNpcMessage(`조건이 부족합니다. (필요: +${def.minSword}강)`, LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
-      return;
-    }
-    if (usePriorityTicket && Number(itemBossPriority || 0) <= 0) {
-      showNpcMessage('보스토벌우선신청권이 없습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
-      return;
-    }
-
-    const beginTwinRun = () => {
-      const localGold = Number(gold || 0);
-      const needGold = Number(def.applyCostGold || 0);
-      if (localGold < needGold) {
-        showNpcMessage(`골드가 부족합니다. (필요: ${formatGold(needGold)} 골드)`, LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+      `;
+      showNpcMessage(html, LEON_IMG.focus, true, '보스정보');
+    },
+    openRewards(){
+      const msg = `
+        <b>여명의쌍기사 보상</b><br><br>
+        • 30% 이상 : 파괴방지 주문서 6개, 슈퍼강화 주문서 2개, 마력의정수 140개<br>
+        • 25% 이상 : 파괴방지 주문서 5개, 마력의정수 110개<br>
+        • 20% 이상 : 파괴방지 주문서 4개, 마력의정수 80개<br>
+        • 10% 이상 : 파괴방지 주문서 3개, 마력의정수 50개<br>
+        • 1% 이상 : 파괴방지 주문서 1개, 21강 강화 주문서 2개, 마력의정수 30개<br>
+        • 1% 미만 : 21강 강화 주문서 3개, 마력의정수 20개<br><br>
+        • 토벌대장 보너스 : 슈퍼강화 주문서 1개, 파괴방지 주문서 1개, 마력의정수 50개<br>
+        • 참여자 중 랜덤 1명 추가보상 : 보스토벌신청우선권 1개
+      `;
+      showNpcMessage(msg, LEON_IMG.reward, true, '보상');
+    },
+    rewardByPct(bossId, pct, isLeader){
+      const reward = {
+        itemProtect: 0,
+        itemDownProtect: 0,
+        itemScroll21: 0,
+        itemScroll15: 0,
+        itemEssence: 0,
+        itemSuper: 0,
+        itemBossPriority: 0,
+        itemEngraveNormal: 0,
+        itemEngraveAdvanced: 0
+      };
+      if (pct >= 30) {
+        reward.itemProtect += 6;
+        reward.itemSuper += 2;
+        reward.itemEssence += 140;
+      } else if (pct >= 25) {
+        reward.itemProtect += 5;
+        reward.itemEssence += 110;
+      } else if (pct >= 20) {
+        reward.itemProtect += 4;
+        reward.itemEssence += 80;
+      } else if (pct >= 10) {
+        reward.itemProtect += 3;
+        reward.itemEssence += 50;
+      } else if (pct >= 1) {
+        reward.itemProtect += 1;
+        reward.itemScroll21 += 2;
+        reward.itemEssence += 30;
+      } else {
+        reward.itemScroll21 += 3;
+        reward.itemEssence += 20;
+      }
+      if (isLeader) {
+        reward.itemSuper += 1;
+        reward.itemProtect += 1;
+        reward.itemEssence += 50;
+      }
+      const run = (bossRunsActiveCache || {})[TWIN_BOSS_ID];
+      if (run && String(run.bonusProtectUid || '') === String(userId || '')) reward.itemBossPriority += 1;
+      return reward;
+    },
+    createRun(bossId, options = {}){
+      const def = BOSS_DEFS.find(b => String(b.id) === TWIN_BOSS_ID);
+      if (!def) return;
+      const usePriorityTicket = !!(options && options.usePriorityTicket);
+      const curId = String(activeBossId || '');
+      if (curId && curId !== String(bossId)) {
+        showNpcMessage('이미 다른 보스 토벌대에 참여중입니다. 현재 보스전을 완료하거나 포기한 뒤 다시 신청해주세요.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+        return;
+      }
+      if (Number(sword || 0) < Number(def.minSword || 0)) {
+        showNpcMessage(`조건이 부족합니다. (필요: +${def.minSword}강)`, LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+        return;
+      }
+      if (usePriorityTicket && Number(itemBossPriority || 0) <= 0) {
+        showNpcMessage('보스토벌우선신청권이 없습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
         return;
       }
 
-      const userGoldRef = db.ref(`users/${userId}/gold`);
-      userGoldRef.transaction((g) => {
-        const serverGold = Math.max(Number(g || 0), localGold);
-        if (serverGold < needGold) return;
-        return serverGold - needGold;
-      }, (err, committed) => {
-        if (err) {
-          showNpcMessage('서버 처리 중 오류가 발생했습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
-          return;
-        }
-        if (!committed) {
+      const beginTwinRun = () => {
+        const localGold = Number(gold || 0);
+        const needGold = Number(def.applyCostGold || 0);
+        if (localGold < needGold) {
           showNpcMessage(`골드가 부족합니다. (필요: ${formatGold(needGold)} 골드)`, LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
           return;
         }
-        const runRef = db.ref(`bossRunsActive/${bossId}`);
-        const now = Date.now();
-        const endsAt = now + Number(def.durationHours || 72) * 60 * 60 * 1000;
-        runRef.transaction((cur) => {
-          if (cur && String(cur.status || '') === 'active') return;
-          return {
-            bossId: def.id,
-            mapName: def.mapName,
-            bossTitle: def.bossTitle,
-            bossName: def.bossName,
-            desc: String(def.desc || ''),
-            status: 'active',
-            logKey: 'run_' + now,
-            createdAt: now,
-            endsAt,
-            maxHp: TWIN_A_MAX + TWIN_B_MAX,
-            hp: TWIN_A_MAX + TWIN_B_MAX,
-            maxHpA: TWIN_A_MAX,
-            maxHpB: TWIN_B_MAX,
-            hpA: TWIN_A_MAX,
-            hpB: TWIN_B_MAX,
-            downA: false,
-            downB: false,
-            syncPending: false,
-            syncReadyAt: 0,
-            syncNoticeAt: 0,
-            lastTwinSkillCheckAt: now,
-            leaderUid: userId,
-            leaderNick: getNickSafe(),
-            members: {
-              [userId]: {
-                uid: userId,
-                nick: getNickSafe(),
-                joinedAt: now,
-                dmg: 0,
-                titleId: String(equippedTitle || ''),
-                weaponType: String(weaponType || 'sword'),
-                weaponLv: Number(sword || 0)
-              }
-            },
-            lastAttackAt: 0
-          };
-        }, (err2, committed2) => {
-          if (err2) {
+
+        const userGoldRef = db.ref(`users/${userId}/gold`);
+        userGoldRef.transaction((g) => {
+          const serverGold = Math.max(Number(g || 0), localGold);
+          if (serverGold < needGold) return;
+          return serverGold - needGold;
+        }, (err, committed) => {
+          if (err) {
             showNpcMessage('서버 처리 중 오류가 발생했습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
             return;
           }
-          if (!committed2) {
-            userGoldRef.transaction((g) => Number(g || 0) + needGold);
-            showNpcMessage(usePriorityTicket ? '이미 진행중인 토벌이 있습니다.' : '이미 진행중인 토벌이 있습니다. (소모된 골드는 환불 처리했습니다.)', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+          if (!committed) {
+            showNpcMessage(`골드가 부족합니다. (필요: ${formatGold(needGold)} 골드)`, LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
             return;
           }
-          gold = Math.max(0, localGold - needGold);
-          if (usePriorityTicket) {
-            itemBossPriority = Math.max(0, Number(itemBossPriority || 0) - 1);
-          }
-          activeBossId = bossId;
-          save();
-          writeLog(usePriorityTicket ? `${userNick}님이 보스토벌우선신청권을 사용해 여명의쌍기사 라에온&카르텔 토벌을 시작하였습니다.` : `${userNick}님이 여명의쌍기사 라에온&카르텔 토벌을 시작하였습니다.`, false, { tone:'boss_apply' });
-          writeBossBattleLog(bossId, usePriorityTicket ? `토벌대가 결성되었습니다. (대장: ${getNickSafe()}, 우선신청권 사용)` : `토벌대가 결성되었습니다. (대장: ${getNickSafe()})`);
-          showNpcMessage(usePriorityTicket ? '✅ 보스토벌우선신청권이 사용되었습니다.<br>즉시 토벌대가 개설되었습니다.' : '✅ 토벌이 시작됐다.<br>망령왕의 죽음세계에서 여명의쌍기사가 그대들을 기다린다.', LEON_IMG.apply, true, '길드마스터 – 레온하르트 발렌');
+          const runRef = db.ref(`bossRunsActive/${bossId}`);
+          const now = Date.now();
+          const endsAt = now + Number(def.durationHours || 72) * 60 * 60 * 1000;
+          runRef.transaction((cur) => {
+            if (cur && String(cur.status || '') === 'active') return;
+            return {
+              bossId: def.id,
+              mapName: def.mapName,
+              bossTitle: def.bossTitle,
+              bossName: def.bossName,
+              desc: String(def.desc || ''),
+              status: 'active',
+              logKey: 'run_' + now,
+              createdAt: now,
+              endsAt,
+              maxHp: TWIN_A_MAX + TWIN_B_MAX,
+              hp: TWIN_A_MAX + TWIN_B_MAX,
+              maxHpA: TWIN_A_MAX,
+              maxHpB: TWIN_B_MAX,
+              hpA: TWIN_A_MAX,
+              hpB: TWIN_B_MAX,
+              downA: false,
+              downB: false,
+              syncPending: false,
+              syncReadyAt: 0,
+              syncNoticeAt: 0,
+              lastTwinSkillCheckAt: now,
+              leaderUid: userId,
+              leaderNick: getNickSafe(),
+              members: {
+                [userId]: {
+                  uid: userId,
+                  nick: getNickSafe(),
+                  joinedAt: now,
+                  dmg: 0,
+                  titleId: String(equippedTitle || ''),
+                  weaponType: String(weaponType || 'sword'),
+                  weaponLv: Number(sword || 0)
+                }
+              },
+              lastAttackAt: 0
+            };
+          }, (err2, committed2) => {
+            if (err2) {
+              showNpcMessage('서버 처리 중 오류가 발생했습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+              return;
+            }
+            if (!committed2) {
+              userGoldRef.transaction((g) => Number(g || 0) + needGold);
+              showNpcMessage(usePriorityTicket ? '이미 진행중인 토벌이 있습니다.' : '이미 진행중인 토벌이 있습니다. (소모된 골드는 환불 처리했습니다.)', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+              return;
+            }
+            gold = Math.max(0, localGold - needGold);
+            if (usePriorityTicket) {
+              itemBossPriority = Math.max(0, Number(itemBossPriority || 0) - 1);
+            }
+            activeBossId = bossId;
+            save();
+            writeLog(usePriorityTicket ? `${userNick}님이 보스토벌우선신청권을 사용해 여명의쌍기사 라에온&카르텔 토벌을 시작하였습니다.` : `${userNick}님이 여명의쌍기사 라에온&카르텔 토벌을 시작하였습니다.`, false, { tone:'boss_apply' });
+            writeBossBattleLog(bossId, usePriorityTicket ? `토벌대가 결성되었습니다. (대장: ${getNickSafe()}, 우선신청권 사용)` : `토벌대가 결성되었습니다. (대장: ${getNickSafe()})`);
+            showNpcMessage(usePriorityTicket ? '✅ 보스토벌우선신청권이 사용되었습니다.<br>즉시 토벌대가 개설되었습니다.' : '✅ 토벌이 시작됐다.<br>망령왕의 죽음세계에서 여명의쌍기사가 그대들을 기다린다.', LEON_IMG.apply, true, '길드마스터 – 레온하르트 발렌');
+          });
         });
-      });
-    };
+      };
 
-    const cooldownRef = db.ref(`bossCooldown/${TWIN_BOSS_ID}`);
-    const runRefForCooldown = db.ref(`bossRunsActive/${TWIN_BOSS_ID}`);
-    Promise.all([
-      cooldownRef.once('value'),
-      runRefForCooldown.once('value')
-    ]).then(([cdSnap, runSnap]) => {
-      const cd = cdSnap.val() || {};
-      const run = runSnap.val() || {};
-      let nextAt = Number(cd.nextAt || 0);
-      if (!Number.isFinite(nextAt)) nextAt = 0;
+      const cooldownRef = db.ref(`bossCooldown/${TWIN_BOSS_ID}`);
+      const runRefForCooldown = db.ref(`bossRunsActive/${TWIN_BOSS_ID}`);
+      Promise.all([
+        cooldownRef.once('value'),
+        runRefForCooldown.once('value')
+      ]).then(([cdSnap, runSnap]) => {
+        const cd = cdSnap.val() || {};
+        const run = runSnap.val() || {};
+        let nextAt = Number(cd.nextAt || 0);
+        if (!Number.isFinite(nextAt)) nextAt = 0;
 
-      const status = String(run.status || '');
-      if ((status === 'cleared' || status === 'failed')) {
-        const baseTs = Number(run.cooldownFixedAt || run.clearedAt || run.failedAt || 0);
-        if (Number.isFinite(baseTs) && baseTs > 0) {
-          nextAt = Math.max(nextAt, baseTs + 24 * 60 * 60 * 1000);
-          if (Number(cd.nextAt || 0) !== nextAt) {
+        const status = String(run.status || '');
+        if ((status === 'cleared' || status === 'failed')) {
+          const baseTs = Number(run.cooldownFixedAt || run.clearedAt || run.failedAt || 0);
+          if (Number.isFinite(baseTs) && baseTs > 0) {
+            nextAt = Math.max(nextAt, baseTs + 24 * 60 * 60 * 1000);
+            if (Number(cd.nextAt || 0) !== nextAt) {
+              cooldownRef.set({ nextAt });
+            }
+          }
+        }
+
+        const remainMs = Math.max(0, nextAt - Date.now());
+        if (!usePriorityTicket && remainMs > 0) {
+          if (!Number(cd.nextAt || 0)) {
             cooldownRef.set({ nextAt });
           }
+          showNpcMessage(
+            `아직 다시 토벌을 신청할 수 없습니다.<br><br>⏳ 신청 가능까지: <b>${formatHMS(remainMs)}</b>`,
+            LEON_IMG.focus,
+            true,
+            '길드마스터 – 레온하르트 발렌'
+          );
+          return;
         }
+
+        beginTwinRun();
+      }).catch(() => {
+        showNpcMessage('서버 처리 중 오류가 발생했습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+      });
+    },
+    renderBattle(){
+      const bossId = String(activeBossId || '');
+      const run = (bossRunsActiveCache || {})[bossId];
+      if (!run) return;
+      setTwinBossMode(true);
+      if (String(run.status || '') === 'cleared' || String(run.status || '') === 'failed') {
+        ensureTwinCooldownReset(run);
+      }
+      maybeHandleTwinBossSkill(run);
+
+      const def = BOSS_DEFS.find(b => String(b.id) === bossId) || {};
+      const mapEl = document.getElementById('bossBattleMapName');
+      const remainEl = document.getElementById('bossBattleRemain');
+      const bgEl = document.getElementById('bossBattleBg');
+      const huntRemainEl = document.getElementById('bossBattleHuntRemain');
+      const headHunt = document.getElementById('bossBattleHeaderHuntRemain');
+      const partyEl = document.getElementById('bossBattlePartyList');
+      const rewardBtn = document.getElementById('bossBattleRewardBtn');
+      const banner = document.getElementById('bossBattleResultBanner');
+      const bannerText = document.getElementById('bossBattleResultText');
+      const lineMainEl = document.getElementById('bossBattleBossLineMain');
+      const lineSubEl = document.getElementById('bossBattleBossLineSub');
+
+      if (mapEl) mapEl.textContent = def.mapName || '망령왕의 죽음세계';
+      if (bgEl && def.bgImg) bgEl.src = def.bgImg;
+      if (remainEl) remainEl.textContent = formatHMS(Math.max(0, Number(run.endsAt || 0) - Date.now()));
+
+      const max = getHuntStaminaMax();
+      const today = getTodayDateString();
+      let used = 0;
+      if (lastHuntDate === today) used = Number(huntCountToday || 0);
+      used = Math.max(0, Math.min(max, used));
+      const remain = Math.max(0, max - used);
+      if (huntRemainEl) huntRemainEl.textContent = `사냥횟수: ${remain}/${max}`;
+      const mySt = (typeof getPlayerFinalCombatStats === 'function') ? (getPlayerFinalCombatStats() || {}) : {};
+      const minusMin = Number(mySt.huntRechargeMinusMin || 0);
+      const extra = (minusMin > 0) ? ` | 충전 -${minusMin}분` : '';
+      if (headHunt) headHunt.textContent = `(사냥횟수 ${remain} / ${max}${extra})`;
+
+      const hpA = Math.max(0, Number(run.hpA || 0));
+      const hpB = Math.max(0, Number(run.hpB || 0));
+      const ratioA = Math.max(0, Math.min(1, hpA / TWIN_A_MAX));
+      const ratioB = Math.max(0, Math.min(1, hpB / TWIN_B_MAX));
+      const imgA = document.getElementById('twinBossImgA');
+      const imgB = document.getElementById('twinBossImgB');
+      const txtA = document.getElementById('twinBossHpTextA');
+      const txtB = document.getElementById('twinBossHpTextB');
+
+      setTwinBossHpBarWidth('twinBossHpFillWrapA', ratioA);
+      setTwinBossHpBarWidth('twinBossHpFillWrapB', ratioB);
+      if (txtA) txtA.textContent = `${formatBossHpShort(hpA)} / ${formatBossHpShort(TWIN_A_MAX)}`;
+      if (txtB) txtB.textContent = `${formatBossHpShort(hpB)} / ${formatBossHpShort(TWIN_B_MAX)}`;
+
+      const downA = Boolean(run.downA) || hpA <= 0;
+      const downB = Boolean(run.downB) || hpB <= 0;
+      if (imgA) {
+        imgA.src = downA ? def.imgDead : def.imgIdle;
+        imgA.classList.toggle('down', downA);
+        imgA.classList.toggle('disabled', downA || String(run.status || '') !== 'active');
+        imgA.style.pointerEvents = (downA || String(run.status || '') !== 'active') ? 'none' : 'auto';
+      }
+      if (imgB) {
+        imgB.src = downB ? def.imgDeadB : def.imgIdleB;
+        imgB.classList.toggle('down', downB);
+        imgB.classList.toggle('disabled', downB || String(run.status || '') !== 'active');
+        imgB.style.pointerEvents = (downB || String(run.status || '') !== 'active') ? 'none' : 'auto';
       }
 
-      const remainMs = Math.max(0, nextAt - Date.now());
-      if (!usePriorityTicket && remainMs > 0) {
-        if (!Number(cd.nextAt || 0)) {
-          cooldownRef.set({ nextAt });
-        }
-        showNpcMessage(
-          `아직 다시 토벌을 신청할 수 없습니다.<br><br>⏳ 신청 가능까지: <b>${formatHMS(remainMs)}</b>`,
-          LEON_IMG.focus,
-          true,
-          '길드마스터 – 레온하르트 발렌'
-        );
-        return;
+      if (partyEl) {
+        const members = run.members || {};
+        const arr = Object.values(members).map(m => ({
+          uid: String((m && m.uid) || ''),
+          nick: String((m && m.nick) || '???'),
+          dmg: Number((m && m.dmg) || 0),
+          wType: String((m && m.weaponType) || 'sword'),
+          wLv: Number((m && m.weaponLv) || 0)
+        }));
+        const totalDamage = Math.max(1, arr.reduce((s, a) => s + Number(a.dmg || 0), 0));
+        arr.sort((a, b) => b.dmg - a.dmg);
+        const leaderUid = String(run.leaderUid || '');
+        const leader = arr.find(x => String(x.uid) === leaderUid);
+        const others = arr.filter(x => String(x.uid) !== leaderUid);
+        const view = leader ? [{...leader, _isLeader:true}, ...others.map(x => ({...x, _isLeader:false}))] : arr;
+        const weaponKor = (t) => ({ sword:'검', spear:'창', axe:'도끼', bow:'활', staff:'스태프', dagger:'단검', gauntlet:'건틀릿', magitech:'마법공학' }[t] || '검');
+        partyEl.style.maxHeight = '210px';
+        partyEl.style.overflowY = 'auto';
+        partyEl.innerHTML = view.map(m => {
+          const pct = Math.floor((Number(m.dmg || 0) / totalDamage) * 1000) / 10;
+          const wTxt = `${weaponKor(m.wType)}+${Number(m.wLv || 0)}강`;
+          return `
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid #222; align-items:center;">
+              <div style="flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:left;">
+                ${m._isLeader ? '<span style="margin-right:4px;">👑</span>' : ''}${m.nick}
+                <span style="color:#aaa;">(${wTxt})</span>
+              </div>
+              <div style="white-space:nowrap; display:flex; gap:10px; align-items:center; margin-left:auto; justify-content:flex-end; text-align:right;">
+                <div style="color:#ddd; font-weight:900; text-align:right;">딜량 ${formatBossHpShort(m.dmg || 0)}</div>
+                <div style="color:#9fd3ff; font-weight:900; text-align:right;">기여도:${pct}%</div>
+              </div>
+            </div>`;
+        }).join('') || '<div style="color:#777;">참여자가 없습니다.</div>';
       }
 
-      beginTwinRun();
-    }).catch(() => {
-      showNpcMessage('서버 처리 중 오류가 발생했습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
-    });
-  };
+      ensureBossBattleLogsSubscription(bossId);
+      renderBossBattleLogs();
 
-  const __orig_renderBossBattle_twin = renderBossBattle;
-  renderBossBattle = function(){
-    const bossId = String(activeBossId || '');
-    if (bossId !== TWIN_BOSS_ID || isRankingBattleMode) {
-      setTwinBossMode(false);
-      return __orig_renderBossBattle_twin.apply(this, arguments);
-    }
-
-    const run = (bossRunsActiveCache || {})[bossId];
-    if (!run) return;
-    setTwinBossMode(true);
-    if (String(run.status || '') === 'cleared' || String(run.status || '') === 'failed') {
-      ensureTwinCooldownReset(run);
-    }
-    maybeHandleTwinBossSkill(run);
-
-    const def = BOSS_DEFS.find(b => String(b.id) === bossId) || {};
-    const mapEl = document.getElementById('bossBattleMapName');
-    const remainEl = document.getElementById('bossBattleRemain');
-    const bgEl = document.getElementById('bossBattleBg');
-    const huntRemainEl = document.getElementById('bossBattleHuntRemain');
-    const headHunt = document.getElementById('bossBattleHeaderHuntRemain');
-    const partyEl = document.getElementById('bossBattlePartyList');
-    const rewardBtn = document.getElementById('bossBattleRewardBtn');
-    const banner = document.getElementById('bossBattleResultBanner');
-    const bannerText = document.getElementById('bossBattleResultText');
-    const lineMainEl = document.getElementById('bossBattleBossLineMain');
-    const lineSubEl = document.getElementById('bossBattleBossLineSub');
-
-    if (mapEl) mapEl.textContent = def.mapName || '망령왕의 죽음세계';
-    if (bgEl && def.bgImg) bgEl.src = def.bgImg;
-    if (remainEl) remainEl.textContent = formatHMS(Math.max(0, Number(run.endsAt || 0) - Date.now()));
-
-    const max = getHuntStaminaMax();
-    const today = getTodayDateString();
-    let used = 0;
-    if (lastHuntDate === today) used = Number(huntCountToday || 0);
-    used = Math.max(0, Math.min(max, used));
-    const remain = Math.max(0, max - used);
-    if (huntRemainEl) huntRemainEl.textContent = `사냥횟수: ${remain}/${max}`;
-    const mySt = (typeof getPlayerFinalCombatStats === 'function') ? (getPlayerFinalCombatStats() || {}) : {};
-    const minusMin = Number(mySt.huntRechargeMinusMin || 0);
-    const extra = (minusMin > 0) ? ` | 충전 -${minusMin}분` : '';
-    if (headHunt) headHunt.textContent = `(사냥횟수 ${remain} / ${max}${extra})`;
-
-    const hpA = Math.max(0, Number(run.hpA || 0));
-    const hpB = Math.max(0, Number(run.hpB || 0));
-    const ratioA = Math.max(0, Math.min(1, hpA / TWIN_A_MAX));
-    const ratioB = Math.max(0, Math.min(1, hpB / TWIN_B_MAX));
-    const imgA = document.getElementById('twinBossImgA');
-    const imgB = document.getElementById('twinBossImgB');
-    const fillWrapA = document.getElementById('twinBossHpFillWrapA');
-    const fillWrapB = document.getElementById('twinBossHpFillWrapB');
-    const txtA = document.getElementById('twinBossHpTextA');
-    const txtB = document.getElementById('twinBossHpTextB');
-
-    setTwinBossHpBarWidth('twinBossHpFillWrapA', ratioA);
-    setTwinBossHpBarWidth('twinBossHpFillWrapB', ratioB);
-    if (txtA) txtA.textContent = `${formatBossHpShort(hpA)} / ${formatBossHpShort(TWIN_A_MAX)}`;
-    if (txtB) txtB.textContent = `${formatBossHpShort(hpB)} / ${formatBossHpShort(TWIN_B_MAX)}`;
-
-    const downA = Boolean(run.downA) || hpA <= 0;
-    const downB = Boolean(run.downB) || hpB <= 0;
-    if (imgA) {
-      imgA.src = downA ? def.imgDead : def.imgIdle;
-      imgA.classList.toggle('down', downA);
-      imgA.classList.toggle('disabled', downA || String(run.status || '') !== 'active');
-      imgA.style.pointerEvents = (downA || String(run.status || '') !== 'active') ? 'none' : 'auto';
-    }
-    if (imgB) {
-      imgB.src = downB ? def.imgDeadB : def.imgIdleB;
-      imgB.classList.toggle('down', downB);
-      imgB.classList.toggle('disabled', downB || String(run.status || '') !== 'active');
-      imgB.style.pointerEvents = (downB || String(run.status || '') !== 'active') ? 'none' : 'auto';
-    }
-
-    if (partyEl) {
-      const members = run.members || {};
-      const arr = Object.values(members).map(m => ({
-        uid: String((m && m.uid) || ''),
-        nick: String((m && m.nick) || '???'),
-        dmg: Number((m && m.dmg) || 0),
-        wType: String((m && m.weaponType) || 'sword'),
-        wLv: Number((m && m.weaponLv) || 0)
-      }));
-      const totalDamage = Math.max(1, arr.reduce((s, a) => s + Number(a.dmg || 0), 0));
-      arr.sort((a, b) => b.dmg - a.dmg);
-      const leaderUid = String(run.leaderUid || '');
-      const leader = arr.find(x => String(x.uid) === leaderUid);
-      const others = arr.filter(x => String(x.uid) !== leaderUid);
-      const view = leader ? [{...leader, _isLeader:true}, ...others.map(x => ({...x, _isLeader:false}))] : arr;
-      const weaponKor = (t) => ({ sword:'검', spear:'창', axe:'도끼', bow:'활', staff:'스태프', dagger:'단검', gauntlet:'건틀릿', magitech:'마법공학' }[t] || '검');
-      partyEl.style.maxHeight = '210px';
-      partyEl.style.overflowY = 'auto';
-      partyEl.innerHTML = view.map(m => {
-        const pct = Math.floor((Number(m.dmg || 0) / totalDamage) * 1000) / 10;
-        const wTxt = `${weaponKor(m.wType)}+${Number(m.wLv || 0)}강`;
-        return `
-          <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid #222; align-items:center;">
-            <div style="flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:left;">
-              ${m._isLeader ? '<span style="margin-right:4px;">👑</span>' : ''}${m.nick}
-              <span style="color:#aaa;">(${wTxt})</span>
-            </div>
-            <div style="white-space:nowrap; display:flex; gap:10px; align-items:center; margin-left:auto; justify-content:flex-end; text-align:right;">
-              <div style="color:#ddd; font-weight:900; text-align:right;">딜량 ${formatBossHpShort(m.dmg || 0)}</div>
-              <div style="color:#9fd3ff; font-weight:900; text-align:right;">기여도:${pct}%</div>
-            </div>
-          </div>`;
-      }).join('') || '<div style="color:#777;">참여자가 없습니다.</div>';
-    }
-
-    ensureBossBattleLogsSubscription(bossId);
-    renderBossBattleLogs();
-
-    const st = String(run.status || '');
-    if (st === 'cleared') {
-      if (lineMainEl) lineMainEl.textContent = def.deadLine || '';
-      if (lineSubEl) lineSubEl.textContent = def.deadSubLine || '';
-      if (banner) banner.style.display = 'block';
-      if (bannerText) { bannerText.textContent = '토벌 성공'; bannerText.style.color = '#37ff63'; }
-      if (rewardBtn) rewardBtn.style.display = hasPendingBossReward(bossId) ? 'block' : 'block';
-    } else if (st === 'failed') {
-      if (lineMainEl) lineMainEl.textContent = def.failLine || '';
-      if (lineSubEl) lineSubEl.textContent = '';
-      if (banner) banner.style.display = 'block';
-      if (bannerText) { bannerText.textContent = '토벌 실패'; bannerText.style.color = '#ff4c4c'; }
-      if (rewardBtn) rewardBtn.style.display = 'none';
-      if (imgA) imgA.style.pointerEvents = 'none';
-      if (imgB) imgB.style.pointerEvents = 'none';
-    } else {
-      if (banner) banner.style.display = 'none';
-      if (rewardBtn) rewardBtn.style.display = 'none';
-      if (run.syncPending && Number(run.syncReadyAt || 0) > 0) {
-        if (lineMainEl) lineMainEl.textContent = '두 기사가 서로를 바라봅니다. 죽음의 기운이 공명합니다.';
-        if (lineSubEl) lineSubEl.textContent = `동기화까지 ${twinRemainText(run.syncReadyAt)}`;
-      } else {
+      const st = String(run.status || '');
+      if (st === 'cleared') {
+        if (lineMainEl) lineMainEl.textContent = def.deadLine || '';
+        if (lineSubEl) lineSubEl.textContent = def.deadSubLine || '';
+        if (banner) banner.style.display = 'block';
+        if (bannerText) { bannerText.textContent = '토벌 성공'; bannerText.style.color = '#37ff63'; }
+        if (rewardBtn) rewardBtn.style.display = 'block';
+      } else if (st === 'failed') {
+        if (lineMainEl) lineMainEl.textContent = def.failLine || '';
         if (lineSubEl) lineSubEl.textContent = '';
-        if (lineMainEl && (!lineMainEl.textContent || Math.random() < 0.10)) {
-          const lines = def.lines || twinNoticeLines();
-          lineMainEl.textContent = lines[Math.floor(Math.random() * lines.length)] || '';
+        if (banner) banner.style.display = 'block';
+        if (bannerText) { bannerText.textContent = '토벌 실패'; bannerText.style.color = '#ff4c4c'; }
+        if (rewardBtn) rewardBtn.style.display = 'none';
+        if (imgA) imgA.style.pointerEvents = 'none';
+        if (imgB) imgB.style.pointerEvents = 'none';
+      } else {
+        if (banner) banner.style.display = 'none';
+        if (rewardBtn) rewardBtn.style.display = 'none';
+        if (run.syncPending && Number(run.syncReadyAt || 0) > 0) {
+          if (lineMainEl) lineMainEl.textContent = '두 기사가 서로를 바라봅니다. 죽음의 기운이 공명합니다.';
+          if (lineSubEl) lineSubEl.textContent = `동기화까지 ${twinRemainText(run.syncReadyAt)}`;
+        } else {
+          if (lineSubEl) lineSubEl.textContent = '';
+          if (lineMainEl && (!lineMainEl.textContent || Math.random() < 0.10)) {
+            const lines = def.lines || twinNoticeLines();
+            lineMainEl.textContent = lines[Math.floor(Math.random() * lines.length)] || '';
+          }
         }
       }
     }
   };
+  registerBossRuntimeExtension(TWIN_BOSS_ID, twinBossRuntimeExtension);
+
+  if (!window.__bossRuntimeDispatchInstalled) {
+    window.__bossRuntimeDispatchInstalled = true;
+
+    const __orig_openBossBattleHelp_dispatch = openBossBattleHelp;
+    openBossBattleHelp = function(){
+      const bossId = String(activeBossId || '');
+      const ext = getBossRuntimeExtension(bossId);
+      if (ext && typeof ext.openHelp === 'function') return ext.openHelp.apply(this, arguments);
+      return __orig_openBossBattleHelp_dispatch.apply(this, arguments);
+    };
+
+    const __orig_openBossBattleRewards_dispatch = openBossBattleRewards;
+    openBossBattleRewards = function(){
+      const bossId = String(activeBossId || '');
+      const ext = getBossRuntimeExtension(bossId);
+      if (ext && typeof ext.openRewards === 'function') return ext.openRewards.apply(this, arguments);
+      return __orig_openBossBattleRewards_dispatch.apply(this, arguments);
+    };
+
+    const __orig_getBossRewardByPct_dispatch = getBossRewardByPct;
+    getBossRewardByPct = function(bossId, pct, isLeader){
+      const ext = getBossRuntimeExtension(bossId);
+      if (ext && typeof ext.rewardByPct === 'function') return ext.rewardByPct.call(this, bossId, pct, isLeader);
+      return __orig_getBossRewardByPct_dispatch.apply(this, arguments);
+    };
+
+    const __orig_createBossRun_dispatch = createBossRun;
+    createBossRun = function(bossId, options = {}){
+      const ext = getBossRuntimeExtension(bossId);
+      if (ext && typeof ext.createRun === 'function') return ext.createRun.call(this, bossId, options, __orig_createBossRun_dispatch);
+      return __orig_createBossRun_dispatch.apply(this, arguments);
+    };
+
+    const __orig_renderBossBattle_dispatch = renderBossBattle;
+    renderBossBattle = function(){
+      const bossId = String(activeBossId || '');
+      const ext = getBossRuntimeExtension(bossId);
+      if (ext && typeof ext.renderBattle === 'function' && !isRankingBattleMode) return ext.renderBattle.apply(this, arguments);
+      if (typeof setTwinBossMode === 'function') setTwinBossMode(false);
+      return __orig_renderBossBattle_dispatch.apply(this, arguments);
+    };
+
+    const __orig_getBossPowerMultiplier_dispatch = getBossPowerMultiplier;
+    getBossPowerMultiplier = function(bossId, swordLv){
+      const ext = getBossRuntimeExtension(bossId);
+      if (ext && typeof ext.powerMultiplier === 'function') return ext.powerMultiplier.call(this, swordLv, bossId);
+      return __orig_getBossPowerMultiplier_dispatch.apply(this, arguments);
+    };
+  }
 })();
 
 </script>
