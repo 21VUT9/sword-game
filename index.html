@@ -14252,6 +14252,20 @@ function showDuelConfirmPopup(targetUserId) {
 
   if (!popup || !msgEl || !imgEl || !okBtn || !cancelBtn) return;
 
+  const duelPanel = document.getElementById("duelPanel");
+  const duelSearchInput = document.getElementById("duelSearchInput");
+  const keepKeyword = duelSearchInput ? String(duelSearchInput.value || "") : "";
+
+  function restoreDuelTargetPanel() {
+    if (!duelPanel) return;
+    duelPanel.style.display = "block";
+    if (duelSearchInput) {
+      duelSearchInput.value = keepKeyword;
+      renderDuelList(keepKeyword);
+      duelSearchInput.focus({ preventScroll: true });
+    }
+  }
+
   // 🧝‍♀️ 카르니아 세팅
   setNpcName("결투 심판관 – 카르니아 발크라이트");
   imgEl.src = "images/npc/duel_carnia.png";
@@ -14274,12 +14288,14 @@ function showDuelConfirmPopup(targetUserId) {
 
   okBtn.onclick = function () {
     popup.style.display = "none";
+    restoreDuelTargetPanel();
     // 직접 신청은 isRandomMatch = false
     performDuel(targetUserId, false);
   };
 
   cancelBtn.onclick = function () {
     popup.style.display = "none";
+    restoreDuelTargetPanel();
   };
 
   popup.style.display = "flex";
@@ -19666,26 +19682,46 @@ function renderDuelList(keyword) {
   }
 
   // 자기 자신은 제외
-  let base = allUsersCache.filter(u => u.id !== userId);
+  const base = allUsersCache.filter(u => u.id !== userId);
+  const mySwordLevel = Number(sword || 0);
 
   let filtered;
-if (!keyword) {
-  // 검색어 없으면 상위 5명만 표시
-  filtered = base.slice(0, 5);
-  if (helpEl) {
-    helpEl.textContent = "검색어가 없을 때는 상위 5명만 표시됩니다.";
-    helpEl.style.display = "block";
+  if (!keyword) {
+    const sameLevelUsers = base.filter(u => Number(u.sword || 0) === mySwordLevel);
+    const higherLevelUsers = base
+      .filter(u => Number(u.sword || 0) > mySwordLevel)
+      .sort((a, b) => {
+        const diffA = Number(a.sword || 0) - mySwordLevel;
+        const diffB = Number(b.sword || 0) - mySwordLevel;
+        if (diffA !== diffB) return diffA - diffB;
+        return Number(b.sword || 0) - Number(a.sword || 0);
+      });
+
+    filtered = sameLevelUsers.slice();
+    if (filtered.length < 5) {
+      filtered = filtered.concat(higherLevelUsers.slice(0, 5 - filtered.length));
+    }
+
+    filtered.sort((a, b) => {
+      const swordGap = Number(b.sword || 0) - Number(a.sword || 0);
+      if (swordGap !== 0) return swordGap;
+      return String(a.id || "").localeCompare(String(b.id || ""), "ko");
+    });
+
+    if (helpEl) {
+      helpEl.textContent = "내 강화와 같은 유저를 우선 표시하고, 부족하면 더 높은 강화 유저를 가까운 순서로 표시합니다.";
+      helpEl.style.display = "block";
+    }
+  } else {
+    const lower = keyword.toLowerCase();
+    filtered = base.filter(u => u.id.toLowerCase().includes(lower));
+    if (helpEl) {
+      helpEl.textContent = filtered.length === 0
+        ? `"${keyword}" 와(과) 일치하는 유저가 없습니다.`
+        : `"${keyword}" 검색 결과입니다.`;
+      helpEl.style.display = "block";
+    }
   }
-} else {
-  const lower = keyword.toLowerCase();
-  filtered = base.filter(u => u.id.toLowerCase().includes(lower));
-  if (helpEl) {
-    helpEl.textContent = filtered.length === 0
-      ? `"${keyword}" 와(과) 일치하는 유저가 없습니다.`
-      : `"${keyword}" 검색 결과입니다.`;
-    helpEl.style.display = "block";
-  }
-}
 
   if (filtered.length === 0) {
     listEl.innerHTML = `<div style="font-size:13px; color:#aaa;">표시할 유저가 없습니다.</div>`;
@@ -19717,10 +19753,10 @@ if (!keyword) {
     btn.style.fontWeight = "bold";
     btn.style.color = "#ffffff";
     btn.dataset.targetId = u.id;
-    
-btn.onclick = function () {
-  showDuelConfirmPopup(u.id); // ← isRandomMatch 제거
-};
+
+    btn.onclick = function () {
+      showDuelConfirmPopup(u.id); // ← isRandomMatch 제거
+    };
 
     row.appendChild(left);
     row.appendChild(btn);
