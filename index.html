@@ -26652,12 +26652,12 @@ function openDuelArena() {
     if (bossId !== TWIN_BOSS_ID) return __orig_openBossBattleRewards_twin.apply(this, arguments);
     const msg = `
       <b>여명의쌍기사 보상</b><br><br>
-      • 30% 이상 : 파괴방지 주문서 3개, 슈퍼강화 주문서 1개, 마력의정수 110개<br>
-      • 25% 이상 : 파괴방지 주문서 3개, 마력의정수 80개<br>
-      • 20% 이상 : 파괴방지 주문서 2개, 마력의정수 50개<br>
-      • 10% 이상 : 파괴방지 주문서 1개, 마력의정수 30개<br>
-      • 1% 이상 : 21강 강화 주문서 3개, 마력의정수 15개<br>
-      • 1% 미만 : 15강 강화 주문서 5개, 마력의정수 10개<br><br>
+      • 30% 이상 : 파괴방지 주문서 6개, 슈퍼강화 주문서 2개, 마력의정수 140개<br>
+      • 25% 이상 : 파괴방지 주문서 5개, 마력의정수 110개<br>
+      • 20% 이상 : 파괴방지 주문서 4개, 마력의정수 80개<br>
+      • 10% 이상 : 파괴방지 주문서 3개, 마력의정수 50개<br>
+      • 1% 이상 : 파괴방지 주문서 1개, 21강 강화 주문서 2개, 마력의정수 30개<br>
+      • 1% 미만 : 21강 강화 주문서 3개, 마력의정수 20개<br><br>
       • 토벌대장 보너스 : 슈퍼강화 주문서 1개, 파괴방지 주문서 1개, 마력의정수 50개<br>
       • 참여자 중 랜덤 1명 추가보상 : 파괴방지 주문서 1개
     `;
@@ -26678,24 +26678,25 @@ function openDuelArena() {
       itemEngraveAdvanced: 0
     };
     if (pct >= 30) {
-      reward.itemProtect += 3;
-      reward.itemSuper += 1;
-      reward.itemEssence += 110;
+      reward.itemProtect += 6;
+      reward.itemSuper += 2;
+      reward.itemEssence += 140;
     } else if (pct >= 25) {
-      reward.itemProtect += 3;
-      reward.itemEssence += 80;
+      reward.itemProtect += 5;
+      reward.itemEssence += 110;
     } else if (pct >= 20) {
-      reward.itemProtect += 2;
-      reward.itemEssence += 50;
+      reward.itemProtect += 4;
+      reward.itemEssence += 80;
     } else if (pct >= 10) {
-      reward.itemProtect += 1;
-      reward.itemEssence += 30;
+      reward.itemProtect += 3;
+      reward.itemEssence += 50;
     } else if (pct >= 1) {
-      reward.itemScroll21 += 3;
-      reward.itemEssence += 15;
+      reward.itemProtect += 1;
+      reward.itemScroll21 += 2;
+      reward.itemEssence += 30;
     } else {
-      reward.itemScroll15 += 5;
-      reward.itemEssence += 10;
+      reward.itemScroll21 += 3;
+      reward.itemEssence += 20;
     }
     if (isLeader) {
       reward.itemSuper += 1;
