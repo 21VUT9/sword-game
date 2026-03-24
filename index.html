@@ -7401,6 +7401,7 @@ let itemElfQueenRecord = 0; // 📚 하이엘프퀸의 기록 (퀘스트)
 let swampElfHuntCount = 0; // 🌿 늪엘프의 숲 사냥 성공 횟수 (메인퀘스트)
 let itemEngraveNormal = 0;  // 🪬 일반각인의 주문서
 let itemEngraveAdvanced = 0; // 🪬 고급각인의 주문서
+let itemBossPriority = 0; // 🎫 보스토벌우선신청권
 
 // 📜 마법 스크롤 상점 판매 아이템
 const scrollShopItems = [
@@ -16850,6 +16851,7 @@ if (data.weaponType !== undefined && data.weaponType !== null) {
       swampElfHuntCount = Number(data.swampElfHuntCount || 0);
       itemEngraveNormal = Number(data.itemEngraveNormal || 0);
       itemEngraveAdvanced = Number(data.itemEngraveAdvanced || 0);
+      itemBossPriority = Number(data.itemBossPriority || 0);
       couponUsedMap = data.couponUsed || {};
   // ✅ 퀘스트 상태(계정별) 로드
 questState = (data.questState && typeof data.questState === "object") ? data.questState : {};
@@ -17134,6 +17136,7 @@ function save() {
     swampElfHuntCount: Number(swampElfHuntCount || 0),
     itemEngraveNormal: Number(itemEngraveNormal || 0),
     itemEngraveAdvanced: Number(itemEngraveAdvanced || 0),
+    itemBossPriority: Number(itemBossPriority || 0),
     cumulativeRewardState: normalizeCumulativeRewardState(cumulativeRewardState),
     huntStamina: Number(huntStamina),
     lastStaminaUpdate: Number(lastStaminaUpdate),
@@ -18258,6 +18261,7 @@ if (!power || power <= 20) {
     swampElfHuntCount = Number(data.swampElfHuntCount || 0);
     itemEngraveNormal = Number(data.itemEngraveNormal || 0);
     itemEngraveAdvanced = Number(data.itemEngraveAdvanced || 0);
+    itemBossPriority = Number(data.itemBossPriority || 0);
     couponUsedMap = data.couponUsed || {};
     // ✅ 퀘스트 상태(계정별) 로드
 questState = (data.questState && typeof data.questState === "object") ? data.questState : {};
@@ -22264,9 +22268,49 @@ writeBossBattleLog(bossId, `${getNickSafe()}님이 토벌대에 참여했습니�
 }
 
 // ✅ 신청하기(토벌 생성): gold 차감 → activeRun 생성(중복이면 환불)
-function createBossRun(bossId) {
+function hasBossPriorityTicket() {
+  return Number(itemBossPriority || 0) > 0;
+}
+
+function openBossPriorityConfirm(bossId) {
+  const def = BOSS_DEFS.find(b => String(b.id) === String(bossId));
+  if (!def) return;
+
+  const ticketCount = Number(itemBossPriority || 0);
+  if (ticketCount <= 0) {
+    showNpcMessage("보스토벌우선신청권이 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트");
+    return;
+  }
+
+  const html = `
+    <div style="font-size:13px; line-height:1.6; text-align:center;">
+      <b>보스토벌우선신청권</b>을 사용하겠나?<br>
+      <span style="color:#aaa;">사용 시 쿨타임과 관계없이 즉시 토벌이 시작됩니다.</span><br>
+      <span style="color:#ffcf7a;">※ 제한 레벨과 신청 골드 소모는 그대로 적용됩니다.</span>
+    </div>
+    <div style="margin:14px 0 10px; padding:10px; border:1px solid rgba(255,255,255,0.14); border-radius:10px; background:rgba(255,255,255,0.04); display:flex; align-items:center; justify-content:center; gap:10px;">
+      <img src="images/items/boss_priority_ticket.png" alt="보스토벌우선신청권" style="width:56px; height:56px; object-fit:contain; flex:0 0 auto;" onerror="this.style.display='none'">
+      <div style="text-align:left;">
+        <div style="font-weight:900; color:#ffd54f;">보스토벌우선신청권 x 01</div>
+        <div style="font-size:12px; color:#cfcfcf;">보유: ${ticketCount}개</div>
+        <div style="font-size:12px; color:#cfcfcf;">필요 강화: +${Number(def.minSword || 0)}강 이상</div>
+        <div style="font-size:12px; color:#cfcfcf;">신청 골드: ${formatGold(Number(def.applyCostGold || 0))} 골드</div>
+        <div style="font-size:12px; color:#9ecbff; margin-top:4px;">대상: ${def.bossTitle} ${def.bossName}</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button onclick="closeNpcPopup(); createBossRun('${def.id}', { usePriorityTicket: true })" style="flex:1; padding:8px; font-size:14px; border-radius:8px;">[사용]</button>
+      <button onclick="closeNpcPopup()" style="flex:1; padding:8px; font-size:14px; border-radius:8px;">[닫기]</button>
+    </div>
+  `;
+
+  showNpcMessage(html, LEON_IMG.apply, false, "길드마스터 – 레온하르트");
+}
+
+function createBossRun(bossId, options = {}) {
   const def = BOSS_DEFS.find(b => b.id === bossId);
   if (!def) return;
+  const usePriorityTicket = !!(options && options.usePriorityTicket);
 
   // ✅ 다른 보스에 이미 참여중이면 신청(토벌 생성) 불가
   const curId = String(activeBossId || "");
@@ -22297,7 +22341,14 @@ function createBossRun(bossId) {
     return;
   }
 
+  if (usePriorityTicket && Number(itemBossPriority || 0) <= 0) {
+    showNpcMessage("보스토벌우선신청권이 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+    return;
+  }
+
   const userGoldRef = db.ref(`users/${userId}/gold`);
+
+  const beginCreateRun = () => {
 
   // 2) 먼저 골드 차감(트랜잭션)
   userGoldRef.transaction((g) => {
@@ -22371,7 +22422,9 @@ lastManaShieldTryAt: 0,   // 2시간 주기 체크용
         // 4) 이미 진행중이면 환불
         userGoldRef.transaction((g) => Number(g || 0) + def.applyCostGold);
         showNpcMessage(
-          "이미 진행중인 토벌이 있습니다.\n(소모된 골드는 환불 처리했습니다.)",
+          usePriorityTicket
+            ? "이미 진행중인 토벌이 있습니다."
+            : "이미 진행중인 토벌이 있습니다.\n(소모된 골드는 환불 처리했습니다.)",
           LEON_IMG.focus,
           true,
           "길드마스터 – 레온하르트 발렌"
@@ -22380,14 +22433,36 @@ lastManaShieldTryAt: 0,   // 2시간 주기 체크용
       }
 
       // 5) 성공: 본인 자동 참여 처리
+      if (usePriorityTicket) {
+        itemBossPriority = Math.max(0, Number(itemBossPriority || 0) - 1);
+      }
       activeBossId = bossId;
       save();
 
-      writeLog(`${userNick}님이 ${bossName} 토벌을 시작하였습니다.`, false, { tone: "boss_apply" });
-      writeBossBattleLog(bossId, `토벌대가 결성되었습니다. (대장: ${getNickSafe()})`);
+      writeLog(
+        usePriorityTicket
+          ? `${userNick}님이 보스토벌우선신청권을 사용해 ${bossName} 토벌을 시작하였습니다.`
+          : `${userNick}님이 ${bossName} 토벌을 시작하였습니다.`,
+        false,
+        { tone: "boss_apply" }
+      );
+      writeBossBattleLog(
+        bossId,
+        usePriorityTicket
+          ? `토벌대가 결성되었습니다. (대장: ${getNickSafe()}, 우선신청권 사용)`
+          : `토벌대가 결성되었습니다. (대장: ${getNickSafe()})`
+      );
 
       showNpcMessage(
+        usePriorityTicket
+          ? `
+        <div style="font-size:14px; line-height:1.6;">
+          ✅ 보스토벌우선신청권이 사용되었습니다.<br>
+          즉시 토벌대가 개설되었습니다.<br>
+          <span style="color:#aaa;">보유 수량이 1개 차감되었습니다.</span>
+        </div>
         `
+          : `
         <div style="font-size:14px; line-height:1.6;">
           ✅ 토벌이 시작됐다.<br>
           중앙 리스트에 등록될 거다.<br>
@@ -22400,6 +22475,32 @@ lastManaShieldTryAt: 0,   // 2시간 주기 체크용
       );
     });
   });
+  };
+
+  if (usePriorityTicket) {
+    beginCreateRun();
+    return;
+  }
+
+  const cd = (bossCooldownCache || {})[bossId];
+  const nextAtRaw = cd ? cd.nextAt : 0;
+  let nextAt = 0;
+  if (typeof nextAtRaw === "number") nextAt = nextAtRaw;
+  else if (typeof nextAtRaw === "string") nextAt = Number(nextAtRaw);
+  if (!Number.isFinite(nextAt)) nextAt = 0;
+
+  const remainMs = Math.max(0, nextAt - Date.now());
+  if (remainMs > 0) {
+    showNpcMessage(
+      `아직 다시 토벌을 신청할 수 없습니다.<br><br>⏳ 신청 가능까지: <b>${formatHMS(remainMs)}</b>`,
+      LEON_IMG.focus,
+      true,
+      "길드마스터 – 레온하르트 발렌"
+    );
+    return;
+  }
+
+  beginCreateRun();
 }
 
 // ✅ 보스 신청 리스트 팝업(확장형)
@@ -22431,11 +22532,14 @@ const remainMs = Math.max(0, nextAt - Date.now());
 const cooldownTxt = formatHMS(remainMs);
     const canApplyBySword = (Number(sword || 0) >= def.minSword);
     const canApplyByCooldown = (remainMs <= 0);
-    const canApply = canApplyBySword && canApplyByCooldown && !isActive;
+    const hasPriorityTicket = hasBossPriorityTicket();
+    const canApplyByTicket = (!isActive && canApplyBySword && !canApplyByCooldown && hasPriorityTicket);
+    const canApply = !isActive && canApplyBySword && (canApplyByCooldown || canApplyByTicket);
     
     // ✅ 상태별 버튼 텍스트/비활성 계산
 let btnText = "✅ 신청하기";
 let disabled = false;
+let actionJs = `openBossApplyConfirm('${def.id}')`;
 
 // (조건: 강화)
 if (!canApplyBySword) {
@@ -22449,8 +22553,13 @@ else if (isActive) {
 }
 // (쿨타임)
 else if (!canApplyByCooldown) {
-  btnText = `⏳ 신청 대기중`;
-  disabled = true;
+  if (canApplyByTicket) {
+    btnText = `🎫 우선신청권 사용`;
+    actionJs = `openBossPriorityConfirm('${def.id}')`;
+  } else {
+    btnText = `⏳ 신청 대기중`;
+    disabled = true;
+  }
 }
     
     html += `
@@ -22466,7 +22575,7 @@ else if (!canApplyByCooldown) {
 
         <button
   ${disabled ? "disabled" : ""}
-  onclick="${disabled ? "" : `openBossApplyConfirm('${def.id}')`}"
+  onclick="${disabled ? "" : actionJs}"
   style="
     width:100%;
     padding:8px 10px;
@@ -23782,6 +23891,16 @@ if (starShard > 0) {
       count: Number(itemEngraveAdvanced || 0),
       img: "images/items/engrave_advanced.png",
       desc: "각인을 새로 새길 때 소모되는 주문서. (고급각인 전용)"
+    });
+  }
+
+  if (Number(itemBossPriority || 0) > 0) {
+    items.push({
+      id: "bossPriorityTicket",
+      name: "보스토벌우선신청권",
+      count: Number(itemBossPriority || 0),
+      img: "images/items/boss_priority_ticket.png",
+      desc: "보스 신청 가능 대기시간을 무시하고 즉시 토벌대를 개설할 수 있는 특별한 신청권입니다. 사용 시 1개가 소모됩니다."
     });
   }
   
@@ -26709,10 +26828,11 @@ function openDuelArena() {
   };
 
   const __orig_createBossRun_twin = createBossRun;
-  createBossRun = function(bossId){
+  createBossRun = function(bossId, options = {}){
     if (String(bossId || '') !== TWIN_BOSS_ID) return __orig_createBossRun_twin.apply(this, arguments);
     const def = BOSS_DEFS.find(b => String(b.id) === TWIN_BOSS_ID);
     if (!def) return;
+    const usePriorityTicket = !!(options && options.usePriorityTicket);
     const curId = String(activeBossId || '');
     if (curId && curId !== String(bossId)) {
       showNpcMessage('이미 다른 보스 토벌대에 참여중입니다. 현재 보스전을 완료하거나 포기한 뒤 다시 신청해주세요.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
@@ -26720,6 +26840,10 @@ function openDuelArena() {
     }
     if (Number(sword || 0) < Number(def.minSword || 0)) {
       showNpcMessage(`조건이 부족합니다. (필요: +${def.minSword}강)`, LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+      return;
+    }
+    if (usePriorityTicket && Number(itemBossPriority || 0) <= 0) {
+      showNpcMessage('보스토벌우선신청권이 없습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
       return;
     }
 
@@ -26794,15 +26918,18 @@ function openDuelArena() {
           }
           if (!committed2) {
             userGoldRef.transaction((g) => Number(g || 0) + needGold);
-            showNpcMessage('이미 진행중인 토벌이 있습니다. (소모된 골드는 환불 처리했습니다.)', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+            showNpcMessage(usePriorityTicket ? '이미 진행중인 토벌이 있습니다.' : '이미 진행중인 토벌이 있습니다. (소모된 골드는 환불 처리했습니다.)', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
             return;
           }
           gold = Math.max(0, localGold - needGold);
+          if (usePriorityTicket) {
+            itemBossPriority = Math.max(0, Number(itemBossPriority || 0) - 1);
+          }
           activeBossId = bossId;
           save();
-          writeLog(`${userNick}님이 여명의쌍기사 라에온&카르텔 토벌을 시작하였습니다.`, false, { tone:'boss_apply' });
-          writeBossBattleLog(bossId, `토벌대가 결성되었습니다. (대장: ${getNickSafe()})`);
-          showNpcMessage('✅ 토벌이 시작됐다.<br>망령왕의 죽음세계에서 여명의쌍기사가 그대들을 기다린다.', LEON_IMG.apply, true, '길드마스터 – 레온하르트 발렌');
+          writeLog(usePriorityTicket ? `${userNick}님이 보스토벌우선신청권을 사용해 여명의쌍기사 라에온&카르텔 토벌을 시작하였습니다.` : `${userNick}님이 여명의쌍기사 라에온&카르텔 토벌을 시작하였습니다.`, false, { tone:'boss_apply' });
+          writeBossBattleLog(bossId, usePriorityTicket ? `토벌대가 결성되었습니다. (대장: ${getNickSafe()}, 우선신청권 사용)` : `토벌대가 결성되었습니다. (대장: ${getNickSafe()})`);
+          showNpcMessage(usePriorityTicket ? '✅ 보스토벌우선신청권이 사용되었습니다.<br>즉시 토벌대가 개설되었습니다.' : '✅ 토벌이 시작됐다.<br>망령왕의 죽음세계에서 여명의쌍기사가 그대들을 기다린다.', LEON_IMG.apply, true, '길드마스터 – 레온하르트 발렌');
         });
       });
     };
@@ -26827,7 +26954,7 @@ function openDuelArena() {
       }
 
       const remainMs = Math.max(0, nextAt - Date.now());
-      if (remainMs > 0) {
+      if (!usePriorityTicket && remainMs > 0) {
         if (!Number(cd.nextAt || 0)) {
           cooldownRef.set({ nextAt });
         }
