@@ -4431,7 +4431,7 @@ html, body {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.447)
+    (v4.477)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -11132,7 +11132,7 @@ const CUMULATIVE_ATTENDANCE_REWARDS = [
   { days:20, rewardText:"슈퍼강화주문서 1개", reward:{ type:"itemSuper", count:1 } },
   { days:30, rewardText:"파괴방지주문서 3개", reward:{ type:"itemProtect", count:3 } },
   { days:50, rewardText:"슈퍼강화주문서 3개", reward:{ type:"itemSuper", count:3 } },
-  { days:100, rewardText:"파괴방지주문서 5개", reward:{ type:"itemProtect", count:5 } },
+  { days:100, rewardText:"보스토벌신청우선권 2개", reward:{ type:"itemBossPriority", count:2 } },
   { days:150, rewardText:"파괴방지주문서 10개", reward:{ type:"itemProtect", count:10 } },
   { days:200, rewardText:"파괴방지주문서 20개", reward:{ type:"itemProtect", count:20 } },
   { days:300, rewardText:"파괴방지주문서 50개", reward:{ type:"itemProtect", count:50 } },
@@ -11227,6 +11227,9 @@ function grantCumulativeReward(reward){
       break;
     case "itemSuper":
       itemSuper = Number(itemSuper || 0) + count;
+      break;
+    case "itemBossPriority":
+      itemBossPriority = Number(itemBossPriority || 0) + count;
       break;
   }
 }
@@ -16601,6 +16604,17 @@ if (r < successChance) {
 
     writeLog(
       `${userId}님이 사냥에서 <span style="color:#6cf;">슈퍼강화 주문서</span>를 획득했습니다!`
+    );
+  }
+
+  // 베히모스의 불구덩이 이후 사냥터: 0.05% 확률로 보스토벌신청우선권
+  if (currentField >= 7 && currentField <= 10 && Math.random() < adjDrop(0.0005)) {
+    itemBossPriority += 1;
+
+    popupMsg += `<br>🎫 보스토벌신청우선권을 획득했다!`;
+
+    writeLog(
+      `${userId}님이 사냥에서 <span style="color:#6cf;">보스토벌신청우선권</span>을 획득했습니다!`
     );
   }
 
@@ -22900,7 +22914,7 @@ function getBossRewardByPct(bossId, pct, isLeader){
       reward.itemDownProtect += 5;
       reward.itemEssence += 50;
     } else if (pct >= 25) {
-      reward.itemProtect += 1;
+      reward.itemBossPriority += 1;
       reward.itemDownProtect += 3;
       reward.itemEssence += 30;
     } else if (pct >= 20) {
@@ -22940,7 +22954,7 @@ if (pct >= 30) {
       reward.itemProtect += 2;
       reward.itemEssence += 50;
     } else if (pct >= 20) {
-      reward.itemProtect += 1;
+      reward.itemBossPriority += 1;
       reward.itemEssence += 30;
     } else if (pct >= 10) {
       reward.itemScroll21 += 3;
@@ -23071,6 +23085,7 @@ function claimBossReward(){
     itemScroll15 = Number(itemScroll15 || 0) + (rw.itemScroll15 || 0);
     itemEssence = Number(itemEssence || 0) + (rw.itemEssence || 0);
     itemSuper = Number(itemSuper || 0) + (rw.itemSuper || 0);
+    itemBossPriority = Number(itemBossPriority || 0) + (rw.itemBossPriority || 0);
     itemEngraveNormal = Number(itemEngraveNormal || 0) + (rw.itemEngraveNormal || 0);
     itemEngraveAdvanced = Number(itemEngraveAdvanced || 0) + (rw.itemEngraveAdvanced || 0);
     save(); // ✅ 보상(아이템) 지급 저장 확정
@@ -23095,6 +23110,7 @@ function claimBossReward(){
     if (rw.itemScroll15) lines.push(`15강 주문서 ${rw.itemScroll15}개`);
     if (rw.itemEssence) lines.push(`마력의 정수 ${rw.itemEssence}개`);
     if (rw.itemSuper) lines.push(`대장 보너스 ${rw.itemSuper}개`);
+    if (rw.itemBossPriority) lines.push(`보스토벌신청우선권 ${rw.itemBossPriority}개`);
     if (rw.itemEngraveNormal)   lines.push(`일반각인의 주문서 ${rw.itemEngraveNormal}개`);
     if (rw.itemEngraveAdvanced) lines.push(`고급각인의 주문서 ${rw.itemEngraveAdvanced}개`);
 
@@ -26856,7 +26872,7 @@ function openDuelArena() {
       • 1% 이상 : 파괴방지 주문서 1개, 21강 강화 주문서 2개, 마력의정수 30개<br>
       • 1% 미만 : 21강 강화 주문서 3개, 마력의정수 20개<br><br>
       • 토벌대장 보너스 : 슈퍼강화 주문서 1개, 파괴방지 주문서 1개, 마력의정수 50개<br>
-      • 참여자 중 랜덤 1명 추가보상 : 파괴방지 주문서 1개
+      • 참여자 중 랜덤 1명 추가보상 : 보스토벌신청우선권 1개
     `;
     showNpcMessage(msg, LEON_IMG.reward, true, '보상');
   };
@@ -26871,6 +26887,7 @@ function openDuelArena() {
       itemScroll15: 0,
       itemEssence: 0,
       itemSuper: 0,
+      itemBossPriority: 0,
       itemEngraveNormal: 0,
       itemEngraveAdvanced: 0
     };
@@ -26901,7 +26918,7 @@ function openDuelArena() {
       reward.itemEssence += 50;
     }
     const run = (bossRunsActiveCache || {})[TWIN_BOSS_ID];
-    if (run && String(run.bonusProtectUid || '') === String(userId || '')) reward.itemProtect += 1;
+    if (run && String(run.bonusProtectUid || '') === String(userId || '')) reward.itemBossPriority += 1;
     return reward;
   };
 
