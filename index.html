@@ -18169,6 +18169,10 @@ document.addEventListener("mousedown", function (e) {
     // ✅ 결투장 안 “🎯 결투하기(지정매칭)” 버튼(= data-duel-target) 클릭은 무시
     if (t && typeof t.closest === "function" && t.closest("[data-duel-target]")) return;
 
+    // ✅ NPC 팝업(결투 확인/결과창 포함) 클릭은 무시
+    const npcPopup = document.getElementById("npcPopup");
+    if (npcPopup && npcPopup.style.display !== "none" && npcPopup.style.display !== "" && npcPopup.contains(t)) return;
+
     panel.style.display = "none";
   })();
 });
