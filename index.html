@@ -14057,6 +14057,17 @@ function performDuel(targetUserId, isRandomMatch) {
         duelTargetsToday[targetUserId] = prev + 1;
       }
 
+      // 🏷️ 결투 업적 카운트 업데이트
+      const diff = targetSword - sword; // 상대 - 나
+
+      // 싸움꾼: 결투 누적 횟수 (승패 무관)
+      brawl500Count = Number(brawl500Count || 0) + 1;
+
+      // 강약약강: 본인보다 강화가 낮은 상대에게 지정매칭 10회 (승패 무관, "시도" 기준)
+      if (!isRandomMatch && diff < 0) {
+        bully10Count = Number(bully10Count || 0) + 1;
+      }
+
       if (isWin) {
         duelWin++;
 
@@ -14067,29 +14078,16 @@ function performDuel(targetUserId, isRandomMatch) {
 
         // 🏅 명예의 훈장 계산
         let honorGain = 0;
-        const diff = targetSword - sword; // 상대 - 나
 
-        // 🏷️ 결투 업적 카운트 업데이트
-// 싸움꾼: 결투 누적 횟수
-brawl500Count = Number(brawl500Count || 0) + 1;
+        // 도전자: 본인보다 강한 상대에게 지정매칭 승리 10회
+        if (!isRandomMatch && diff > 0) {
+          challenger10Count = Number(challenger10Count || 0) + 1;
+        }
 
-// 강약약강: 본인보다 강화가 낮은 상대에게 지정매칭 10회 (승패 무관, "시도" 기준)
-if (!isRandomMatch && diff < 0) {
-  bully10Count = Number(bully10Count || 0) + 1;
-}
-
-// 도전자/투신: 승리 기준
-if (isWin) {
-  // 도전자: 본인보다 강한 상대에게 지정매칭 승리 10회
-  if (!isRandomMatch && diff > 0) {
-    challenger10Count = Number(challenger10Count || 0) + 1;
-  }
-
-  // 투신: 본인보다 4강 이상 높은 상대에게 승리 1회
-  if (diff >= 4) {
-    warGodWin = true;
-  }
-}
+        // 투신: 본인보다 4강 이상 높은 상대에게 승리 1회
+        if (diff >= 4) {
+          warGodWin = true;
+        }
 
         if (diff >= 5) {
           honorGain = 40;
@@ -14231,7 +14229,10 @@ writeLog(logMsg);
         writeLog(logMsg);
       }
 
+      const titleChanged = checkAndGrantTitles();
+
       update();
+      if (titleChanged) save();
       save();
 
       // VS 화면 닫기
