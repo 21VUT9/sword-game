@@ -25725,6 +25725,25 @@ calcBossAttackResult = function(bossId){
 
   let dmg = Number(my.mainPower || 0);
 
+  try {
+    const run = rankingBattleRun;
+    const hpNow = Number(run && run.hp != null ? run.hp : 0);
+    const hpMax = Number(run && run.maxHp != null ? run.maxHp : 0);
+
+    if (hpMax > 0) {
+      if (hpNow >= hpMax) {
+        const b = Number(my && my.bossFirstHitBonusPct ? my.bossFirstHitBonusPct : 0);
+        if (b > 0) dmg = Math.floor(dmg * (1 + b / 100));
+      }
+
+      const hpPct = (hpNow / hpMax) * 100;
+      if (hpPct <= 1) {
+        const b = Number(my && my.bossExecuteBonusPct ? my.bossExecuteBonusPct : 0);
+        if (b > 0) dmg = Math.floor(dmg * (1 + b / 100));
+      }
+    }
+  } catch (e) {}
+
   const effDef = Math.max(0, Number(stats.physDef || 0) - Number(my.penetration || 0));
   dmg = dmg * (1 - effDef);
 
