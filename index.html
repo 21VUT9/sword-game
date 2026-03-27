@@ -26841,7 +26841,9 @@ function ensureBossCooldownResetByRun(bossId, runLike){
         cur.syncPending = false;
         if (!cur.bonusProtectUid) {
           const uids = Object.keys(cur.members || {});
-          if (uids.length) cur.bonusProtectUid = uids[Math.floor(Math.random() * uids.length)];
+          if (uids.length >= 5 && Math.random() < 0.25) {
+            cur.bonusProtectUid = uids[Math.floor(Math.random() * uids.length)];
+          }
         }
       }
       return cur;
@@ -27010,7 +27012,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
         • 1% 이상 : 파괴방지 주문서 1개, 21강 강화 주문서 2개, 마력의정수 30개<br>
         • 1% 미만 : 21강 강화 주문서 3개, 마력의정수 20개<br><br>
         • 토벌대장 보너스 : 슈퍼강화 주문서 1개, 파괴방지 주문서 1개, 마력의정수 50개<br>
-        • 참여자 중 랜덤 1명 추가보상 : 보스토벌신청우선권 1개
+        • 참여자 중 랜덤 1명 추가보상
       `;
       showNpcMessage(msg, LEON_IMG.reward, true, '보상');
     },
