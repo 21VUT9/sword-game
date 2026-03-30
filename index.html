@@ -19302,6 +19302,7 @@ function grantWeeklyDuelReward(myRank, rewardWeekKey) {
   }
 
   save();
+  update();
   return rewardText;
 }
 
@@ -26038,6 +26039,7 @@ function grantWeeklyRankingBattleReward(myRank, rewardWeekKey){
   itemDownProtect = Number(itemDownProtect || 0) + Number(rw.itemDownProtect || 0);
   itemScroll15 = Number(itemScroll15 || 0) + Number(rw.itemScroll15 || 0);
   save();
+  update();
 
   return rw.text || "";
 }
