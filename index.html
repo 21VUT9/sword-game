@@ -215,6 +215,116 @@ body {
   outline: none;
 }
 
+/* =========================
+   🔥 강화확률 2배 이벤트 버튼 연출
+   ========================= */
+#upgradeBtn{
+  overflow: visible;
+  isolation: isolate;
+}
+
+#upgradeBtn.forge-boost-active{
+  animation: forgeBoostPulse 1.8s ease-in-out infinite;
+  box-shadow:
+    inset 0 1px 2px rgba(255,255,255,0.10),
+    inset 0 -2px 3px rgba(0,0,0,0.45),
+    0 0 0 1px rgba(255,166,77,0.42),
+    0 0 12px rgba(255,120,0,0.34),
+    0 0 24px rgba(255,128,32,0.28),
+    0 6px 12px rgba(0,0,0,0.55);
+}
+
+#upgradeBtn.forge-boost-active::before{
+  content:"";
+  position:absolute;
+  left: 10%;
+  right: 10%;
+  top: 16%;
+  bottom: 10%;
+  border-radius: 16px;
+  z-index: -1;
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse at 50% 72%, rgba(255,135,40,0.34) 0%, rgba(255,135,40,0.20) 34%, rgba(255,90,0,0.10) 54%, rgba(255,90,0,0.00) 72%),
+    radial-gradient(ellipse at 26% 88%, rgba(255,90,0,0.30) 0%, rgba(255,90,0,0.00) 60%),
+    radial-gradient(ellipse at 74% 86%, rgba(255,170,70,0.28) 0%, rgba(255,170,70,0.00) 62%);
+  filter: blur(7px);
+  transform-origin: 50% 100%;
+  animation: forgeHeatAura 1.55s ease-in-out infinite;
+  opacity: 0.95;
+}
+
+#upgradeBtn.forge-boost-active::after{
+  content:"x2";
+  position:absolute;
+  top:-10px;
+  right:-12px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:999px;
+  background: linear-gradient(180deg, #fff0b3 0%, #ffb347 36%, #ff6a00 100%);
+  color:#2b1200;
+  font-size:14px;
+  font-weight:900;
+  letter-spacing:0.2px;
+  text-shadow:none;
+  box-shadow:
+    0 0 0 2px rgba(40,12,0,0.40),
+    0 0 12px rgba(255,132,0,0.50);
+  animation: forgeBadgeBob 1.15s ease-in-out infinite;
+  pointer-events:none;
+}
+
+@keyframes forgeBoostPulse{
+  0%, 100%{
+    filter: brightness(1) saturate(1);
+    box-shadow:
+      inset 0 1px 2px rgba(255,255,255,0.10),
+      inset 0 -2px 3px rgba(0,0,0,0.45),
+      0 0 0 1px rgba(255,166,77,0.38),
+      0 0 10px rgba(255,120,0,0.26),
+      0 0 18px rgba(255,128,32,0.22),
+      0 6px 12px rgba(0,0,0,0.55);
+  }
+  50%{
+    filter: brightness(1.08) saturate(1.12);
+    box-shadow:
+      inset 0 1px 2px rgba(255,255,255,0.14),
+      inset 0 -2px 3px rgba(0,0,0,0.42),
+      0 0 0 1px rgba(255,188,88,0.48),
+      0 0 16px rgba(255,132,0,0.42),
+      0 0 30px rgba(255,98,0,0.34),
+      0 6px 12px rgba(0,0,0,0.55);
+  }
+}
+
+@keyframes forgeHeatAura{
+  0%, 100%{
+    transform: scale(0.98, 0.94) rotate(-0.7deg);
+    filter: blur(7px);
+    opacity: 0.78;
+  }
+  35%{
+    transform: scale(1.04, 1.02) rotate(0.8deg);
+    filter: blur(9px);
+    opacity: 0.98;
+  }
+  70%{
+    transform: scale(1.01, 0.98) rotate(-0.9deg);
+    filter: blur(8px);
+    opacity: 0.88;
+  }
+}
+
+@keyframes forgeBadgeBob{
+  0%, 100%{ transform: translateY(0) scale(1); }
+  50%{ transform: translateY(-2px) scale(1.05); }
+}
+
 /* 💰 사냥 버튼 동전 팝 이펙트 */
 .hunt-coin-pop{
   position: fixed;
@@ -4431,7 +4541,7 @@ html, body {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.477)
+    (v4.482)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -5661,6 +5771,43 @@ firebase.initializeApp({
   projectId:"sword-game-1d1a1"
 });
 const db = firebase.database();
+
+// 🔥 강화확률 2배 이벤트 설정 (Firebase: gameConfig/events/forgeBoost)
+let forgeBoostEvent = {
+  enabled: false,
+  multiplier: 2
+};
+
+function isForgeBoostEventActive(){
+  return !!(forgeBoostEvent && forgeBoostEvent.enabled);
+}
+
+function getForgeBoostMultiplier(){
+  const raw = Number(forgeBoostEvent && forgeBoostEvent.multiplier);
+  if (!Number.isFinite(raw) || raw <= 0) return 2;
+  return Math.max(1, Math.min(raw, 10));
+}
+
+function applyForgeBoostVisualState(){
+  const btn = document.getElementById("upgradeBtn");
+  if (!btn) return;
+  const active = isForgeBoostEventActive();
+  btn.classList.toggle("forge-boost-active", active);
+  btn.setAttribute("aria-label", active ? `강화 x${getForgeBoostMultiplier()} 이벤트 진행 중` : "강화");
+  btn.title = active ? `강화확률 x${getForgeBoostMultiplier()} 이벤트 진행 중` : "";
+}
+
+try{
+  db.ref("gameConfig/events/forgeBoost").on("value", (snap) => {
+    const v = snap.val() || {};
+    forgeBoostEvent = {
+      enabled: !!v.enabled,
+      multiplier: Number(v.multiplier) > 0 ? Number(v.multiplier) : 2
+    };
+    applyForgeBoostVisualState();
+    try { if (typeof update === "function") update(); } catch(e) {}
+  });
+}catch(e){}
 
   // 🔊 공통 버튼 클릭 SFX
 let uiClickCommonAudio = null;
@@ -13724,12 +13871,18 @@ if (descEl) {
 
   const upgradeInfoEl = document.getElementById("upgradeInfo");
   if (upgradeInfoEl) {
+    const forgeEventLine = isForgeBoostEventActive()
+      ? `<br><span style="color:#ffb347; font-weight:900;">🔥 강화확률 x${getForgeBoostMultiplier()} 이벤트 진행 중</span>`
+      : "";
     upgradeInfoEl.innerHTML = `
       성공 <b>${success}%</b> / ${failInfo}
       <br>필요 골드 <b>${formatGold(cost)}</b>
       ${safeNote}
+      ${forgeEventLine}
     `;
   }
+
+  applyForgeBoostVisualState();
 
   // 🎯 사냥 정보 UI 업데이트
   const field = HUNT_FIELDS[currentField];
@@ -15112,6 +15265,11 @@ function getUpgradeChance(level) {
     const st = (typeof getPlayerFinalCombatStats === "function") ? getPlayerFinalCombatStats() : null;
     chance += Number(st && st.upgradeChancePlus ? st.upgradeChancePlus : 0);
   } catch (e) {}
+
+  // 🔥 Firebase 이벤트: 강화확률 xN
+  if (isForgeBoostEventActive()) {
+    chance *= getForgeBoostMultiplier();
+  }
 
   // 상한/하한 정리
   chance = Math.min(100, chance); // 100% 넘지 않게
