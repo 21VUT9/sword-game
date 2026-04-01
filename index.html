@@ -12925,15 +12925,12 @@ function completeMainCh1Linea06(){
   setStorybookUnlockedPages("chapter1", STORYBOOK_CH1_PAGES.length, false);
   save(); if (typeof update === "function") update(); updateQuestBadges(); updateStorybookBadge(); try { renderTalkNpcGrid(); } catch(e) {}
   npcDialogueActionMode = null;
-  showMainQuestCompleteEffect(
-    "퀘스트 : [늪의기억] 완료",
-    "엘프 역사서의 모든 페이지가 해금되었습니다",
-    () => {
-      npcDialogueQueue = [`퀘스트 완료!
-보상 : 파괴방지 주문서 3개 지급!
-엘프 역사서의 모든 페이지 해금!`];
-      openNpcDialogueFromTalkSets([npcDialogueQueue], "리네아", "images/npc/linea_talk.png");
-    }
+  runChapterCompleteEffect(
+    "늪의 기억",
+    "엘프 역사서",
+    "파괴방지 주문서 3개 지급!",
+    "리네아",
+    "images/npc/linea_talk.png"
   );
 }
 
@@ -16744,6 +16741,32 @@ if (r < successChance) {
 
   // 🔔 기본 팝업 문구 (골드 보상)
   let popupMsg = `사냥 성공!<br>💰 ${formatGold(finalReward)} 골드 획득` + (goldPct > 0 ? ` <span style="color:#7CFCB0;">(+${goldPct}%)</span>` : "");
+
+
+  // ❄️ 메인퀘스트 CH2 드랍 처리
+  if (questState["frost_01"] === QUEST_STATE.ACTIVE && Number(currentField || 0) === 7) {
+    const cur = Number(questState["frost_item_volcanic"] || 0);
+    if (cur < 20) {
+      const gain = Math.min(20 - cur, 1 + Math.floor(Math.random() * 3));
+      questState["frost_item_volcanic"] = cur + gain;
+      popupMsg += `<br>🪨 화산 숯 ${gain}개 획득`;
+      if (Number(questState["frost_item_volcanic"] || 0) >= 20) {
+        questState["frost_01"] = QUEST_STATE.COMPLETE;
+      }
+    }
+  }
+
+  if (questState["frost_03"] === QUEST_STATE.ACTIVE && Number(currentField || 0) === 5) {
+    const cur = Number(questState["frost_item_ice"] || 0);
+    if (cur < 10) {
+      const gain = Math.min(10 - cur, 1 + Math.floor(Math.random() * 3));
+      questState["frost_item_ice"] = cur + gain;
+      popupMsg += `<br>❄️ 얼음결정 ${gain}개 획득`;
+      if (Number(questState["frost_item_ice"] || 0) >= 10) {
+        questState["frost_03"] = QUEST_STATE.COMPLETE;
+      }
+    }
+  }
 
   // ✅ 드랍확률 보정 함수
   const adjDrop = (base) => {
@@ -23239,6 +23262,11 @@ function claimBossReward(){
         }
       }
     }
+    if (bossId === "frost_queen") {
+      if (questState["frost_05"] === QUEST_STATE.ACTIVE) {
+        questState["frost_05"] = QUEST_STATE.COMPLETE;
+      }
+    }
 
     // ✅ 기여도 계산
     const members = run.members || {};
@@ -24414,6 +24442,16 @@ function showMainQuestCompleteEffect(titleText, subText = "", onDone = null){
     if (typeof onDone === "function") onDone();
   }, 1900);
 }
+
+function runChapterCompleteEffect(chapterTitle, storyUnlockText, rewardLines, npcName, npcImage){
+  const titleText = `퀘스트 : [${chapterTitle}] 완료`;
+  const subText = `${storyUnlockText}의 모든 페이지가 해금되었습니다`;
+  showMainQuestCompleteEffect(titleText, subText, () => {
+    npcDialogueQueue = [`퀘스트 완료!\n보상 : ${rewardLines}\n${storyUnlockText}의 모든 페이지 해금!`];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], npcName, npcImage);
+  });
+}
+
 
 // 🔒 미구현 버튼 공용 안내 (기존 시스템 팝업 스타일)
 function showLockedFeaturePopup(){
@@ -27557,6 +27595,513 @@ function ensureBossCooldownResetByRun(bossId, runLike){
     };
   }
 })();
+
+
+// =====================
+// ❄️ 메인퀘스트 CH2 : [서리깊은 한]
+// =====================
+const FROST_ITEM_VOLCANIC_IMG = "images/items/item_volcanic_charcoal.png";
+const FROST_ITEM_ICE_IMG = "images/items/item_ice_crystal.png";
+const FROST_BOOK_IMG = "images/items/book_frost_queen_record.png";
+
+function getFrostVolcanicCount(){ return Number(questState["frost_item_volcanic"] || 0); }
+function setFrostVolcanicCount(v){ questState["frost_item_volcanic"] = Math.max(0, Number(v || 0)); }
+function getFrostIceCount(){ return Number(questState["frost_item_ice"] || 0); }
+function setFrostIceCount(v){ questState["frost_item_ice"] = Math.max(0, Number(v || 0)); }
+function getFrostDiaryCount(){ return Number(questState["frost_item_diary"] || 0); }
+function setFrostDiaryCount(v){ questState["frost_item_diary"] = Math.max(0, Number(v || 0)); }
+
+function shouldShowFrostFulgurantBadge(){
+  const st = questState["frost_01"];
+  return st === QUEST_STATE.OFFERED || st === QUEST_STATE.COMPLETE;
+}
+function shouldShowFrostLineaBadge(){
+  const st02 = questState["frost_02"];
+  const st06 = questState["frost_06"];
+  return st02 === QUEST_STATE.OFFERED || st06 === QUEST_STATE.OFFERED || st06 === QUEST_STATE.COMPLETE;
+}
+function shouldShowFrostEdelinBadge(){
+  const st02 = questState["frost_02"];
+  const st03 = questState["frost_03"];
+  const st04 = questState["frost_04"];
+  return st02 === QUEST_STATE.ACTIVE || st03 === QUEST_STATE.OFFERED || st03 === QUEST_STATE.COMPLETE || st04 === QUEST_STATE.OFFERED;
+}
+function shouldShowFrostVallenBadge(){
+  const st04 = questState["frost_04"];
+  const st05 = questState["frost_05"];
+  return st04 === QUEST_STATE.ACTIVE || st05 === QUEST_STATE.OFFERED || st05 === QUEST_STATE.COMPLETE;
+}
+
+const _origShouldShowForgeQuestBadge = shouldShowForgeQuestBadge;
+shouldShowForgeQuestBadge = function(){
+  return _origShouldShowForgeQuestBadge() || shouldShowFrostFulgurantBadge();
+};
+const _origShouldShowLineaQuestBadge = shouldShowLineaQuestBadge;
+shouldShowLineaQuestBadge = function(){
+  return _origShouldShowLineaQuestBadge() || shouldShowFrostLineaBadge();
+};
+const _origShouldShowEdelinQuestBadge = shouldShowEdelinQuestBadge;
+shouldShowEdelinQuestBadge = function(){
+  return _origShouldShowEdelinQuestBadge() || shouldShowFrostEdelinBadge();
+};
+const _origShouldShowVallenQuestBadge = shouldShowVallenQuestBadge;
+shouldShowVallenQuestBadge = function(){
+  return _origShouldShowVallenQuestBadge() || shouldShowFrostVallenBadge();
+};
+
+const _origSyncQuestUnlocks = syncQuestUnlocks;
+syncQuestUnlocks = function(){
+  _origSyncQuestUnlocks();
+
+  if (questState["main_ch1_linea_06"] === QUEST_STATE.REWARDED && Number(sword || 0) >= 18 && !questState["frost_01"]) {
+    questState["frost_01"] = QUEST_STATE.OFFERED;
+    save();
+  }
+  if (questState["frost_01"] === QUEST_STATE.REWARDED && !questState["frost_02"]) {
+    questState["frost_02"] = QUEST_STATE.OFFERED;
+    save();
+  }
+  if (questState["frost_02"] === QUEST_STATE.REWARDED && !questState["frost_03"]) {
+    questState["frost_03"] = QUEST_STATE.OFFERED;
+    save();
+  }
+  if (questState["frost_03"] === QUEST_STATE.REWARDED && !questState["frost_04"]) {
+    questState["frost_04"] = QUEST_STATE.OFFERED;
+    save();
+  }
+  if (questState["frost_04"] === QUEST_STATE.REWARDED && !questState["frost_05"]) {
+    questState["frost_05"] = QUEST_STATE.OFFERED;
+    save();
+  }
+  if (questState["frost_05"] === QUEST_STATE.REWARDED && !questState["frost_06"]) {
+    questState["frost_06"] = QUEST_STATE.OFFERED;
+    save();
+  }
+};
+
+const _origGetNpcDialogueNextLabel = getNpcDialogueNextLabel;
+getNpcDialogueNextLabel = function(){
+  const old = _origGetNpcDialogueNextLabel();
+  if (old) return old;
+  const labelMap = {
+    "offer_frost_01": ["무슨일인데?","무슨 숯인데?","다음","그런데?","다음","내가 도와줄게 있을까?","그래"],
+    "reward_frost_01": ["퀘스트완료"],
+    "offer_frost_02": ["응","뭔데?","그렇다는건...","어쩌면...","그러는게 좋겠어"],
+    "reward_frost_02": ["퀘스트완료"],
+    "offer_frost_03": ["알고있는게 있어?","그래"],
+    "reward_frost_03": ["퀘스트완료"],
+    "offer_frost_04": ["하지만 최근에 급격히...","위험한거 아니야?","알겠어"],
+    "reward_frost_04": ["퀘스트완료"],
+    "offer_frost_05": ["마법사?","다음","다음","참여한다"],
+    "reward_frost_05": ["다음","퀘스트완료"],
+    "offer_frost_06": ["다음","그래"],
+    "reward_frost_06": ["엘프역사서에 등장한..?","어떻게?","그렇다는건 ..!","퀘스트완료"]
+  };
+  const labels = labelMap[npcDialogueActionMode];
+  if (Array.isArray(labels) && npcDialogueIndex >= 0 && npcDialogueIndex < labels.length) {
+    return labels[npcDialogueIndex];
+  }
+  return null;
+};
+
+const _origFinishNpcTypewriter = finishNpcTypewriter;
+finishNpcTypewriter = function(){
+  _origFinishNpcTypewriter();
+  const hasNext = npcDialogueIndex < npcDialogueQueue.length - 1;
+  if (hasNext) return;
+  const nextBtn = document.getElementById("npcDialogueNextBtn");
+  if (npcDialogueActionMode === "offer_frost_01") { if (nextBtn) nextBtn.style.display = "none"; showFrost01AcceptReject(); return; }
+  if (npcDialogueActionMode === "reward_frost_01") { if (nextBtn) nextBtn.style.display = "none"; showFrost01RewardBtn(); return; }
+  if (npcDialogueActionMode === "offer_frost_02") { if (nextBtn) nextBtn.style.display = "none"; showFrost02AcceptReject(); return; }
+  if (npcDialogueActionMode === "reward_frost_02") { if (nextBtn) nextBtn.style.display = "none"; showFrost02RewardBtn(); return; }
+  if (npcDialogueActionMode === "offer_frost_03") { if (nextBtn) nextBtn.style.display = "none"; showFrost03AcceptReject(); return; }
+  if (npcDialogueActionMode === "reward_frost_03") { if (nextBtn) nextBtn.style.display = "none"; showFrost03RewardBtn(); return; }
+  if (npcDialogueActionMode === "offer_frost_04") { if (nextBtn) nextBtn.style.display = "none"; showFrost04AcceptReject(); return; }
+  if (npcDialogueActionMode === "reward_frost_04") { if (nextBtn) nextBtn.style.display = "none"; showFrost04RewardBtn(); return; }
+  if (npcDialogueActionMode === "offer_frost_05") { if (nextBtn) nextBtn.style.display = "none"; showFrost05AcceptReject(); return; }
+  if (npcDialogueActionMode === "reward_frost_05") { if (nextBtn) nextBtn.style.display = "none"; showFrost05RewardBtn(); return; }
+  if (npcDialogueActionMode === "offer_frost_06") { if (nextBtn) nextBtn.style.display = "none"; showFrost06AcceptReject(); return; }
+  if (npcDialogueActionMode === "reward_frost_06") { if (nextBtn) nextBtn.style.display = "none"; showFrost06RewardBtn(); return; }
+};
+
+const _origOpenFulgurantDialogue = openFulgurantDialogue;
+openFulgurantDialogue = function(){
+  const st = questState["frost_01"];
+  if (st === QUEST_STATE.OFFERED) {
+    npcDialogueActionMode = "offer_frost_01";
+    npcDialogueQueue = [
+      "흐음.. 정말 큰일이야..",
+      "우리 대장간의 불 말이야. 그 불을 만들기 위해서 특수한 숯을 써야해",
+      "북동쪽에 화산섬이 하나 있거든. 거기서 뜨거운 열기를 견디고 자란 나무가 화산재에 묻혀 산소가 완전히 차단되면 열기에 의해 완벽한 숯이되거든",
+      "그렇게 만들어진 최상급 화산 숯은 뛰어난 품질을 자랑하지. 온도의 한계 없이 타오르며, 그 화력을 엄청난시간을 유지해",
+      "그 숯을 구해올 수 있는 길이 완전히 막혀버렸어. 동쪽길은 죽은자들이 숨쉬는 땅이 가로막고있어서 북쪽설산으로 가야하는데,",
+      "북쪽 설산지대가 최근들어 급격히 추워지다가 이젠 통행이 불가능할 정도로 얼어붙어버렸어",
+      "정말? 숯을 구해와줄 수 있나?"
+    ];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "퍼그란트", "images/npc/blacksmith_talk.png");
+    return;
+  }
+  if (st === QUEST_STATE.COMPLETE) {
+    npcDialogueActionMode = "reward_frost_01";
+    npcDialogueQueue = ["오오... 정말 고맙네!, 근데 정말 춥지 않던가?"];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "퍼그란트", "images/npc/blacksmith_talk.png");
+    return;
+  }
+  _origOpenFulgurantDialogue();
+};
+
+const _origOpenEdelinDialogue = openEdelinDialogue;
+openEdelinDialogue = function(){
+  const st02 = questState["frost_02"];
+  const st03 = questState["frost_03"];
+  const st04 = questState["frost_04"];
+  if (st02 === QUEST_STATE.ACTIVE) {
+    npcDialogueActionMode = "reward_frost_02";
+    npcDialogueQueue = ["북쪽 설산지대? 안그래도 최근에..."];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "세레나 에델린", "images/npc/edelin_talk.png");
+    return;
+  }
+  if (st03 === QUEST_STATE.OFFERED) {
+    npcDialogueActionMode = "offer_frost_03";
+    npcDialogueQueue = [
+      "안그래도 최근에 북쪽에서 마력이 폭주하고 있는걸 느끼고있어.",
+      "현재로써 알 수 있는게 없어. 한번 조사해볼래?"
+    ];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "세레나 에델린", "images/npc/edelin_talk.png");
+    return;
+  }
+  if (st03 === QUEST_STATE.COMPLETE) {
+    npcDialogueActionMode = "reward_frost_03";
+    npcDialogueQueue = ["확실히... 이건.. 좀... 이상한걸?"];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "세레나 에델린", "images/npc/edelin_talk.png");
+    return;
+  }
+  if (st04 === QUEST_STATE.OFFERED) {
+    npcDialogueActionMode = "offer_frost_04";
+    npcDialogueQueue = [
+      "이건 마력의 흔적이야. 누군가가 계속 이곳을 얼리고 있는거야.",
+      "그래. 리네아의 얘기를 토대로 분석해보면, 어떤 이유때문에 북쪽산지에 겨울이 찾아왔고, 그 마력이 수백년간 끊임없다가 최근에 폭주하고있다는 얘기야",
+      "멈추지 않으면 세상엔 곧 영원한 겨울이 찾아올지도 몰라. 발렌에게 조사 의뢰를 맡기면 좋겠어"
+    ];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "세레나 에델린", "images/npc/edelin_talk.png");
+    return;
+  }
+  _origOpenEdelinDialogue();
+};
+
+const _origOpenLineaDialogue = openLineaDialogue;
+openLineaDialogue = function(){
+  const st02 = questState["frost_02"];
+  const st06 = questState["frost_06"];
+  if (st02 === QUEST_STATE.OFFERED) {
+    npcDialogueActionMode = "offer_frost_02";
+    npcDialogueQueue = [
+      "북쪽 설산지대가 더 추워지고 있다고?",
+      "기록을 찾아보면, 흥미로운게 있어",
+      "북쪽 설산지대는 시간이 흐를수록 추워지고 있다는거야. 계절적인 변화가 아니라는거지.",
+      "심지어 과거엔 설산이 아니라 꽃과 나무로 가득한 산지였을지도 모른다는 연구기록도 있어.",
+      "맞아, 어떤 이유가 있을지도 몰라. 한번 에델린한테 물어볼래? 마법관련이라면 에델린이 제일 잘 알 거야."
+    ];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "리네아", "images/npc/linea_talk.png");
+    return;
+  }
+  if (st06 === QUEST_STATE.OFFERED && getFrostDiaryCount() > 0) {
+    npcDialogueActionMode = "offer_frost_06";
+    npcDialogueQueue = [
+      "(문서를 급하게 읽어본다) 이건 한번도 보지못한 기록이야! 엄청 옛날 언어인것 같아!",
+      "이거 내가 좀 살펴봐도 돼?"
+    ];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "리네아", "images/npc/linea_talk.png");
+    return;
+  }
+  if (st06 === QUEST_STATE.COMPLETE) {
+    npcDialogueActionMode = "reward_frost_06";
+    npcDialogueQueue = [
+      "이럴수가! 다시한번 발테리온왕국이 언급돼!",
+      "맞아! 인류 최초의 문명인 잊혀진 인간 역사가 사실이였어! 심지어 위치도 특정하고있어!",
+      "위대한 마법사 그랜드아르카니스트, 서리여왕 아르셀리아. 그녀가 발테리온 왕국의 모든 사람을 죽지못하는 존재로 만들었다고 기록해놨어",
+      "대륙 동쪽의 망자들의 땅이라고 불리는 곳.. 그곳이.. 과거 발테리온왕국일지도 몰라"
+    ];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "리네아", "images/npc/linea_talk.png");
+    return;
+  }
+  _origOpenLineaDialogue();
+};
+
+const _origOpenVallenDialogue = openVallenDialogue;
+openVallenDialogue = function(){
+  const st04 = questState["frost_04"];
+  const st05 = questState["frost_05"];
+  if (st04 === QUEST_STATE.ACTIVE) {
+    npcDialogueActionMode = "reward_frost_04";
+    npcDialogueQueue = ["에델린이? 바로 정찰용병을 보내겠다."];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "레온하르트 발렌", "images/npc/vallen_talk.png");
+    return;
+  }
+  if (st05 === QUEST_STATE.OFFERED) {
+    npcDialogueActionMode = "offer_frost_05";
+    npcDialogueQueue = [
+      "에델린의 말이 맞더군. 설산 깊은 동굴, 겨울보다 추운 극한에 봉인되어 있는 마법사를 발견했다.",
+      "아무리 고대문헌을 찾아봐도 해당 마법사에 대한 얘기는 없더군, 하지만 확실한건 이 마법사의 봉인이 약해지고있다.",
+      "가만 둔다면, 정말 이 세상엔 영원한 겨울이 들이닥칠지도 모른다.",
+      "그러고보니 너. 지난번 토벌작전에도 큰 공을 세웠었지. 이번에도 인류의 생존을 위해 서리여왕 토벌작전에 참여해보지 않겠나?"
+    ];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "레온하르트 발렌", "images/npc/vallen_talk.png");
+    return;
+  }
+  if (st05 === QUEST_STATE.COMPLETE) {
+    npcDialogueActionMode = "reward_frost_05";
+    npcDialogueQueue = [
+      "이번엔 정말 아슬아슬했군.",
+      "자, 이건 네 전리품. 고대어로 적힌 서적 같군"
+    ];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "레온하르트 발렌", "images/npc/vallen_talk.png");
+    return;
+  }
+  _origOpenVallenDialogue();
+};
+
+function showFrost01AcceptReject(){
+  const btnArea = document.getElementById("npcDialogueBtnArea"); if(!btnArea) return;
+  btnArea.innerHTML = `
+    <button class="actionBtn" type="button" onclick="acceptFrost01()">그래</button>
+    <button class="actionBtn" type="button" onclick="rejectFrostQuest()">다음에</button>`;
+}
+function acceptFrost01(){
+  questState["frost_01"] = QUEST_STATE.ACTIVE; npcDialogueActionMode = null;
+  npcDialogueQueue = [`[달성조건] : 베히모스의 불구덩이에서 화산숯 20개를 구해오자. (사냥시 획득)\n\n[보상] : 21강 강화주문서, 3억골드, 명예의 훈장 60개`];
+  save(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){}
+  openNpcDialogueFromTalkSets([npcDialogueQueue], "퍼그란트", "images/npc/blacksmith_talk.png");
+}
+function showFrost01RewardBtn(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="completeFrost01()">퀘스트 완료</button>`; }
+function completeFrost01(){
+  if (questState["frost_01"] !== QUEST_STATE.COMPLETE) return;
+  itemScroll21 = Number(itemScroll21||0) + 1; gold = Number(gold||0) + 300000000; itemHonorMedal = Number(itemHonorMedal||0) + 60;
+  setFrostVolcanicCount(0); markQuestRewarded("frost_01");
+  save(); update(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){}
+  npcDialogueActionMode = null;
+  npcDialogueQueue = [`퀘스트 완료!\n보상 : 21강 강화주문서 1개, 3억골드, 명예의 훈장 60개 지급!`];
+  openNpcDialogueFromTalkSets([npcDialogueQueue], "퍼그란트", "images/npc/blacksmith_talk.png");
+}
+
+function showFrost02AcceptReject(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="acceptFrost02()">그러는게 좋겠어</button><button class="actionBtn" type="button" onclick="rejectFrostQuest()">글쎄...</button>`; }
+function acceptFrost02(){ questState["frost_02"] = QUEST_STATE.ACTIVE; npcDialogueActionMode=null; npcDialogueQueue=[`[달성조건] : 에델린한테 말해보자\n\n[보상] : 2억골드, 명예의훈장 40개`]; save(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} openNpcDialogueFromTalkSets([npcDialogueQueue], "리네아", "images/npc/linea_talk.png"); }
+function showFrost02RewardBtn(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="completeFrost02()">퀘스트 완료</button>`; }
+function completeFrost02(){ if (questState["frost_02"] !== QUEST_STATE.ACTIVE) return; gold = Number(gold||0)+200000000; itemHonorMedal = Number(itemHonorMedal||0)+40; markQuestRewarded("frost_02"); save(); update(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} npcDialogueActionMode=null; npcDialogueQueue=[`퀘스트 완료!\n보상 : 2억골드, 명예의훈장 40개 지급!`]; openNpcDialogueFromTalkSets([npcDialogueQueue], "세레나 에델린", "images/npc/edelin_talk.png"); }
+
+function showFrost03AcceptReject(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="acceptFrost03()">그래</button><button class="actionBtn" type="button" onclick="rejectFrostQuest()">내가 추위를 많이타서...</button>`; }
+function acceptFrost03(){ questState["frost_03"] = QUEST_STATE.ACTIVE; npcDialogueActionMode=null; npcDialogueQueue=[`[달성조건] : 서리여왕의 동굴에서 얼음결정 10개를 구해오자 (사냥시 획득)\n\n[보상] : 파괴방지주문서 1개, 4억골드, 명예의훈장 90개`]; save(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} openNpcDialogueFromTalkSets([npcDialogueQueue], "세레나 에델린", "images/npc/edelin_talk.png"); }
+function showFrost03RewardBtn(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="completeFrost03()">퀘스트 완료</button>`; }
+function completeFrost03(){ if (questState["frost_03"] !== QUEST_STATE.COMPLETE) return; itemProtect = Number(itemProtect||0)+1; gold = Number(gold||0)+400000000; itemHonorMedal = Number(itemHonorMedal||0)+90; setFrostIceCount(0); markQuestRewarded("frost_03"); save(); update(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} npcDialogueActionMode=null; npcDialogueQueue=[`퀘스트 완료!\n보상 : 파괴방지주문서 1개, 4억골드, 명예의훈장 90개 지급!`]; openNpcDialogueFromTalkSets([npcDialogueQueue], "세레나 에델린", "images/npc/edelin_talk.png"); }
+
+function showFrost04AcceptReject(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="acceptFrost04()">알겠어</button><button class="actionBtn" type="button" onclick="rejectFrostQuest()">잠시만...</button>`; }
+function acceptFrost04(){ questState["frost_04"] = QUEST_STATE.ACTIVE; npcDialogueActionMode=null; npcDialogueQueue=[`[달성조건] : 발렌에게 말을 걸어보자\n\n[보상] : 7억골드, 명예의훈장 60개`]; save(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} openNpcDialogueFromTalkSets([npcDialogueQueue], "세레나 에델린", "images/npc/edelin_talk.png"); }
+function showFrost04RewardBtn(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="completeFrost04()">퀘스트 완료</button>`; }
+function completeFrost04(){ if (questState["frost_04"] !== QUEST_STATE.ACTIVE) return; gold = Number(gold||0)+700000000; itemHonorMedal = Number(itemHonorMedal||0)+60; markQuestRewarded("frost_04"); save(); update(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} npcDialogueActionMode=null; npcDialogueQueue=[`퀘스트 완료!\n보상 : 7억골드, 명예의훈장 60개 지급!`]; openNpcDialogueFromTalkSets([npcDialogueQueue], "레온하르트 발렌", "images/npc/vallen_talk.png"); }
+
+function showFrost05AcceptReject(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="acceptFrost05()">참여한다</button><button class="actionBtn" type="button" onclick="rejectFrostQuest()">거절한다</button>`; }
+function acceptFrost05(){ questState["frost_05"] = QUEST_STATE.ACTIVE; npcDialogueActionMode=null; npcDialogueQueue=[`[달성조건] : 서리여왕 아르셀리아 토벌\n\n[보상] : 슈퍼강화주문서 1개, 서리여왕의 일기, 명예의훈장 110개`]; save(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} openNpcDialogueFromTalkSets([npcDialogueQueue], "레온하르트 발렌", "images/npc/vallen_talk.png"); }
+function showFrost05RewardBtn(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="completeFrost05()">퀘스트 완료</button>`; }
+function completeFrost05(){ if (questState["frost_05"] !== QUEST_STATE.COMPLETE) return; itemSuper = Number(itemSuper||0)+1; itemHonorMedal = Number(itemHonorMedal||0)+110; setFrostDiaryCount(getFrostDiaryCount()+1); markQuestRewarded("frost_05"); unlockStorybookChapter("chapter2", false); setStorybookUnlockedPages("chapter2", 1, false); save(); update(); updateQuestBadges(); updateStorybookBadge(); try{renderTalkNpcGrid();}catch(e){} npcDialogueActionMode=null; npcDialogueQueue=[`퀘스트 완료!\n보상 : 슈퍼강화주문서 1개, 서리여왕의 일기, 명예의훈장 110개 지급!\n서리여왕의 기록 1페이지 해금!`]; openNpcDialogueFromTalkSets([npcDialogueQueue], "레온하르트 발렌", "images/npc/vallen_talk.png"); }
+
+function showFrost06AcceptReject(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="acceptFrost06()">그래</button>`; }
+function acceptFrost06(){ if (getFrostDiaryCount() > 0) setFrostDiaryCount(getFrostDiaryCount()-1); questState["frost_06"] = QUEST_STATE.COMPLETE; npcDialogueActionMode=null; npcDialogueQueue=[`[달성조건] : 해석을 완료한 리네아를 찾아가자.\n\n[보상] : 파괴방지 주문서 3개, 스토리북 : 서리여왕의 기록 해금`]; save(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} openNpcDialogueFromTalkSets([npcDialogueQueue], "리네아", "images/npc/linea_talk.png"); }
+function showFrost06RewardBtn(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="completeFrost06()">퀘스트 완료</button>`; }
+function completeFrost06(){ if (questState["frost_06"] !== QUEST_STATE.COMPLETE) return; itemProtect = Number(itemProtect||0)+3; markQuestRewarded("frost_06"); unlockStorybookChapter("chapter2", false); setStorybookUnlockedPages("chapter2", STORYBOOK_CH2_PAGES.length, false); save(); update(); updateQuestBadges(); updateStorybookBadge(); try{renderTalkNpcGrid();}catch(e){} npcDialogueActionMode=null; runChapterCompleteEffect(
+    "서리깊은 한",
+    "서리여왕의 기록",
+    "파괴방지 주문서 3개 지급!",
+    "리네아",
+    "images/npc/linea_talk.png"
+  ); }
+function rejectFrostQuest(){ npcDialogueActionMode = null; closeNpcDialogue(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} }
+
+function openQuestDetail_frost01(){
+  const st = questState?.["frost_01"]; let body = `<div style="font-weight:900; font-size:15px; margin-bottom:8px;">[서리깊은 한] 01 _ 대장간의 숯</div><div style="font-size:13px; line-height:1.6;">퍼그란트가 대장간의 특수한 화산 숯을 구해 달라고 부탁했다.<br><br><b>달성조건</b> : 베히모스의 불구덩이에서 화산 숯 20개 획득<br><b>진행도</b> : ${Math.min(getFrostVolcanicCount(),20)} / 20<br><b>완료보상</b> : 21강 강화주문서 1개, 3억골드, 명예의훈장 60개</div>`;
+  if (st === QUEST_STATE.ACTIVE) body += `<div style="margin-top:10px; font-size:12px; color:#aaa;">※ 베히모스의 불구덩이 사냥 성공 시 화산 숯을 획득합니다.</div>`;
+  else if (st === QUEST_STATE.COMPLETE) body += `<div style="margin-top:10px; font-size:12px; color:#ffd54f;">※ 퍼그란트에게 돌아가서 퀘스트 완료를 진행하세요.</div>`;
+  else if (st === QUEST_STATE.REWARDED) body += `<div style="margin-top:10px; font-size:12px; color:#7CFF7C;">※ 완료한 퀘스트입니다.</div>`;
+  showNpcMessage(body, null, true, "퀘스트 상세");
+}
+function openQuestDetail_frost02(){ const st = questState?.["frost_02"]; let body = `<div style="font-weight:900; font-size:15px; margin-bottom:8px;">[서리깊은 한] 02 _ 이상기후</div><div style="font-size:13px; line-height:1.6;">리네아가 북쪽 설산의 이상기후 원인을 마법 관점에서 확인해 달라고 부탁했다.<br><br><b>달성조건</b> : 에델린한테 말해보자<br><b>완료보상</b> : 2억골드, 명예의훈장 40개</div>`; if (st===QUEST_STATE.ACTIVE) body += `<div style="margin-top:10px; font-size:12px; color:#aaa;">※ 에델린과 대화하면 완료됩니다.</div>`; else if (st===QUEST_STATE.REWARDED) body += `<div style="margin-top:10px; font-size:12px; color:#7CFF7C;">※ 완료한 퀘스트입니다.</div>`; showNpcMessage(body, null, true, "퀘스트 상세"); }
+function openQuestDetail_frost03(){ const st = questState?.["frost_03"]; let body = `<div style="font-weight:900; font-size:15px; margin-bottom:8px;">[서리깊은 한] 03 _ 설산 탐사</div><div style="font-size:13px; line-height:1.6;">에델린이 북쪽 설산의 이상 마력을 조사해 달라고 부탁했다.<br><br><b>달성조건</b> : 서리여왕의 동굴에서 얼음결정 10개 획득<br><b>진행도</b> : ${Math.min(getFrostIceCount(),10)} / 10<br><b>완료보상</b> : 파괴방지주문서 1개, 4억골드, 명예의훈장 90개</div>`; if (st===QUEST_STATE.ACTIVE) body += `<div style="margin-top:10px; font-size:12px; color:#aaa;">※ 서리여왕의 동굴 사냥 성공 시 얼음결정을 획득합니다.</div>`; else if (st===QUEST_STATE.COMPLETE) body += `<div style="margin-top:10px; font-size:12px; color:#ffd54f;">※ 에델린에게 돌아가서 퀘스트 완료를 진행하세요.</div>`; else if (st===QUEST_STATE.REWARDED) body += `<div style="margin-top:10px; font-size:12px; color:#7CFF7C;">※ 완료한 퀘스트입니다.</div>`; showNpcMessage(body, null, true, "퀘스트 상세"); }
+function openQuestDetail_frost04(){ const st = questState?.["frost_04"]; let body = `<div style="font-weight:900; font-size:15px; margin-bottom:8px;">[서리깊은 한] 04 _ 설산의 마력</div><div style="font-size:13px; line-height:1.6;">에델린이 설산을 얼리는 마력의 정체를 조사하기 위해 발렌에게 의뢰를 맡겨 달라고 부탁했다.<br><br><b>달성조건</b> : 발렌에게 말을 걸어보자<br><b>완료보상</b> : 7억골드, 명예의훈장 60개</div>`; if (st===QUEST_STATE.ACTIVE) body += `<div style="margin-top:10px; font-size:12px; color:#aaa;">※ 발렌과 대화하면 완료됩니다.</div>`; else if (st===QUEST_STATE.REWARDED) body += `<div style="margin-top:10px; font-size:12px; color:#7CFF7C;">※ 완료한 퀘스트입니다.</div>`; showNpcMessage(body, null, true, "퀘스트 상세"); }
+function openQuestDetail_frost05(){ const st = questState?.["frost_05"]; let body = `<div style="font-weight:900; font-size:15px; margin-bottom:8px;">[서리깊은 한] 05 _ 서리여왕 토벌</div><div style="font-size:13px; line-height:1.6;">발렌이 서리여왕 아르셀리아 토벌 작전에 참여해 달라고 요청했다.<br><br><b>달성조건</b> : 서리여왕 아르셀리아 토벌성공 1회<br><b>완료보상</b> : 슈퍼강화주문서 1개, 서리여왕의 일기 1개, 명예의훈장 110개</div>`; if (st===QUEST_STATE.ACTIVE) body += `<div style="margin-top:10px; font-size:12px; color:#aaa;">※ 서리여왕 토벌 보상을 수령하면 완료 가능 상태로 전환됩니다.</div>`; else if (st===QUEST_STATE.COMPLETE) body += `<div style="margin-top:10px; font-size:12px; color:#ffd54f;">※ 발렌에게 돌아가서 퀘스트 완료를 진행하세요.</div>`; else if (st===QUEST_STATE.REWARDED) body += `<div style="margin-top:10px; font-size:12px; color:#7CFF7C;">※ 완료한 퀘스트입니다.</div>`; showNpcMessage(body, null, true, "퀘스트 상세"); }
+function openQuestDetail_frost06(){ const st = questState?.["frost_06"]; let body = `<div style="font-weight:900; font-size:15px; margin-bottom:8px;">[서리깊은 한] 06 _ 서리여왕의 일기</div><div style="font-size:13px; line-height:1.6;">리네아가 서리여왕의 일기를 해석해 보겠다며 책을 맡아 달라고 부탁했다.<br><br><b>달성조건</b> : 해석을 완료한 리네아를 찾아가자<br><b>보유중</b> : 서리여왕의 일기 ${Math.min(getFrostDiaryCount(),1)} / 1<br><b>완료보상</b> : 파괴방지 주문서 3개, 스토리북 : 서리여왕의 기록 해금</div>`; if (st===QUEST_STATE.OFFERED) body += `<div style="margin-top:10px; font-size:12px; color:#aaa;">※ 리네아에게 서리여왕의 일기를 건네면 진행됩니다.</div>`; else if (st===QUEST_STATE.COMPLETE) body += `<div style="margin-top:10px; font-size:12px; color:#ffd54f;">※ 리네아에게 돌아가서 퀘스트 완료를 진행하세요.</div>`; else if (st===QUEST_STATE.REWARDED) body += `<div style="margin-top:10px; font-size:12px; color:#7CFF7C;">※ 완료한 퀘스트입니다.</div>`; showNpcMessage(body, null, true, "퀘스트 상세"); }
+
+const _origOpenQuestOverlay = openQuestOverlay;
+openQuestOverlay = function(){
+  _origOpenQuestOverlay();
+  const list = document.getElementById("questListArea");
+  if (!list) return;
+  // remove empty message if our quests exist
+  const our = ["frost_01","frost_02","frost_03","frost_04","frost_05","frost_06"].filter(q=>Number(questState[q]||0)>0);
+  if (!our.length) return;
+  const empty = Array.from(list.children).find(el => el.textContent && el.textContent.includes("진행 중인 퀘스트가 없습니다"));
+  if (empty) empty.remove();
+  const completedMap = ensureQuestCompletedAtMap();
+  let doneSection = Array.from(list.children).find(el => el.className === "questSectionTitle done");
+  let progressSection = Array.from(list.children).find(el => el.className === "questSectionTitle");
+  if (!progressSection) {
+    progressSection = document.createElement("div"); progressSection.className = "questSectionTitle"; progressSection.textContent = "진행중 퀘스트"; list.appendChild(progressSection);
+  }
+  function makeRow(qid,label,onClick){
+    const state = questState[qid];
+    if (!state || state === QUEST_STATE.OFFERED) return;
+    const row = document.createElement("div");
+    if (state === QUEST_STATE.REWARDED){
+      row.className = "questRowText questRowDone"; row.textContent = `${label}  -  완료`;
+      if (!doneSection) { doneSection = document.createElement("div"); doneSection.className = "questSectionTitle done"; doneSection.textContent = "완료된 퀘스트"; list.appendChild(doneSection); }
+      list.appendChild(row); return;
+    }
+    const status = state === QUEST_STATE.ACTIVE ? "진행중" : state === QUEST_STATE.COMPLETE ? "완료 가능" : "미수락";
+    row.className = "questRowText"; row.textContent = `${label}  -  ${status}`;
+    if (state === QUEST_STATE.COMPLETE) row.classList.add("questRowReady");
+    row.addEventListener("click", onClick);
+    list.insertBefore(row, doneSection || null);
+  }
+  makeRow("frost_01","[서리깊은 한] 01 _ 대장간의 숯", openQuestDetail_frost01);
+  makeRow("frost_02","[서리깊은 한] 02 _ 이상기후", openQuestDetail_frost02);
+  makeRow("frost_03","[서리깊은 한] 03 _ 설산 탐사", openQuestDetail_frost03);
+  makeRow("frost_04","[서리깊은 한] 04 _ 설산의 마력", openQuestDetail_frost04);
+  makeRow("frost_05","[서리깊은 한] 05 _ 서리여왕 토벌", openQuestDetail_frost05);
+  makeRow("frost_06","[서리깊은 한] 06 _ 서리여왕의 일기", openQuestDetail_frost06);
+};
+
+const _origRenderTalkNpcGrid = renderTalkNpcGrid;
+renderTalkNpcGrid = function(){
+  _origRenderTalkNpcGrid();
+  const grid = document.getElementById("talkNpcGrid");
+  if (!grid) return;
+  const buttons = Array.from(grid.querySelectorAll(".talkNpcBtn"));
+  buttons.forEach(btn => {
+    const name = (btn.querySelector(".talkNpcName") || {}).textContent || "";
+    const imgBox = btn.querySelector(".talkNpcImgBox");
+    if (!imgBox) return;
+    const has = !!imgBox.querySelector('.icon-alert-badge[data-frost="1"]');
+    let should = false;
+    if (name === "퍼그란트") should = shouldShowFrostFulgurantBadge();
+    if (name === "리네아") should = shouldShowFrostLineaBadge();
+    if (name === "세레나 에델린" || name === "에델린") should = shouldShowFrostEdelinBadge();
+    if (name === "발렌") should = shouldShowFrostVallenBadge();
+    if (should && !has) {
+      const b = document.createElement('div'); b.className='icon-alert-badge'; b.dataset.frost='1'; b.textContent='!'; b.style.display='flex'; imgBox.appendChild(b);
+    }
+  });
+};
+
+const _origUpdateQuestBadges = updateQuestBadges;
+updateQuestBadges = function(){
+  _origUpdateQuestBadges();
+  const badge = document.getElementById("questAlertBadge");
+  const on = (badge && badge.style.display === "flex") || shouldShowFrostFulgurantBadge() || shouldShowFrostLineaBadge() || shouldShowFrostEdelinBadge() || shouldShowFrostVallenBadge();
+  if (badge) badge.style.display = on ? "flex" : "none";
+};
+
+const _origRenderInventory = renderInventory;
+renderInventory = function(){
+  _origRenderInventory();
+  const listEl = document.getElementById("inventoryScrollArea");
+  const grid = listEl ? listEl.querySelector('.inventory-grid') : null;
+  if (!grid) return;
+  const extra = [];
+  if (getFrostVolcanicCount() > 0) extra.push({ id:"frostVolcanic", name:"화산 숯", count:getFrostVolcanicCount(), img:FROST_ITEM_VOLCANIC_IMG, desc:"베히모스의 불구덩이에서 구한 뜨거운 화산 숯. 대장간의 핵심 재료다." });
+  if (getFrostIceCount() > 0) extra.push({ id:"frostIce", name:"얼음결정", count:getFrostIceCount(), img:FROST_ITEM_ICE_IMG, desc:"서리여왕의 동굴에서 얻은 마력이 서린 얼음결정." });
+  if (getFrostDiaryCount() > 0) extra.push({ id:"frostDiary", name:"서리여왕의 일기", count:getFrostDiaryCount(), img:FROST_BOOK_IMG, desc:"고대어로 적힌 서리여왕 아르셀리아의 일기." });
+  extra.forEach(item => {
+    const slot = document.createElement("div"); slot.className = "inventory-slot";
+    const img = document.createElement("img"); img.src = item.img; img.alt = item.name; img.title = item.name; slot.appendChild(img);
+    if (item.count > 1) { const countBadge = document.createElement("div"); countBadge.className = "inventory-count"; countBadge.textContent = item.count; slot.appendChild(countBadge); }
+    slot.addEventListener("click", (e) => showItemDetail(item, e.clientX, e.clientY));
+    grid.appendChild(slot);
+  });
+  const countEl = document.getElementById("inventoryCountInfo");
+  if (countEl && extra.length > 0) {
+    const m = countEl.textContent.match(/(\d+)/);
+    if (m) countEl.textContent = `${Number(m[1]) + extra.length}종`;
+  }
+};
+
+const STORYBOOK_CH2_PAGES = [
+  { page:1, image:"images/storybooks/chapter2_page01.png", text:`■ 제1장 — 진리의 탐구자 : 아르카이아\n\n나는 아르셀리아.\n아르카이아의 그랜드 아르카니스트다.\n\n아르카이아족 멸종을 앞두고 비통함으로 이 기록을 남긴다.\n\n세상의 최북단 산악지대 —\n신비로운 마력이 가장 짙게 흐르는 이곳은\n우리에게 가장 완전한 터전이었다.\n\n우리 종족은 진리를 탐구하고,\n신비로운 마법의 힘과 신의 의지를 이해하려는 것을\n존재의 목적으로둔다.\n\n위대한 창조주의 피조물로 태어나 세상을 빛내는 자로써\n그 균형을 유지하는데 우리의 힘을 사용해야 했으며,\n반드시 인과를 따라야만 했다.\n\n우리는 맹세했다.\n\n“인과에 개입하지 않는다.”\n\n세상이 어떻게 흐르든,\n그것이 신이 정한 길이라면\n우리는 그것을 지켜볼 뿐이다.` },
+  { page:2, image:"images/storybooks/chapter2_page02.png", text:`■ 제2장 — 인간의 탄생\n\n전쟁이 있었다.\n세상이 만들어지고, 우리가 창조되고\n처음 발생하는 사건이였다.\n\n우리가 사는 조용한 세상에 문득\n인간이라는 종족이 발생하더니,\n세상이 이전과 다른 방향으로 흐르는것을 느꼈다.\n\n세상을 구성하던 모든 존재의 이유는 '흐름' 이였지만,\n인간은 '부딪힘'이다.\n\n끊임없이 부딪히며 그들은 그들의 존재를 증명한다.\n\n우리는\n이들이 이념은 파괴를 낳는다는 것을 알고 있었다.\n그러나 개입하지 않았다.\n\n그것이 신의 뜻이라 여겼기 때문이다.\n\n그들은\n대륙 전체를 점령하고도\n더 나아갔다.\n\n신비로운 마법의 힘이 가득한 산맥.\n특수한 힘을 가진 광물이 있는 우리의 터전.\n\n그들의 발걸음은\n결국 우리에게 닿았다.` },
+  { page:3, image:"images/storybooks/chapter2_page03.png", text:`■ 제3장 — 피의 군주 모르트헤임\n\n우리는 산의 마법에 의해 수천년을 살아간다.\n그렇기에 개체를 늘려 번영할 필요가 없었고,\n진리를 탐구하기엔 더없이 좋은 환경이였다.\n\n인간의 16대 왕 —\n모르트헤임.\n\n그는 우리의 수명은 우리의 특수한 마법이라 생각했다.\n\n그는\n우리에게서 불멸을 얻을 수 있다고 믿었다.\n\n우리는 저항하지 않았다.\n\n우리는 인과에 개입하지 않는 존재니까.\n\n우리 모두는 "인간과 적대하는 이종족 토벌"이라는\n명분으로 잡혀갔다.\n\n하나씩.\n\n하나씩.` },
+  { page:4, image:"images/storybooks/chapter2_page04.png", text:`■ 제4장 — 요구\n\n인간왕은 우리에게 불멸을 요구했다.\n\n우리는 불가능하다 답했다.\n\n불멸은 존재하지 않는다.\n인과를 거스르는 마법은\n존재할 수도, 행할수도 없다.\n\n모르트헤임은\n우리 중 하나를 베었다.\n\n그리고 다시 물었다.\n\n또 한 명이 죽었다.\n\n그리고 다시.\n\n그리고 또 다시.\n\n나는\n그날의 숫자를 기억하지 못한다.\n\n나는\n그들의 이름을 모두 기억한다.` },
+  { page:5, image:"images/storybooks/chapter2_page05.png", text:`■ 제5장 — 그랜드 아르카니스트\n\n모르트헤임은 멈추지않았다.\n그의 욕망은 이미 그 정신을 잠식하여\n원하는 것을 얻을 때 까지, 혹은 얻지못하더라도\n멈추지 않을 것이다.\n\n더이상의 동족의 참사를 방관할 수 없던 나는\n그에게 필멸을 지우는게 가능하다 말했다.\n\n나는 그랜드 아르카니스트, 아르셀리아.\n아르카이아족의 최정점에 선 자이다.\n\n인간왕에게 불멸을 선사함으로써\n동족의 구원을 받기로 했다.\n\n종족의 최정점에 있는자로써\n인과를 거스른 행동에 대한 질타를 받고\n책임을 지게 될지언정 나는 그래야만했다.\n\n나는\n그에게서 죽음을 지웠다.` },
+  { page:6, image:"images/storybooks/chapter2_page06.png", text:`■ 제6장 — 영원불멸의 저주\n\n인간왕이 불멸을 얻게되자\n그는 그가 가진것을 잃게 될까 두려워했다.\n\n강대한 힘을 가진 우리의 종족의 존재와\n그의 불멸을 언제든 제거 할 수 있는\n그랜드아르카니스트.\n\n그래서 그는 내게 한 약속을 져버리고\n우리 모두를 그 자리에서 제거했다.\n\n어쩌면 나의 잘못된 선택 이였을지도 모른다는 죄책감과\n눈앞에서 쏟아지는 잔혹한 광경에 나는 이성을 놓았다.\n\n그래. 인간이여, 그대들이 그토록 바라던 불멸을\n내가 선물하겠노라.\n그러나 이것은 그대들에게 영원의 저주가 될것이다.\n\n나는 인과에 직접 개입을 했다.\n그의 왕국 전체에 마법을 걸었다.\n\n왕국의 모든 인간들은 불멸을 주었다.\n그리고 영원히 그곳을 벗어날 수 없는 마법도 함께.\n\n영겁의 시간이 지나 육체가 소멸되고\n정신을 잃어도 그들은 영원한 시간에 갇혀\n지천을 떠돌게 될 것이다.` },
+  { page:7, image:"images/storybooks/chapter2_page07.png", text:`■ 제7장 — 서리진 한\n\n모두가 죽고 홀로 살아 돌아왔다.\n우리의 보금자리로.\n\n모두가 없는 세상에 홀로남아\n영겁같은 시간을 서리보다 시린 한만 품고\n살아야한다.\n\n진리를 탐구하기위해 선택한 우리종족의 긴 수명은\n오히려 나에게 영겁의 저주가 되었다.\n\n이것은 영생을 선택함으로써\n균형을 수호하고 인과를 유지해야하는 우리의 존재를\n져버린 나에게 내려진 벌이며 책임이다.\n\n폭풍처럼 쏟아낸 마력은 멈추지 못하고\n무한히 흘러,\n나와 북쪽 산지를 얼어붙게 할것으로 보인다.\n\n나의 한은\n이 산이 갖고있는 모든 마력이 바닥날때까지\n세상을 계속 얼어붙게 할 것이다.` }
+];
+
+function getStorybookChapter2MaxPage(){
+  const count = Math.min(STORYBOOK_CH2_PAGES.length, getStorybookUnlockedPages("chapter2"));
+  return Math.max(0, count);
+}
+const _origGetCurrentStorybookPages = getCurrentStorybookPages;
+getCurrentStorybookPages = function(){
+  if (currentStorybookChapter === "chapter2") return STORYBOOK_CH2_PAGES;
+  return _origGetCurrentStorybookPages();
+};
+renderStorybookReaderPage = function(){
+  const chapterTitle = document.getElementById("storybookReaderChapterTitle");
+  const illust = document.getElementById("storybookReaderIllust");
+  const textEl = document.getElementById("storybookReaderText");
+  const indicator = document.getElementById("storybookReaderPageIndicator");
+  const prevBtn = document.getElementById("storybookReaderPrevBtn");
+  const nextBtn = document.getElementById("storybookReaderNextBtn");
+  const totalEl = document.getElementById("storybookReaderTotal");
+  if (!chapterTitle || !illust || !textEl || !indicator || !prevBtn || !nextBtn || !totalEl) return;
+  const pages = getCurrentStorybookPages();
+  if (!pages.length) return;
+  const maxPage = currentStorybookChapter === "chapter1" ? getStorybookChapter1MaxPage() : (currentStorybookChapter === "chapter2" ? getStorybookChapter2MaxPage() : pages.length);
+  currentStorybookPage = Math.max(1, Math.min(currentStorybookPage, Math.max(1, maxPage)));
+  const pageData = pages[currentStorybookPage - 1];
+  if (!pageData) return;
+  const def = STORYBOOK_DEFS.find(d => d.key === currentStorybookChapter);
+  chapterTitle.textContent = def ? def.title : "";
+  illust.src = pageData.image;
+  illust.alt = `${def ? def.title : '스토리북'} ${String(currentStorybookPage).padStart(2, "0")}페이지 삽화`;
+  textEl.textContent = pageData.text;
+  indicator.textContent = `${String(currentStorybookPage).padStart(2, "0")} / ${String(pages.length).padStart(2, "0")}`;
+  totalEl.textContent = `${String(currentStorybookPage).padStart(2, "0")} / ${String(pages.length).padStart(2, "0")}`;
+  prevBtn.disabled = currentStorybookPage <= 1;
+  nextBtn.disabled = currentStorybookPage >= maxPage;
+};
+const _origOpenStorybookReader = openStorybookReader;
+openStorybookReader = function(chapterKey){
+  if (chapterKey === "chapter2") {
+    const maxPage = getStorybookChapter2MaxPage();
+    if (maxPage <= 0) { showLockedFeaturePopup(); return; }
+    markStorybookRead(chapterKey, false);
+    currentStorybookChapter = chapterKey; currentStorybookPage = 1;
+    const gridOv = document.getElementById("storybookOverlay");
+    const readerOv = document.getElementById("storybookReaderOverlay");
+    if (gridOv) gridOv.style.display = "none";
+    if (readerOv) readerOv.style.display = "flex";
+    renderStorybookReaderPage(); updateStorybookBadge(); if (typeof save === "function") save();
+    return;
+  }
+  _origOpenStorybookReader(chapterKey);
+};
+const _origSyncStorybookUnlocksFromQuestState = syncStorybookUnlocksFromQuestState;
+syncStorybookUnlocksFromQuestState = function(shouldSave = true){
+  const changed = _origSyncStorybookUnlocksFromQuestState(shouldSave);
+  let localChanged = !!changed;
+  if (Number(questState["frost_05"] || 0) >= QUEST_STATE.REWARDED) {
+    if (!storybookState.unlocked.chapter2) { storybookState.unlocked.chapter2 = true; localChanged = true; }
+    if (Number(storybookState.pages.chapter2 || 0) < 1) { storybookState.pages.chapter2 = 1; localChanged = true; }
+  }
+  if (Number(questState["frost_06"] || 0) >= QUEST_STATE.REWARDED) {
+    if (!storybookState.unlocked.chapter2) { storybookState.unlocked.chapter2 = true; localChanged = true; }
+    if (Number(storybookState.pages.chapter2 || 0) < STORYBOOK_CH2_PAGES.length) { storybookState.pages.chapter2 = STORYBOOK_CH2_PAGES.length; localChanged = true; }
+  }
+  if (localChanged && shouldSave && typeof save === "function") save();
+  return localChanged;
+};
+
+// 로그인 후 talk grid / 배지 / 스토리북 동기화 보강
+setTimeout(() => {
+  try { syncQuestUnlocks(); updateQuestBadges(); renderTalkNpcGrid(); syncStorybookUnlocksFromQuestState(false); updateStorybookBadge(); } catch(e) {}
+}, 0);
 
 </script>
 
