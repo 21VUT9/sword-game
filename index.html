@@ -18280,6 +18280,357 @@ const BOSS_FIELD_MAP = {
 };
   
 // ✅ 보스전 아이콘 → "이동한다" 눌렀을 때
+
+function openBossRewardOverlay(){
+  const ctx = resolveMyBossRun({ includeClosed: true });
+  const bossId = String((ctx && ctx.bossId) || "");
+  const run = ctx && ctx.run;
+
+  if (!bossId || !run) {
+    showNpcMessage("집계할 토벌 정보가 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+    return;
+  }
+
+  const st = String(run.status || "");
+  if (st === "active") {
+    showNpcMessage("토벌이 아직 진행 중이다. 끝난 뒤에 집계를 확인해라.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+    return;
+  }
+
+  const members = run.members || {};
+  const arr = Object.keys(members).map(uid => ({
+    uid,
+    dmg: Number(members[uid] && members[uid].dmg ? members[uid].dmg : 0),
+    nick: (members[uid] && members[uid].nick) ? members[uid].nick : uid,
+    title: (members[uid] && members[uid].title) ? members[uid].title : ""
+  }));
+
+  const total = arr.reduce((s, a) => s + a.dmg, 0);
+  arr.sort((a,b) => b.dmg - a.dmg);
+
+  const myIndex = arr.findIndex(x => x.uid === userId);
+  const myRank = (myIndex >= 0) ? (myIndex + 1) : 0;
+  const myPct = (myIndex >= 0 && total > 0) ? (arr[myIndex].dmg / total * 100) : 0;
+
+  const overlay = document.getElementById("bossRewardOverlay");
+  const listEl  = document.getElementById("bossRewardList");
+  const sumEl   = document.getElementById("bossRewardSummary");
+  const lineEl  = document.getElementById("bossRewardLeonLine");
+  const claimBtn = document.getElementById("bossRewardClaimBtn");
+  const giveUpBtn = document.getElementById("bossRewardGiveUpBtn");
+
+  if (!overlay || !listEl || !sumEl || !lineEl || !claimBtn || !giveUpBtn) return;
+
+  const def = (BOSS_DEFS || []).find(d => String(d.id) === bossId);
+  const bossTitle = def ? def.bossTitle : "보스";
+  const resultTxt = (st === "cleared") ? "✅ 토벌 성공" : "❌ 토벌 실패";
+  const myContribHtml = (myRank > 0)
+    ? `<div style="font-size:20px; font-weight:900; color:#ffd54f; letter-spacing:0.2px;">${myPct.toFixed(1)}% · ${myRank}위</div>`
+    : `<div style="font-size:14px; color:#bbb;">기록 없음</div>`;
+
+  sumEl.innerHTML = `
+    <div style="font-weight:900; color:#fff; margin-bottom:4px;">${bossTitle} · ${resultTxt}</div>
+    <div style="color:#aaa;">총 피해량: <b style="color:#fff;">${formatGold(total)}</b></div>
+    <div style="margin-top:8px; padding:10px; border:1px solid rgba(255,255,255,0.14); border-radius:14px; background:rgba(255,255,255,0.06);">
+      <div style="font-size:12px; color:#aaa; margin-bottom:4px;">내 기여도</div>
+      ${myContribHtml}
+    </div>
+  `;
+
+  listEl.innerHTML = "";
+  const maxShow = Math.min(arr.length, 50);
+  const topDmg = (arr[0] && arr[0].dmg) ? arr[0].dmg : 1;
+
+  for (let i=0; i<maxShow; i++){
+    const m = arr[i];
+    const pct = (total > 0) ? (m.dmg / total * 100) : 0;
+    const isMe = (m.uid === userId);
+    const row = document.createElement("div");
+    const bossLeaderId = (run && run.leaderUid) ? run.leaderUid : "";
+    const isLeader = (bossLeaderId && m.uid === bossLeaderId);
+    row.style.display = "flex";
+    row.style.alignItems = "center";
+    row.style.gap = "10px";
+    row.style.padding = "8px 8px";
+    row.style.borderBottom = "1px solid rgba(255,255,255,0.08)";
+
+    if (isMe) {
+      row.style.background = "rgba(255,255,255,0.08)";
+      row.style.borderRadius = "12px";
+      row.style.margin = "4px 0";
+      row.style.borderBottom = "none";
+      row.style.fontWeight = "900";
+    }
+
+    const left = document.createElement("div");
+    left.style.width = "170px";
+    left.style.flex = "0 0 170px";
+    left.style.fontSize = "13px";
+    left.style.whiteSpace = "nowrap";
+    left.style.overflow = "hidden";
+    left.style.textOverflow = "ellipsis";
+    const crown = isLeader ? `<span style="margin-right:4px;">👑</span>` : "";
+    left.innerHTML = `${crown}<span style="color:#aaa;">${i+1}위</span> ${m.nick}`;
+
+    const mid = document.createElement("div");
+    mid.style.flex = "1";
+    mid.style.minWidth = "140px";
+
+    const track = document.createElement("div");
+    track.style.height = "12px";
+    track.style.borderRadius = "999px";
+    track.style.background = "rgba(255,255,255,0.10)";
+    track.style.border = "1px solid rgba(255,255,255,0.10)";
+    track.style.overflow = "hidden";
+    track.style.position = "relative";
+
+    const fill = document.createElement("div");
+    const ratio = Math.max(0, Math.min(1, topDmg > 0 ? (m.dmg / topDmg) : 0));
+    fill.style.width = `${Math.max(2, Math.round(ratio * 100))}%`;
+    fill.style.height = "100%";
+    fill.style.borderRadius = "999px";
+    fill.style.transition = "width 260ms ease";
+    fill.style.background = isMe ? "rgba(255,213,79,0.90)" : "rgba(160,200,255,0.75)";
+    fill.style.position = "relative";
+    fill.style.zIndex = "1";
+
+    if (i === 0) {
+      const mvp = document.createElement("div");
+      mvp.textContent = "MVP";
+      mvp.style.position = "absolute";
+      mvp.style.right = "6px";
+      mvp.style.top = "50%";
+      mvp.style.transform = "translateY(-50%)";
+      mvp.style.fontSize = "10px";
+      mvp.style.fontWeight = "900";
+      mvp.style.padding = "2px 6px";
+      mvp.style.borderRadius = "999px";
+      mvp.style.background = "rgba(255,213,79,0.95)";
+      mvp.style.color = "#111";
+      mvp.style.boxShadow = "0 0 10px rgba(255,213,79,0.35)";
+      mvp.style.zIndex = "3";
+      track.appendChild(mvp);
+    }
+
+    track.appendChild(fill);
+    mid.appendChild(track);
+
+    const right = document.createElement("div");
+    right.style.width = "140px";
+    right.style.flex = "0 0 140px";
+    right.style.textAlign = "right";
+    right.style.fontSize = "12px";
+    right.style.color = "#ddd";
+    right.innerHTML = `<b>${pct.toFixed(1)}%</b><div style="color:#aaa; font-size:11px;">${formatGold(m.dmg)}</div>`;
+
+    row.appendChild(left);
+    row.appendChild(mid);
+    row.appendChild(right);
+    listEl.appendChild(row);
+  }
+
+  if (st === "cleared") {
+    const totalMembers = arr.length;
+    const isTop = (myRank === 1);
+    const isBottom = (myRank > 0 && myRank === totalMembers);
+
+    if (myRank <= 0) {
+      lineEl.innerHTML = `집계에 네 기록이 보이지 않는군… 하지만 토벌은 끝났다.`;
+    } else if (isTop) {
+      lineEl.innerHTML =
+        `이번 토벌작전에서 <b style="color:#ffd54f;">위대한 업적</b>을 남겼군. `
+        + `네 기여도는 <b style="color:#ffd54f; font-size:18px;">${myPct.toFixed(1)}%</b>, `
+        + `<b style="color:#ffd54f; font-size:18px;">${myRank}위</b>다. 보상을 수령하겠나?`;
+    } else if (isBottom) {
+      lineEl.innerHTML =
+        `자네의 기여가 <b style="color:#bbb;">큰 편은 아니지만</b>, 함께 끝까지 버텼다. `
+        + `네 기여도는 <b style="color:#ffd54f; font-size:18px;">${myPct.toFixed(1)}%</b>, `
+        + `<b style="color:#ffd54f; font-size:18px;">${myRank}위</b>다. 보상을 수령하겠나?`;
+    } else {
+      lineEl.innerHTML =
+        `네 기여도는 <b style="color:#ffd54f; font-size:18px;">${myPct.toFixed(1)}%</b>로 `
+        + `<b style="color:#ffd54f; font-size:18px;">${myRank}위</b>다. 보상을 수령하겠나?`;
+    }
+  } else {
+    lineEl.innerHTML = `완벽한 전략, 전술의 실패다. 적을 너무 과소평가했군. 포기하고 재정비하겠나?`;
+  }
+
+  const claimedMap = run.claimed || {};
+  const already = !!claimedMap[userId];
+  claimBtn.style.display = (st === "cleared" && !already) ? "inline-block" : "none";
+  giveUpBtn.style.display = (st === "failed") ? "inline-block" : "none";
+  overlay.style.display = "block";
+}
+
+function closeBossRewardOverlay(){
+  const overlay = document.getElementById("bossRewardOverlay");
+  if (overlay) overlay.style.display = "none";
+}
+
+function claimBossReward(){
+  const ctx = resolveMyBossRun({ includeClosed: true });
+  const bossId = String((ctx && ctx.bossId) || "");
+  const run = ctx && ctx.run;
+  const source = String((ctx && ctx.source) || "active");
+  if (!bossId || !run) return;
+
+  const runKey = String(run.logKey || activeBossRunKey || getStoredActiveBossRunKey() || "");
+  const runRef = (source === "closed")
+    ? db.ref(`bossRunsClosed/${bossId}/${runKey}`)
+    : db.ref(`bossRunsActive/${bossId}`);
+
+  runRef.transaction((cur) => {
+    if (!cur) return;
+    const st = String(cur.status || "");
+    if (st !== "cleared") return;
+    if (!cur.members || !cur.members[userId]) return;
+    if (!cur.claimed) cur.claimed = {};
+    if (cur.claimed[userId]) return;
+    cur.claimed[userId] = Date.now();
+    return cur;
+  }, (err, committed, snap) => {
+    if (err || !committed) {
+      showNpcMessage("보상 수령에 실패했습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+      return;
+    }
+
+    const runAfter = snap && snap.val ? snap.val() : null;
+    if (!runAfter) return;
+
+    onRepeatQuestBossClear();
+
+    if (bossId === "swamp_elf_queen") {
+      if (questState["main_ch1_valen_05"] === QUEST_STATE.ACTIVE) {
+        questState["main_ch1_valen_05"] = QUEST_STATE.COMPLETE;
+      }
+      if (questState["main_ch1_linea_06"] === QUEST_STATE.ACTIVE && Number(itemElfQueenRecord || 0) < 3) {
+        itemElfQueenRecord = Number(itemElfQueenRecord || 0) + 1;
+        if (Number(itemElfQueenRecord || 0) >= 3) {
+          questState["main_ch1_linea_06"] = QUEST_STATE.COMPLETE;
+        }
+      }
+    }
+    if (bossId === "frost_queen") {
+      if (questState["frost_05"] === QUEST_STATE.ACTIVE) {
+        questState["frost_05"] = QUEST_STATE.COMPLETE;
+      }
+    }
+
+    const members = runAfter.members || {};
+    const arr = Object.keys(members).map(uid => ({
+      uid,
+      dmg: Number(members[uid] && members[uid].dmg ? members[uid].dmg : 0)
+    }));
+    const total = arr.reduce((s,a) => s + a.dmg, 0);
+    const me = arr.find(x => x.uid === userId);
+    const pct = (me && total > 0) ? (me.dmg / total * 100) : 0;
+
+    const isLeader = (String(runAfter.leaderUid || "") === userId);
+    const rw = getBossRewardByPct(bossId, pct, isLeader);
+
+    try {
+      const st = (typeof getPlayerFinalCombatStats === "function") ? getPlayerFinalCombatStats() : null;
+      const bonusPct = Number(st && st.bossRewardDropPct ? st.bossRewardDropPct : 0);
+      if (bonusPct > 0) {
+        const p = bonusPct / 100;
+        const keys = ["itemProtect","itemDownProtect","itemScroll21","itemScroll15","itemSuper"];
+        for (const k of keys) {
+          const c = Number(rw[k] || 0);
+          if (c > 0) {
+            let extra = 0;
+            for (let i=0; i<c; i++) if (Math.random() < p) extra++;
+            rw[k] = c + extra;
+          }
+        }
+        const ess = Number(rw.itemEssence || 0);
+        if (ess > 0) {
+          const add = ess * p;
+          const addInt = Math.floor(add);
+          const addFrac = add - addInt;
+          rw.itemEssence = ess + addInt + (Math.random() < addFrac ? 1 : 0);
+        }
+      }
+    } catch (e) {}
+
+    itemProtect = Number(itemProtect || 0) + (rw.itemProtect || 0);
+    itemDownProtect = Number(itemDownProtect || 0) + (rw.itemDownProtect || 0);
+    itemScroll21 = Number(itemScroll21 || 0) + (rw.itemScroll21 || 0);
+    itemScroll15 = Number(itemScroll15 || 0) + (rw.itemScroll15 || 0);
+    itemEssence = Number(itemEssence || 0) + (rw.itemEssence || 0);
+    itemSuper = Number(itemSuper || 0) + (rw.itemSuper || 0);
+    itemBossPriority = Number(itemBossPriority || 0) + (rw.itemBossPriority || 0);
+    itemEngraveNormal = Number(itemEngraveNormal || 0) + (rw.itemEngraveNormal || 0);
+    itemEngraveAdvanced = Number(itemEngraveAdvanced || 0) + (rw.itemEngraveAdvanced || 0);
+    save();
+
+    grantTitleOnceNoSave("boss_raider");
+
+    clearActiveBossBinding();
+    refreshBossBattleAlert("");
+    update();
+
+    closeBossRewardOverlay();
+    closeBossBattle();
+
+    const lines = [];
+    if (rw.itemProtect) lines.push(`파괴방지 ${rw.itemProtect}개`);
+    if (rw.itemDownProtect) lines.push(`강등방지 ${rw.itemDownProtect}개`);
+    if (rw.itemScroll21) lines.push(`21강 주문서 ${rw.itemScroll21}개`);
+    if (rw.itemScroll15) lines.push(`15강 주문서 ${rw.itemScroll15}개`);
+    if (rw.itemEssence) lines.push(`마력의 정수 ${rw.itemEssence}개`);
+    if (rw.itemSuper) lines.push(`대장 보너스 ${rw.itemSuper}개`);
+    if (rw.itemBossPriority) lines.push(`보스토벌신청우선권 ${rw.itemBossPriority}개`);
+    if (rw.itemEngraveNormal) lines.push(`일반각인의 주문서 ${rw.itemEngraveNormal}개`);
+    if (rw.itemEngraveAdvanced) lines.push(`고급각인의 주문서 ${rw.itemEngraveAdvanced}개`);
+
+    showNpcMessage(
+      `보상 수령 완료!<br><span style="color:#ffd54f;">${lines.join(", ") || "없음"}</span>`,
+      LEON_IMG.focus,
+      true,
+      "길드마스터 – 레온하르트 발렌"
+    );
+  });
+}
+
+function giveUpBossRun(){
+  const ctx = resolveMyBossRun({ includeClosed: true });
+  const bossId = String((ctx && ctx.bossId) || "");
+  const run = ctx && ctx.run;
+  const source = String((ctx && ctx.source) || "active");
+  if (!bossId || !run) return;
+
+  if (String(run.status || "") !== "failed") {
+    showNpcMessage("아직 포기할 상황이 아니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+    return;
+  }
+
+  const myNick = (run.members && run.members[userId] && run.members[userId].nick) ? run.members[userId].nick : String(userId || "???");
+  const updates = {};
+  const runKey = String(run.logKey || activeBossRunKey || getStoredActiveBossRunKey() || "");
+  const basePath = (source === "closed") ? `bossRunsClosed/${bossId}/${runKey}` : `bossRunsActive/${bossId}`;
+  updates[`${basePath}/members/${userId}`] = null;
+  if (String(run.leaderUid || "") === String(userId || "")) {
+    updates[`${basePath}/leaderUid`] = "";
+  }
+
+  db.ref().update(updates).then(() => {
+    if (bossId === 'dawn_twin_knights' && typeof ensureTwinCooldownReset === 'function') {
+      ensureTwinCooldownReset(run);
+    }
+    if (typeof writeBossBattleLog === 'function') {
+      writeBossBattleLog(bossId, `${myNick}님이 토벌대에서 철수했습니다.`);
+    }
+    clearActiveBossBinding();
+    update();
+    closeBossRewardOverlay();
+    closeBossBattle();
+    showNpcMessage("철수 완료. 다음엔 더 단단히 준비해라.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+  }).catch((err) => {
+    console.error(err);
+    showNpcMessage("포기 처리에 실패했습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+  });
+}
+
 function startBossBattleMove(){
   closeNpcPopup();
 
@@ -22525,27 +22876,31 @@ function joinBossRunConfirm(bossId){
     return;
   }
 
-  // 이미 다른 보스전에 귀속된 상태 방지
-  if (activeBossId && activeBossId !== bossId) {
-    showNpcMessage("이미 다른 토벌대에 참여 중입니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+  const curCtx = resolveMyBossRun({ includeClosed: true });
+  const curBossId = String((curCtx && curCtx.bossId) || "");
+  const curRun = curCtx && curCtx.run;
+  const curSource = String((curCtx && curCtx.source) || "");
+  const curRunKey = String(curRun && curRun.logKey || "");
+  const targetRunKey = String(run && run.logKey || "");
+  const alreadyMember = !!(run && run.status === "active" && run.members && run.members[userId]);
+
+  if (alreadyMember) {
+    setActiveBossBinding(bossId, targetRunKey);
+    showNpcMessage("이미 해당 토벌대에 참여 중입니다.
+(토벌/보상을 완료후 다시 시도하십시오)", LEON_IMG.idle, true, "길드마스터 – 레온하르트 발렌");
     return;
   }
 
-  // ✅ 이미 이 토벌대에 참여했는지 "실데이터(run.members)"로 체크 (새로고침에도 안전)
-const alreadyMember = !!(run && run.status === "active" && run.members && run.members[userId]);
-
-if (alreadyMember) {
-  setActiveBossBinding(bossId, String(run && run.logKey || ""));
-
-  showNpcMessage("이미 해당 토벌대에 참여 중입니다.\n(토벌/보상을 완료후 다시 시도하십시오)", LEON_IMG.idle, true, "길드마스터 – 레온하르트 발렌");
-  return;
-}
-
-// ✅ 다른 토벌대에 이미 귀속되어 있으면 참여 불가(원하는 정책이면 유지)
-if (activeBossId && String(activeBossId) !== String(bossId)) {
-  showNpcMessage("이미 다른 토벌대에 귀속되어 있습니다.\n현재 토벌 종료 후 참여할 수 있습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
-  return;
-}
+  if (curRun && isMyPendingBossRun(curRun)) {
+    const curName = `${String(curRun.bossTitle || "").trim()} ${String(curRun.bossName || "").trim()}`.trim() || "보스전";
+    const sameExactActiveRun = (curBossId === String(bossId) && curSource === "active" && curRunKey && targetRunKey && curRunKey === targetRunKey);
+    if (!sameExactActiveRun) {
+      showNpcMessage(`이미 처리해야 할 보스전이 있습니다.
+<b>${curName}</b>
+현재 보스전을 <b>완료</b>하거나 <b>포기</b>한 뒤 다시 신청해주세요.`, LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+      return;
+    }
+  }
 
   const def = BOSS_DEFS.find(b => b.id === bossId);
   const bossLabel = def ? `${def.bossTitle} ${def.bossName}` : "해당 보스";
@@ -22563,7 +22918,7 @@ if (activeBossId && String(activeBossId) !== String(bossId)) {
 
   showNpcMessage(html, LEON_IMG.focus, false, "길드마스터 – 레온하르트 발렌");
 }
-  
+
 // ✅ 참여하기: 참여자 등록(파티장 동의 없이)
 function joinBossRun(bossId) {
    closeNpcPopup();
@@ -22573,22 +22928,18 @@ function joinBossRun(bossId) {
     return;
   }
 
-    // ✅ 다른 보스에 이미 참여중이면 차단
-  const curId = String(activeBossId || "");
-  if (curId && curId !== String(bossId)) {
-    const curRun = (bossRunsActiveCache || {})[curId];
-    const curName = curRun
-      ? `${String(curRun.bossTitle || "").trim()} ${String(curRun.bossName || "").trim()}`.trim()
-      : "다른 보스";
+  const curCtx = resolveMyBossRun({ includeClosed: true });
+  const curBossId = String((curCtx && curCtx.bossId) || "");
+  const curRun = curCtx && curCtx.run;
+  const curSource = String((curCtx && curCtx.source) || "");
+  const curRunKey = String(curRun && curRun.logKey || "");
+  const targetRunKey = String(run && run.logKey || "");
+  const sameExactActiveRun = (curBossId === String(bossId) && curSource === "active" && curRunKey && targetRunKey && curRunKey === targetRunKey);
 
+  if (curRun && isMyPendingBossRun(curRun) && !sameExactActiveRun) {
+    const curName = `${String(curRun.bossTitle || "").trim()} ${String(curRun.bossName || "").trim()}`.trim() || "보스전";
     showNpcMessage(
-      `
-      <div style="font-size:13px; line-height:1.6;">
-        이미 다른 보스 토벌대에 참여중입니다.<br>
-        <b>${curName || "다른 보스"}</b><br><br>
-        현재 참여중인 보스전을 <b>완료</b>하거나 <b>포기</b>한 뒤 다시 신청해주세요.
-      </div>
-      `,
+      `<div style="font-size:13px; line-height:1.6;">이미 처리해야 할 보스전이 있습니다.<br><b>${curName}</b><br><br>현재 보스전을 <b>완료</b>하거나 <b>포기</b>한 뒤 다시 신청해주세요.</div>`,
       LEON_IMG.focus,
       true,
       "길드마스터 – 레온하르트 발렌"
@@ -22596,41 +22947,48 @@ function joinBossRun(bossId) {
     return;
   }
 
-  // 참여 중인 토벌은 저장(다음 단계에서 '보스전 버튼' 띄우는 조건으로 사용)
-  setActiveBossBinding(bossId, String(run && run.logKey || ""));
+  setActiveBossBinding(bossId, targetRunKey);
 
   const memberRef = db.ref(`bossRunsActive/${bossId}/members/${userId}`);
- memberRef.transaction((cur) => {
-  // ✅ 이미 참여 기록이 있으면 절대 덮어쓰지 않음 (dmg 리셋 방지)
-  if (cur) return;
-
+  memberRef.transaction((cur) => {
+    if (cur) return cur;
     return {
-    uid: userId,
-    nick: getNickSafe(),
-    joinedAt: Date.now(),
-    dmg: 0,
+      uid: userId,
+      nick: getNickSafe(),
+      joinedAt: Date.now(),
+      dmg: 0,
+      titleId: String(equippedTitle || ""),
+      weaponType: String(weaponType || "sword"),
+      weaponLv: Number(sword || 0)
+    };
+  }, (err, committed, snap) => {
+    if (err) {
+      console.error(err);
+      showNpcMessage("참여 처리 중 오류가 발생했습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+      return;
+    }
 
-    // ✅ 표기용 스냅샷(우측 토벌대 리스트)
-    titleId: String(equippedTitle || ""),     // 없으면 "" (표기 안 함)
-    weaponType: String(weaponType || "sword"),// "sword/spear/axe/bow/staff"
-    weaponLv: Number(sword || 0)              // 현재 구조상 강화 수치는 sword로 통일
-  };
-});
- 
-  // ✅ 보스전 전용 로그
-writeBossBattleLog(bossId, `${getNickSafe()}님이 토벌대에 참여했습니다.`);
+    const curMember = snap && snap.val ? snap.val() : null;
+    if (!committed && curMember) {
+      setActiveBossBinding(bossId, targetRunKey);
+      showNpcMessage("이미 해당 토벌대에 참여 중입니다.
+(토벌/보상을 완료후 다시 시도하십시오)", LEON_IMG.idle, true, "길드마스터 – 레온하르트 발렌");
+      return;
+    }
 
-  showNpcMessage(
-    `
-    <div style="font-size:14px; line-height:1.6;">
-      토벌대에 참여 완료.<br>
-      <span style="color:#aaa;">※ 메인화면에 보스전이 생성되었습니다.</span>
-    </div>
-    `,
-    LEON_IMG.idle,
-    true,
-    "길드마스터 – 레온하르트 발렌"
-  );
+    writeBossBattleLog(bossId, `${getNickSafe()}님이 토벌대에 참여했습니다.`);
+    showNpcMessage(
+      `
+      <div style="font-size:14px; line-height:1.6;">
+        토벌대에 참여 완료.<br>
+        <span style="color:#aaa;">※ 메인화면에 보스전이 생성되었습니다.</span>
+      </div>
+      `,
+      LEON_IMG.idle,
+      true,
+      "길드마스터 – 레온하르트 발렌"
+    );
+  });
 }
 
 // ✅ 신청하기(토벌 생성): gold 차감 → activeRun 생성(중복이면 환불)
@@ -22679,11 +23037,10 @@ function createBossRun(bossId, options = {}) {
   const usePriorityTicket = !!(options && options.usePriorityTicket);
 
   const curCtx = resolveMyBossRun({ includeClosed: true });
-  const curId = String((curCtx && curCtx.bossId) || activeBossId || "");
-  if (curId && curId !== String(bossId)) {
-    const curRun = (curCtx && curCtx.run) || (bossRunsActiveCache || {})[curId] || getClosedBossRun(curId, activeBossRunKey);
-    const curName = curRun ? `${String(curRun.bossTitle || "").trim()} ${String(curRun.bossName || "").trim()}`.trim() : "다른 보스";
-    showNpcMessage(`<div style="font-size:13px; line-height:1.6;">이미 다른 보스 토벌대에 참여중입니다.<br><b>${curName || "다른 보스"}</b><br><br>현재 보스전을 <b>완료</b>하거나 <b>포기</b>한 뒤 다시 신청해주세요.</div>`, LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+  const curRun = curCtx && curCtx.run;
+  if (curRun && isMyPendingBossRun(curRun)) {
+    const curName = `${String(curRun.bossTitle || "").trim()} ${String(curRun.bossName || "").trim()}`.trim() || "보스전";
+    showNpcMessage(`<div style="font-size:13px; line-height:1.6;">이미 처리해야 할 보스전이 있습니다.<br><b>${curName}</b><br><br>현재 보스전을 <b>완료</b>하거나 <b>포기</b>한 뒤 다시 신청해주세요.</div>`, LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
     return;
   }
   if (Number(sword || 0) < def.minSword) {
