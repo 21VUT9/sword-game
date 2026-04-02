@@ -29411,5 +29411,210 @@ setTimeout(() => {
   </div>
 </div>
 
+
+<script>
+/* ===== Boss binding legacy auto-recovery patch ===== */
+(function(){
+  const BIND_KEY = 'pugrant_activeBossBinding_v1';
+  const ARCHIVE_ROOT = 'bossRunsArchive';
+  let archiveScanPromise = null;
+  let recoveryInFlight = null;
+
+  function safeJsonParse(s){ try { return JSON.parse(s); } catch(e){ return null; } }
+  function loadBossBinding(){
+    const raw = localStorage.getItem(BIND_KEY);
+    const v = safeJsonParse(raw);
+    if (!v || typeof v !== 'object') return null;
+    const bossId = String(v.bossId || '');
+    const runKey = String(v.runKey || '');
+    if (!bossId || !runKey) return null;
+    return { bossId, runKey };
+  }
+  function saveBossBinding(binding){
+    if (!binding || !binding.bossId || !binding.runKey) {
+      localStorage.removeItem(BIND_KEY);
+      return;
+    }
+    localStorage.setItem(BIND_KEY, JSON.stringify({
+      bossId: String(binding.bossId || ''),
+      runKey: String(binding.runKey || '')
+    }));
+  }
+  function setBossBinding(bossId, runKey){
+    bossId = String(bossId || '');
+    runKey = String(runKey || '');
+    if (!bossId || !runKey) return null;
+    window.activeBossId = bossId;
+    saveBossBinding({ bossId, runKey });
+    try { if (typeof save === 'function') save(); } catch(e) {}
+    return { bossId, runKey };
+  }
+  function clearBossBinding(){
+    localStorage.removeItem(BIND_KEY);
+    window.activeBossId = '';
+    try { if (typeof save === 'function') save(); } catch(e) {}
+  }
+  function isPendingRunForUser(run){
+    if (!run || !run.members || !run.members[window.userId]) return false;
+    const st = String(run.status || '');
+    if (st === 'active') return true;
+    if (st === 'cleared') return !(run.claimed && run.claimed[window.userId]);
+    if (st === 'failed') return true;
+    return false;
+  }
+  function getPriority(run){
+    const st = String(run && run.status || '');
+    if (st === 'active') return 300;
+    if (st === 'cleared') return 200;
+    if (st === 'failed') return 100;
+    return 0;
+  }
+  function getJoinedAt(run){
+    const m = run && run.members && run.members[window.userId];
+    return Number(m && m.joinedAt || 0);
+  }
+  function getEndedAt(run){
+    return Number(run && (run.clearedAt || run.failedAt || run.endsAt || run.archivedAt) || 0);
+  }
+  function chooseBetter(a, b){
+    if (!a) return b;
+    if (!b) return a;
+    const pa = getPriority(a.run), pb = getPriority(b.run);
+    if (pb !== pa) return pb > pa ? b : a;
+    const ta = Math.max(getEndedAt(a.run), getJoinedAt(a.run));
+    const tb = Math.max(getEndedAt(b.run), getJoinedAt(b.run));
+    return tb > ta ? b : a;
+  }
+  function scanActiveCache(){
+    const cache = window.bossRunsActiveCache || {};
+    let best = null;
+    Object.keys(cache).forEach((bossId) => {
+      const run = cache[bossId];
+      if (!isPendingRunForUser(run)) return;
+      const runKey = String(run && run.logKey || '');
+      if (!runKey) return;
+      best = chooseBetter(best, { source:'active', bossId: String(bossId || ''), runKey, run });
+    });
+    return best;
+  }
+  async function scanArchiveRemote(){
+    if (archiveScanPromise) return archiveScanPromise;
+    archiveScanPromise = (async () => {
+      try {
+        const snap = await db.ref(ARCHIVE_ROOT).once('value');
+        const root = snap && snap.val ? snap.val() : null;
+        if (!root || typeof root !== 'object') return null;
+        let best = null;
+        Object.keys(root).forEach((bossId) => {
+          const byRun = root[bossId] || {};
+          Object.keys(byRun).forEach((runKey) => {
+            const run = byRun[runKey];
+            if (!isPendingRunForUser(run)) return;
+            best = chooseBetter(best, { source:'archive', bossId: String(bossId || ''), runKey: String(runKey || ''), run });
+          });
+        });
+        return best;
+      } catch(e){
+        console.error(e);
+        return null;
+      } finally {
+        setTimeout(() => { archiveScanPromise = null; }, 1500);
+      }
+    })();
+    return archiveScanPromise;
+  }
+  async function recoverBossBindingDeep(){
+    if (recoveryInFlight) return recoveryInFlight;
+    recoveryInFlight = (async () => {
+      const existing = loadBossBinding();
+      if (existing) {
+        const cacheRun = (window.bossRunsActiveCache || {})[existing.bossId];
+        if (cacheRun && String(cacheRun.logKey || '') === existing.runKey && isPendingRunForUser(cacheRun)) {
+          window.activeBossId = existing.bossId;
+          return { source:'active', bossId: existing.bossId, runKey: existing.runKey, run: cacheRun };
+        }
+      }
+
+      let best = scanActiveCache();
+      if (!best) best = await scanArchiveRemote();
+      if (!best) {
+        clearBossBinding();
+        return null;
+      }
+      setBossBinding(best.bossId, best.runKey);
+      return best;
+    })();
+    try {
+      return await recoveryInFlight;
+    } finally {
+      recoveryInFlight = null;
+    }
+  }
+
+  const prevOpenBossBattle = window.openBossBattle;
+  window.openBossBattle = async function(){
+    await recoverBossBindingDeep();
+    return prevOpenBossBattle.apply(this, arguments);
+  };
+
+  const prevOnBossBattleIconClick = window.onBossBattleIconClick;
+  window.onBossBattleIconClick = async function(){
+    await recoverBossBindingDeep();
+    return prevOnBossBattleIconClick.apply(this, arguments);
+  };
+
+  const prevStartBossBattleMove = window.startBossBattleMove;
+  window.startBossBattleMove = async function(){
+    await recoverBossBindingDeep();
+    return prevStartBossBattleMove.apply(this, arguments);
+  };
+
+  const prevOpenBossRewardOverlay = window.openBossRewardOverlay;
+  if (typeof prevOpenBossRewardOverlay === 'function') {
+    window.openBossRewardOverlay = async function(){
+      await recoverBossBindingDeep();
+      return prevOpenBossRewardOverlay.apply(this, arguments);
+    };
+  }
+
+  const prevOpenBossBattleRewards = window.openBossBattleRewards;
+  if (typeof prevOpenBossBattleRewards === 'function') {
+    window.openBossBattleRewards = async function(){
+      await recoverBossBindingDeep();
+      return prevOpenBossBattleRewards.apply(this, arguments);
+    };
+  }
+
+  const prevOpenBossBattleHelp = window.openBossBattleHelp;
+  if (typeof prevOpenBossBattleHelp === 'function') {
+    window.openBossBattleHelp = async function(){
+      await recoverBossBindingDeep();
+      return prevOpenBossBattleHelp.apply(this, arguments);
+    };
+  }
+
+  const prevCreateBossRun = window.createBossRun;
+  if (typeof prevCreateBossRun === 'function') {
+    window.createBossRun = async function(){
+      await recoverBossBindingDeep();
+      return prevCreateBossRun.apply(this, arguments);
+    };
+  }
+
+  const prevJoinBossRun = window.joinBossRun;
+  if (typeof prevJoinBossRun === 'function') {
+    window.joinBossRun = async function(){
+      await recoverBossBindingDeep();
+      return prevJoinBossRun.apply(this, arguments);
+    };
+  }
+
+  setTimeout(() => {
+    recoverBossBindingDeep().catch(console.error);
+  }, 150);
+})();
+/* ===== end legacy auto-recovery patch ===== */
+</script>
+
 </body>
 </html>
