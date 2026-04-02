@@ -18281,6 +18281,83 @@ const BOSS_FIELD_MAP = {
   
 // ✅ 보스전 아이콘 → "이동한다" 눌렀을 때
 
+function openBossApplyList() {
+  let html = `
+    <div style="font-size:14px; font-weight:bold; margin-bottom:8px;">
+      🗡️ 토벌 대상 목록
+    </div>
+    <div style="font-size:12px; color:#aaa; margin-bottom:10px; line-height:1.4;">
+         토벌 신청자는 자동으로 토벌대에 참여합니다.
+    </div>
+  `;
+
+  BOSS_DEFS.forEach(def => {
+    const run = (bossRunsActiveCache || {})[def.id];
+    const isActive = !!(run && run.status === "active");
+
+    const cd = (bossCooldownCache || {})[def.id];
+    const nextAtRaw = cd ? cd.nextAt : 0;
+    let nextAt = 0;
+    if (typeof nextAtRaw === "number") nextAt = nextAtRaw;
+    else if (typeof nextAtRaw === "string") nextAt = Number(nextAtRaw);
+    else nextAt = 0;
+    if (!Number.isFinite(nextAt)) nextAt = 0;
+
+    const remainMs = Math.max(0, nextAt - Date.now());
+    const cooldownTxt = formatHMS(remainMs);
+    const canApplyBySword = (Number(sword || 0) >= def.minSword);
+    const canApplyByCooldown = (remainMs <= 0);
+    const hasPriorityTicket = hasBossPriorityTicket();
+    const canApplyByTicket = (!isActive && canApplyBySword && !canApplyByCooldown && hasPriorityTicket);
+
+    let btnText = "✅ 신청하기";
+    let disabled = false;
+    let actionJs = `openBossApplyConfirm('${def.id}')`;
+
+    if (!canApplyBySword) {
+      btnText = `🔒 신청 불가 (조건: ${def.minSword}강 이상)`;
+      disabled = true;
+    } else if (isActive) {
+      btnText = `⏳ 진행중인 토벌이 있습니다`;
+      disabled = true;
+    } else if (!canApplyByCooldown) {
+      if (canApplyByTicket) {
+        btnText = `🎫 우선신청권 사용`;
+        actionJs = `openBossPriorityConfirm('${def.id}')`;
+      } else {
+        btnText = `⏳ 신청 대기중`;
+        disabled = true;
+      }
+    }
+
+    html += `
+      <div style="border:1px solid #444; border-radius:8px; padding:10px; margin-bottom:8px; background:rgba(0,0,0,0.35);">
+        <div style="font-weight:bold; margin-bottom:4px;">
+          ${def.mapName} · ${def.bossTitle} <span style="color:#ddd;">${def.bossName}</span>
+        </div>
+        <div style="font-size:12px; color:#aaa; margin-bottom:8px;">
+          ⏳ 신청 가능까지: <b style="color:#ddd;">${cooldownTxt}</b>
+          ${isActive ? `<span style="margin-left:8px; color:#ff6b6b; font-weight:bold;">(진행중)</span>` : ""}
+        </div>
+        <button
+          ${disabled ? "disabled" : ""}
+          onclick="${disabled ? "" : actionJs}"
+          style="width:100%; padding:8px 10px; font-size:14px; border-radius:8px; ${disabled ? "opacity:0.4; cursor:not-allowed;" : ""}"
+        >
+          ${btnText}
+        </button>
+      </div>
+    `;
+  });
+
+  showNpcMessage(
+    html,
+    LEON_IMG.apply,
+    true,
+    "길드마스터 – 레온하르트"
+  );
+}
+
 function openBossRewardOverlay(){
   const ctx = resolveMyBossRun({ includeClosed: true });
   const bossId = String((ctx && ctx.bossId) || "");
