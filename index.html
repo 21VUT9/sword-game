@@ -27402,9 +27402,22 @@ function ensureBossCooldownResetByRun(bossId, runLike){
   if (!window.__bossRuntimeDispatchInstalled) {
     window.__bossRuntimeDispatchInstalled = true;
 
+    function __resolveBossRuntimeBossId(preferredBossId){
+      const preferred = String(preferredBossId || "");
+      if (preferred) return preferred;
+      try {
+        if (typeof resolveMyBossRun === "function") {
+          const ctx = resolveMyBossRun({ includeClosed: true });
+          const ctxBossId = String((ctx && ctx.bossId) || "");
+          if (ctxBossId) return ctxBossId;
+        }
+      } catch(e) {}
+      return String(activeBossId || "");
+    }
+
     const __orig_openBossBattleHelp_dispatch = openBossBattleHelp;
     openBossBattleHelp = function(){
-      const bossId = String(activeBossId || '');
+      const bossId = __resolveBossRuntimeBossId();
       const ext = getBossRuntimeExtension(bossId);
       if (ext && typeof ext.openHelp === 'function') return ext.openHelp.apply(this, arguments);
       return __orig_openBossBattleHelp_dispatch.apply(this, arguments);
@@ -27412,7 +27425,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
 
     const __orig_openBossBattleRewards_dispatch = openBossBattleRewards;
     openBossBattleRewards = function(){
-      const bossId = String(activeBossId || '');
+      const bossId = __resolveBossRuntimeBossId();
       const ext = getBossRuntimeExtension(bossId);
       if (ext && typeof ext.openRewards === 'function') return ext.openRewards.apply(this, arguments);
       return __orig_openBossBattleRewards_dispatch.apply(this, arguments);
@@ -27420,21 +27433,23 @@ function ensureBossCooldownResetByRun(bossId, runLike){
 
     const __orig_getBossRewardByPct_dispatch = getBossRewardByPct;
     getBossRewardByPct = function(bossId, pct, isLeader){
-      const ext = getBossRuntimeExtension(bossId);
-      if (ext && typeof ext.rewardByPct === 'function') return ext.rewardByPct.call(this, bossId, pct, isLeader);
-      return __orig_getBossRewardByPct_dispatch.apply(this, arguments);
+      const resolvedBossId = __resolveBossRuntimeBossId(bossId);
+      const ext = getBossRuntimeExtension(resolvedBossId);
+      if (ext && typeof ext.rewardByPct === 'function') return ext.rewardByPct.call(this, resolvedBossId, pct, isLeader);
+      return __orig_getBossRewardByPct_dispatch.call(this, resolvedBossId, pct, isLeader);
     };
 
     const __orig_createBossRun_dispatch = createBossRun;
     createBossRun = function(bossId, options = {}){
-      const ext = getBossRuntimeExtension(bossId);
-      if (ext && typeof ext.createRun === 'function') return ext.createRun.call(this, bossId, options, __orig_createBossRun_dispatch);
-      return __orig_createBossRun_dispatch.apply(this, arguments);
+      const resolvedBossId = __resolveBossRuntimeBossId(bossId);
+      const ext = getBossRuntimeExtension(resolvedBossId);
+      if (ext && typeof ext.createRun === 'function') return ext.createRun.call(this, resolvedBossId, options, __orig_createBossRun_dispatch);
+      return __orig_createBossRun_dispatch.call(this, resolvedBossId, options);
     };
 
     const __orig_renderBossBattle_dispatch = renderBossBattle;
     renderBossBattle = function(){
-      const bossId = String(activeBossId || '');
+      const bossId = __resolveBossRuntimeBossId();
       const ext = getBossRuntimeExtension(bossId);
       if (ext && typeof ext.renderBattle === 'function' && !isRankingBattleMode) return ext.renderBattle.apply(this, arguments);
       if (typeof setTwinBossMode === 'function') setTwinBossMode(false);
@@ -27443,9 +27458,10 @@ function ensureBossCooldownResetByRun(bossId, runLike){
 
     const __orig_getBossPowerMultiplier_dispatch = getBossPowerMultiplier;
     getBossPowerMultiplier = function(bossId, swordLv){
-      const ext = getBossRuntimeExtension(bossId);
-      if (ext && typeof ext.powerMultiplier === 'function') return ext.powerMultiplier.call(this, swordLv, bossId);
-      return __orig_getBossPowerMultiplier_dispatch.apply(this, arguments);
+      const resolvedBossId = __resolveBossRuntimeBossId(bossId);
+      const ext = getBossRuntimeExtension(resolvedBossId);
+      if (ext && typeof ext.powerMultiplier === 'function') return ext.powerMultiplier.call(this, swordLv, resolvedBossId);
+      return __orig_getBossPowerMultiplier_dispatch.call(this, resolvedBossId, swordLv);
     };
   }
 })();
