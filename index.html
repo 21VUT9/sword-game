@@ -7346,6 +7346,14 @@ let bully10Count = 0;        // 강약약강: 약한 상대에게 지정매칭 1
 let challenger10Count = 0;   // 도전자: 강한 상대에게 지정매칭 승리 10회
 let brawl500Count = 0;       // 싸움꾼: 결투 누적 500회
 let warGodWin = false;       // 투신: +4강 이상 높은 상대에게 승리 1회
+let duelEqualOrHigherWinStreak = 0; // 학살자: 나와 같거나 높은 상대 10연승(낮은 상대 섞이면 리셋)
+let bossLeaderClearCount = 0;       // 대장: 대장 상태로 토벌 성공 10회
+let bossKillCountById = {};         // 보스별 토벌 성공 횟수
+let weeklyRank1Streak = 0;          // 군림: 랭킹전 주간 1위 4주 연속
+let superSuccessStreak = 0;         // 우주대스타: 슈퍼강화 연속 4회 성공
+let upgradeFailStreak = 0;          // 위대한도전: 강화 연속 20회 실패
+let engraveNormalCount = 0;         // 일반 각인 누적 사용 횟수
+let engraveAdvancedCount = 0;       // 고급 각인 누적 사용 횟수
 
 let couponUsedMap = {};   // 사용 완료한 쿠폰코드 기록 { CODE: true }
 
@@ -8800,6 +8808,14 @@ destroyCount  = 0;
 
   titlesOwned = {};
 equippedTitle = "";
+  duelEqualOrHigherWinStreak = 0;
+  bossLeaderClearCount = 0;
+  bossKillCountById = {};
+  weeklyRank1Streak = 0;
+  superSuccessStreak = 0;
+  upgradeFailStreak = 0;
+  engraveNormalCount = 0;
+  engraveAdvancedCount = 0;
   closeTitleOverlay();
 
     // ✅ 자동 새로고침 타이머 해제
@@ -9655,6 +9671,18 @@ const TITLE_DEFS = [
 
   { id:"oldwater", name:"고인물",  how:"같은 무기로 30강 2회 달성", color:"gold" },
   { id:"stale",    name:"썩은물",  how:"같은 무기로 30강 3회 달성", color:"gold" },
+  { id:"division_commander", name:"사단장", how:"30강 달성 2회" },
+  { id:"corps_commander", name:"군단장", how:"30강 달성 3회" },
+  { id:"swamp_lord", name:"늪의주인", how:"하이엘프퀸 실바나 토벌 10회" },
+  { id:"captain10", name:"대장", how:"토벌대 대장 상태로 토벌 성공 10회" },
+  { id:"attendance30", name:"개근", how:"연속 출석 30회 이상" },
+  { id:"dominion4", name:"군림", how:"랭킹전 주간랭킹 1위 4주 연속" },
+  { id:"slayer10", name:"학살자", how:"나와 같거나 높은 강화의 상대에게 10회 연속 승리" },
+  { id:"super_chain4", name:"우주대스타", how:"슈퍼강화 연속 4회 성공" },
+  { id:"great_challenge", name:"위대한도전", how:"강화 연속 20회 실패" },
+  { id:"engrave_normal_300", name:"불만족", how:"일반 각인 300회 이상" },
+  { id:"engrave_advanced_300", name:"아쉬워서", how:"고급 각인 300회 이상" },
+  { id:"deep_frost", name:"서리깊은", how:"서리여왕 아르셀리아 토벌 10회" },
   { id: "boss_raider",  name: "토벌대", how:"보스전 토벌1회 성공" },
 
 ];
@@ -9952,7 +9980,21 @@ if (weaponType === "magitech" && curLv >= 21) {
 if (weaponType === "magitech" && curLv >= 30) {
   if (grantTitleOnceNoSave("end_magitech")) changed = true;
 }
- 
+
+  // 🆕 추가 칭호
+  if (total30 >= 2) changed = grantTitleOnceNoSave("division_commander") || changed;
+  if (total30 >= 3) changed = grantTitleOnceNoSave("corps_commander") || changed;
+  if (Number((bossKillCountById && bossKillCountById["swamp_elf_queen"]) || 0) >= 10) changed = grantTitleOnceNoSave("swamp_lord") || changed;
+  if (Number((bossKillCountById && bossKillCountById["frost_queen"]) || 0) >= 10) changed = grantTitleOnceNoSave("deep_frost") || changed;
+  if (Number(bossLeaderClearCount || 0) >= 10) changed = grantTitleOnceNoSave("captain10") || changed;
+  if (Number(attendanceStreak || 0) >= 30) changed = grantTitleOnceNoSave("attendance30") || changed;
+  if (Number(weeklyRank1Streak || 0) >= 4) changed = grantTitleOnceNoSave("dominion4") || changed;
+  if (Number(duelEqualOrHigherWinStreak || 0) >= 10) changed = grantTitleOnceNoSave("slayer10") || changed;
+  if (Number(superSuccessStreak || 0) >= 4) changed = grantTitleOnceNoSave("super_chain4") || changed;
+  if (Number(upgradeFailStreak || 0) >= 20) changed = grantTitleOnceNoSave("great_challenge") || changed;
+  if (Number(engraveNormalCount || 0) >= 300) changed = grantTitleOnceNoSave("engrave_normal_300") || changed;
+  if (Number(engraveAdvancedCount || 0) >= 300) changed = grantTitleOnceNoSave("engrave_advanced_300") || changed;
+
   return changed;
 }
   
@@ -14216,6 +14258,15 @@ function performDuel(targetUserId, isRandomMatch) {
       // 🏷️ 결투 업적 카운트 업데이트
       const diff = targetSword - sword; // 상대 - 나
 
+      // 🆕 학살자: 나와 같거나 높은 상대에게 10연승, 낮은 상대가 섞이면 리셋
+      if (diff < 0) {
+        duelEqualOrHigherWinStreak = 0;
+      } else if (isWin) {
+        duelEqualOrHigherWinStreak = Number(duelEqualOrHigherWinStreak || 0) + 1;
+      } else {
+        duelEqualOrHigherWinStreak = 0;
+      }
+
       // 싸움꾼: 결투 누적 횟수 (승패 무관)
       brawl500Count = Number(brawl500Count || 0) + 1;
 
@@ -15566,6 +15617,9 @@ if (lastAttendanceDate === today) {
   attendanceCount++;
   updateAttendanceBadge();
 
+  const __attendanceTitleChanged = checkAndGrantTitles();
+  if (__attendanceTitleChanged && typeof save === "function") save();
+
     // ✅ 반복퀘스트: 출석체크 1회 카운트
   onRepeatQuestAttendance();
 
@@ -15979,8 +16033,12 @@ if (before < 30 && sword >= 30) {
 
   // ✅ 30강 누적/같은 무기 반복 칭호 즉시 지급
   if (grantTitleOnceNoSave("best30")) save();
+  if (Number(reach30Count || 0) >= 2) {
+    if (grantTitleOnceNoSave("division_commander")) save();
+  }
   if (Number(reach30Count || 0) >= 3) {
     if (grantTitleOnceNoSave("master30")) save();
+    if (grantTitleOnceNoSave("corps_commander")) save();
   }
   if (Number(weapon30Counts[wt] || 0) >= 2) {
     if (grantTitleOnceNoSave("oldwater")) save();
@@ -16031,6 +16089,10 @@ db.ref("hofQueue/" + userId).set(hofDeadline).catch(() => {});
   }
 
   // 퍼그란트 성공 멘트
+  if (!useSuper) {
+    superSuccessStreak = 0;
+  }
+
   if (useSuper) {
     showNpcMessage(
   `
@@ -16099,6 +16161,8 @@ if (useRate5) {
 
   } else {
     // ❌ 실패
+    upgradeFailStreak = Number(upgradeFailStreak || 0) + 1;
+    superSuccessStreak = 0;
     // ✅ 5,10,15,20까지만 세이프 / 25부터는 세이프 없음
     const isSafeLevel = (before % 5 === 0 && before <= 20);
     playMetalCrackSfx();
@@ -17178,6 +17242,14 @@ function login() {
       challenger10Count = Number(data.challenger10Count || 0);
       brawl500Count     = Number(data.brawl500Count || 0);
       warGodWin         = Boolean(data.warGodWin || false);
+      duelEqualOrHigherWinStreak = Number(data.duelEqualOrHigherWinStreak || 0);
+      bossLeaderClearCount = Number(data.bossLeaderClearCount || 0);
+      bossKillCountById = (data.bossKillCountById && typeof data.bossKillCountById === "object") ? data.bossKillCountById : {};
+      weeklyRank1Streak = Number(data.weeklyRank1Streak || 0);
+      superSuccessStreak = Number(data.superSuccessStreak || 0);
+      upgradeFailStreak = Number(data.upgradeFailStreak || 0);
+      engraveNormalCount = Number(data.engraveNormalCount || 0);
+      engraveAdvancedCount = Number(data.engraveAdvancedCount || 0);
       itemHonorMedal = data.itemHonorMedal ?? 0;
       // ⭐ 결투 포인트 로드 (없으면 0)
       duelPoint       = data.duelPoint ?? 0;
@@ -17355,6 +17427,14 @@ function login() {
       rankingBattleLastWeekRank: 0,
       rankingBattleLastWeekRewardClaimed: false,
       rankingBattleLastRewardWeekKey: "",
+      duelEqualOrHigherWinStreak: 0,
+      bossLeaderClearCount: 0,
+      bossKillCountById: {},
+      weeklyRank1Streak: 0,
+      superSuccessStreak: 0,
+      upgradeFailStreak: 0,
+      engraveNormalCount: 0,
+      engraveAdvancedCount: 0,
       titlesOwned: {},
       equippedTitle: "",
       cumulativeRewardState: createDefaultCumulativeRewardState(),
@@ -17445,6 +17525,14 @@ function save() {
     rankingBattleLastWeekRank: Number(rankingBattleLastWeekRank || 0),
     rankingBattleLastWeekRewardClaimed: Boolean(rankingBattleLastWeekRewardClaimed),
     rankingBattleLastRewardWeekKey: String(rankingBattleLastRewardWeekKey || ""),
+    duelEqualOrHigherWinStreak: Number(duelEqualOrHigherWinStreak || 0),
+    bossLeaderClearCount: Number(bossLeaderClearCount || 0),
+    bossKillCountById: bossKillCountById,
+    weeklyRank1Streak: Number(weeklyRank1Streak || 0),
+    superSuccessStreak: Number(superSuccessStreak || 0),
+    upgradeFailStreak: Number(upgradeFailStreak || 0),
+    engraveNormalCount: Number(engraveNormalCount || 0),
+    engraveAdvancedCount: Number(engraveAdvancedCount || 0),
     duelUpdated: Number(duelUpdated || 0),
     duelLastWeekUpdated: Number(duelLastWeekUpdated || 0),
     couponUsed: couponUsedMap,   // 🆕 사용 완료 쿠폰 기록
@@ -18730,9 +18818,17 @@ function claimBossReward(){
     itemBossPriority = Number(itemBossPriority || 0) + (rw.itemBossPriority || 0);
     itemEngraveNormal = Number(itemEngraveNormal || 0) + (rw.itemEngraveNormal || 0);
     itemEngraveAdvanced = Number(itemEngraveAdvanced || 0) + (rw.itemEngraveAdvanced || 0);
+
+    bossKillCountById = (bossKillCountById && typeof bossKillCountById === "object") ? bossKillCountById : {};
+    bossKillCountById[bossId] = Number(bossKillCountById[bossId] || 0) + 1;
+    if (isLeader) {
+      bossLeaderClearCount = Number(bossLeaderClearCount || 0) + 1;
+    }
+
     save();
 
     grantTitleOnceNoSave("boss_raider");
+    checkAndGrantTitles();
 
     clearActiveBossBinding();
     refreshBossBattleAlert("");
@@ -19065,6 +19161,14 @@ if (!power || power <= 20) {
     challenger10Count = Number(data.challenger10Count || 0);
     brawl500Count     = Number(data.brawl500Count || 0);
     warGodWin         = Boolean(data.warGodWin || false);
+    duelEqualOrHigherWinStreak = Number(data.duelEqualOrHigherWinStreak || 0);
+    bossLeaderClearCount = Number(data.bossLeaderClearCount || 0);
+    bossKillCountById = (data.bossKillCountById && typeof data.bossKillCountById === "object") ? data.bossKillCountById : {};
+    weeklyRank1Streak = Number(data.weeklyRank1Streak || 0);
+    superSuccessStreak = Number(data.superSuccessStreak || 0);
+    upgradeFailStreak = Number(data.upgradeFailStreak || 0);
+    engraveNormalCount = Number(data.engraveNormalCount || 0);
+    engraveAdvancedCount = Number(data.engraveAdvancedCount || 0);
     itemHonorMedal = data.itemHonorMedal ?? 0;
     starShard = data.starShard ?? 0;
     itemEssence = Number(data.itemEssence || 0);
@@ -25260,6 +25364,9 @@ if (mode === "advanced") {
     return;
   }
   itemEngraveAdvanced = Number(itemEngraveAdvanced || 0) - 1;
+  engraveAdvancedCount = Number(engraveAdvancedCount || 0) + 1;
+  const __engraveAdvTitleChanged = checkAndGrantTitles();
+  if (__engraveAdvTitleChanged && typeof save === "function") save();
 
   // 🔁 (반복형 퀘스트) 각인 시도 카운트 (일반/고급 공통)
   onRepeatQuestEngraveAttempt();
@@ -25269,6 +25376,9 @@ if (mode === "advanced") {
     return;
   }
   itemEngraveNormal = Number(itemEngraveNormal || 0) - 1;
+  engraveNormalCount = Number(engraveNormalCount || 0) + 1;
+  const __engraveNormalTitleChanged = checkAndGrantTitles();
+  if (__engraveNormalTitleChanged && typeof save === "function") save();
 }
 
 // 소모는 즉시 저장/갱신
@@ -26227,6 +26337,7 @@ function checkWeeklyRankingBattleReward(afterFn){
       });
 
       if (!arr.length) {
+        weeklyRank1Streak = 0;
         markRankingBattleWeeklyRewardClaimed(prevWeekKey, 0);
         save();
         if (typeof afterFn === "function") afterFn();
@@ -26240,6 +26351,7 @@ function checkWeeklyRankingBattleReward(afterFn){
 
       const myIndex = arr.findIndex((row) => String(row.uid) === String(userId));
       if (myIndex === -1) {
+        weeklyRank1Streak = 0;
         markRankingBattleWeeklyRewardClaimed(prevWeekKey, 0);
         save();
         if (typeof afterFn === "function") afterFn();
@@ -26247,6 +26359,13 @@ function checkWeeklyRankingBattleReward(afterFn){
       }
 
       const myRank = myIndex + 1;
+      if (myRank === 1) {
+        weeklyRank1Streak = Number(weeklyRank1Streak || 0) + 1;
+      } else {
+        weeklyRank1Streak = 0;
+      }
+      const __weeklyRankTitleChanged = checkAndGrantTitles();
+      if (__weeklyRankTitleChanged && typeof save === "function") save();
       const rewardText = grantWeeklyRankingBattleReward(myRank, prevWeekKey);
       if (isRankingBattleWeeklyRewardAlreadyClaimed(prevWeekKey) && !rewardText) {
         if (typeof afterFn === "function") afterFn();
