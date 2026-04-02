@@ -28173,6 +28173,22 @@ setTimeout(() => {
   async function getBoundContext(){
     const sync = getBoundContextSync();
     if (sync) return sync;
+
+    // ✅ 바인딩이 아직 저장되지 않았거나 늦게 저장된 경우를 위한 fallback
+    // 신청/참가 직후에는 activeBossId + active 캐시만 먼저 들어오고 runKey 바인딩은 나중에 붙을 수 있다.
+    const fallbackBossId = String(window.activeBossId || '');
+    if (fallbackBossId) {
+      const activeRun = getCurrentBossRun(fallbackBossId);
+      if (activeRun && activeRun.members && activeRun.members[window.userId]) {
+        const status = String(activeRun.status || '');
+        const runKey = String(activeRun.logKey || '');
+        if (['active','cleared','failed'].includes(status)) {
+          if (runKey) setBossBinding(fallbackBossId, runKey);
+          return { source:'active', bossId: fallbackBossId, runKey, run: activeRun };
+        }
+      }
+    }
+
     const binding = loadBossBinding();
     if (!binding) return null;
     try {
@@ -28304,8 +28320,15 @@ setTimeout(() => {
     }
     const ret = __orig_joinBossRun.apply(this, arguments);
     try {
-      const run = getCurrentBossRun(bossId);
-      if (run && run.logKey) setBossBinding(bossId, run.logKey);
+      const started = Date.now();
+      while (Date.now() - started < 3500) {
+        const run = getCurrentBossRun(bossId);
+        if (run && run.members && run.members[window.userId] && run.logKey) {
+          setBossBinding(bossId, run.logKey);
+          break;
+        }
+        await new Promise(r => setTimeout(r, 120));
+      }
     } catch(e){ console.error(e); }
     return ret;
   };
