@@ -18467,6 +18467,98 @@ function closeBossRewardOverlay(){
   if (overlay) overlay.style.display = "none";
 }
 
+function getBossRewardByPct(bossId, pct, isLeader){
+  bossId = String(bossId || "");
+  const reward = {
+    itemProtect: 0,
+    itemDownProtect: 0,
+    itemScroll21: 0,
+    itemScroll15: 0,
+    itemEssence: 0,
+    itemSuper: 0,
+    itemBossPriority: 0,
+    itemEngraveNormal: 0,
+    itemEngraveAdvanced: 0
+  };
+
+  if (bossId === "swamp_elf_queen") {
+    if (pct >= 30) {
+      reward.itemProtect += 2;
+      reward.itemDownProtect += 5;
+      reward.itemEssence += 50;
+    } else if (pct >= 25) {
+      reward.itemBossPriority += 1;
+      reward.itemDownProtect += 3;
+      reward.itemEssence += 30;
+    } else if (pct >= 20) {
+      reward.itemScroll21 += 2;
+      reward.itemDownProtect += 5;
+      reward.itemEssence += 20;
+    } else if (pct >= 10) {
+      reward.itemDownProtect += 5;
+      reward.itemEssence += 10;
+    } else if (pct >= 1) {
+      reward.itemScroll15 += 1;
+      reward.itemEssence += 5;
+    } else {
+      reward.itemEssence += 1;
+    }
+
+    if (pct >= 30) {
+      reward.itemEngraveAdvanced += 3;
+    } else if (pct >= 25) {
+      reward.itemEngraveAdvanced += 1;
+    } else if (pct >= 20) {
+      reward.itemEngraveNormal += 3;
+    } else if (pct >= 10) {
+      reward.itemEngraveNormal += 1;
+    }
+
+  } else if (bossId === "frost_queen") {
+    if (pct >= 30) {
+      reward.itemProtect += 3;
+      reward.itemEssence += 80;
+    } else if (pct >= 25) {
+      reward.itemProtect += 2;
+      reward.itemEssence += 50;
+    } else if (pct >= 20) {
+      reward.itemBossPriority += 1;
+      reward.itemEssence += 30;
+    } else if (pct >= 10) {
+      reward.itemScroll21 += 3;
+      reward.itemEssence += 20;
+    } else if (pct >= 1) {
+      reward.itemScroll15 += 5;
+      reward.itemDownProtect += 3;
+      reward.itemEssence += 10;
+    } else {
+      reward.itemDownProtect += 2;
+      reward.itemEssence += 5;
+    }
+
+    if (pct >= 30) {
+      reward.itemEngraveAdvanced += 4;
+    } else if (pct >= 25) {
+      reward.itemEngraveAdvanced += 1;
+      reward.itemEngraveNormal += 3;
+    } else if (pct >= 20) {
+      reward.itemEngraveNormal += 5;
+    } else if (pct >= 10) {
+      reward.itemEngraveNormal += 3;
+    }
+
+  } else {
+    reward.itemEssence += 1;
+  }
+
+  if (isLeader) {
+    reward.itemSuper += 1;
+    reward.itemEssence += 30;
+  }
+
+  return reward;
+}
+
 function claimBossReward(){
   const ctx = resolveMyBossRun({ includeClosed: true });
   const bossId = String((ctx && ctx.bossId) || "");
