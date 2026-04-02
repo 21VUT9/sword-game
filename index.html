@@ -22886,8 +22886,8 @@ function joinBossRunConfirm(bossId){
 
   if (alreadyMember) {
     setActiveBossBinding(bossId, targetRunKey);
-    showNpcMessage("이미 해당 토벌대에 참여 중입니다.
-(토벌/보상을 완료후 다시 시도하십시오)", LEON_IMG.idle, true, "길드마스터 – 레온하르트 발렌");
+    showNpcMessage(`이미 해당 토벌대에 참여 중입니다.
+(토벌/보상을 완료후 다시 시도하십시오)`, LEON_IMG.idle, true, "길드마스터 – 레온하르트 발렌");
     return;
   }
 
@@ -22971,8 +22971,8 @@ function joinBossRun(bossId) {
     const curMember = snap && snap.val ? snap.val() : null;
     if (!committed && curMember) {
       setActiveBossBinding(bossId, targetRunKey);
-      showNpcMessage("이미 해당 토벌대에 참여 중입니다.
-(토벌/보상을 완료후 다시 시도하십시오)", LEON_IMG.idle, true, "길드마스터 – 레온하르트 발렌");
+      showNpcMessage(`이미 해당 토벌대에 참여 중입니다.
+(토벌/보상을 완료후 다시 시도하십시오)`, LEON_IMG.idle, true, "길드마스터 – 레온하르트 발렌");
       return;
     }
 
