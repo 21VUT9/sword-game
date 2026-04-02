@@ -13465,7 +13465,17 @@ function popupBtn(label, onClickJs){
 function renderTitleGrid(){
   const grid = document.getElementById("titleGrid");
   const equippedEl = document.getElementById("equippedTitleText");
+  const titleOwnedSummaryEl = document.getElementById("titleOwnedSummary");
   if(!grid) return;
+
+  const totalTitleCount = Array.isArray(TITLE_DEFS) ? TITLE_DEFS.length : 0;
+  const ownedTitleCount = Array.isArray(TITLE_DEFS)
+    ? TITLE_DEFS.reduce((acc, def) => acc + ((titlesOwned && titlesOwned[def.id]) ? 1 : 0), 0)
+    : 0;
+
+  if (titleOwnedSummaryEl) {
+    titleOwnedSummaryEl.textContent = `${ownedTitleCount} / ${totalTitleCount}`;
+  }
 
   // 장착중 표시
   const eqDef = TITLE_DEFS.find(t => t.id === equippedTitle);
@@ -28360,6 +28370,10 @@ setTimeout(() => {
     <!-- 장착중 -->
     <div class="titleEquippedRow">
       장착중: <span id="equippedTitleText">(없음)</span>
+    </div>
+
+    <div class="titleEquippedRow" style="margin-top:-4px; color:#cfcfcf; font-size:13px;">
+      칭호획득현황: <span id="titleOwnedSummary">0 / 0</span>
     </div>
 
     <!-- 그리드 -->
