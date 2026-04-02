@@ -7414,6 +7414,8 @@ let hasSeen25Warning = false;
 let ignoreNextUpgradeWarning = false;
 
 let activeBossId = "";
+let activeBossRunKey = "";
+try { activeBossRunKey = String(localStorage.getItem("pug_activeBossRunKey") || ""); } catch(e) {}
    
 // 🧮 사냥 스태미나 계산 (리셋 + 회복 처리)
 function recalcHuntStamina() {
@@ -20351,20 +20353,25 @@ function getNickSafe() {
 // 🐲 보스전: Firebase ActiveRun (v1)
 // ===============================
 const BOSS_RUNS_ACTIVE_REF = db.ref("bossRunsActive");
+const BOSS_RUNS_CLOSED_REF = db.ref("bossRunsClosed");
 const BOSS_COOLDOWN_REF    = db.ref("bossCooldown");
 
 // 메모리 캐시(렌더용)
 let bossRunsActiveCache = {};   // { bossId: runObj }
+let bossRunsClosedCache = {};   // { bossId: { runKey: runObj } }
 let bossCooldownCache = {};     // { bossId: { nextAt: ms } }
 var bossRunsUnsubscribed = true;
+let bossRunsClosedReadable = true;
 
   // ✅ 계정 전환/재로그인 시 보스전 리스너를 강제로 다시 붙이기 위한 리셋
 function resetBossRunsSubscription(){
   try { BOSS_RUNS_ACTIVE_REF.off(); } catch(e){}
+  try { BOSS_RUNS_CLOSED_REF.off(); } catch(e){}
   try { BOSS_COOLDOWN_REF.off(); } catch(e){}
 
   bossRunsUnsubscribed = true;
   bossRunsActiveCache = {};
+  bossRunsClosedCache = {};
   bossCooldownCache = {};
 
   try{
@@ -20378,32 +20385,22 @@ function resetBossRunsSubscription(){
 let bossRunWatchdogTimer = null;
 
 function updateBossBattleBtn(){
-  if (activeBossId && bossRunsUnsubscribed !== false) {
-  ensureBossRunsSubscription();
-}
+  if ((activeBossId || activeBossRunKey) && bossRunsUnsubscribed !== false) {
+    ensureBossRunsSubscription();
+  }
   const btn = document.getElementById("bossBattleBtn");
   if (!btn) return;
 
-  const bossId = String(activeBossId || "");
-  if (!bossId) { btn.style.display = "none"; refreshBossBattleAlert(""); return; }
-
-    const run = (bossRunsActiveCache || {})[bossId];
-  if (!run) { btn.style.display = "none"; refreshBossBattleAlert(""); return; }
-
-  const st = String(run.status || "");
-  const mem = run.members && run.members[userId];
-  if (!mem) { btn.style.display = "none"; return; }
-
-  // ✅ 성공(cleared)인데 이미 보상 수령했으면 버튼 숨김
-  const alreadyClaimed = !!(run.claimed && run.claimed[userId]);
-
-  // ✅ 진행중/실패/성공(미수령) 상태에서는 버튼 유지
-  if (st === "active" || st === "failed" || (st === "cleared" && !alreadyClaimed)) {
-    btn.style.display = "inline-block";
-  } else {
+  const ctx = resolveMyBossRun({ includeClosed: true });
+  const bossId = String((ctx && ctx.bossId) || "");
+  const run = ctx && ctx.run;
+  if (!bossId || !run || !isMyPendingBossRun(run)) {
     btn.style.display = "none";
+    refreshBossBattleAlert("");
+    return;
   }
 
+  btn.style.display = "inline-block";
   refreshBossBattleAlert(bossId);
 }
 
@@ -20604,75 +20601,124 @@ if (Number(run.endsAt || 0) > 0 && Date.now() >= Number(run.endsAt || 0) && Stri
   listEl.innerHTML = html;
 }
 
+function getStoredActiveBossRunKey(){
+  try { return String(localStorage.getItem("pug_activeBossRunKey") || ""); } catch(e){ return ""; }
+}
+function setActiveBossBinding(bossId, runKey){
+  activeBossId = String(bossId || "");
+  activeBossRunKey = String(runKey || "");
+  try {
+    if (activeBossRunKey) localStorage.setItem("pug_activeBossRunKey", activeBossRunKey);
+    else localStorage.removeItem("pug_activeBossRunKey");
+  } catch(e) {}
+  save();
+}
+function clearActiveBossBinding(){
+  activeBossId = "";
+  activeBossRunKey = "";
+  try { localStorage.removeItem("pug_activeBossRunKey"); } catch(e) {}
+  save();
+}
+function getClosedBossRun(bossId, runKey){
+  bossId = String(bossId || "");
+  runKey = String(runKey || "");
+  if (!bossId || !runKey) return null;
+  return (((bossRunsClosedCache || {})[bossId] || {})[runKey]) || null;
+}
+function isMyPendingBossRun(run){
+  if (!run || !run.members || !run.members[userId]) return false;
+  const st = String(run.status || "");
+  const claimed = !!(run.claimed && run.claimed[userId]);
+  return (st === "active" || st === "failed" || (st === "cleared" && !claimed));
+}
+function resolveMyBossRun(opts = {}){
+  const includeClosed = opts.includeClosed !== false;
+  const curId = String(activeBossId || "");
+  const curKey = String(activeBossRunKey || getStoredActiveBossRunKey() || "");
+
+  if (curId) {
+    const activeRun = (bossRunsActiveCache || {})[curId];
+    if (activeRun && isMyPendingBossRun(activeRun)) {
+      const liveKey = String(activeRun.logKey || "");
+      if (!curKey || !liveKey || curKey === liveKey || String(activeRun.status || "") === "active") {
+        if (liveKey && liveKey !== activeBossRunKey) setActiveBossBinding(curId, liveKey);
+        return { bossId: curId, run: activeRun, source: "active" };
+      }
+    }
+    if (includeClosed && bossRunsClosedReadable) {
+      const closedRun = getClosedBossRun(curId, curKey);
+      if (closedRun && isMyPendingBossRun(closedRun)) {
+        return { bossId: curId, run: closedRun, source: "closed" };
+      }
+    }
+  }
+
+  for (const [bid, run] of Object.entries(bossRunsActiveCache || {})) {
+    if (isMyPendingBossRun(run)) {
+      setActiveBossBinding(bid, String(run.logKey || ""));
+      return { bossId: String(bid), run, source: "active" };
+    }
+  }
+
+  if (includeClosed && bossRunsClosedReadable) {
+    for (const [bid, byKey] of Object.entries(bossRunsClosedCache || {})) {
+      for (const [rk, run] of Object.entries(byKey || {})) {
+        if (isMyPendingBossRun(run)) {
+          setActiveBossBinding(bid, rk);
+          return { bossId: String(bid), run, source: "closed" };
+        }
+      }
+    }
+  }
+  return null;
+}
+function archiveBossRunIfNeeded(bossId, run){
+  const rk = String(run && run.logKey || "");
+  if (!bossId || !rk || !run) return Promise.resolve();
+  const ref = db.ref(`bossRunsClosed/${bossId}/${rk}`);
+  return ref.once("value").then((snap) => {
+    if (snap.exists()) return;
+    const payload = JSON.parse(JSON.stringify(run));
+    payload.archivedAt = Date.now();
+    return ref.set(payload);
+  });
+}
+
 // ✅ 모험가길드 열릴 때 한번만 구독 시작
 function ensureBossRunsSubscription() {
   if (bossRunsUnsubscribed === false) return;
 
   bossRunsUnsubscribed = false;
-BOSS_RUNS_ACTIVE_REF.on("value", (snap) => {
-  bossRunsActiveCache = snap.val() || {};
-  startBossRunWatchdog();
+  BOSS_RUNS_ACTIVE_REF.on("value", (snap) => {
+    bossRunsActiveCache = snap.val() || {};
+    startBossRunWatchdog();
+    refreshAdventureGuildAlert();
+    updateBossBattleBtn();
 
- refreshAdventureGuildAlert(); // ✅ 신규 보스전 있으면 메인 버튼에 ! 표시
-  updateBossBattleBtn();
+    const bound = resolveMyBossRun({ includeClosed: true });
+    if (!bound && (activeBossId || activeBossRunKey)) clearActiveBossBinding();
 
-  // ✅ (핵심) 새로고침/재접속 시: 내가 이미 참여중인 토벌이 있으면 activeBossId 복구
-  const myUid = String(userId || "");
-  const curId = String(activeBossId || "");
-
-  // 1) 현재 activeBossId가 있는데, 그 토벌이 없거나/종료됐거나/내 멤버 기록이 없으면 초기화
-  if (curId) {
-    const curRun = (bossRunsActiveCache || {})[curId];
-    const st = String(curRun && curRun.status ? curRun.status : "");
-const isMember = !!(curRun && curRun.members && curRun.members[myUid]);
-
-// ✅ 성공인데 이미 보상 수령한 상태면 복구 대상 아님
-const alreadyClaimed = !!(curRun && curRun.claimed && curRun.claimed[myUid]);
-
-const canKeep =
-  isMember && (
-    st === "active" ||
-    st === "failed" ||
-    (st === "cleared" && !alreadyClaimed)
-  );
-
-if (!canKeep) activeBossId = "";
-    if (!isMember) activeBossId = "";
-  }
-
-  // 2) activeBossId가 비어있으면, 전체 activeRun 중 "내가 멤버인 run"을 찾아 복구
-  if (!activeBossId) {
-    let found = "";
-    Object.entries(bossRunsActiveCache || {}).some(([bid, run]) => {
-  if (run && run.members && run.members[myUid]) {
-    const st2 = String(run.status || "");
-    const claimed2 = !!(run.claimed && run.claimed[myUid]);
-
-    if (st2 === "active" || st2 === "failed" || (st2 === "cleared" && !claimed2)) {
-      found = String(bid);
-      return true;
-    }
-  }
-  return false;
-});
-
-    if (found) {
-      activeBossId = found;
-      save(); // 다음 접속에도 유지
-    }
-  }
-
-  renderAdventureGuildBossRuns();
-});
-  
-    BOSS_COOLDOWN_REF.on("value", (snap) => {
-    bossCooldownCache = snap.val() || {};
-    // 길드가 열려있으면 신청 리스트 시간에도 영향을 주므로 렌더 반영
     renderAdventureGuildBossRuns();
   });
 
+  BOSS_RUNS_CLOSED_REF.on("value", (snap) => {
+    bossRunsClosedCache = snap.val() || {};
+    bossRunsClosedReadable = true;
+    const bound = resolveMyBossRun({ includeClosed: true });
+    if (!bound && (activeBossId || activeBossRunKey)) {
+      const live = resolveMyBossRun({ includeClosed: false });
+      if (!live) clearActiveBossBinding();
+    }
+  }, (err) => {
+    bossRunsClosedReadable = false;
+    console.warn("bossRunsClosed read blocked by Firebase Rules", err);
+  });
 
-  // 남은시간 카운트다운 UI 갱신(1초)
+  BOSS_COOLDOWN_REF.on("value", (snap) => {
+    bossCooldownCache = snap.val() || {};
+    renderAdventureGuildBossRuns();
+  });
+
   setInterval(() => {
     const ov = document.getElementById("adventureGuildOverlay");
     if (!ov || ov.style.display === "none") return;
@@ -20722,10 +20768,11 @@ let bossBattleLogsPath = "";
 
 //  토벌 “회차”별 로그방 경로 만들기
 function getBossBattleLogPath(bossId){
-  bossId = String(bossId || "");
-  const run = (bossRunsActiveCache || {})[bossId];
-  const logKey = run && run.logKey ? String(run.logKey) : "run_default";
-  return `bossBattleLogs/${bossId}_${logKey}`;
+  const ctx = resolveMyBossRun({ includeClosed: true });
+  const id = String(bossId || (ctx && ctx.bossId) || activeBossId || "");
+  const run = (ctx && ctx.bossId === id) ? ctx.run : ((bossRunsActiveCache || {})[id] || getClosedBossRun(id, activeBossRunKey));
+  const logKey = String((run && run.logKey) || activeBossRunKey || getStoredActiveBossRunKey() || "run_default");
+  return `bossBattleLogs/${id}_${logKey}`;
 }
 
   // =========================
@@ -20756,10 +20803,11 @@ function setBossBattleAlertVisible(on){
 }
 
 function hasPendingBossReward(bossId){
-  const id = String(bossId || activeBossId || "");
+  const ctx = resolveMyBossRun({ includeClosed: true });
+  const id = String(bossId || (ctx && ctx.bossId) || activeBossId || "");
   if (!id || !userId) return false;
 
-  const run = (bossRunsActiveCache || {})[id];
+  const run = (ctx && ctx.bossId === id) ? ctx.run : ((bossRunsActiveCache || {})[id] || getClosedBossRun(id, activeBossRunKey));
   if (!run) return false;
   if (String(run.status || "") !== "cleared") return false;
   if (!(run.members && run.members[userId])) return false;
@@ -20900,8 +20948,9 @@ function writeBossBattleLog(bossId, msg, opt) {
 }
 
 function openBossBattle(){
-  const bossId = String(activeBossId || "");
-  const run = (bossRunsActiveCache || {})[bossId];
+  const ctx = resolveMyBossRun({ includeClosed: true });
+  const bossId = String((ctx && ctx.bossId) || "");
+  const run = ctx && ctx.run;
   if (!bossId || !run || !["active","cleared","failed"].includes(String(run.status || ""))) {
   showNpcMessage("참여중인 보스전이 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
   return;
@@ -20933,11 +20982,10 @@ function openBossBattle(){
 }
 
   function onBossBattleIconClick(){
-  // ✅ 현재 활성 보스런 가져오기(파일 기존 방식)
-  const bossId = String(activeBossId || "");
-  const run = (bossRunsActiveCache || {})[bossId];
+  const ctx = resolveMyBossRun({ includeClosed: true });
+  const bossId = String((ctx && ctx.bossId) || "");
+  const run = ctx && ctx.run;
 
-  // ✅ 참여중인 보스전이 없는 경우: NPC 없는 팝업
   if (!bossId || !run || !["active","cleared","failed"].includes(String(run.status || ""))) {
     showSimpleMessage("현재 참여중인 보스전이 없습니다", "보스전");
     return;
@@ -21218,7 +21266,8 @@ function confirmSynthesize(){
 function startBossBattleMove(){
   closeNpcPopup();
 
-  const bossId = String(activeBossId || "");
+  const ctx = resolveMyBossRun({ includeClosed: true });
+  const bossId = String((ctx && ctx.bossId) || activeBossId || "");
   const targetFieldId = BOSS_FIELD_MAP[bossId];
 
   // 매핑이 없으면 이동 없이 보스전만 열어준다(안전장치)
@@ -21238,15 +21287,16 @@ function startBossBattleMove(){
 function closeBossBattle(){
   const ov = document.getElementById("bossBattleOverlay");
   if (ov) ov.style.display = "none";
-  markBossBattleLogsSeenNow(activeBossId);
+  markBossBattleLogsSeenNow(((resolveMyBossRun({ includeClosed: true }) || {}).bossId) || activeBossId);
   document.getElementById("bossBattleBossImg")?.classList.remove("boss-breathe");
   document.getElementById("bossBattleBossShadow")?.classList.remove("boss-breathe-shadow");
   if (bossBattleTickTimer) { clearInterval(bossBattleTickTimer); bossBattleTickTimer = null; }
 }
 
   function openBossBattleRewards(){
-  const bossId = String(activeBossId || "");
-  const run = (bossRunsActiveCache || {})[bossId];
+  const ctx = resolveMyBossRun({ includeClosed: true });
+  const bossId = String((ctx && ctx.bossId) || "");
+  const run = ctx && ctx.run;
 
   if (!bossId || !run) {
     showNpcMessage("확인할 보스전 정보가 없습니다.", LEON_IMG.focus, true, "보상");
@@ -21284,8 +21334,9 @@ function closeBossBattle(){
 }
   
 function openBossBattleHelp(){
-  const bossId = String(activeBossId || "");
-  const run = (bossRunsActiveCache || {})[bossId];
+  const ctx = resolveMyBossRun({ includeClosed: true });
+  const bossId = String((ctx && ctx.bossId) || "");
+  const run = ctx && ctx.run;
 
   if (!bossId || !run) {
     showNpcMessage("확인할 보스전 정보가 없습니다.", LEON_IMG.focus, true, "보스정보");
@@ -21507,9 +21558,9 @@ function formatDamageKoUnits(n){
 }
   
 function renderBossBattle(){
-    
-  const bossId = String(activeBossId || "");
-  const run = (bossRunsActiveCache || {})[bossId];
+  const ctx = resolveMyBossRun({ includeClosed: true });
+  const bossId = String((ctx && ctx.bossId) || "");
+  const run = ctx && ctx.run;
   if (!run) return;
 
   maybeCastManaShield(bossId, run);
@@ -22484,9 +22535,7 @@ function joinBossRunConfirm(bossId){
 const alreadyMember = !!(run && run.status === "active" && run.members && run.members[userId]);
 
 if (alreadyMember) {
-  // 새로고침으로 activeBossId가 날아간 케이스까지 복구
-  activeBossId = bossId;
-  save();
+  setActiveBossBinding(bossId, String(run && run.logKey || ""));
 
   showNpcMessage("이미 해당 토벌대에 참여 중입니다.\n(토벌/보상을 완료후 다시 시도하십시오)", LEON_IMG.idle, true, "길드마스터 – 레온하르트 발렌");
   return;
@@ -22548,8 +22597,7 @@ function joinBossRun(bossId) {
   }
 
   // 참여 중인 토벌은 저장(다음 단계에서 '보스전 버튼' 띄우는 조건으로 사용)
-  activeBossId = bossId;
-  save();
+  setActiveBossBinding(bossId, String(run && run.logKey || ""));
 
   const memberRef = db.ref(`bossRunsActive/${bossId}/members/${userId}`);
  memberRef.transaction((cur) => {
@@ -22630,169 +22678,110 @@ function createBossRun(bossId, options = {}) {
   if (!def) return;
   const usePriorityTicket = !!(options && options.usePriorityTicket);
 
-  // ✅ 다른 보스에 이미 참여중이면 신청(토벌 생성) 불가
-  const curId = String(activeBossId || "");
+  const curCtx = resolveMyBossRun({ includeClosed: true });
+  const curId = String((curCtx && curCtx.bossId) || activeBossId || "");
   if (curId && curId !== String(bossId)) {
-    const curRun = (bossRunsActiveCache || {})[curId];
-    const curName = curRun
-      ? `${String(curRun.bossTitle || "").trim()} ${String(curRun.bossName || "").trim()}`.trim()
-      : "다른 보스";
-
-    showNpcMessage(
-      `
-      <div style="font-size:13px; line-height:1.6;">
-        이미 다른 보스 토벌대에 참여중입니다.<br>
-        <b>${curName || "다른 보스"}</b><br><br>
-        현재 보스전을 <b>완료</b>하거나 <b>포기</b>한 뒤 다시 신청해주세요.
-      </div>
-      `,
-      LEON_IMG.focus,
-      true,
-      "길드마스터 – 레온하르트 발렌"
-    );
+    const curRun = (curCtx && curCtx.run) || (bossRunsActiveCache || {})[curId] || getClosedBossRun(curId, activeBossRunKey);
+    const curName = curRun ? `${String(curRun.bossTitle || "").trim()} ${String(curRun.bossName || "").trim()}`.trim() : "다른 보스";
+    showNpcMessage(`<div style="font-size:13px; line-height:1.6;">이미 다른 보스 토벌대에 참여중입니다.<br><b>${curName || "다른 보스"}</b><br><br>현재 보스전을 <b>완료</b>하거나 <b>포기</b>한 뒤 다시 신청해주세요.</div>`, LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
     return;
   }
-  
-  // 1) 조건 체크
   if (Number(sword || 0) < def.minSword) {
     showNpcMessage(`조건이 부족합니다. (필요: +${def.minSword}강)`, LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
     return;
   }
-
   if (usePriorityTicket && Number(itemBossPriority || 0) <= 0) {
     showNpcMessage("보스토벌우선신청권이 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
     return;
   }
 
   const userGoldRef = db.ref(`users/${userId}/gold`);
+  const runRef = db.ref(`bossRunsActive/${bossId}`);
 
   const beginCreateRun = () => {
-
-  // 2) 먼저 골드 차감(트랜잭션)
-  userGoldRef.transaction((g) => {
-    g = Number(g || 0);
-    if (g < def.applyCostGold) return; // abort
-    return g - def.applyCostGold;
-  }, (err, committed) => {
-    if (err) {
-      console.error(err);
-      showNpcMessage("서버 처리 중 오류가 발생했습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
-      return;
-    }
-    if (!committed) {
-      showNpcMessage(`골드가 부족합니다. (필요: ${formatGold(def.applyCostGold)} 골드)`, LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
-      return;
-    }
-
-    // 3) ActiveRun 생성(이미 있으면 실패)
-    const runRef = db.ref(`bossRunsActive/${bossId}`);
-    const now = Date.now();
-    const endsAt = now + def.durationHours * 60 * 60 * 1000;
-
-    runRef.transaction((cur) => {
-      if (cur && cur.status === "active") return; // abort
-      return {
-        bossId: def.id,
-        mapName: def.mapName,
-        bossTitle: def.bossTitle,
-        bossName: def.bossName,
-        desc: String(def.desc || ""),
-
-        status: "active",
-        logKey: "run_" + Date.now(),
-        createdAt: now,
-        endsAt: endsAt,
-
-       // 1페이즈: 체력만 깎기
-maxHp: Number(def.maxHp || 1),
-hp: Number(def.maxHp || 1),
-
-// ✅ (아르셀리아 전용) 마나실드 초기값 (없으면 0)
-shieldMax: (bossId === "frost_queen") ? 30000000000 : 0,
-shieldHp:  (bossId === "frost_queen") ? 0 : 0,
-lastManaShieldTryAt: 0,   // 2시간 주기 체크용
-
-        leaderUid: userId,
-        leaderNick: getNickSafe(),
-
-        members: {
-  [userId]: {
-    uid: userId,
-    nick: getNickSafe(),
-    joinedAt: now,
-    dmg: 0,
-
-    // ✅ 표기용 스냅샷
-    titleId: String(equippedTitle || ""),
-    weaponType: String(weaponType || "sword"),
-    weaponLv: Number(sword || 0)
-  }
-},
-
-        lastAttackAt: 0
-      };
-    }, (err2, committed2) => {
-      if (err2) {
-        console.error(err2);
+    runRef.once('value').then((preSnap) => {
+      const prev = preSnap.val() || null;
+      if (prev && String(prev.status || '') === 'active') throw new Error('__BOSS_ACTIVE__');
+      if (prev && (String(prev.status || '') === 'cleared' || String(prev.status || '') === 'failed') && prev.logKey) {
+        return archiveBossRunIfNeeded(bossId, prev);
       }
+    }).then(() => {
+      userGoldRef.transaction((g) => {
+        g = Number(g || 0);
+        if (g < def.applyCostGold) return;
+        return g - def.applyCostGold;
+      }, (err, committed) => {
+        if (err) {
+          console.error(err);
+          showNpcMessage("서버 처리 중 오류가 발생했습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+          return;
+        }
+        if (!committed) {
+          showNpcMessage(`골드가 부족합니다. (필요: ${formatGold(def.applyCostGold)} 골드)`, LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+          return;
+        }
 
-      if (!committed2) {
-        // 4) 이미 진행중이면 환불
-        userGoldRef.transaction((g) => Number(g || 0) + def.applyCostGold);
-        showNpcMessage(
-          usePriorityTicket
-            ? "이미 진행중인 토벌이 있습니다."
-            : "이미 진행중인 토벌이 있습니다.\n(소모된 골드는 환불 처리했습니다.)",
-          LEON_IMG.focus,
-          true,
-          "길드마스터 – 레온하르트 발렌"
-        );
+        const now = Date.now();
+        const endsAt = now + def.durationHours * 60 * 60 * 1000;
+        const newRun = {
+          bossId: def.id,
+          mapName: def.mapName,
+          bossTitle: def.bossTitle,
+          bossName: def.bossName,
+          desc: String(def.desc || ""),
+          status: "active",
+          logKey: "run_" + now,
+          createdAt: now,
+          endsAt: endsAt,
+          maxHp: Number(def.maxHp || 1),
+          hp: Number(def.maxHp || 1),
+          shieldMax: (bossId === "frost_queen") ? 30000000000 : 0,
+          shieldHp:  (bossId === "frost_queen") ? 0 : 0,
+          lastManaShieldTryAt: 0,
+          leaderUid: userId,
+          leaderNick: getNickSafe(),
+          members: {
+            [userId]: {
+              uid: userId,
+              nick: getNickSafe(),
+              joinedAt: now,
+              dmg: 0,
+              titleId: String(equippedTitle || ""),
+              weaponType: String(weaponType || "sword"),
+              weaponLv: Number(sword || 0)
+            }
+          },
+          lastAttackAt: 0
+        };
+
+        runRef.transaction((cur) => {
+          if (cur && String(cur.status || '') === 'active') return;
+          return newRun;
+        }, (err2, committed2) => {
+          if (err2) console.error(err2);
+          if (!committed2) {
+            userGoldRef.transaction((g) => Number(g || 0) + def.applyCostGold);
+            showNpcMessage(usePriorityTicket ? "이미 진행중인 토벌이 있습니다." : "이미 진행중인 토벌이 있습니다.\n(소모된 골드는 환불 처리했습니다.)", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+            return;
+          }
+
+          if (usePriorityTicket) itemBossPriority = Math.max(0, Number(itemBossPriority || 0) - 1);
+          setActiveBossBinding(bossId, String(newRun.logKey || ""));
+
+          writeLog(usePriorityTicket ? `${userNick}님이 보스토벌우선신청권을 사용해 ${bossName} 토벌을 시작하였습니다.` : `${userNick}님이 ${bossName} 토벌을 시작하였습니다.`, false, { tone: "boss_apply" });
+          writeBossBattleLog(bossId, usePriorityTicket ? `토벌대가 결성되었습니다. (대장: ${getNickSafe()}, 우선신청권 사용)` : `토벌대가 결성되었습니다. (대장: ${getNickSafe()})`);
+
+          showNpcMessage(usePriorityTicket ? `<div style="font-size:14px; line-height:1.6;">✅ 보스토벌우선신청권이 사용되었습니다.<br>즉시 토벌대가 개설되었습니다.<br><span style="color:#aaa;">보유 수량이 1개 차감되었습니다.</span></div>` : `<div style="font-size:14px; line-height:1.6;">✅ 토벌이 시작됐다.<br>중앙 리스트에 등록될 거다.<br><span style="color:#aaa;">메인화면의 보스전 버튼으로 입장할 수 있습니다.</span></div>`, LEON_IMG.apply, true, "길드마스터 – 레온하르트 발렌");
+        });
+      });
+    }).catch((e) => {
+      if (e && e.message === '__BOSS_ACTIVE__') {
+        showNpcMessage("이미 진행중인 토벌이 있습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
         return;
       }
-
-      // 5) 성공: 본인 자동 참여 처리
-      if (usePriorityTicket) {
-        itemBossPriority = Math.max(0, Number(itemBossPriority || 0) - 1);
-      }
-      activeBossId = bossId;
-      save();
-
-      writeLog(
-        usePriorityTicket
-          ? `${userNick}님이 보스토벌우선신청권을 사용해 ${bossName} 토벌을 시작하였습니다.`
-          : `${userNick}님이 ${bossName} 토벌을 시작하였습니다.`,
-        false,
-        { tone: "boss_apply" }
-      );
-      writeBossBattleLog(
-        bossId,
-        usePriorityTicket
-          ? `토벌대가 결성되었습니다. (대장: ${getNickSafe()}, 우선신청권 사용)`
-          : `토벌대가 결성되었습니다. (대장: ${getNickSafe()})`
-      );
-
-      showNpcMessage(
-        usePriorityTicket
-          ? `
-        <div style="font-size:14px; line-height:1.6;">
-          ✅ 보스토벌우선신청권이 사용되었습니다.<br>
-          즉시 토벌대가 개설되었습니다.<br>
-          <span style="color:#aaa;">보유 수량이 1개 차감되었습니다.</span>
-        </div>
-        `
-          : `
-        <div style="font-size:14px; line-height:1.6;">
-          ✅ 토벌이 시작됐다.<br>
-          중앙 리스트에 등록될 거다.<br>
-          <span style="color:#aaa;">이제 ‘보스전 버튼’과 실제 전투 화면을 붙이는 단계로 넘어가자.</span>
-        </div>
-        `,
-        LEON_IMG.apply,
-        true,
-        "길드마스터 – 레온하르트 발렌"
-      );
+      console.error(e);
+      showNpcMessage("서버 처리 중 오류가 발생했습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
     });
-  });
   };
 
   if (usePriorityTicket) {
@@ -22809,606 +22798,12 @@ lastManaShieldTryAt: 0,   // 2시간 주기 체크용
 
   const remainMs = Math.max(0, nextAt - Date.now());
   if (remainMs > 0) {
-    showNpcMessage(
-      `아직 다시 토벌을 신청할 수 없습니다.<br><br>⏳ 신청 가능까지: <b>${formatHMS(remainMs)}</b>`,
-      LEON_IMG.focus,
-      true,
-      "길드마스터 – 레온하르트 발렌"
-    );
+    showNpcMessage(`아직 다시 토벌을 신청할 수 없습니다.<br><br>⏳ 신청 가능까지: <b>${formatHMS(remainMs)}</b>`, LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
     return;
   }
-
   beginCreateRun();
 }
 
-// ✅ 보스 신청 리스트 팝업(확장형)
-function openBossApplyList() {
-  let html = `
-    <div style="font-size:14px; font-weight:bold; margin-bottom:8px;">
-      🗡️ 토벌 대상 목록
-    </div>
-    <div style="font-size:12px; color:#aaa; margin-bottom:10px; line-height:1.4;">
-         토벌 신청자는 자동으로 토벌대에 참여합니다.
-    </div>
-  `;
-
-  BOSS_DEFS.forEach(def => {
-    const run = (bossRunsActiveCache || {})[def.id];
-    const isActive = !!(run && run.status === "active");
-
-    const cd = (bossCooldownCache || {})[def.id];
-    const nextAtRaw = cd ? cd.nextAt : 0;
-let nextAt = 0;
-
-if (typeof nextAtRaw === "number") nextAt = nextAtRaw;
-else if (typeof nextAtRaw === "string") nextAt = Number(nextAtRaw);
-else nextAt = 0;
-
-if (!Number.isFinite(nextAt)) nextAt = 0;
-
-const remainMs = Math.max(0, nextAt - Date.now());
-const cooldownTxt = formatHMS(remainMs);
-    const canApplyBySword = (Number(sword || 0) >= def.minSword);
-    const canApplyByCooldown = (remainMs <= 0);
-    const hasPriorityTicket = hasBossPriorityTicket();
-    const canApplyByTicket = (!isActive && canApplyBySword && !canApplyByCooldown && hasPriorityTicket);
-    const canApply = !isActive && canApplyBySword && (canApplyByCooldown || canApplyByTicket);
-    
-    // ✅ 상태별 버튼 텍스트/비활성 계산
-let btnText = "✅ 신청하기";
-let disabled = false;
-let actionJs = `openBossApplyConfirm('${def.id}')`;
-
-// (조건: 강화)
-if (!canApplyBySword) {
-  btnText = `🔒 신청 불가 (조건: ${def.minSword}강 이상)`;
-  disabled = true;
-}
-// (진행중)
-else if (isActive) {
-  btnText = `⏳ 진행중인 토벌이 있습니다`;
-  disabled = true;
-}
-// (쿨타임)
-else if (!canApplyByCooldown) {
-  if (canApplyByTicket) {
-    btnText = `🎫 우선신청권 사용`;
-    actionJs = `openBossPriorityConfirm('${def.id}')`;
-  } else {
-    btnText = `⏳ 신청 대기중`;
-    disabled = true;
-  }
-}
-    
-    html += `
-      <div style="border:1px solid #444; border-radius:8px; padding:10px; margin-bottom:8px; background:rgba(0,0,0,0.35);">
-        <div style="font-weight:bold; margin-bottom:4px;">
-          ${def.mapName} · ${def.bossTitle} <span style="color:#ddd;">${def.bossName}</span>
-        </div>
-        
-        <div style="font-size:12px; color:#aaa; margin-bottom:8px;">
-          ⏳ 신청 가능까지: <b style="color:#ddd;">${cooldownTxt}</b>
-          ${isActive ? `<span style="margin-left:8px; color:#ff6b6b; font-weight:bold;">(진행중)</span>` : ""}
-        </div>
-
-        <button
-  ${disabled ? "disabled" : ""}
-  onclick="${disabled ? "" : actionJs}"
-  style="
-    width:100%;
-    padding:8px 10px;
-    font-size:14px;
-    border-radius:8px;
-    ${disabled ? "opacity:0.4; cursor:not-allowed;" : ""}
-  ">
-  ${btnText}
-</button>
-
-      </div>
-    `;
-  });
-
-  showNpcMessage(
-    html,
-    LEON_IMG.apply,
-    true,
-    "길드마스터 – 레온하르트"
-  );
-}
-
-  function openBossRewardOverlay(){
-  const bossId = String(activeBossId || "");
-  const run = bossId ? (bossRunsActiveCache || {})[bossId] : null;
-
-  if (!bossId || !run) {
-    showNpcMessage("집계할 토벌 정보가 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
-    return;
-  }
-
-  const st = String(run.status || "");
-  if (st === "active") {
-    showNpcMessage("토벌이 아직 진행 중이다. 끝난 뒤에 집계를 확인해라.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
-    return;
-  }
-
-  // ✅ 기여도 계산
-  const members = run.members || {};
-  const arr = Object.keys(members).map(uid => ({
-    uid,
-    dmg: Number(members[uid] && members[uid].dmg ? members[uid].dmg : 0),
-    nick: (members[uid] && members[uid].nick) ? members[uid].nick : uid,
-    title: (members[uid] && members[uid].title) ? members[uid].title : ""
-  }));
-
-  const total = arr.reduce((s, a) => s + a.dmg, 0);
-  arr.sort((a,b) => b.dmg - a.dmg);
-
-  const myIndex = arr.findIndex(x => x.uid === userId);
-  const myRank = (myIndex >= 0) ? (myIndex + 1) : 0;
-  const myPct = (myIndex >= 0 && total > 0) ? (arr[myIndex].dmg / total * 100) : 0;
-
-  // UI 세팅
-  const overlay = document.getElementById("bossRewardOverlay");
-  const listEl  = document.getElementById("bossRewardList");
-  const sumEl   = document.getElementById("bossRewardSummary");
-  const lineEl  = document.getElementById("bossRewardLeonLine");
-
-  const claimBtn = document.getElementById("bossRewardClaimBtn");
-  const giveUpBtn = document.getElementById("bossRewardGiveUpBtn");
-
-  if (!overlay || !listEl || !sumEl || !lineEl || !claimBtn || !giveUpBtn) return;
-
-  const def = (BOSS_DEFS || []).find(d => String(d.id) === bossId);
-
-  const bossTitle = def ? def.bossTitle : "보스";
-  const resultTxt = (st === "cleared") ? "✅ 토벌 성공" : "❌ 토벌 실패";
-
-    const myContribHtml = (myRank > 0)
-    ? `<div style="font-size:20px; font-weight:900; color:#ffd54f; letter-spacing:0.2px;">${myPct.toFixed(1)}% · ${myRank}위</div>`
-    : `<div style="font-size:14px; color:#bbb;">기록 없음</div>`;
-
-  sumEl.innerHTML = `
-    <div style="font-weight:900; color:#fff; margin-bottom:4px;">${bossTitle} · ${resultTxt}</div>
-    <div style="color:#aaa;">총 피해량: <b style="color:#fff;">${formatGold(total)}</b></div>
-
-    <div style="margin-top:8px; padding:10px; border:1px solid rgba(255,255,255,0.14); border-radius:14px; background:rgba(255,255,255,0.06);">
-      <div style="font-size:12px; color:#aaa; margin-bottom:4px;">내 기여도</div>
-      ${myContribHtml}
-    </div>
-  `;
-
-  // 리스트(상위 20만 표시 — 스크롤)
-  listEl.innerHTML = "";
-  const maxShow = Math.min(arr.length, 50);
-  const topDmg = (arr[0] && arr[0].dmg) ? arr[0].dmg : 1; // ✅ 1등 딜량 기준(LoL 그래프)
-
-  for (let i=0; i<maxShow; i++){
-    const m = arr[i];
-    const pct = (total > 0) ? (m.dmg / total * 100) : 0;
-    const isMe = (m.uid === userId);
-    const row = document.createElement("div");
-    const bossLeaderId = (run && run.leaderUid) ? run.leaderUid : "";
-    const isLeader = (bossLeaderId && m.uid === bossLeaderId);
-    row.style.display = "flex";
-    row.style.alignItems = "center";
-    row.style.gap = "10px";
-    row.style.padding = "8px 8px";
-    row.style.borderBottom = "1px solid rgba(255,255,255,0.08)";
-
-    if (isMe) {
-      row.style.background = "rgba(255,255,255,0.08)";
-      row.style.borderRadius = "12px";
-      row.style.margin = "4px 0";
-      row.style.borderBottom = "none";
-      row.style.fontWeight = "900";
-    }
-
-    // ✅ 좌측: 랭크/닉네임
-    const left = document.createElement("div");
-    left.style.width = "170px";
-    left.style.flex = "0 0 170px";
-    left.style.fontSize = "13px";
-    left.style.whiteSpace = "nowrap";
-    left.style.overflow = "hidden";
-    left.style.textOverflow = "ellipsis";
-    const crown = isLeader ? `<span style="margin-right:4px;">👑</span>` : "";
-left.innerHTML = `${crown}<span style="color:#aaa;">${i+1}위</span> ${m.nick}`;
-
-    // ✅ 가운데: LoL 느낌 딜량 그래프(1등 기준)
-    const mid = document.createElement("div");
-    mid.style.flex = "1";
-    mid.style.minWidth = "140px";
-
-    const track = document.createElement("div");
-    track.style.height = "12px";
-    track.style.borderRadius = "999px";
-    track.style.background = "rgba(255,255,255,0.10)";
-    track.style.border = "1px solid rgba(255,255,255,0.10)";
-    track.style.overflow = "hidden";
-
-    const fill = document.createElement("div");
-    const ratio = Math.max(0, Math.min(1, topDmg > 0 ? (m.dmg / topDmg) : 0));
-    fill.style.width = `${Math.max(2, Math.round(ratio * 100))}%`; // 최소 2% 보이게
-    fill.style.height = "100%";
-    fill.style.borderRadius = "999px";
-    fill.style.transition = "width 260ms ease";
-
-    // ✅ 색은 “나”만 더 강조(LoL처럼 눈에 띄게)
-    fill.style.background = isMe ? "rgba(255,213,79,0.90)" : "rgba(160,200,255,0.75)";
-    fill.style.position = "relative";
-    fill.style.zIndex = "1";
-
-    // 🏅 1등 MVP 뱃지 (막대 끝)
-if (i === 0) {
-  const mvp = document.createElement("div");
-  mvp.textContent = "MVP";
-  mvp.style.position = "absolute";
-  mvp.style.right = "6px";
-  mvp.style.top = "50%";
-  mvp.style.transform = "translateY(-50%)";
-  mvp.style.fontSize = "10px";
-  mvp.style.fontWeight = "900";
-  mvp.style.padding = "2px 6px";
-  mvp.style.borderRadius = "999px";
-  mvp.style.background = "rgba(255,213,79,0.95)";
-  mvp.style.color = "#111";
-  mvp.style.boxShadow = "0 0 10px rgba(255,213,79,0.35)";
-  mvp.style.zIndex = "3";
-
-  // track에 absolute 올리려면 position 필요
-  track.style.position = "relative";
-  track.appendChild(mvp);
-}
-    
-    track.appendChild(fill);
-    mid.appendChild(track);
-
-    // ✅ 우측: % + 딜량 숫자(기존 유지)
-    const right = document.createElement("div");
-    right.style.width = "140px";
-    right.style.flex = "0 0 140px";
-    right.style.textAlign = "right";
-    right.style.fontSize = "12px";
-    right.style.color = "#ddd";
-    right.innerHTML = `<b>${pct.toFixed(1)}%</b><div style="color:#aaa; font-size:11px;">${formatGold(m.dmg)}</div>`;
-
-    row.appendChild(left);
-    row.appendChild(mid);
-    row.appendChild(right);
-    listEl.appendChild(row);
-  }
-
-    // 레온 멘트 (1등/하위권 특수)
-  if (st === "cleared") {
-    const totalMembers = arr.length;
-    const isTop = (myRank === 1);
-    const isBottom = (myRank > 0 && myRank === totalMembers);
-
-    if (myRank <= 0) {
-      lineEl.innerHTML = `집계에 네 기록이 보이지 않는군… 하지만 토벌은 끝났다.`;
-    } else if (isTop) {
-      lineEl.innerHTML =
-        `이번 토벌작전에서 <b style="color:#ffd54f;">위대한 업적</b>을 남겼군. `
-        + `네 기여도는 <b style="color:#ffd54f; font-size:18px;">${myPct.toFixed(1)}%</b>, `
-        + `<b style="color:#ffd54f; font-size:18px;">${myRank}위</b>다. 보상을 수령하겠나?`;
-    } else if (isBottom) {
-      lineEl.innerHTML =
-        `자네의 기여가 <b style="color:#bbb;">큰 편은 아니지만</b>, 함께 끝까지 버텼다. `
-        + `네 기여도는 <b style="color:#ffd54f; font-size:18px;">${myPct.toFixed(1)}%</b>, `
-        + `<b style="color:#ffd54f; font-size:18px;">${myRank}위</b>다. 보상을 수령하겠나?`;
-    } else {
-      lineEl.innerHTML =
-        `네 기여도는 <b style="color:#ffd54f; font-size:18px;">${myPct.toFixed(1)}%</b>로 `
-        + `<b style="color:#ffd54f; font-size:18px;">${myRank}위</b>다. 보상을 수령하겠나?`;
-    }
-  } else {
-    lineEl.innerHTML = `완벽한 전략, 전술의 실패다. 적을 너무 과소평가했군. 포기하고 재정비하겠나?`;
-  }
-
-  // 버튼 토글
-  const claimedMap = run.claimed || {};
-  const already = !!claimedMap[userId];
-
-  claimBtn.style.display = (st === "cleared" && !already) ? "inline-block" : "none";
-  giveUpBtn.style.display = (st === "failed") ? "inline-block" : "none";
-
-  overlay.style.display = "block";
-}
-
-function closeBossRewardOverlay(){
-  const overlay = document.getElementById("bossRewardOverlay");
-  if (overlay) overlay.style.display = "none";
-}
-
-// ✅ 보상 테이블(보스별 적용)
-function getBossRewardByPct(bossId, pct, isLeader){
-  bossId = String(bossId || "");
-  // pct: 0~100
-  const reward = {
-    itemProtect: 0,
-    itemDownProtect: 0,
-    itemScroll21: 0,
-    itemScroll15: 0,
-    itemEssence: 0,    // 🟣 마력의 정수
-    itemSuper: 0,       // 🟡 슈퍼강화주문서(대장 보너스 포함용)
-    itemEngraveNormal: 0,
-    itemEngraveAdvanced: 0
-  };
-
-  // =========================
-  // 1) 실바나 릴리아네(기존 테이블 유지)
-  // =========================
-  if (bossId === "swamp_elf_queen") {
-
-    if (pct >= 30) {
-      reward.itemProtect += 2;
-      reward.itemDownProtect += 5;
-      reward.itemEssence += 50;
-    } else if (pct >= 25) {
-      reward.itemBossPriority += 1;
-      reward.itemDownProtect += 3;
-      reward.itemEssence += 30;
-    } else if (pct >= 20) {
-      reward.itemScroll21 += 2;
-      reward.itemDownProtect += 5;
-      reward.itemEssence += 20;
-    } else if (pct >= 10) {
-      reward.itemDownProtect += 5;
-      reward.itemEssence += 10;
-    } else if (pct >= 1) {
-      reward.itemScroll15 += 1;
-      reward.itemEssence += 5;
-    } else {
-      reward.itemEssence += 1;
-    }
-
-    // ✅ 추가: 실바나 각인 주문서 보상
-if (pct >= 30) {
-  reward.itemEngraveAdvanced += 3;
-} else if (pct >= 25) {
-  reward.itemEngraveAdvanced += 1;
-} else if (pct >= 20) {
-  reward.itemEngraveNormal += 3;
-} else if (pct >= 10) {
-  reward.itemEngraveNormal += 1;
-}
-
-  // =========================
-  // 2) 서리여왕 아르셀리아(신규 테이블)
-  // =========================
-  } else if (bossId === "frost_queen") {
-
-    if (pct >= 30) {
-      reward.itemProtect += 3;
-      reward.itemEssence += 80;
-    } else if (pct >= 25) {
-      reward.itemProtect += 2;
-      reward.itemEssence += 50;
-    } else if (pct >= 20) {
-      reward.itemBossPriority += 1;
-      reward.itemEssence += 30;
-    } else if (pct >= 10) {
-      reward.itemScroll21 += 3;
-      reward.itemEssence += 20;
-    } else if (pct >= 1) {
-      reward.itemScroll15 += 5;
-      reward.itemDownProtect += 3;
-      reward.itemEssence += 10;
-    } else {
-      reward.itemDownProtect += 2;
-      reward.itemEssence += 5;
-    }
-    
-    // ✅ 추가: 서리여왕 각인 주문서 보상
-if (pct >= 30) {
-  reward.itemEngraveAdvanced += 4;
-} else if (pct >= 25) {
-  reward.itemEngraveAdvanced += 1;
-  reward.itemEngraveNormal += 3;
-} else if (pct >= 20) {
-  reward.itemEngraveNormal += 5;
-} else if (pct >= 10) {
-  reward.itemEngraveNormal += 3;
-}
-
-  } else {
-    // ✅ 혹시 모를 기본값(정의되지 않은 보스)
-    reward.itemEssence += 1;
-  }
-
-  // ✅ 토벌대장 보너스(아르셀리아 요구사항: 슈퍼 1개 + 정수 30개)
-  if (isLeader) {
-    reward.itemSuper += 1;
-    reward.itemEssence += 30;
-  }
-
-  return reward;
-}
-
-function claimBossReward(){
-  const bossId = String(activeBossId || "");
-  if (!bossId) return;
-
-  const runRef = db.ref(`bossRunsActive/${bossId}`);
-
-  runRef.transaction((cur) => {
-    if (!cur) return;
-    const st = String(cur.status || "");
-    if (st !== "cleared") return;                // 성공일 때만 수령
-    if (!cur.members || !cur.members[userId]) return;
-
-    if (!cur.claimed) cur.claimed = {};
-    if (cur.claimed[userId]) return;             // 중복 수령 방지
-
-    cur.claimed[userId] = Date.now();
-    return cur;
-  }, (err, committed, snap) => {
-    if (err || !committed) {
-      showNpcMessage("보상 수령에 실패했습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
-      return;
-    }
-
-    const run = snap && snap.val ? snap.val() : null;
-    if (!run) return;
-
-    // 🔁 (반복형 퀘스트) 보스 토벌 성공 카운트 (보상 수령 시점=중복 방지)
-    onRepeatQuestBossClear();
-
-    // 📜 메인퀘스트 CH1 보스 관련 진행도
-    if (bossId === "swamp_elf_queen") {
-      if (questState["main_ch1_valen_05"] === QUEST_STATE.ACTIVE) {
-        questState["main_ch1_valen_05"] = QUEST_STATE.COMPLETE;
-      }
-      if (questState["main_ch1_linea_06"] === QUEST_STATE.ACTIVE && Number(itemElfQueenRecord || 0) < 3) {
-        itemElfQueenRecord = Number(itemElfQueenRecord || 0) + 1;
-        if (Number(itemElfQueenRecord || 0) >= 3) {
-          questState["main_ch1_linea_06"] = QUEST_STATE.COMPLETE;
-        }
-      }
-    }
-    if (bossId === "frost_queen") {
-      if (questState["frost_05"] === QUEST_STATE.ACTIVE) {
-        questState["frost_05"] = QUEST_STATE.COMPLETE;
-      }
-    }
-
-    // ✅ 기여도 계산
-    const members = run.members || {};
-    const arr = Object.keys(members).map(uid => ({
-      uid,
-      dmg: Number(members[uid] && members[uid].dmg ? members[uid].dmg : 0)
-    }));
-    const total = arr.reduce((s,a) => s + a.dmg, 0);
-    const me = arr.find(x => x.uid === userId);
-    const pct = (me && total > 0) ? (me.dmg / total * 100) : 0;
-
-    const isLeader = (String(run.leaderUid || "") === userId);
-   const rw = getBossRewardByPct(bossId, pct, isLeader);
-       // ✅ 각인: 보스전 보상 드랍률 +15/+20 → 추가 드랍(확률형 보너스)
-   try {
-     const st = (typeof getPlayerFinalCombatStats === "function") ? getPlayerFinalCombatStats() : null;
-     const bonusPct = Number(st && st.bossRewardDropPct ? st.bossRewardDropPct : 0);
-
-     if (bonusPct > 0) {
-       const p = bonusPct / 100;
-
-       // 작은 아이템류: 개수만큼 “추가 1개” 확률 롤
-       const keys = ["itemProtect","itemDownProtect","itemScroll21","itemScroll15","itemSuper"];
-       for (const k of keys) {
-         const c = Number(rw[k] || 0);
-         if (c > 0) {
-           let extra = 0;
-           for (let i=0; i<c; i++) if (Math.random() < p) extra++;
-           rw[k] = c + extra;
-         }
-       }
-
-       // 정수(대량): 비율 보너스 방식(가볍게)
-       const ess = Number(rw.itemEssence || 0);
-       if (ess > 0) {
-         const add = ess * p;
-         const addInt = Math.floor(add);
-         const addFrac = add - addInt;
-         rw.itemEssence = ess + addInt + (Math.random() < addFrac ? 1 : 0);
-       }
-     }
-   } catch (e) {}
-
-    // ✅ 로컬 보상 지급(아이템 변수 증가)
-    itemProtect = Number(itemProtect || 0) + (rw.itemProtect || 0);
-    itemDownProtect = Number(itemDownProtect || 0) + (rw.itemDownProtect || 0);
-    itemScroll21 = Number(itemScroll21 || 0) + (rw.itemScroll21 || 0);
-    itemScroll15 = Number(itemScroll15 || 0) + (rw.itemScroll15 || 0);
-    itemEssence = Number(itemEssence || 0) + (rw.itemEssence || 0);
-    itemSuper = Number(itemSuper || 0) + (rw.itemSuper || 0);
-    itemBossPriority = Number(itemBossPriority || 0) + (rw.itemBossPriority || 0);
-    itemEngraveNormal = Number(itemEngraveNormal || 0) + (rw.itemEngraveNormal || 0);
-    itemEngraveAdvanced = Number(itemEngraveAdvanced || 0) + (rw.itemEngraveAdvanced || 0);
-    save(); // ✅ 보상(아이템) 지급 저장 확정
-
-    // ✅ 보스 토벌 1회 성공 칭호 지급 (1회만)
-    grantTitleOnceNoSave("boss_raider")
-
-    // ✅ 내 귀속 해제 (보상 수령 전엔 계속 귀속)
-    activeBossId = "";
-    save();
-    refreshBossBattleAlert("");
-    update();
-
-    closeBossRewardOverlay();
-    closeBossBattle();
-
-    // 수령 메시지
-    const lines = [];
-    if (rw.itemProtect) lines.push(`파괴방지 ${rw.itemProtect}개`);
-    if (rw.itemDownProtect) lines.push(`강등방지 ${rw.itemDownProtect}개`);
-    if (rw.itemScroll21) lines.push(`21강 주문서 ${rw.itemScroll21}개`);
-    if (rw.itemScroll15) lines.push(`15강 주문서 ${rw.itemScroll15}개`);
-    if (rw.itemEssence) lines.push(`마력의 정수 ${rw.itemEssence}개`);
-    if (rw.itemSuper) lines.push(`대장 보너스 ${rw.itemSuper}개`);
-    if (rw.itemBossPriority) lines.push(`보스토벌신청우선권 ${rw.itemBossPriority}개`);
-    if (rw.itemEngraveNormal)   lines.push(`일반각인의 주문서 ${rw.itemEngraveNormal}개`);
-    if (rw.itemEngraveAdvanced) lines.push(`고급각인의 주문서 ${rw.itemEngraveAdvanced}개`);
-
-    showNpcMessage(
-      `보상 수령 완료!<br><span style="color:#ffd54f;">${lines.join(", ") || "없음"}</span>`,
-      LEON_IMG.focus,
-      true,
-      "길드마스터 – 레온하르트 발렌"
-    );
-  });
-}
-
-// 실패 시 포기(보상 없음) — 귀속만 해제
-// 실패 시 포기(보상 없음) — 귀속 해제(서버 멤버 기록까지 제거)
-function giveUpBossRun(){
-  const bossId = String(activeBossId || "");
-  const run = bossId ? (bossRunsActiveCache || {})[bossId] : null;
-
-  if (!bossId || !run) return;
-
-  if (String(run.status || "") !== "failed") {
-    showNpcMessage("아직 포기할 상황이 아니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
-    return;
-  }
-
-  const myNick = (run.members && run.members[userId] && run.members[userId].nick) ? run.members[userId].nick : String(userId || "???");
-
-  // ✅ (중요) DB에서 멤버 기록 제거해야 새로고침 시 activeBossId가 다시 복구되지 않음
-  const updates = {};
-  updates[`bossRunsActive/${bossId}/members/${userId}`] = null;
-
-  // (선택) 대장이 포기하는 케이스면 대장ID도 비워두기(원하면 유지해도 됨)
-  if (String(run.leaderId || "") === String(userId || "")) {
-    updates[`bossRunsActive/${bossId}/leaderUid`] = "";
-  }
-
-  db.ref().update(updates).then(() => {
-    if (bossId === 'dawn_twin_knights') {
-      ensureTwinCooldownReset(run);
-    }
-    // 전투로그(보스전 전용 로그)에 남기기
-    db.ref(`bossBattleLogs/${bossId}`).push({
-      time: Date.now(),
-      msg: `${myNick}님이 토벌대에서 철수했습니다.`
-    });
-
-    // 로컬 상태 정리
-    activeBossId = "";
-    save();
-    update();
-
-    closeBossRewardOverlay();
-    closeBossBattle();
-
-    showNpcMessage("철수 완료. 다음엔 더 단단히 준비해라.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
-  }).catch((err) => {
-    console.error(err);
-    alert("포기 처리에 실패했습니다. 콘솔을 확인해주세요.");
-  });
-}
-
-// ✅ 신청 확인(레온하르트가 설명 → 도전/포기)
 function openBossApplyConfirm(bossId) {
   const def = BOSS_DEFS.find(b => b.id === bossId);
   if (!def) return;
@@ -28113,553 +27508,6 @@ setTimeout(() => {
   try { syncQuestUnlocks(); updateQuestBadges(); renderTalkNpcGrid(); syncStorybookUnlocksFromQuestState(false); updateStorybookBadge(); } catch(e) {}
 }, 0);
 
-
-
-/* ===== Boss run binding patch (runId-safe, Policy A) ===== */
-(function(){
-  const BIND_KEY = 'pugrant_activeBossBinding_v1';
-  const ARCHIVE_ROOT = 'bossRunsArchive';
-
-  function safeJsonParse(s){ try { return JSON.parse(s); } catch(e){ return null; } }
-  function loadBossBinding(){
-    const raw = localStorage.getItem(BIND_KEY);
-    const v = safeJsonParse(raw);
-    if (!v || typeof v !== 'object') return null;
-    const bossId = String(v.bossId || '');
-    const runKey = String(v.runKey || '');
-    if (!bossId || !runKey) return null;
-    return { bossId, runKey };
-  }
-  function saveBossBinding(binding){
-    if (!binding || !binding.bossId || !binding.runKey) {
-      localStorage.removeItem(BIND_KEY);
-      return;
-    }
-    localStorage.setItem(BIND_KEY, JSON.stringify({
-      bossId: String(binding.bossId || ''),
-      runKey: String(binding.runKey || '')
-    }));
-  }
-  function setBossBinding(bossId, runKey){
-    bossId = String(bossId || '');
-    runKey = String(runKey || '');
-    if (!bossId || !runKey) return;
-    window.activeBossId = bossId;
-    saveBossBinding({ bossId, runKey });
-    try { save(); } catch(e){}
-  }
-  function clearBossBinding(){
-    saveBossBinding(null);
-    window.activeBossId = '';
-    try { save(); } catch(e){}
-  }
-  function getBossArchivePath(bossId, runKey){
-    return `${ARCHIVE_ROOT}/${String(bossId || '')}/${String(runKey || '')}`;
-  }
-  function getCurrentBossRun(bossId){
-    return (window.bossRunsActiveCache || {})[String(bossId || '')] || null;
-  }
-  function getBoundContextSync(){
-    const binding = loadBossBinding();
-    if (!binding) return null;
-    const run = getCurrentBossRun(binding.bossId);
-    if (!run) return null;
-    if (String(run.logKey || '') !== String(binding.runKey || '')) return null;
-    if (!(run.members && run.members[window.userId])) return null;
-    const status = String(run.status || '');
-    if (!['active','cleared','failed'].includes(status)) return null;
-    return { source:'active', bossId: binding.bossId, runKey: binding.runKey, run };
-  }
-  async function getBoundContext(){
-    const sync = getBoundContextSync();
-    if (sync) return sync;
-
-    // ✅ 바인딩이 아직 저장되지 않았거나 늦게 저장된 경우를 위한 fallback
-    // 신청/참가 직후에는 activeBossId + active 캐시만 먼저 들어오고 runKey 바인딩은 나중에 붙을 수 있다.
-    const fallbackBossId = String(window.activeBossId || '');
-    if (fallbackBossId) {
-      const activeRun = getCurrentBossRun(fallbackBossId);
-      if (activeRun && activeRun.members && activeRun.members[window.userId]) {
-        const status = String(activeRun.status || '');
-        const runKey = String(activeRun.logKey || '');
-        if (['active','cleared','failed'].includes(status)) {
-          if (runKey) setBossBinding(fallbackBossId, runKey);
-          return { source:'active', bossId: fallbackBossId, runKey, run: activeRun };
-        }
-      }
-    }
-
-    const binding = loadBossBinding();
-    if (!binding) return null;
-    try {
-      const snap = await db.ref(getBossArchivePath(binding.bossId, binding.runKey)).once('value');
-      const run = snap && snap.val ? snap.val() : null;
-      if (!run) return null;
-      if (!(run.members && run.members[window.userId])) return null;
-      const status = String(run.status || '');
-      if (!['cleared','failed'].includes(status)) return null;
-      return { source:'archive', bossId: binding.bossId, runKey: binding.runKey, run };
-    } catch(e){
-      console.error(e);
-      return null;
-    }
-  }
-  async function archiveClosedRunIfNeededByValue(bossId, run){
-    bossId = String(bossId || '');
-    const runKey = String(run && run.logKey || '');
-    const status = String(run && run.status || '');
-    if (!bossId || !runKey || !['cleared','failed'].includes(status)) return;
-    const ref = db.ref(getBossArchivePath(bossId, runKey));
-    const snap = await ref.once('value');
-    if (snap && snap.exists && snap.exists()) return;
-    const clone = JSON.parse(JSON.stringify(run || {}));
-    clone.archivedAt = Date.now();
-    clone.archivedFrom = 'bossRunsActive';
-    await ref.set(clone);
-  }
-  async function archiveClosedCurrentRunIfNeeded(bossId){
-    bossId = String(bossId || '');
-    if (!bossId) return;
-    const snap = await db.ref(`bossRunsActive/${bossId}`).once('value');
-    const run = snap && snap.val ? snap.val() : null;
-    if (!run) return;
-    await archiveClosedRunIfNeededByValue(bossId, run);
-  }
-  async function waitForActiveRunKey(bossId, timeoutMs){
-    bossId = String(bossId || '');
-    const started = Date.now();
-    const limit = Number(timeoutMs || 2500);
-    while (Date.now() - started < limit) {
-      const snap = await db.ref(`bossRunsActive/${bossId}`).once('value');
-      const run = snap && snap.val ? snap.val() : null;
-      if (run && String(run.status || '') === 'active' && String(run.leaderUid || '') === String(window.userId || '') && run.members && run.members[window.userId] && run.logKey) {
-        return String(run.logKey || '');
-      }
-      await new Promise(r => setTimeout(r, 120));
-    }
-    return '';
-  }
-  function getBoundBossName(ctx){
-    const run = ctx && ctx.run ? ctx.run : null;
-    if (!run) return '현재 토벌';
-    return `${String(run.bossTitle || '').trim()} ${String(run.bossName || '').trim()}`.trim() || '현재 토벌';
-  }
-  async function hasAnyUnfinishedBoundRun(){
-    const ctx = await getBoundContext();
-    if (!ctx) return null;
-    const st = String(ctx.run && ctx.run.status || '');
-    if (st === 'cleared') {
-      const claimed = !!(ctx.run.claimed && ctx.run.claimed[window.userId]);
-      if (!claimed) return ctx;
-      clearBossBinding();
-      return null;
-    }
-    if (st === 'failed') {
-      const isMember = !!(ctx.run.members && ctx.run.members[window.userId]);
-      if (isMember) return ctx;
-      clearBossBinding();
-      return null;
-    }
-    if (st === 'active') return ctx;
-    clearBossBinding();
-    return null;
-  }
-
-  const __orig_ensureBossRunsSubscription = window.ensureBossRunsSubscription;
-  window.ensureBossRunsSubscription = function(){
-    const ret = __orig_ensureBossRunsSubscription.apply(this, arguments);
-    try {
-      const binding = loadBossBinding();
-      if (binding) {
-        const run = getCurrentBossRun(binding.bossId);
-        if (run && String(run.logKey || '') === String(binding.runKey || '') && run.members && run.members[window.userId]) {
-          window.activeBossId = binding.bossId;
-          try { save(); } catch(e){}
-        }
-      }
-    } catch(e){ console.error(e); }
-    return ret;
-  };
-
-  const __orig_createBossRun = window.createBossRun;
-  window.createBossRun = async function(bossId, options = {}){
-    const bound = await hasAnyUnfinishedBoundRun();
-    if (bound) {
-      showNpcMessage(
-        `이미 <b>${getBoundBossName(bound)}</b> 토벌대에 귀속되어 있습니다.<br>현재 토벌을 완료하거나 보상/철수를 정리한 뒤 다시 신청해주세요.`,
-        LEON_IMG.focus,
-        true,
-        '길드마스터 – 레온하르트 발렌'
-      );
-      return;
-    }
-    try { await archiveClosedCurrentRunIfNeeded(bossId); } catch(e) { console.error(e); }
-    const ret = __orig_createBossRun.apply(this, arguments);
-    setTimeout(async () => {
-      try {
-        const runKey = await waitForActiveRunKey(bossId, 3500);
-        if (runKey) setBossBinding(bossId, runKey);
-      } catch(e){ console.error(e); }
-    }, 0);
-    return ret;
-  };
-
-  const __orig_joinBossRun = window.joinBossRun;
-  window.joinBossRun = async function(bossId){
-    const existing = await hasAnyUnfinishedBoundRun();
-    const activeRun = getCurrentBossRun(bossId);
-    const sameRun = !!(existing && existing.source === 'active' && String(existing.bossId || '') === String(bossId || '') && activeRun && String(activeRun.logKey || '') === String(existing.runKey || ''));
-    if (existing && !sameRun) {
-      showNpcMessage(
-        `이미 <b>${getBoundBossName(existing)}</b> 토벌대에 귀속되어 있습니다.<br>현재 토벌을 완료하거나 보상/철수를 정리한 뒤 다시 참여해주세요.`,
-        LEON_IMG.focus,
-        true,
-        '길드마스터 – 레온하르트 발렌'
-      );
-      return;
-    }
-    const ret = __orig_joinBossRun.apply(this, arguments);
-    try {
-      const started = Date.now();
-      while (Date.now() - started < 3500) {
-        const run = getCurrentBossRun(bossId);
-        if (run && run.members && run.members[window.userId] && run.logKey) {
-          setBossBinding(bossId, run.logKey);
-          break;
-        }
-        await new Promise(r => setTimeout(r, 120));
-      }
-    } catch(e){ console.error(e); }
-    return ret;
-  };
-
-  function renderBossRewardOverlayFromContext(ctx){
-    const bossId = String(ctx && ctx.bossId || '');
-    const run = ctx && ctx.run ? ctx.run : null;
-    if (!bossId || !run) {
-      showNpcMessage('집계할 토벌 정보가 없습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
-      return;
-    }
-    const st = String(run.status || '');
-    if (st === 'active') {
-      showNpcMessage('토벌이 아직 진행 중이다. 끝난 뒤에 집계를 확인해라.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
-      return;
-    }
-    const members = run.members || {};
-    const arr = Object.keys(members).map(uid => ({
-      uid,
-      dmg: Number(members[uid] && members[uid].dmg ? members[uid].dmg : 0),
-      nick: (members[uid] && members[uid].nick) ? members[uid].nick : uid,
-      title: (members[uid] && members[uid].title) ? members[uid].title : ''
-    }));
-    const total = arr.reduce((s, a) => s + a.dmg, 0);
-    arr.sort((a,b) => b.dmg - a.dmg);
-    const myIndex = arr.findIndex(x => x.uid === userId);
-    const myRank = (myIndex >= 0) ? (myIndex + 1) : 0;
-    const myPct = (myIndex >= 0 && total > 0) ? (arr[myIndex].dmg / total * 100) : 0;
-    const overlay = document.getElementById('bossRewardOverlay');
-    const listEl  = document.getElementById('bossRewardList');
-    const sumEl   = document.getElementById('bossRewardSummary');
-    const lineEl  = document.getElementById('bossRewardLeonLine');
-    const claimBtn = document.getElementById('bossRewardClaimBtn');
-    const giveUpBtn = document.getElementById('bossRewardGiveUpBtn');
-    if (!overlay || !listEl || !sumEl || !lineEl || !claimBtn || !giveUpBtn) return;
-    const def = (BOSS_DEFS || []).find(d => String(d.id) === bossId);
-    const bossTitle = def ? def.bossTitle : '보스';
-    const resultTxt = (st === 'cleared') ? '✅ 토벌 성공' : '❌ 토벌 실패';
-    listEl.innerHTML = arr.map((x, i) => {
-      const pct = total > 0 ? (x.dmg / total * 100) : 0;
-      return `
-        <div style="display:flex; justify-content:space-between; gap:8px; padding:8px 10px; border-bottom:1px solid rgba(255,255,255,0.08); font-size:13px;">
-          <div><b>${i+1}위</b> ${x.nick}</div>
-          <div style="color:#ffd54f;">${formatBossHpShort(x.dmg)} (${pct.toFixed(1)}%)</div>
-        </div>
-      `;
-    }).join('') || `<div style="padding:12px; color:#aaa; font-size:12px;">집계 정보가 없습니다.</div>`;
-    sumEl.innerHTML = `<b>${bossTitle}</b> · ${resultTxt}`;
-    if (st === 'cleared') {
-      if (myRank <= 0) lineEl.innerHTML = '토벌대 참여 기록이 없어 보상 수령이 불가능하다.';
-      else lineEl.innerHTML = `네 기여도는 <b style="color:#ffd54f; font-size:18px;">${myPct.toFixed(1)}%</b>로 <b style="color:#ffd54f; font-size:18px;">${myRank}위</b>다. 보상을 수령하겠나?`;
-    } else {
-      lineEl.innerHTML = '완벽한 전략, 전술의 실패다. 적을 너무 과소평가했군. 포기하고 재정비하겠나?';
-    }
-    const claimedMap = run.claimed || {};
-    const already = !!claimedMap[userId];
-    claimBtn.style.display = (st === 'cleared' && !already) ? 'inline-block' : 'none';
-    giveUpBtn.style.display = (st === 'failed' && !!(run.members && run.members[userId])) ? 'inline-block' : 'none';
-    overlay.style.display = 'block';
-  }
-
-  window.openBossRewardOverlay = async function(){
-    const ctx = await getBoundContext();
-    if (!ctx) {
-      showNpcMessage('집계할 토벌 정보가 없습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
-      return;
-    }
-    renderBossRewardOverlayFromContext(ctx);
-  };
-
-  window.openBossBattle = async function(){
-    const ctx = await getBoundContext();
-    if (!ctx) {
-      showNpcMessage('참여중인 보스전이 없습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
-      return;
-    }
-    if (String(ctx.run.status || '') !== 'active') {
-      renderBossRewardOverlayFromContext(ctx);
-      return;
-    }
-    window.activeBossId = ctx.bossId;
-    try { save(); } catch(e){}
-    return __orig_openBossBattle.apply(this, []);
-  };
-
-  const __orig_openBossBattle = window.openBossBattle;
-  window.openBossBattle = async function(){
-    const ctx = await getBoundContext();
-    if (!ctx) {
-      showNpcMessage('참여중인 보스전이 없습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
-      return;
-    }
-    if (String(ctx.run.status || '') !== 'active') {
-      renderBossRewardOverlayFromContext(ctx);
-      return;
-    }
-    window.activeBossId = ctx.bossId;
-    try { save(); } catch(e){}
-    return __orig_openBossBattle.apply(this, []);
-  };
-
-  window.onBossBattleIconClick = async function(){
-    const ctx = await getBoundContext();
-    if (!ctx) {
-      showSimpleMessage('현재 참여중인 보스전이 없습니다', '보스전');
-      return;
-    }
-    if (String(ctx.run.status || '') !== 'active') {
-      renderBossRewardOverlayFromContext(ctx);
-      return;
-    }
-    showConfirmPopup(
-      '보스 토벌로 이동하겠나?',
-      'images/npc/leonhardt_apply.png',
-      '길드마스터 – 레온하르트 발렌',
-      '이동한다',
-      startBossBattleMove,
-      '잠시만...',
-      closeNpcPopup
-    );
-  };
-
-  window.startBossBattleMove = async function(){
-    closeNpcPopup();
-    const ctx = await getBoundContext();
-    if (!ctx) {
-      showSimpleMessage('현재 참여중인 보스전이 없습니다', '보스전');
-      return;
-    }
-    if (String(ctx.run.status || '') !== 'active') {
-      renderBossRewardOverlayFromContext(ctx);
-      return;
-    }
-    const bossId = String(ctx.bossId || '');
-    const targetFieldId = BOSS_FIELD_MAP[bossId];
-    if (!targetFieldId) {
-      window.activeBossId = bossId;
-      openBossBattle();
-      return;
-    }
-    moveToFieldFromWorldMap(targetFieldId, () => {
-      window.activeBossId = bossId;
-      openBossBattle();
-    });
-  };
-
-  window.openBossBattleRewards = async function(){
-    const ctx = await getBoundContext();
-    if (!ctx) {
-      showNpcMessage('확인할 보스전 정보가 없습니다.', LEON_IMG.focus, true, '보상');
-      return;
-    }
-    const bossId = String(ctx.bossId || '');
-    const run = ctx.run;
-    const def = (BOSS_DEFS || []).find(b => String(b.id) === bossId) || {};
-    const bossTitle = String(def.bossTitle || run.bossTitle || '보스');
-    const bossName  = String(def.bossName  || run.bossName  || '');
-    const bossFull  = bossName ? `${bossTitle} ${bossName}` : bossTitle;
-    const rewardTypes = ['파괴방지 주문서','강등방지 주문서','15강 강화 주문서','21강 강화 주문서','마력의 정수','대장 보너스: 슈퍼강화 주문서'];
-    const msg = `<b>${bossFull} 보상</b><br><br>` + rewardTypes.map(x => `• ${x}`).join('<br>');
-    showNpcMessage(msg, LEON_IMG.focus, true, '보상');
-  };
-
-  window.openBossBattleHelp = async function(){
-    const ctx = await getBoundContext();
-    if (!ctx) {
-      showNpcMessage('확인할 보스전 정보가 없습니다.', LEON_IMG.focus, true, '보스정보');
-      return;
-    }
-    const bossId = String(ctx.bossId || '');
-    const run = ctx.run;
-    const def = (BOSS_DEFS || []).find(b => String(b.id) === bossId) || {};
-    const bossTitle = String(def.bossTitle || run.bossTitle || '보스');
-    const bossName  = String(def.bossName  || run.bossName  || '');
-    const bossFull  = bossName ? `${bossTitle} ${bossName}` : bossTitle;
-    const stats = (typeof getBossBattleStats === 'function') ? (getBossBattleStats(bossId) || {}) : {};
-    const hp    = Math.max(0, Number(run.hp || 0));
-    const maxHp = Math.max(1, Number(run.maxHp || 1));
-    const bossLines = [];
-    bossLines.push(`• 체력: <b>${formatBossHpShort(hp)}</b> / ${formatBossHpShort(maxHp)}`);
-    const evade = Number(stats.evade || 0);
-    const physDef = Number(stats.physDef || 0);
-    if (evade > 0) bossLines.push(`• 회피율: <b>${Math.round(evade * 100)}%</b>`);
-    if (physDef > 0) bossLines.push(`• 방어력: <b>${Math.round(physDef * 100)}%</b>`);
-    const my = (typeof getPlayerFinalCombatStats === 'function') ? (getPlayerFinalCombatStats() || {}) : {};
-    const myLines = [];
-    myLines.push(`• ${String(my.dmgLabel || ((my.weaponType === 'staff' || my.weaponType === 'gauntlet' || my.weaponType === 'magitech') ? '주문력' : '공격력'))}: <b>${formatBossHpShort(Number(my.mainPower || 0))}</b>`);
-    if (Number(my.penetration || 0) > 0) myLines.push(`• 관통력: <b>${Math.round(Number(my.penetration || 0) * 100)}%</b>`);
-    if (Number(my.ignoreEvade || 0) > 0) myLines.push(`• 회피무시: <b>${Math.round(Number(my.ignoreEvade || 0) * 100)}%</b>`);
-    if (Number(my.critRate || 0) > 0) myLines.push(`• 치명타확률: <b>${Math.round(Number(my.critRate || 0) * 100)}%</b>`);
-    if (Number(my.critDmgBonus || 0) > 0) myLines.push(`• 치명타피해: <b>+${Math.round(Number(my.critDmgBonus || 0) * 100)}%</b>`);
-    const msg = `<b>${bossFull} 정보</b><br><br><b>[보스]</b><br>${bossLines.join('<br>')}<br><br><b>[내 정보]</b><br>${myLines.join('<br>')}`;
-    showNpcMessage(msg, LEON_IMG.focus, true, '보스정보');
-  };
-
-  window.claimBossReward = async function(){
-    const ctx = await getBoundContext();
-    if (!ctx) return;
-    const bossId = String(ctx.bossId || '');
-    const path = (ctx.source === 'active') ? `bossRunsActive/${bossId}` : getBossArchivePath(bossId, ctx.runKey);
-    const runRef = db.ref(path);
-    runRef.transaction((cur) => {
-      if (!cur) return;
-      const st = String(cur.status || '');
-      if (st !== 'cleared') return;
-      if (!cur.members || !cur.members[userId]) return;
-      if (!cur.claimed) cur.claimed = {};
-      if (cur.claimed[userId]) return;
-      cur.claimed[userId] = Date.now();
-      return cur;
-    }, (err, committed, snap) => {
-      if (err || !committed) {
-        showNpcMessage('보상 수령에 실패했습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
-        return;
-      }
-      const run = snap && snap.val ? snap.val() : null;
-      if (!run) return;
-      onRepeatQuestBossClear();
-      if (bossId === 'swamp_elf_queen') {
-        if (questState['main_ch1_valen_05'] === QUEST_STATE.ACTIVE) questState['main_ch1_valen_05'] = QUEST_STATE.COMPLETE;
-        if (questState['main_ch1_linea_06'] === QUEST_STATE.ACTIVE && Number(itemElfQueenRecord || 0) < 3) {
-          itemElfQueenRecord = Number(itemElfQueenRecord || 0) + 1;
-          if (Number(itemElfQueenRecord || 0) >= 3) questState['main_ch1_linea_06'] = QUEST_STATE.COMPLETE;
-        }
-      }
-      if (bossId === 'frost_queen') {
-        if (questState['frost_05'] === QUEST_STATE.ACTIVE) questState['frost_05'] = QUEST_STATE.COMPLETE;
-      }
-      const members = run.members || {};
-      const arr = Object.keys(members).map(uid => ({ uid, dmg: Number(members[uid] && members[uid].dmg ? members[uid].dmg : 0) }));
-      const total = arr.reduce((s,a) => s + a.dmg, 0);
-      const me = arr.find(x => x.uid === userId);
-      const pct = (me && total > 0) ? (me.dmg / total * 100) : 0;
-      const isLeader = (String(run.leaderUid || '') === userId);
-      const rw = getBossRewardByPct(bossId, pct, isLeader);
-      try {
-        const st = (typeof getPlayerFinalCombatStats === 'function') ? getPlayerFinalCombatStats() : null;
-        const bonusPct = Number(st && st.bossRewardDropPct ? st.bossRewardDropPct : 0);
-        if (bonusPct > 0) {
-          const p = bonusPct / 100;
-          const keys = ['itemProtect','itemDownProtect','itemScroll21','itemScroll15','itemSuper'];
-          for (const k of keys) {
-            const c = Number(rw[k] || 0);
-            if (c > 0) {
-              let extra = 0;
-              for (let i=0; i<c; i++) if (Math.random() < p) extra++;
-              rw[k] = c + extra;
-            }
-          }
-          const ess = Number(rw.itemEssence || 0);
-          if (ess > 0) {
-            const add = ess * p;
-            const addInt = Math.floor(add);
-            const addFrac = add - addInt;
-            rw.itemEssence = ess + addInt + (Math.random() < addFrac ? 1 : 0);
-          }
-        }
-      } catch (e) {}
-      itemProtect = Number(itemProtect || 0) + (rw.itemProtect || 0);
-      itemDownProtect = Number(itemDownProtect || 0) + (rw.itemDownProtect || 0);
-      itemScroll21 = Number(itemScroll21 || 0) + (rw.itemScroll21 || 0);
-      itemScroll15 = Number(itemScroll15 || 0) + (rw.itemScroll15 || 0);
-      itemEssence = Number(itemEssence || 0) + (rw.itemEssence || 0);
-      itemSuper = Number(itemSuper || 0) + (rw.itemSuper || 0);
-      itemBossPriority = Number(itemBossPriority || 0) + (rw.itemBossPriority || 0);
-      itemEngraveNormal = Number(itemEngraveNormal || 0) + (rw.itemEngraveNormal || 0);
-      itemEngraveAdvanced = Number(itemEngraveAdvanced || 0) + (rw.itemEngraveAdvanced || 0);
-      save();
-      grantTitleOnceNoSave('boss_raider');
-      clearBossBinding();
-      refreshBossBattleAlert('');
-      update();
-      closeBossRewardOverlay();
-      closeBossBattle();
-      const lines = [];
-      if (rw.itemProtect) lines.push(`파괴방지 ${rw.itemProtect}개`);
-      if (rw.itemDownProtect) lines.push(`강등방지 ${rw.itemDownProtect}개`);
-      if (rw.itemScroll21) lines.push(`21강 주문서 ${rw.itemScroll21}개`);
-      if (rw.itemScroll15) lines.push(`15강 주문서 ${rw.itemScroll15}개`);
-      if (rw.itemEssence) lines.push(`마력의 정수 ${rw.itemEssence}개`);
-      if (rw.itemSuper) lines.push(`대장 보너스 ${rw.itemSuper}개`);
-      if (rw.itemBossPriority) lines.push(`보스토벌신청우선권 ${rw.itemBossPriority}개`);
-      if (rw.itemEngraveNormal) lines.push(`일반각인의 주문서 ${rw.itemEngraveNormal}개`);
-      if (rw.itemEngraveAdvanced) lines.push(`고급각인의 주문서 ${rw.itemEngraveAdvanced}개`);
-      showNpcMessage(`보상 수령 완료!<br><span style="color:#ffd54f;">${lines.join(', ') || '없음'}</span>`, LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
-    });
-  };
-
-  window.giveUpBossRun = async function(){
-    const ctx = await getBoundContext();
-    if (!ctx) return;
-    const bossId = String(ctx.bossId || '');
-    const run = ctx.run || null;
-    if (!run) return;
-    if (String(run.status || '') !== 'failed') {
-      showNpcMessage('아직 포기할 상황이 아니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
-      return;
-    }
-    const myNick = (run.members && run.members[userId] && run.members[userId].nick) ? run.members[userId].nick : String(userId || '???');
-    const base = (ctx.source === 'active') ? `bossRunsActive/${bossId}` : getBossArchivePath(bossId, ctx.runKey);
-    const updates = {};
-    updates[`${base}/members/${userId}`] = null;
-    if (String(run.leaderUid || '') === String(userId || '')) updates[`${base}/leaderUid`] = '';
-    db.ref().update(updates).then(() => {
-      if (ctx.source === 'active' && bossId === 'dawn_twin_knights') {
-        ensureTwinCooldownReset(run);
-      }
-      db.ref(`bossBattleLogs/${bossId}`).push({ time: Date.now(), msg: `${myNick}님이 토벌대에서 철수했습니다.` });
-      clearBossBinding();
-      update();
-      closeBossRewardOverlay();
-      closeBossBattle();
-      showNpcMessage('철수 완료. 다음엔 더 단단히 준비해라.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
-    }).catch((err) => {
-      console.error(err);
-      alert('포기 처리에 실패했습니다. 콘솔을 확인해주세요.');
-    });
-  };
-
-  setTimeout(async () => {
-    try {
-      const binding = loadBossBinding();
-      if (binding) {
-        const ctx = await getBoundContext();
-        if (!ctx) clearBossBinding();
-        else if (ctx.source === 'active') window.activeBossId = ctx.bossId;
-      }
-    } catch(e){ console.error(e); }
-  }, 800);
-})();
-/* ===== end boss run binding patch ===== */
 </script>
 
 <!-- 📘 처음 접속 튜토리얼 (NPC 버전) -->
@@ -29410,211 +28258,6 @@ setTimeout(() => {
     <div class="mq-line" style="margin-top:18px;"></div>
   </div>
 </div>
-
-
-<script>
-/* ===== Boss binding legacy auto-recovery patch ===== */
-(function(){
-  const BIND_KEY = 'pugrant_activeBossBinding_v1';
-  const ARCHIVE_ROOT = 'bossRunsArchive';
-  let archiveScanPromise = null;
-  let recoveryInFlight = null;
-
-  function safeJsonParse(s){ try { return JSON.parse(s); } catch(e){ return null; } }
-  function loadBossBinding(){
-    const raw = localStorage.getItem(BIND_KEY);
-    const v = safeJsonParse(raw);
-    if (!v || typeof v !== 'object') return null;
-    const bossId = String(v.bossId || '');
-    const runKey = String(v.runKey || '');
-    if (!bossId || !runKey) return null;
-    return { bossId, runKey };
-  }
-  function saveBossBinding(binding){
-    if (!binding || !binding.bossId || !binding.runKey) {
-      localStorage.removeItem(BIND_KEY);
-      return;
-    }
-    localStorage.setItem(BIND_KEY, JSON.stringify({
-      bossId: String(binding.bossId || ''),
-      runKey: String(binding.runKey || '')
-    }));
-  }
-  function setBossBinding(bossId, runKey){
-    bossId = String(bossId || '');
-    runKey = String(runKey || '');
-    if (!bossId || !runKey) return null;
-    window.activeBossId = bossId;
-    saveBossBinding({ bossId, runKey });
-    try { if (typeof save === 'function') save(); } catch(e) {}
-    return { bossId, runKey };
-  }
-  function clearBossBinding(){
-    localStorage.removeItem(BIND_KEY);
-    window.activeBossId = '';
-    try { if (typeof save === 'function') save(); } catch(e) {}
-  }
-  function isPendingRunForUser(run){
-    if (!run || !run.members || !run.members[window.userId]) return false;
-    const st = String(run.status || '');
-    if (st === 'active') return true;
-    if (st === 'cleared') return !(run.claimed && run.claimed[window.userId]);
-    if (st === 'failed') return true;
-    return false;
-  }
-  function getPriority(run){
-    const st = String(run && run.status || '');
-    if (st === 'active') return 300;
-    if (st === 'cleared') return 200;
-    if (st === 'failed') return 100;
-    return 0;
-  }
-  function getJoinedAt(run){
-    const m = run && run.members && run.members[window.userId];
-    return Number(m && m.joinedAt || 0);
-  }
-  function getEndedAt(run){
-    return Number(run && (run.clearedAt || run.failedAt || run.endsAt || run.archivedAt) || 0);
-  }
-  function chooseBetter(a, b){
-    if (!a) return b;
-    if (!b) return a;
-    const pa = getPriority(a.run), pb = getPriority(b.run);
-    if (pb !== pa) return pb > pa ? b : a;
-    const ta = Math.max(getEndedAt(a.run), getJoinedAt(a.run));
-    const tb = Math.max(getEndedAt(b.run), getJoinedAt(b.run));
-    return tb > ta ? b : a;
-  }
-  function scanActiveCache(){
-    const cache = window.bossRunsActiveCache || {};
-    let best = null;
-    Object.keys(cache).forEach((bossId) => {
-      const run = cache[bossId];
-      if (!isPendingRunForUser(run)) return;
-      const runKey = String(run && run.logKey || '');
-      if (!runKey) return;
-      best = chooseBetter(best, { source:'active', bossId: String(bossId || ''), runKey, run });
-    });
-    return best;
-  }
-  async function scanArchiveRemote(){
-    if (archiveScanPromise) return archiveScanPromise;
-    archiveScanPromise = (async () => {
-      try {
-        const snap = await db.ref(ARCHIVE_ROOT).once('value');
-        const root = snap && snap.val ? snap.val() : null;
-        if (!root || typeof root !== 'object') return null;
-        let best = null;
-        Object.keys(root).forEach((bossId) => {
-          const byRun = root[bossId] || {};
-          Object.keys(byRun).forEach((runKey) => {
-            const run = byRun[runKey];
-            if (!isPendingRunForUser(run)) return;
-            best = chooseBetter(best, { source:'archive', bossId: String(bossId || ''), runKey: String(runKey || ''), run });
-          });
-        });
-        return best;
-      } catch(e){
-        console.error(e);
-        return null;
-      } finally {
-        setTimeout(() => { archiveScanPromise = null; }, 1500);
-      }
-    })();
-    return archiveScanPromise;
-  }
-  async function recoverBossBindingDeep(){
-    if (recoveryInFlight) return recoveryInFlight;
-    recoveryInFlight = (async () => {
-      const existing = loadBossBinding();
-      if (existing) {
-        const cacheRun = (window.bossRunsActiveCache || {})[existing.bossId];
-        if (cacheRun && String(cacheRun.logKey || '') === existing.runKey && isPendingRunForUser(cacheRun)) {
-          window.activeBossId = existing.bossId;
-          return { source:'active', bossId: existing.bossId, runKey: existing.runKey, run: cacheRun };
-        }
-      }
-
-      let best = scanActiveCache();
-      if (!best) best = await scanArchiveRemote();
-      if (!best) {
-        clearBossBinding();
-        return null;
-      }
-      setBossBinding(best.bossId, best.runKey);
-      return best;
-    })();
-    try {
-      return await recoveryInFlight;
-    } finally {
-      recoveryInFlight = null;
-    }
-  }
-
-  const prevOpenBossBattle = window.openBossBattle;
-  window.openBossBattle = async function(){
-    await recoverBossBindingDeep();
-    return prevOpenBossBattle.apply(this, arguments);
-  };
-
-  const prevOnBossBattleIconClick = window.onBossBattleIconClick;
-  window.onBossBattleIconClick = async function(){
-    await recoverBossBindingDeep();
-    return prevOnBossBattleIconClick.apply(this, arguments);
-  };
-
-  const prevStartBossBattleMove = window.startBossBattleMove;
-  window.startBossBattleMove = async function(){
-    await recoverBossBindingDeep();
-    return prevStartBossBattleMove.apply(this, arguments);
-  };
-
-  const prevOpenBossRewardOverlay = window.openBossRewardOverlay;
-  if (typeof prevOpenBossRewardOverlay === 'function') {
-    window.openBossRewardOverlay = async function(){
-      await recoverBossBindingDeep();
-      return prevOpenBossRewardOverlay.apply(this, arguments);
-    };
-  }
-
-  const prevOpenBossBattleRewards = window.openBossBattleRewards;
-  if (typeof prevOpenBossBattleRewards === 'function') {
-    window.openBossBattleRewards = async function(){
-      await recoverBossBindingDeep();
-      return prevOpenBossBattleRewards.apply(this, arguments);
-    };
-  }
-
-  const prevOpenBossBattleHelp = window.openBossBattleHelp;
-  if (typeof prevOpenBossBattleHelp === 'function') {
-    window.openBossBattleHelp = async function(){
-      await recoverBossBindingDeep();
-      return prevOpenBossBattleHelp.apply(this, arguments);
-    };
-  }
-
-  const prevCreateBossRun = window.createBossRun;
-  if (typeof prevCreateBossRun === 'function') {
-    window.createBossRun = async function(){
-      await recoverBossBindingDeep();
-      return prevCreateBossRun.apply(this, arguments);
-    };
-  }
-
-  const prevJoinBossRun = window.joinBossRun;
-  if (typeof prevJoinBossRun === 'function') {
-    window.joinBossRun = async function(){
-      await recoverBossBindingDeep();
-      return prevJoinBossRun.apply(this, arguments);
-    };
-  }
-
-  setTimeout(() => {
-    recoverBossBindingDeep().catch(console.error);
-  }, 150);
-})();
-/* ===== end legacy auto-recovery patch ===== */
-</script>
 
 </body>
 </html>
