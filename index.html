@@ -2679,6 +2679,159 @@ hr.section-divider{
   padding: 6px 2px 10px;         /* ✅ 상점처럼 촘촘 */
 }
 
+
+.titleSummaryRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin: 0 0 8px;
+  font-size:13px;
+  color:#d7d7d7;
+}
+
+.titleSummaryValue{
+  font-weight:900;
+  color:#ffd86b;
+}
+
+.titleProgressWrap{
+  margin: 0 0 10px;
+}
+
+.titleProgressTrack{
+  width:100%;
+  height:10px;
+  border-radius:999px;
+  background: rgba(255,255,255,0.10);
+  overflow:hidden;
+}
+
+.titleProgressFill{
+  height:100%;
+  width:0%;
+  border-radius:999px;
+  background: linear-gradient(90deg, #ffd86b 0%, #ffb84d 100%);
+}
+
+.titleTabs{
+  display:flex;
+  gap:8px;
+  margin: 0 0 10px;
+}
+
+.titleTabBtn{
+  flex:1;
+  height:36px;
+  padding:0 12px;
+  font-size:13px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
+  color:#ddd;
+  cursor:pointer;
+}
+
+.titleTabBtn.active{
+  background: rgba(255,216,107,0.18);
+  border-color: rgba(255,216,107,0.42);
+  color:#ffe7a6;
+  font-weight:900;
+}
+
+.titleTabPanel{
+  flex:1;
+  min-height:0;
+  display:none;
+}
+
+.titleTabPanel.active{
+  display:flex;
+  flex-direction:column;
+}
+
+.titleRewardList{
+  flex:1;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding: 2px 2px 10px;
+}
+
+.titleRewardRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  border:1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.04);
+  border-radius:12px;
+  padding:12px;
+}
+
+.titleRewardRow.claimable{
+  border-color: rgba(255,216,107,0.34);
+  box-shadow: 0 0 10px rgba(255,196,77,0.10);
+}
+
+.titleRewardRow.claimed{
+  opacity:0.56;
+}
+
+.titleRewardRow.locked{
+  opacity:0.40;
+}
+
+.titleRewardMain{
+  flex:1;
+  min-width:0;
+  text-align:left;
+}
+
+.titleRewardTarget{
+  font-size:14px;
+  font-weight:900;
+  color:#f3e9d6;
+}
+
+.titleRewardDesc{
+  margin-top:4px;
+  font-size:12px;
+  color:#c9bda9;
+  line-height:1.4;
+}
+
+.titleRewardState{
+  flex:0 0 auto;
+  min-width:72px;
+  text-align:right;
+  font-size:12px;
+  font-weight:900;
+}
+
+.titleRewardState.claimed{ color:#9a9a9a; }
+.titleRewardState.locked{ color:#8b8b8b; }
+.titleRewardState.ready{ color:#ffd86b; }
+
+.titleRewardClaimBtn{
+  margin:0;
+  padding:6px 12px;
+  border-radius:10px;
+  border:1px solid rgba(255,214,102,0.32);
+  background: rgba(255,214,102,0.14);
+  color:#ffe7a6;
+  font-size:13px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.titleRewardHint{
+  margin-top:2px;
+  font-size:12px;
+  color:#bcbcbc;
+}
+
 /* =========================
    📚 스토리북 오버레이
    ========================= */
@@ -7294,6 +7447,15 @@ let isUpgrading = false;
 let isDueling   = false;   // ⚔️ 결투 VS 대기중일 때 true
 let titlesOwned = {};     // { titleId: true }
 let equippedTitle = "";   // 장착중 칭호 ID
+let titleOverlayTab = "list";
+let titleCollectionRewardClaimed = {};
+const TITLE_COLLECTION_REWARDS = [
+  { count: 10, label: "21강 강화주문서 1개", grant: () => { itemScroll21 = Number(itemScroll21 || 0) + 1; } },
+  { count: 20, label: "파괴방지 주문서 1개", grant: () => { itemProtect = Number(itemProtect || 0) + 1; } },
+  { count: 30, label: "파괴방지 주문서 2개", grant: () => { itemProtect = Number(itemProtect || 0) + 2; } },
+  { count: 40, label: "슈퍼강화 주문서 1개", grant: () => { itemSuper = Number(itemSuper || 0) + 1; } },
+  { count: 50, label: "토벌우선신청권 1개", grant: () => { itemBossPriority = Number(itemBossPriority || 0) + 1; } }
+];
 let lastSeenGlobal30EventId = 0;  // 마지막으로 본 +30 글로벌 이벤트 ID
 let aweUsedGlobal30EventId = 0;   // 마지막으로 ‘경외하기’를 사용한 +30 이벤트 ID (1인 1회)
 let pendingLoginData = null;
@@ -8808,6 +8970,8 @@ destroyCount  = 0;
 
   titlesOwned = {};
 equippedTitle = "";
+titleCollectionRewardClaimed = {};
+titleOverlayTab = "list";
   duelEqualOrHigherWinStreak = 0;
   bossLeaderClearCount = 0;
   bossKillCountById = {};
@@ -10019,8 +10183,13 @@ if (sortBtn) {
     renderTitleGrid();
   };
 }
+
+const listTabBtn = document.getElementById("titleListTabBtn");
+if (listTabBtn) listTabBtn.onclick = () => { playUiClickCommon(); setTitleOverlayTab("list"); };
+const rewardTabBtn = document.getElementById("titleRewardTabBtn");
+if (rewardTabBtn) rewardTabBtn.onclick = () => { playUiClickCommon(); setTitleOverlayTab("reward"); };
   
-  renderTitleGrid();
+  setTitleOverlayTab(titleOverlayTab || "list");
 }
 
 function closeTitleOverlay(){
@@ -13461,21 +13630,94 @@ function popupBtn(label, onClickJs){
   `;
 }
 
+function getOwnedTitleCount(){
+  return Array.isArray(TITLE_DEFS)
+    ? TITLE_DEFS.reduce((acc, def) => acc + ((titlesOwned && titlesOwned[def.id]) ? 1 : 0), 0)
+    : 0;
+}
+
+function updateTitleCollectionSummary(){
+  const titleOwnedSummaryEl = document.getElementById("titleOwnedSummary");
+  const progressFillEl = document.getElementById("titleOwnedProgressFill");
+  const totalTitleCount = Array.isArray(TITLE_DEFS) ? TITLE_DEFS.length : 0;
+  const ownedTitleCount = getOwnedTitleCount();
+  if (titleOwnedSummaryEl) titleOwnedSummaryEl.textContent = `${ownedTitleCount} / ${totalTitleCount}`;
+  if (progressFillEl) {
+    const pct = totalTitleCount > 0 ? Math.max(0, Math.min(100, (ownedTitleCount / totalTitleCount) * 100)) : 0;
+    progressFillEl.style.width = pct + "%";
+  }
+}
+
+function setTitleOverlayTab(tab){
+  titleOverlayTab = (tab === "reward") ? "reward" : "list";
+  const listBtn = document.getElementById("titleListTabBtn");
+  const rewardBtn = document.getElementById("titleRewardTabBtn");
+  const listPanel = document.getElementById("titleListPanel");
+  const rewardPanel = document.getElementById("titleRewardPanel");
+  const sortBtn = document.getElementById("titleSortBtn");
+
+  if (listBtn) listBtn.classList.toggle("active", titleOverlayTab === "list");
+  if (rewardBtn) rewardBtn.classList.toggle("active", titleOverlayTab === "reward");
+  if (listPanel) listPanel.classList.toggle("active", titleOverlayTab === "list");
+  if (rewardPanel) rewardPanel.classList.toggle("active", titleOverlayTab === "reward");
+  if (sortBtn) sortBtn.style.display = (titleOverlayTab === "list") ? "" : "none";
+
+  if (titleOverlayTab === "reward") renderTitleRewardList();
+  else renderTitleGrid();
+}
+
+function renderTitleRewardList(){
+  const listEl = document.getElementById("titleRewardList");
+  if (!listEl) return;
+  updateTitleCollectionSummary();
+  const ownedTitleCount = getOwnedTitleCount();
+  listEl.innerHTML = TITLE_COLLECTION_REWARDS.map((reward) => {
+    const claimed = !!(titleCollectionRewardClaimed && titleCollectionRewardClaimed[reward.count]);
+    const claimable = !claimed && ownedTitleCount >= reward.count;
+    const rowClass = claimed ? "claimed" : (claimable ? "claimable" : "locked");
+    const stateHtml = claimed
+      ? `<div class="titleRewardState claimed">완료</div>`
+      : claimable
+        ? `<button class="titleRewardClaimBtn" onclick="claimTitleCollectionReward(${reward.count})">수령</button>`
+        : `<div class="titleRewardState locked">${ownedTitleCount} / ${reward.count}</div>`;
+    return `
+      <div class="titleRewardRow ${rowClass}">
+        <div class="titleRewardMain">
+          <div class="titleRewardTarget">${reward.count}개 달성</div>
+          <div class="titleRewardDesc">${reward.label}</div>
+        </div>
+        ${stateHtml}
+      </div>
+    `;
+  }).join("");
+}
+
+function claimTitleCollectionReward(targetCount){
+  const reward = TITLE_COLLECTION_REWARDS.find(r => Number(r.count) === Number(targetCount));
+  if (!reward) return;
+  if (!titleCollectionRewardClaimed || typeof titleCollectionRewardClaimed !== "object") titleCollectionRewardClaimed = {};
+  if (titleCollectionRewardClaimed[targetCount]) return;
+
+  const ownedTitleCount = getOwnedTitleCount();
+  if (ownedTitleCount < reward.count) {
+    showHuntPopup(`칭호 ${reward.count}개를 먼저 획득해야 합니다.`, "#ff8080");
+    return;
+  }
+
+  reward.grant();
+  titleCollectionRewardClaimed[targetCount] = Date.now();
+  save();
+  update();
+  renderTitleRewardList();
+  showHuntPopup(`📦 칭호 수집 보상 획득!<br>${reward.label}`, "#ffd86b");
+}
+
 // “장착중” 표시 + 5x6 그리드 렌더
 function renderTitleGrid(){
   const grid = document.getElementById("titleGrid");
   const equippedEl = document.getElementById("equippedTitleText");
-  const titleOwnedSummaryEl = document.getElementById("titleOwnedSummary");
   if(!grid) return;
-
-  const totalTitleCount = Array.isArray(TITLE_DEFS) ? TITLE_DEFS.length : 0;
-  const ownedTitleCount = Array.isArray(TITLE_DEFS)
-    ? TITLE_DEFS.reduce((acc, def) => acc + ((titlesOwned && titlesOwned[def.id]) ? 1 : 0), 0)
-    : 0;
-
-  if (titleOwnedSummaryEl) {
-    titleOwnedSummaryEl.textContent = `${ownedTitleCount} / ${totalTitleCount}`;
-  }
+  updateTitleCollectionSummary();
 
   // 장착중 표시
   const eqDef = TITLE_DEFS.find(t => t.id === equippedTitle);
@@ -17098,6 +17340,7 @@ function login() {
       // ✅ 여기서부터 진짜 로그인 성공이 확정된 뒤에만 칭호 로드
       titlesOwned = (data.titlesOwned && typeof data.titlesOwned === "object") ? data.titlesOwned : {};
       equippedTitle = (typeof data.equippedTitle === "string") ? data.equippedTitle : "";
+      titleCollectionRewardClaimed = (data.titleCollectionRewardClaimed && typeof data.titleCollectionRewardClaimed === "object") ? data.titleCollectionRewardClaimed : {};
       // 🧹 과거 버그 값 정리: "${titleId}" 같은 쓰레기 값이면 장착 해제
       if (equippedTitle && equippedTitle.includes("${")) equippedTitle = "";
 
@@ -17549,6 +17792,7 @@ function save() {
     // 🏷️ 칭호 저장
     titlesOwned: titlesOwned,
     equippedTitle: equippedTitle,
+    titleCollectionRewardClaimed: titleCollectionRewardClaimed,
     plagueRatHuntCount: Number(plagueRatHuntCount || 0),
     bully10Count: Number(bully10Count || 0),
     challenger10Count: Number(challenger10Count || 0),
@@ -28376,8 +28620,24 @@ setTimeout(() => {
       칭호획득현황: <span id="titleOwnedSummary">0 / 0</span>
     </div>
 
-    <!-- 그리드 -->
-    <div id="titleGrid" class="titleGrid"></div>
+    <div class="titleProgressWrap">
+      <div class="titleProgressBar"><div id="titleOwnedProgressFill" class="titleProgressFill"></div></div>
+    </div>
+
+    <div class="titleTabs">
+      <button id="titleListTabBtn" class="titleTabBtn active" type="button" onclick="setTitleOverlayTab('list')">칭호리스트</button>
+      <button id="titleRewardTabBtn" class="titleTabBtn" type="button" onclick="setTitleOverlayTab('reward')">보상리스트</button>
+    </div>
+
+    <div id="titleListPanel" class="titleTabPanel active">
+      <!-- 그리드 -->
+      <div id="titleGrid" class="titleGrid"></div>
+    </div>
+
+    <div id="titleRewardPanel" class="titleTabPanel">
+      <div id="titleRewardList" class="titleRewardList"></div>
+      <div class="titleRewardHint">칭호를 모아 단계별 보상을 수령할 수 있습니다.</div>
+    </div>
 
 <!-- NPC/대사 -->
 <div class="titleNpcWrap">
