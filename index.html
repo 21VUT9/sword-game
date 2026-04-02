@@ -21349,7 +21349,7 @@ function openBossBattleHelp(){
   const powerMul = (typeof getBossPowerMultiplier === "function") ? Number(getBossPowerMultiplier(bossId, swordLv) || 1) : 1;
   const adjPower = rawPower * powerMul;
 
-  const effDef = Math.max(0, physDef - ignoreDef); // 관통력 공통 반영
+  const effDef = Math.max(0, physDef) * (1 - Math.max(0, ignoreDef)); // 관통력 비율 감소 반영
 
   let base = adjPower * coef;
   base = base * (1 - effDef);
@@ -22169,7 +22169,9 @@ function calcBossAttackResult(bossId){
   } catch (e) {}
 
   // 4) 방어력(공격력/주문력 공통)
-  const effDef = Math.max(0, Number(stats.physDef || 0) - Number(my.penetration || 0));
+  const bossDef = Math.max(0, Number(stats.physDef || 0));
+  const pen = Math.max(0, Number(my.penetration || 0));
+  const effDef = bossDef * (1 - pen);
   dmg = dmg * (1 - effDef);
 
   // 5) 랜덤 85~100%
@@ -22177,7 +22179,9 @@ function calcBossAttackResult(bossId){
   dmg = Math.floor(dmg * randMul);
 
   // 6) 회피(MISS)
-  const effEvade = Math.max(0, Number(stats.evade || 0) - Number(my.ignoreEvade || 0));
+  const bossEvade = Math.max(0, Number(stats.evade || 0));
+  const ignoreEvade = Math.max(0, Number(my.ignoreEvade || 0));
+  const effEvade = bossEvade * (1 - ignoreEvade);
   const isMiss = (Math.random() < effEvade);
   if (isMiss) {
     return { damage: 0, isMiss: true, isCrit: false, label: my.dmgLabel };
@@ -25946,7 +25950,9 @@ calcBossAttackResult = function(bossId){
     }
   } catch (e) {}
 
-  const effDef = Math.max(0, Number(stats.physDef || 0) - Number(my.penetration || 0));
+  const bossDef = Math.max(0, Number(stats.physDef || 0));
+  const pen = Math.max(0, Number(my.penetration || 0));
+  const effDef = bossDef * (1 - pen);
   dmg = dmg * (1 - effDef);
 
   dmg = dmg * (1 + Math.max(0, Number(my.ignoreEvade || 0)));
@@ -26868,12 +26874,16 @@ function ensureBossCooldownResetByRun(bossId, runLike){
     const wantedMagic = (target.validType === 'magic');
 
     let dmg = Number(my.mainPower || 0) * powerMul;
-    const effDef = Math.max(0, Number(target.physDef || 0) - Number(my.penetration || 0));
+    const targetDef = Math.max(0, Number(target.physDef || 0));
+    const pen = Math.max(0, Number(my.penetration || 0));
+    const effDef = targetDef * (1 - pen);
     dmg = dmg * (1 - effDef);
     const randMul = 0.85 + Math.random() * 0.15;
     dmg = Math.floor(dmg * randMul);
 
-    const effEvade = Math.max(0, Number(target.evade || 0) - Number(my.ignoreEvade || 0));
+    const targetEvade = Math.max(0, Number(target.evade || 0));
+    const ignoreEvade = Math.max(0, Number(my.ignoreEvade || 0));
+    const effEvade = targetEvade * (1 - ignoreEvade);
     const isMiss = (Math.random() < effEvade);
     if (isMiss) return { damage: 0, displayDamage: 0, isMiss: true, isCrit: false };
 
