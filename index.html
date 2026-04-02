@@ -23232,10 +23232,17 @@ function createBossRun(bossId, options = {}) {
         return archiveBossRunIfNeeded(bossId, prev);
       }
     }).then(() => {
+      const localGold = Number(gold || 0);
+      const needGold = Number(def.applyCostGold || 0);
+      if (localGold < needGold) {
+        showNpcMessage(`골드가 부족합니다. (필요: ${formatGold(needGold)} 골드)`, LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+        return;
+      }
+
       userGoldRef.transaction((g) => {
-        g = Number(g || 0);
-        if (g < def.applyCostGold) return;
-        return g - def.applyCostGold;
+        const serverGold = Math.max(Number(g || 0), localGold);
+        if (serverGold < needGold) return;
+        return serverGold - needGold;
       }, (err, committed) => {
         if (err) {
           console.error(err);
@@ -23243,9 +23250,11 @@ function createBossRun(bossId, options = {}) {
           return;
         }
         if (!committed) {
-          showNpcMessage(`골드가 부족합니다. (필요: ${formatGold(def.applyCostGold)} 골드)`, LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+          showNpcMessage(`골드가 부족합니다. (필요: ${formatGold(needGold)} 골드)`, LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
           return;
         }
+
+        gold = Math.max(0, localGold - needGold);
 
         const now = Date.now();
         const endsAt = now + def.durationHours * 60 * 60 * 1000;
