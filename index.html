@@ -12364,13 +12364,9 @@ function renderStorybookGrid(){
     if (unlocked) {
       cell.onclick = () => {
         playUiClickCommon();
-        if (def.key === "chapter1") {
-          openStorybookReader(def.key);
-        } else {
-          markStorybookRead(def.key);
-          renderStorybookGrid();
-          showLockedFeaturePopup();
-        }
+        markStorybookRead(def.key, false);
+        openStorybookReader(def.key);
+        renderStorybookGrid();
       };
     } else {
       cell.disabled = true;
@@ -28239,7 +28235,7 @@ function completeFrost04(){ if (questState["frost_04"] !== QUEST_STATE.ACTIVE) r
 function showFrost05AcceptReject(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="acceptFrost05()">참여한다</button><button class="actionBtn" type="button" onclick="rejectFrostQuest()">거절한다</button>`; }
 function acceptFrost05(){ questState["frost_05"] = QUEST_STATE.ACTIVE; npcDialogueActionMode=null; npcDialogueQueue=[`[달성조건] : 서리여왕 아르셀리아 토벌\n\n[보상] : 슈퍼강화주문서 1개, 서리여왕의 일기, 명예의훈장 110개`]; save(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} openNpcDialogueFromTalkSets([npcDialogueQueue], "레온하르트 발렌", "images/npc/vallen_talk.png"); }
 function showFrost05RewardBtn(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="completeFrost05()">퀘스트 완료</button>`; }
-function completeFrost05(){ if (questState["frost_05"] !== QUEST_STATE.COMPLETE) return; itemSuper = Number(itemSuper||0)+1; itemHonorMedal = Number(itemHonorMedal||0)+110; setFrostDiaryCount(getFrostDiaryCount()+1); markQuestRewarded("frost_05"); unlockStorybookChapter("chapter2", false); setStorybookUnlockedPages("chapter2", 1, false); save(); update(); updateQuestBadges(); updateStorybookBadge(); try{renderTalkNpcGrid();}catch(e){} npcDialogueActionMode=null; npcDialogueQueue=[`퀘스트 완료!\n보상 : 슈퍼강화주문서 1개, 서리여왕의 일기, 명예의훈장 110개 지급!\n서리여왕의 기록 1페이지 해금!`]; openNpcDialogueFromTalkSets([npcDialogueQueue], "레온하르트 발렌", "images/npc/vallen_talk.png"); }
+function completeFrost05(){ if (questState["frost_05"] !== QUEST_STATE.COMPLETE) return; itemSuper = Number(itemSuper||0)+1; itemHonorMedal = Number(itemHonorMedal||0)+110; setFrostDiaryCount(getFrostDiaryCount()+1); markQuestRewarded("frost_05"); save(); update(); updateQuestBadges(); updateStorybookBadge(); try{renderTalkNpcGrid();}catch(e){} npcDialogueActionMode=null; npcDialogueQueue=[`퀘스트 완료!\n보상 : 슈퍼강화주문서 1개, 서리여왕의 일기, 명예의훈장 110개 지급!`]; openNpcDialogueFromTalkSets([npcDialogueQueue], "레온하르트 발렌", "images/npc/vallen_talk.png"); }
 
 function showFrost06AcceptReject(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="acceptFrost06()">그래</button>`; }
 function acceptFrost06(){ if (getFrostDiaryCount() > 0) setFrostDiaryCount(getFrostDiaryCount()-1); questState["frost_06"] = QUEST_STATE.COMPLETE; npcDialogueActionMode=null; npcDialogueQueue=[`[달성조건] : 해석을 완료한 리네아를 찾아가자.\n\n[보상] : 파괴방지 주문서 3개, 스토리북 : 서리여왕의 기록 해금`]; save(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} openNpcDialogueFromTalkSets([npcDialogueQueue], "리네아", "images/npc/linea_talk.png"); }
