@@ -14771,6 +14771,8 @@ function showNpcMessage(
   showButton = true,
   npcName = "대장장이 – 퍼그란트"
 ) {
+  stopBossApplyPopupTimer();
+
   // 🔹 imgPath가 null이면 NPC 없이 쓰는 '시스템 팝업' 모드
   const noNpc = (imgPath === null);
 
@@ -14813,6 +14815,10 @@ function showNpcMessage(
   cancelBtn.onclick = closeNpcPopup;
 
   popup.style.display = "flex";
+
+  if (String(text || '').indexOf('data-boss-apply-remain') !== -1) {
+    startBossApplyPopupTimer();
+  }
 }
 
 // ⌨️ 엔터 키로 NPC 팝업 "확인" 누르기 (한 버튼 팝업 전용)
@@ -14978,6 +14984,7 @@ function closeTutorial() {
 }
   
 function closeNpcPopup() {
+  stopBossApplyPopupTimer();
   const popup = document.getElementById("npcPopup");
   if (popup) popup.style.display = "none";
 }
@@ -18677,16 +18684,20 @@ function openBossApplyList() {
       }
     }
 
+    const btnState = isActive ? "active" : (!canApplyBySword ? "locked" : (!canApplyByCooldown && !canApplyByTicket ? "cooldown" : (canApplyByTicket ? "ticket" : "ready")));
+
     html += `
       <div style="border:1px solid #444; border-radius:8px; padding:10px; margin-bottom:8px; background:rgba(0,0,0,0.35);">
         <div style="font-weight:bold; margin-bottom:4px;">
           ${def.mapName} · ${def.bossTitle} <span style="color:#ddd;">${def.bossName}</span>
         </div>
         <div style="font-size:12px; color:#aaa; margin-bottom:8px;">
-          ⏳ 신청 가능까지: <b style="color:#ddd;">${cooldownTxt}</b>
-          ${isActive ? `<span style="margin-left:8px; color:#ff6b6b; font-weight:bold;">(진행중)</span>` : ""}
+          ⏳ 신청 가능까지: <b style="color:#ddd;" data-boss-apply-remain="${def.id}" data-next-at="${nextAt}">${cooldownTxt}</b>
+          <span data-boss-apply-active="${def.id}" data-active="${isActive ? "1" : "0"}"${isActive ? '' : ' style="display:none;"'}>${isActive ? `<span style="margin-left:8px; color:#ff6b6b; font-weight:bold;">(진행중)</span>` : ""}</span>
         </div>
         <button
+          data-boss-apply-btn="${def.id}"
+          data-boss-btn-state="${btnState}"
           ${disabled ? "disabled" : ""}
           onclick="${disabled ? "" : actionJs}"
           style="width:100%; padding:8px 10px; font-size:14px; border-radius:8px; ${disabled ? "opacity:0.4; cursor:not-allowed;" : ""}"
@@ -21222,6 +21233,62 @@ function formatHMS(ms) {
   const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
   const s = String(total % 60).padStart(2, "0");
   return `${h}:${m}:${s}`;
+}
+
+let bossApplyPopupTimer = null;
+
+function stopBossApplyPopupTimer() {
+  if (bossApplyPopupTimer) {
+    clearInterval(bossApplyPopupTimer);
+    bossApplyPopupTimer = null;
+  }
+}
+
+function refreshBossApplyPopupCountdown() {
+  const nodes = document.querySelectorAll('[data-boss-apply-remain]');
+  if (!nodes.length) {
+    stopBossApplyPopupTimer();
+    return;
+  }
+
+  let hasRemaining = false;
+
+  nodes.forEach(el => {
+    const nextAt = Number(el.getAttribute('data-next-at') || 0);
+    const remainMs = Math.max(0, nextAt - Date.now());
+    el.textContent = formatHMS(remainMs);
+
+    const bossId = String(el.getAttribute('data-boss-apply-remain') || '');
+    const btn = bossId ? document.querySelector(`[data-boss-apply-btn="${bossId}"]`) : null;
+    const activeMark = bossId ? document.querySelector(`[data-boss-apply-active="${bossId}"]`) : null;
+    const isActive = activeMark ? String(activeMark.getAttribute('data-active') || '') === '1' : false;
+
+    if (btn && !isActive) {
+      if (remainMs > 0) {
+        hasRemaining = true;
+      } else if (btn.disabled && btn.getAttribute('data-boss-btn-state') === 'cooldown') {
+        btn.disabled = false;
+        btn.style.opacity = '';
+        btn.style.cursor = '';
+        btn.textContent = '✅ 신청하기';
+        btn.setAttribute('data-boss-btn-state', 'ready');
+      }
+    } else if (remainMs > 0) {
+      hasRemaining = true;
+    }
+  });
+
+  if (!hasRemaining) {
+    stopBossApplyPopupTimer();
+  }
+}
+
+function startBossApplyPopupTimer() {
+  stopBossApplyPopupTimer();
+  refreshBossApplyPopupCountdown();
+  if (document.querySelector('[data-boss-apply-remain]')) {
+    bossApplyPopupTimer = setInterval(refreshBossApplyPopupCountdown, 1000);
+  }
 }
 
 // ✅ 보스전/로그용 닉네임 안전 getter (nickname 변수가 없을 때도 안전)
