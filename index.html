@@ -9847,6 +9847,10 @@ const TITLE_DEFS = [
   { id:"engrave_normal_300", name:"불만족", how:"일반 각인 300회 이상" },
   { id:"engrave_advanced_300", name:"아쉬워서", how:"고급 각인 300회 이상" },
   { id:"deep_frost", name:"서리깊은", how:"서리여왕 아르셀리아 토벌 10회" },
+  { id:"rank_2t", name:"극한도전", how:"랭킹전 딜량 2조 달성" },
+  { id:"rank_20t", name:"극한", how:"랭킹전 딜량 20조 달성" },
+  { id:"rank_100t", name:"한계돌파", how:"랭킹전 딜량 100조 달성" },
+  { id:"rank_200t", name:"초월", how:"랭킹전 딜량 200조 달성" },
   { id: "boss_raider",  name: "토벌대", how:"보스전 토벌1회 성공" },
 
 ];
@@ -10153,6 +10157,10 @@ if (weaponType === "magitech" && curLv >= 30) {
   if (Number(bossLeaderClearCount || 0) >= 10) changed = grantTitleOnceNoSave("captain10") || changed;
   if (Number(attendanceStreak || 0) >= 30) changed = grantTitleOnceNoSave("attendance30") || changed;
   if (Number(weeklyRank1Streak || 0) >= 4) changed = grantTitleOnceNoSave("dominion4") || changed;
+  if (Number(rankingBattleAllTimeBest || 0) >= 2000000000000) changed = grantTitleOnceNoSave("rank_2t") || changed;
+  if (Number(rankingBattleAllTimeBest || 0) >= 20000000000000) changed = grantTitleOnceNoSave("rank_20t") || changed;
+  if (Number(rankingBattleAllTimeBest || 0) >= 100000000000000) changed = grantTitleOnceNoSave("rank_100t") || changed;
+  if (Number(rankingBattleAllTimeBest || 0) >= 200000000000000) changed = grantTitleOnceNoSave("rank_200t") || changed;
   if (Number(duelEqualOrHigherWinStreak || 0) >= 10) changed = grantTitleOnceNoSave("slayer10") || changed;
   if (Number(superSuccessStreak || 0) >= 4) changed = grantTitleOnceNoSave("super_chain4") || changed;
   if (Number(upgradeFailStreak || 0) >= 20) changed = grantTitleOnceNoSave("great_challenge") || changed;
