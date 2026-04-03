@@ -7449,6 +7449,38 @@ let titlesOwned = {};     // { titleId: true }
 let equippedTitle = "";   // 장착중 칭호 ID
 let titleOverlayTab = "list";
 let titleCollectionRewardClaimed = {};
+
+function getTitleCollectionRewardStorageKey(uid){
+  return `pugrant_title_collection_reward_claimed_${String(uid || "")}`;
+}
+
+function loadLocalTitleCollectionRewardClaimed(uid){
+  try {
+    const raw = localStorage.getItem(getTitleCollectionRewardStorageKey(uid));
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === "object") ? parsed : {};
+  } catch(e){
+    return {};
+  }
+}
+
+function persistLocalTitleCollectionRewardClaimed(uid){
+  try {
+    localStorage.setItem(
+      getTitleCollectionRewardStorageKey(uid),
+      JSON.stringify(titleCollectionRewardClaimed && typeof titleCollectionRewardClaimed === "object" ? titleCollectionRewardClaimed : {})
+    );
+  } catch(e){}
+}
+
+function syncTitleCollectionRewardClaimedFromLocal(uid){
+  const localClaimed = loadLocalTitleCollectionRewardClaimed(uid);
+  titleCollectionRewardClaimed = {
+    ...(titleCollectionRewardClaimed && typeof titleCollectionRewardClaimed === "object" ? titleCollectionRewardClaimed : {}),
+    ...(localClaimed && typeof localClaimed === "object" ? localClaimed : {})
+  };
+}
 const TITLE_COLLECTION_REWARDS = [
   { count: 10, label: "21강 강화주문서 1개", grant: () => { itemScroll21 = Number(itemScroll21 || 0) + 1; } },
   { count: 20, label: "파괴방지 주문서 1개", grant: () => { itemProtect = Number(itemProtect || 0) + 1; } },
@@ -13708,8 +13740,11 @@ function claimTitleCollectionReward(targetCount){
     return;
   }
 
+  const claimedAt = Date.now();
+  titleCollectionRewardClaimed[targetCount] = claimedAt;
+  persistLocalTitleCollectionRewardClaimed(userId);
+
   reward.grant();
-  titleCollectionRewardClaimed[targetCount] = Date.now();
   save();
   update();
   renderTitleRewardList();
@@ -17345,6 +17380,7 @@ function login() {
       titlesOwned = (data.titlesOwned && typeof data.titlesOwned === "object") ? data.titlesOwned : {};
       equippedTitle = (typeof data.equippedTitle === "string") ? data.equippedTitle : "";
       titleCollectionRewardClaimed = (data.titleCollectionRewardClaimed && typeof data.titleCollectionRewardClaimed === "object") ? data.titleCollectionRewardClaimed : {};
+      syncTitleCollectionRewardClaimedFromLocal(loginUid);
       // 🧹 과거 버그 값 정리: "${titleId}" 같은 쓰레기 값이면 장착 해제
       if (equippedTitle && equippedTitle.includes("${")) equippedTitle = "";
 
@@ -17796,7 +17832,11 @@ function save() {
     // 🏷️ 칭호 저장
     titlesOwned: titlesOwned,
     equippedTitle: equippedTitle,
-    titleCollectionRewardClaimed: titleCollectionRewardClaimed,
+    titleCollectionRewardClaimed: (() => {
+      syncTitleCollectionRewardClaimedFromLocal(saveUid);
+      persistLocalTitleCollectionRewardClaimed(saveUid);
+      return titleCollectionRewardClaimed;
+    })(),
     plagueRatHuntCount: Number(plagueRatHuntCount || 0),
     bully10Count: Number(bully10Count || 0),
     challenger10Count: Number(challenger10Count || 0),
