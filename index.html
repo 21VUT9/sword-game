@@ -19735,6 +19735,11 @@ if (!power || power <= 20) {
     itemEngraveNormal = Number(data.itemEngraveNormal || 0);
     itemEngraveAdvanced = Number(data.itemEngraveAdvanced || 0);
     itemBossPriority = Number(data.itemBossPriority || 0);
+    runeInventory = normalizeRuneInventory(data.runeInventory);
+    unidentifiedRuneStones = Math.max(0, Number(data.unidentifiedRuneStones || 0));
+    runeSlotUnlockCount = clampRuneUnlockCount(data.runeSlotUnlockCount);
+    runePresetIdx = [0,1,2].includes(Number(data.runePresetIdx)) ? Number(data.runePresetIdx) : 0;
+    runePresets = normalizeRunePresets(data.runePresets);
     couponUsedMap = data.couponUsed || {};
     // ✅ 퀘스트 상태(계정별) 로드
 questState = (data.questState && typeof data.questState === "object") ? data.questState : {};
