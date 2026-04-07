@@ -4746,24 +4746,25 @@ html, body {
 .rune-slot.active-pick{border-color:#8cd2ff; box-shadow:0 0 0 2px rgba(140,210,255,0.22), 0 0 18px rgba(100,180,255,0.24);}
 .rune-slot img{width:72%; height:72%; object-fit:contain; filter:drop-shadow(0 0 8px rgba(160,210,255,0.22));}
 .rune-slot .rune-grade-mini{position:absolute; left:6px; top:4px; font-size:13px; font-weight:900; color:#f7e8b0; text-shadow:0 1px 5px rgba(0,0,0,0.7);}
-.rune-slot .rune-slot-num{position:absolute; bottom:5px; right:8px; font-size:11px; color:#bbb; font-weight:700;}
+.rune-slot .rune-slot-num{display:none !important;}
 .rune-preset-bar{position:absolute; left:0; top:0; display:flex; gap:6px; margin:0; z-index:3;}
 .rune-preset-btn{margin:0; padding:4px 8px; font-size:11px; font-weight:800; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:rgba(255,255,255,0.05); color:#ddd; cursor:pointer;}
 .rune-preset-btn.active{background:rgba(255,213,79,0.14); border-color:rgba(255,213,79,0.44); color:#ffd54f;}
-.rune-top-grid{display:grid; grid-template-columns: 1fr 1fr; gap:16px; align-items:center; height:100%;}
-.rune-process-wrap{display:grid; grid-template-columns:180px 1fr; gap:14px; align-items:center; height:100%;}
-.rune-verdia-card{display:flex; flex-direction:column; align-items:center; gap:8px;}
-.rune-verdia-card img{width:148px; height:148px; object-fit:contain; border-radius:16px; background:rgba(255,255,255,0.04);}
+.rune-top-grid{display:grid; grid-template-columns: 266px 1fr 266px; gap:12px; align-items:center; height:100%;}
+.rune-process-wrap{display:contents;}
+.rune-verdia-card{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-height:220px;}
+.rune-verdia-card img{width:266px; height:266px; object-fit:contain; border-radius:0; background:none; box-shadow:none; filter:drop-shadow(0 6px 18px rgba(0,0,0,0.38));}
 .rune-verdia-name{font-size:15px; font-weight:900; color:#dce9f9;}
-.rune-process-main{display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:220px;}
+.rune-process-main{display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:220px; grid-column:2;}
+.rune-process-spacer{width:266px; min-height:1px;}
 .rune-process-box{width:126px; height:126px; border-radius:18px; border:2px dashed rgba(255,255,255,0.18); display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.04); cursor:pointer; position:relative;}
 .rune-process-box.active{border-color:#8cd2ff; box-shadow:0 0 16px rgba(100,180,255,0.22);}
 .rune-process-box img{width:78%; height:78%; object-fit:contain;}
 .rune-process-box span{color:#6f7a88; font-size:14px; line-height:1.4;}
 .rune-process-btn{margin-top:12px; padding:11px 22px; font-size:15px; font-weight:900; border-radius:12px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.08); color:#fff; cursor:pointer;}
 .rune-process-btn:disabled{opacity:0.38; cursor:default;}
-.rune-process-note{margin-top:10px; font-size:12px; line-height:1.55; color:#aeb4bf; text-align:center; white-space:pre-line;}
-.rune-process-quote{margin-top:10px; font-size:13px; line-height:1.6; color:#eef2f6; text-align:center; min-height:42px;}
+.rune-process-note{margin-top:10px; font-size:12px; line-height:1.55; color:#aeb4bf; text-align:center; white-space:pre-line; min-height:18px;}
+.rune-process-quote{margin-top:8px; font-size:13px; line-height:1.6; color:#eef2f6; text-align:center; min-height:42px; max-width:220px;}
 .rune-bottom-head{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;}
 .rune-bottom-title{font-size:15px; font-weight:900; color:#f3f3f3;}
 .rune-sort-bar{display:flex; gap:6px; flex-wrap:wrap;}
@@ -4798,7 +4799,9 @@ html, body {
   .rune-tabbar{order:3; width:100%; flex-wrap:wrap; margin:4px 0 0 0;}
   .rune-body{grid-template-rows:minmax(320px, 48%) minmax(240px, 52%);} 
   .rune-top-grid{grid-template-columns:1fr;}
-  .rune-process-wrap{grid-template-columns:1fr;}
+  .rune-process-wrap{display:block;}
+  .rune-process-main{grid-column:auto;}
+  .rune-process-spacer{display:none;}
   .rune-verdia-card{display:none;}
   .rune-inventory-grid{grid-template-columns:repeat(4, minmax(0, 1fr));}
 }
@@ -25283,10 +25286,10 @@ function renderRuneTopArea(){
   let note = '';
   if (mode === 'upgrade'){
     const lv = Number(selected && selected.level || 0);
-    const meta = RUNE_UPGRADE_TABLE[lv];
-    note = meta ? `비용 : 마력의정수 ${meta.essence}개\n강화확률 ${meta.success}%, 강등확률 ${meta.down}%` : '최대 강화 단계입니다.';
+    const meta = selected ? RUNE_UPGRADE_TABLE[lv] : null;
+    note = !selected ? '' : (meta ? `비용 : 마력의정수 ${meta.essence}개\n강화확률 ${meta.success}%, 강등확률 ${meta.down}%` : '최대 강화 단계입니다.');
   } else if (mode === 'dismantle') {
-    note = '분해 시 룬 1개당 마력의정수 50개를 획득합니다.';
+    note = '';
   } else {
     note = `비용 : ${formatNumberFullKR(RUNE_APPRAISAL_COST)} 골드`;
   }
@@ -25296,17 +25299,16 @@ function renderRuneTopArea(){
         <div class="rune-verdia-card">
           <img src="${VERDIA_IMAGE_FALLBACK}" alt="베르디아" onerror="this.onerror=null;this.src='images/ui/icon_rune.png';">
           <div class="rune-verdia-name">룬마법사 베르디아</div>
+          <div class="rune-process-quote">${quote}</div>
         </div>
         <div class="rune-process-main">
           <div id="runeProcessBox" class="rune-process-box ${selected ? 'active' : ''}">${buildRuneProcessBoxInner()}</div>
           <button id="runeProcessBtn" class="rune-process-btn" type="button" ${isRuneProcessEnabled() ? '' : 'disabled'}>${mode==='upgrade'?'강화하기':(mode==='dismantle'?'분해하기':'감정하기')}</button>
-          ${mode==='appraise' ? `<div style="margin-top:4px;font-size:12px;color:#c9ced8;">아래 ${formatNumberFullKR(RUNE_APPRAISAL_COST)} 골드</div>` : ''}
-          <div class="rune-process-note">${note}</div>
-          <div class="rune-process-quote">${quote}</div>
+          ${note ? `<div class="rune-process-note">${note}</div>` : ''}
           ${mode==='dismantle' ? `<label class="rune-sub-option"><input id="runeBulkDismantleChk" type="checkbox" ${runeBulkDismantle ? 'checked' : ''}> 일괄분해</label>` : ''}
         </div>
+        <div class="rune-process-spacer" aria-hidden="true"></div>
       </div>
-      <div></div>
     </div>`;
   const box = document.getElementById('runeProcessBox');
   if (box) box.onclick = () => { if (runeTab === 'appraise') runeSelectedStoneIndex = -1; else { runeSelectedUid=''; runeSelectedTopUid=''; } renderRuneOverlay(); };
@@ -25364,7 +25366,7 @@ function buildRuneSlotsHtml(){
     if (runePendingEquipUid && unlocked) classes.push('active-pick');
     const showPlus = unlocked || unlockableNext;
     const inner = item ? `<img src="${getRuneMarkIcon(item.kind)}" alt="" onerror="this.onerror=null;this.src='${RUNE_IMAGE_FALLBACK}';"><span class="rune-grade-mini">${Number(item.level||1) >= 2 ? '+' + Number(item.level) : ''}</span>` : `<span class="rune-slot-plus">${showPlus ? '+' : ''}</span>`;
-    return `<button type="button" class="${classes.join(' ')}" data-rune-slot="${idx}" style="left:${pos.left}px; top:${pos.top}px;">${inner}<span class="rune-slot-num">${idx+1}</span></button>`;
+    return `<button type="button" class="${classes.join(' ')}" data-rune-slot="${idx}" style="left:${pos.left}px; top:${pos.top}px;">${inner}</button>`;
   }).join('');
 }
 function bindRuneEquipTop(){
