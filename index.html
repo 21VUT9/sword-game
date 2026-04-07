@@ -23088,12 +23088,13 @@ function getPlayerFinalCombatStats(){
     else if ((m = s.match(/^보스 보호막 파괴 피해 \+(\d+)%$/))) engrBossShieldBreakDmgPct += Number(m[1]);
   }
 
-   const mainMul = 1 + (lv.sword * 0.10);
-
-  // ✅ 메인(공격력/주문력) 각인 % 적용
+  // ✅ 같은 스탯 그룹끼리는 합연산, 다른 그룹끼리는 분리
+  // - 공격력/주문력%: 검 패시브 + 캡틴 패시브 + 각인% 를 한 그룹으로 합산
+  const swordMainPct = lv.sword * 0.10;
+  const captainMainPct = (lv.magitech >= 1) ? 0.30 : 0.00; // ✅ 캡틴의 혼(마법공학 30강 1회라도) = 30% 상승
   const engrMainPct = (wp.t === "staff" || wp.t === "gauntlet" || wp.t === "magitech") ? engrSpellPct : engrAtkPct;
-  const captainMul = (lv.magitech >= 1) ? 1.30 : 1.00; // ✅ 캡틴의 혼(마법공학 30강 1회라도) = 30% 상승
-  const mainPower = Math.floor(rawPower * wp.coef * mainMul * captainMul * (1 + engrMainPct));
+  const totalMainPct = swordMainPct + captainMainPct + engrMainPct;
+  const mainPower = Math.floor(rawPower * wp.coef * (1 + totalMainPct));
 
   // 2) 서브 스탯(0%여도 표기 대상)
   const penetration   = Number(wp.ignoreDef || 0) + (lv.spear * 0.10) + (lv.gauntlet * 0.10) + engrPen;
