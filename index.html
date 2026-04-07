@@ -8051,7 +8051,21 @@ const couponRewards = {
     type: "itemProtect",
     count: 5,
     desc: "파괴방지 주문서 5개를 획득했습니다."
-  }
+  },
+
+  "CODE987654": {
+  type: "runeStone",
+  count: 100,
+  desc: "미확인 룬석 100개를 획득했습니다."
+},
+
+  "CODE9876543": {
+  type: "rune",
+  kind: "tiwaz",
+  count: 3,
+  desc: "티와즈 룬 3개를 획득했습니다."
+}
+  
 
   // 👇 원하는 만큼 더 추가 가능
   // "CODE123": { type: "itemSuper", count: 1, desc: "슈퍼강화 주문서 1개를 획득했습니다." }//itemDownProtect//
@@ -15533,40 +15547,71 @@ function submitCouponCode() {
 
   // 3) 최초 사용 → 보상 지급
   // 아이템 지급
-  switch (reward.type) {
-    case "itemScroll21":
-      itemScroll21 = Number(itemScroll21 || 0) + reward.count;
-      break;
-    case "itemProtect":
-      itemProtect = Number(itemProtect || 0) + reward.count;
-      break;
-    case "itemSuper":
-      itemSuper = Number(itemSuper || 0) + reward.count;
-      break;
-    case "itemDownProtect":
-      itemDownProtect = Number(itemDownProtect || 0) + reward.count;
-      break;
-    case "itemRateUp5":
-      itemRateUp5 = Number(itemRateUp5 || 0) + reward.count;
-      break;
-    case "starShard":
-      starShard = Number(starShard || 0) + reward.count;
-      break;
-    case "honorMedal":
-      itemHonorMedal = Number(itemHonorMedal || 0) + reward.count;
-      break;
-    case "engraveNormalScroll":
-  itemEngraveNormal = Number(itemEngraveNormal || 0) + reward.count;
-  break;
+switch (reward.type) {
+  case "itemScroll21":
+    itemScroll21 = Number(itemScroll21 || 0) + reward.count;
+    break;
 
-case "engraveAdvancedScroll":
-  itemEngraveAdvanced = Number(itemEngraveAdvanced || 0) + reward.count;
-  break;
+  case "itemProtect":
+    itemProtect = Number(itemProtect || 0) + reward.count;
+    break;
 
-    // 필요하면 타입 더 추가 가능
-    default:
-      break;
+  case "itemSuper":
+    itemSuper = Number(itemSuper || 0) + reward.count;
+    break;
+
+  case "itemDownProtect":
+    itemDownProtect = Number(itemDownProtect || 0) + reward.count;
+    break;
+
+  case "itemRateUp5":
+    itemRateUp5 = Number(itemRateUp5 || 0) + reward.count;
+    break;
+
+  case "starShard":
+    starShard = Number(starShard || 0) + reward.count;
+    break;
+
+  case "honorMedal":
+    itemHonorMedal = Number(itemHonorMedal || 0) + reward.count;
+    break;
+
+  case "engraveNormalScroll":
+    itemEngraveNormal = Number(itemEngraveNormal || 0) + reward.count;
+    break;
+
+  case "engraveAdvancedScroll":
+    itemEngraveAdvanced = Number(itemEngraveAdvanced || 0) + reward.count;
+    break;
+
+  case "runeStone": {
+    const addCount = Number(reward.count || 0);
+    const current = Number(unidentifiedRuneStones || 0);
+    unidentifiedRuneStones = Math.min(RUNE_STORAGE_LIMIT, current + addCount);
+    break;
   }
+
+  case "rune": {
+    const addCount = Number(reward.count || 0);
+    const kind = String(reward.kind || "");
+    if (!RUNE_DEFS[kind]) break;
+
+    for (let i = 0; i < addCount; i++) {
+      if (runeInventory.length >= RUNE_STORAGE_LIMIT) break;
+      runeInventory.push({
+        uid: `rune_${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${i}`,
+        kind,
+        level: 1,
+        isNew: true,
+        acquiredAt: Date.now()
+      });
+    }
+    break;
+  }
+
+  default:
+    break;
+}
 
   // 사용 기록
   if (!couponUsedMap) couponUsedMap = {};
