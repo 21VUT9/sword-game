@@ -4683,6 +4683,126 @@ html, body {
   100%{ opacity:0; transform: translateY(-3px) scale(1.01); }
 }
 
+
+/* =========================
+   🔮 룬 시스템
+   ========================= */
+#runeOverlay{
+  position:fixed;
+  inset:0;
+  z-index:5200;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,0.76);
+}
+.rune-panel{
+  width:min(980px, 96vw);
+  max-height:86vh;
+  overflow:hidden;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,0.16);
+  background:linear-gradient(180deg, rgba(24,24,30,0.98), rgba(13,13,17,0.98));
+  box-shadow:0 18px 40px rgba(0,0,0,0.55);
+  color:#f1f1f1;
+}
+.rune-header{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:14px 18px 10px;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+}
+.rune-title{font-size:20px;font-weight:900; margin-right:auto;}
+.rune-tabbar{display:flex; gap:8px; margin-left:auto; margin-right:10px;}
+.rune-tab{
+  margin:0; padding:9px 14px; font-size:14px; font-weight:800;
+  border-radius:10px; border:1px solid rgba(255,255,255,0.15);
+  background:rgba(255,255,255,0.05); color:#ddd; cursor:pointer;
+}
+.rune-tab.active{background:rgba(141,194,255,0.16); border-color:rgba(141,194,255,0.44); color:#dff0ff;}
+.rune-close{margin:0;padding:0;border:0;background:none;color:#fff;font-size:24px;font-weight:900;cursor:pointer;}
+.rune-body{display:grid; grid-template-rows: minmax(280px, 50%) minmax(260px, 50%); height:min(78vh, 820px);}
+.rune-top{position:relative; padding:18px 18px 12px; border-bottom:1px solid rgba(255,255,255,0.08); overflow:hidden;}
+.rune-bottom{padding:12px 18px 18px; min-height:0; display:flex; flex-direction:column;}
+.rune-equip-top-wrap{position:relative; width:100%; height:100%;}
+.rune-ring-wrap{position:relative; width:min(440px, 92vw); height:300px; margin:0 auto;}
+.rune-slot{
+  position:absolute; display:flex; align-items:center; justify-content:center;
+  border-radius:999px; border:2px solid rgba(255,255,255,0.18);
+  background:radial-gradient(circle at 40% 35%, rgba(255,255,255,0.14), rgba(255,255,255,0.04) 45%, rgba(0,0,0,0.28) 100%);
+  box-shadow: inset 0 0 14px rgba(255,255,255,0.06), 0 0 0 1px rgba(0,0,0,0.35);
+  cursor:pointer; overflow:hidden; transform:translate(-50%, -50%); transform-origin:center center;
+  transition:transform .12s ease, border-color .12s ease, box-shadow .12s ease, opacity .12s ease;
+}
+.rune-slot:hover{transform:translate(-50%, -50%) scale(1.04);}
+.rune-slot.large{width:86px;height:86px;}
+.rune-slot.small{width:66px;height:66px;}
+.rune-slot.locked{filter:grayscale(0.15); opacity:0.82; border-color:rgba(255,215,112,0.28);}
+.rune-slot.locked::after{content:'🔒'; position:absolute; font-size:22px; text-shadow:0 2px 8px rgba(0,0,0,0.7);}
+.rune-slot.disabled{opacity:0.22; filter:grayscale(0.92); cursor:default; pointer-events:none;}
+.rune-slot.empty .rune-slot-plus{font-size:26px; color:rgba(255,255,255,0.28); font-weight:700;}
+.rune-slot.selectable{border-color:#ffe28a; box-shadow:0 0 0 2px rgba(255,226,138,0.22), 0 0 16px rgba(255,214,92,0.22);}
+.rune-slot.active-pick{border-color:#8cd2ff; box-shadow:0 0 0 2px rgba(140,210,255,0.22), 0 0 18px rgba(100,180,255,0.24);}
+.rune-slot img{width:72%; height:72%; object-fit:contain; filter:drop-shadow(0 0 8px rgba(160,210,255,0.22));}
+.rune-slot .rune-grade-mini{position:absolute; left:6px; top:4px; font-size:13px; font-weight:900; color:#f7e8b0; text-shadow:0 1px 5px rgba(0,0,0,0.7);}
+.rune-slot .rune-slot-num{position:absolute; bottom:5px; right:8px; font-size:11px; color:#bbb; font-weight:700;}
+.rune-preset-bar{position:absolute; left:0; top:0; display:flex; gap:6px; margin:0; z-index:3;}
+.rune-preset-btn{margin:0; padding:4px 8px; font-size:11px; font-weight:800; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:rgba(255,255,255,0.05); color:#ddd; cursor:pointer;}
+.rune-preset-btn.active{background:rgba(255,213,79,0.14); border-color:rgba(255,213,79,0.44); color:#ffd54f;}
+.rune-top-grid{display:grid; grid-template-columns: 1fr 1fr; gap:16px; align-items:center; height:100%;}
+.rune-process-wrap{display:grid; grid-template-columns:180px 1fr; gap:14px; align-items:center; height:100%;}
+.rune-verdia-card{display:flex; flex-direction:column; align-items:center; gap:8px;}
+.rune-verdia-card img{width:148px; height:148px; object-fit:contain; border-radius:16px; background:rgba(255,255,255,0.04);}
+.rune-verdia-name{font-size:15px; font-weight:900; color:#dce9f9;}
+.rune-process-main{display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:220px;}
+.rune-process-box{width:126px; height:126px; border-radius:18px; border:2px dashed rgba(255,255,255,0.18); display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.04); cursor:pointer; position:relative;}
+.rune-process-box.active{border-color:#8cd2ff; box-shadow:0 0 16px rgba(100,180,255,0.22);}
+.rune-process-box img{width:78%; height:78%; object-fit:contain;}
+.rune-process-box span{color:#6f7a88; font-size:14px; line-height:1.4;}
+.rune-process-btn{margin-top:12px; padding:11px 22px; font-size:15px; font-weight:900; border-radius:12px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.08); color:#fff; cursor:pointer;}
+.rune-process-btn:disabled{opacity:0.38; cursor:default;}
+.rune-process-note{margin-top:10px; font-size:12px; line-height:1.55; color:#aeb4bf; text-align:center; white-space:pre-line;}
+.rune-process-quote{margin-top:10px; font-size:13px; line-height:1.6; color:#eef2f6; text-align:center; min-height:42px;}
+.rune-bottom-head{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;}
+.rune-bottom-title{font-size:15px; font-weight:900; color:#f3f3f3;}
+.rune-sort-bar{display:flex; gap:6px; flex-wrap:wrap;}
+.rune-sort-btn{margin:0; padding:7px 10px; font-size:12px; font-weight:800; border-radius:999px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); color:#ddd; cursor:pointer;}
+.rune-sort-btn.active{background:rgba(255,213,79,0.14); border-color:rgba(255,213,79,0.38); color:#ffd54f;}
+.rune-inventory-grid{display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:10px; overflow-y:auto; padding-right:6px;}
+.rune-item{
+  position:relative; aspect-ratio:1/1; border-radius:12px; border:2px solid rgba(255,255,255,0.12); background:rgba(16,16,20,0.88);
+  display:flex; align-items:center; justify-content:center; cursor:pointer; overflow:hidden;
+}
+.rune-item:hover{border-color:rgba(255,255,255,0.22);} 
+.rune-item.selected{border-color:#8cd2ff; box-shadow:0 0 14px rgba(100,180,255,0.24);} 
+.rune-item img{width:74%; height:74%; object-fit:contain;}
+.rune-item.equipped{border-color:#ffd56a; box-shadow:0 0 16px rgba(255,213,106,0.18);} 
+.rune-badge{position:absolute; display:flex; align-items:center; justify-content:center; min-width:20px; height:20px; padding:0 6px; border-radius:999px; font-size:11px; font-weight:900; box-shadow:0 2px 6px rgba(0,0,0,0.35);} 
+.rune-badge.e{top:5px; right:5px; background:#ffd54f; color:#1b1400;} 
+.rune-badge.new{left:5px; top:5px; background:#ff4d4d; color:#fff;} 
+.rune-badge.lv{left:5px; bottom:5px; background:rgba(255,255,255,0.11); color:#fff;} 
+.rune-kind-label{position:absolute; bottom:5px; right:6px; font-size:11px; color:#bcc6d7; font-weight:800; text-shadow:0 1px 3px rgba(0,0,0,0.8);} 
+.rune-card{
+  position:fixed; z-index:5400; display:none; width:min(320px, calc(100vw - 24px)); background:rgba(22,22,28,0.98); border:1px solid rgba(255,255,255,0.14); border-radius:14px; box-shadow:0 16px 30px rgba(0,0,0,0.45); padding:14px;
+}
+.rune-card-title{font-size:17px; font-weight:900; color:#fff; text-align:center;}
+.rune-card-effect{font-size:13px; color:#cfd5df; text-align:center; margin-top:6px; line-height:1.5; white-space:pre-line;}
+.rune-card img{display:block; width:92px; height:92px; object-fit:contain; margin:12px auto 10px;}
+.rune-card-btns{display:flex; gap:10px;}
+.rune-card-btns button{flex:1; margin:0; padding:10px 0; font-size:14px; font-weight:800; border-radius:10px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.07); color:#fff; cursor:pointer;}
+.rune-sub-option{display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px; color:#cfd5df; font-size:13px;}
+.rune-empty{flex:1; display:flex; align-items:center; justify-content:center; color:#767c86; font-size:14px; text-align:center; border:1px dashed rgba(255,255,255,0.10); border-radius:14px;}
+@media (max-width: 760px){
+  .rune-header{flex-wrap:wrap;}
+  .rune-tabbar{order:3; width:100%; flex-wrap:wrap; margin:4px 0 0 0;}
+  .rune-body{grid-template-rows:minmax(320px, 48%) minmax(240px, 52%);} 
+  .rune-top-grid{grid-template-columns:1fr;}
+  .rune-process-wrap{grid-template-columns:1fr;}
+  .rune-verdia-card{display:none;}
+  .rune-inventory-grid{grid-template-columns:repeat(4, minmax(0, 1fr));}
+}
+
 </style>
 </head>
 
@@ -4694,7 +4814,7 @@ html, body {
 <h2>
   🔐 로그인
   <span style="font-size:0.7em; color:#888; margin-left:4px;">
-    (v4.482)
+    (v4.503)
   </span>
 </h2>
   <input id="loginId" placeholder="아이디"><br><br>
@@ -5105,9 +5225,8 @@ html, body {
   </div>
 
   <div class="dock-slot">
-  <button id="runeDockBtn" class="dock-btn locked" data-nosfx="1">
+  <button id="runeDockBtn" class="dock-btn" data-nosfx="1">
     <img src="images/ui/icon_rune.png" alt="룬">
-    <span class="dock-lock">🔒</span>
   </button>
   <span class="map-icon-label one-line">룬</span>
 </div>
@@ -5223,6 +5342,44 @@ html, body {
   </div>
 </div>
   
+
+
+<!-- 🔮 룬 관리 오버레이 -->
+<div id="runeOverlay" onclick="if(event.target===this) closeRuneOverlay();">
+  <div class="rune-panel" onclick="event.stopPropagation();">
+    <div class="rune-header">
+      <div class="rune-title">룬 관리</div>
+      <div class="rune-tabbar">
+        <button id="runeTabEquip" class="rune-tab active" type="button">장착</button>
+        <button id="runeTabUpgrade" class="rune-tab" type="button">강화</button>
+        <button id="runeTabDismantle" class="rune-tab" type="button">분해</button>
+        <button id="runeTabAppraise" class="rune-tab" type="button">감정</button>
+      </div>
+      <button class="rune-close" type="button" onclick="closeRuneOverlay()">✕</button>
+    </div>
+    <div class="rune-body">
+      <div id="runeTopArea" class="rune-top"></div>
+      <div class="rune-bottom">
+        <div class="rune-bottom-head">
+          <div id="runeBottomTitle" class="rune-bottom-title">보유 룬</div>
+          <div id="runeSortBar" class="rune-sort-bar"></div>
+        </div>
+        <div id="runeInventoryArea" style="min-height:0; flex:1; display:flex;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="runeInfoCard" class="rune-card">
+  <div id="runeInfoCardTitle" class="rune-card-title"></div>
+  <div id="runeInfoCardEffect" class="rune-card-effect"></div>
+  <img id="runeInfoCardImg" src="images/ui/icon_rune.png" alt="">
+  <div class="rune-card-btns">
+    <button id="runeInfoActionBtn" type="button">장착</button>
+    <button type="button" onclick="hideRuneInfoCard()">닫기</button>
+  </div>
+</div>
+
 <!-- 🎒 인벤토리 오버레이 -->
 <div id="inventoryOverlay" class="uiOverlay"
      onclick="if(event.target===this) closeInventoryOverlay();"
@@ -7415,6 +7572,51 @@ let engravePresets = [
 
 // ✅ (호환) 기존 코드들이 engraveLines 를 많이 쓰니까 유지
 let engraveLines = engravePresets[engravePresetIdx];
+
+
+// =========================
+// 🔮 룬 시스템 상태
+// =========================
+const RUNE_IMAGE_FALLBACK = "images/ui/icon_rune.png";
+const VERDIA_IMAGE_FALLBACK = "images/npc/rune_mage_verdia.png";
+const RUNE_APPRAISAL_COST = 100000000;
+const RUNE_STORAGE_LIMIT = 200;
+const RUNE_UNLOCK_COSTS = [0,0,0,10000000000,100000000000,500000000000,1000000000000,5000000000000,10000000000000];
+const RUNE_DEFS = {
+  tiwaz:    { name:"티와즈 룬", kindOrder:1, effectLabel:"공격력", effectType:"flat_attack", stoneImg:"images/items/runes/rune_stone_tiwaz.png", runeImg:"images/items/runes/rune_mark_tiwaz.png", values:[1100000000,3100000000,5300000000,7800000000,11000000000] },
+  berkano:  { name:"베르카노 룬", kindOrder:2, effectLabel:"주문력", effectType:"flat_spell", stoneImg:"images/items/runes/rune_stone_berkano.png", runeImg:"images/items/runes/rune_mark_berkano.png", values:[1100000000,3100000000,5300000000,7800000000,11000000000] },
+  ehwaz:    { name:"에와즈 룬", kindOrder:3, effectLabel:"공격력", effectType:"pct_attack", stoneImg:"images/items/runes/rune_stone_ehwaz.png", runeImg:"images/items/runes/rune_mark_ehwaz.png", values:[1,3,5,7,9] },
+  mannaz:   { name:"만나즈 룬", kindOrder:4, effectLabel:"주문력", effectType:"pct_spell", stoneImg:"images/items/runes/rune_stone_mannaz.png", runeImg:"images/items/runes/rune_mark_mannaz.png", values:[1,3,5,7,9] },
+  laguz:    { name:"라구즈 룬", kindOrder:5, effectLabel:"치명타피해", effectType:"crit_damage", stoneImg:"images/items/runes/rune_stone_laguz.png", runeImg:"images/items/runes/rune_mark_laguz.png", values:[2,4,6,9,12] },
+  dagaz:    { name:"다가즈 룬", kindOrder:6, effectLabel:"관통력", effectType:"penetration", stoneImg:"images/items/runes/rune_stone_dagaz.png", runeImg:"images/items/runes/rune_mark_dagaz.png", values:[1,3,5,7,10] },
+  othala:   { name:"오탈라 룬", kindOrder:7, effectLabel:"회피무시", effectType:"ignore_evade", stoneImg:"images/items/runes/rune_stone_othala.png", runeImg:"images/items/runes/rune_mark_othala.png", values:[1,3,5,7,10] },
+  eihwaz:   { name:"아이와즈 룬", kindOrder:8, effectLabel:"치명타확률", effectType:"crit_rate", stoneImg:"images/items/runes/rune_stone_eihwaz.png", runeImg:"images/items/runes/rune_mark_eihwaz.png", values:[3,6,9,12,15] }
+};
+const RUNE_KIND_KEYS = Object.keys(RUNE_DEFS);
+const RUNE_UPGRADE_TABLE = {
+  1:{ success:60, keep:30, down:10, essence:100 },
+  2:{ success:40, keep:40, down:20, essence:200 },
+  3:{ success:20, keep:50, down:30, essence:300 },
+  4:{ success:10, keep:50, down:40, essence:400 }
+};
+const RUNE_VERDIA_LINES = {
+  upgrade:["룬의 결을 서두르지 말아요. 흐름이 스스로 자리를 찾을 거예요.","강한 룬은 억지로 태어나지 않아요. 하지만 준비된 룬은 응답하죠.","조용히 집중해봐요. 이 작은 떨림이 결과를 바꿀 수도 있으니까요."],
+  dismantle:["부서지는 건 끝이 아니라, 다른 룬을 위한 재료가 되는 거예요.","형태를 잃어도 마력은 사라지지 않아요. 다시 흐르게 만들면 돼요.","아쉬워도 괜찮아요. 정수로 돌아간 힘은 다시 도움이 될 거예요."],
+  appraise:["겉은 침묵해도 안쪽의 문양은 이미 말하고 있어요.","미감정 룬석은 늘 솔직해요. 어떤 흔적을 품었는지만 드러날 뿐이죠.","이번에는 어떤 룬이 나올까요? 조금 두근거리네요."],
+  equip:["룬은 돌에 박혀 있던 힘을 당신에게 옮겨오는 거예요.","비어 있는 자리에 어떤 문양을 둘지, 그 조합이 곧 당신의 길이 돼요.","같은 룬을 겹쳐도 괜찮아요. 공명은 때때로 반복에서 완성되거든요."]
+};
+let runeInventory = [];
+let unidentifiedRuneStones = 0;
+let runeSlotUnlockCount = 3;
+let runePresetIdx = 0;
+let runePresets = Array.from({length:3}, () => Array(9).fill(null));
+let runeTab = "equip";
+let runeSortMode = "acquired";
+let runePendingEquipUid = "";
+let runeSelectedUid = "";
+let runeSelectedStoneIndex = -1;
+let runeSelectedTopUid = "";
+let runeBulkDismantle = false;
 
 // ✅ 프리셋/라인 모양 보정 + engraveLines 동기화
 function ensureEngravePresetShape(){
@@ -17461,6 +17663,11 @@ function login() {
       itemEngraveNormal = Number(data.itemEngraveNormal || 0);
       itemEngraveAdvanced = Number(data.itemEngraveAdvanced || 0);
       itemBossPriority = Number(data.itemBossPriority || 0);
+      runeInventory = normalizeRuneInventory(data.runeInventory);
+      unidentifiedRuneStones = Math.max(0, Number(data.unidentifiedRuneStones || 0));
+      runeSlotUnlockCount = clampRuneUnlockCount(data.runeSlotUnlockCount);
+      runePresetIdx = [0,1,2].includes(Number(data.runePresetIdx)) ? Number(data.runePresetIdx) : 0;
+      runePresets = normalizeRunePresets(data.runePresets);
       couponUsedMap = data.couponUsed || {};
       // ✅ 퀘스트 상태(계정별) 로드
       questState = (data.questState && typeof data.questState === "object") ? data.questState : {};
@@ -17703,6 +17910,11 @@ function login() {
       titlesOwned: {},
       equippedTitle: "",
       cumulativeRewardState: createDefaultCumulativeRewardState(),
+      runeInventory: [],
+      unidentifiedRuneStones: 0,
+      runeSlotUnlockCount: 3,
+      runePresetIdx: 0,
+      runePresets: [Array(9).fill(null), Array(9).fill(null), Array(9).fill(null)],
       // ⚠️ 네가 쓰던 글로벌30 기본값도 여기 포함(있으면)
       // lastSeenGlobal30EventId: ...,
       // aweUsedGlobal30EventId: 0
@@ -17772,6 +17984,11 @@ function save() {
     itemEngraveNormal: Number(itemEngraveNormal || 0),
     itemEngraveAdvanced: Number(itemEngraveAdvanced || 0),
     itemBossPriority: Number(itemBossPriority || 0),
+    runeInventory: normalizeRuneInventory(runeInventory),
+    unidentifiedRuneStones: Math.max(0, Number(unidentifiedRuneStones || 0)),
+    runeSlotUnlockCount: clampRuneUnlockCount(runeSlotUnlockCount),
+    runePresetIdx: Number(runePresetIdx || 0),
+    runePresets: normalizeRunePresets(runePresets),
     cumulativeRewardState: normalizeCumulativeRewardState(cumulativeRewardState),
     huntStamina: Number(huntStamina),
     lastStaminaUpdate: Number(lastStaminaUpdate),
@@ -23088,19 +23305,24 @@ function getPlayerFinalCombatStats(){
     else if ((m = s.match(/^보스 보호막 파괴 피해 \+(\d+)%$/))) engrBossShieldBreakDmgPct += Number(m[1]);
   }
 
+  const rune = getRuneStatTotals();
+
   // ✅ 같은 스탯 그룹끼리는 합연산, 다른 그룹끼리는 분리
-  // - 공격력/주문력%: 검 패시브 + 캡틴 패시브 + 각인% 를 한 그룹으로 합산
+  // - 공격력/주문력%: 검 패시브 + 캡틴 패시브 + 각인% + 룬% 를 한 그룹으로 합산
   const swordMainPct = lv.sword * 0.10;
   const captainMainPct = (lv.magitech >= 1) ? 0.30 : 0.00; // ✅ 캡틴의 혼(마법공학 30강 1회라도) = 30% 상승
-  const engrMainPct = (wp.t === "staff" || wp.t === "gauntlet" || wp.t === "magitech") ? engrSpellPct : engrAtkPct;
-  const totalMainPct = swordMainPct + captainMainPct + engrMainPct;
-  const mainPower = Math.floor(rawPower * wp.coef * (1 + totalMainPct));
+  const isMagicMain = (wp.t === "staff" || wp.t === "gauntlet" || wp.t === "magitech");
+  const engrMainPct = isMagicMain ? engrSpellPct : engrAtkPct;
+  const runeMainPct = isMagicMain ? Number(rune.pctSpell || 0) : Number(rune.pctAttack || 0);
+  const totalMainPct = swordMainPct + captainMainPct + engrMainPct + runeMainPct;
+  const runeFlatMain = isMagicMain ? Number(rune.flatSpell || 0) : Number(rune.flatAttack || 0);
+  const mainPower = Math.floor((rawPower * wp.coef * (1 + totalMainPct)) + runeFlatMain);
 
   // 2) 서브 스탯(0%여도 표기 대상)
-  const penetration   = Number(wp.ignoreDef || 0) + (lv.spear * 0.10) + (lv.gauntlet * 0.10) + engrPen;
-  const ignoreEvade   = Number(wp.ignoreEvade || 0) + (lv.bow    * 0.10) + engrIgnoreEv;
-  const critRate      = Number(wp.critRate || 0)    + (lv.axe    * 0.10) + engrCritRate;
-  const critDmgBonus  = Number(wp.critDmgBonus || 0)+ (lv.dagger * 0.10) + engrCritDmg;
+  const penetration   = Number(wp.ignoreDef || 0) + (lv.spear * 0.10) + (lv.gauntlet * 0.10) + engrPen + Number(rune.penetration || 0);
+  const ignoreEvade   = Number(wp.ignoreEvade || 0) + (lv.bow    * 0.10) + engrIgnoreEv + Number(rune.ignoreEvade || 0);
+  const critRate      = Number(wp.critRate || 0)    + (lv.axe    * 0.10) + engrCritRate + Number(rune.critRate || 0);
+  const critDmgBonus  = Number(wp.critDmgBonus || 0)+ (lv.dagger * 0.10) + engrCritDmg + Number(rune.critDamage || 0);
   const huntMaxPlus   = (lv.staff * 2) + Math.max(0, engrHuntMaxPlus); // 스태프 패시브 + 각인
 
   return {
@@ -24918,6 +25140,456 @@ try {
 });
 }
 
+
+function safeRuneImg(src){ return src || RUNE_IMAGE_FALLBACK; }
+function clampRuneUnlockCount(v){ return Math.max(3, Math.min(9, Number(v || 3))); }
+function makeRuneUid(){ return `rune_${Date.now()}_${Math.random().toString(36).slice(2,8)}`; }
+function normalizeRuneLevel(v){ return Math.max(1, Math.min(5, Number(v || 1))); }
+function normalizeRuneInventory(arr){
+  const list = Array.isArray(arr) ? arr : [];
+  return list.map((it, idx) => {
+    const kind = RUNE_DEFS[it && it.kind] ? it.kind : 'tiwaz';
+    return {
+      uid: String((it && it.uid) || makeRuneUid()),
+      kind,
+      level: normalizeRuneLevel(it && it.level),
+      acquiredAt: Number((it && it.acquiredAt) || Date.now() + idx),
+      isNew: Boolean(it && it.isNew)
+    };
+  }).slice(0, RUNE_STORAGE_LIMIT);
+}
+function normalizeRunePresets(v){
+  const out = Array.from({length:3}, ()=> Array(9).fill(null));
+  const src = Array.isArray(v) ? v : [];
+  for (let i=0;i<3;i++){
+    const row = Array.isArray(src[i]) ? src[i] : [];
+    for (let j=0;j<9;j++) out[i][j] = row[j] ? String(row[j]) : null;
+  }
+  return out;
+}
+function getRuneDef(kind){ return RUNE_DEFS[kind] || RUNE_DEFS.tiwaz; }
+function getRuneItemByUid(uid){ return runeInventory.find(r => String(r.uid) === String(uid)) || null; }
+function getRuneValue(item){ const def = getRuneDef(item.kind); return Number(def.values[normalizeRuneLevel(item.level)-1] || 0); }
+function getRuneEffectText(item){
+  const def = getRuneDef(item.kind);
+  const val = getRuneValue(item);
+  const isPct = ['pct_attack','pct_spell','crit_damage','penetration','ignore_evade','crit_rate'].includes(def.effectType);
+  return `${def.effectLabel} +${isPct ? val + '%' : formatNumberFullKR(val)}`;
+}
+function getRuneDisplayName(item){
+  const def = getRuneDef(item.kind);
+  return `${def.name}${Number(item.level||1) >= 2 ? ' +' + Number(item.level) + '강' : ''}`;
+}
+function getRuneStoneIcon(kind){ return safeRuneImg(getRuneDef(kind).stoneImg); }
+function getRuneMarkIcon(kind){ return safeRuneImg(getRuneDef(kind).runeImg); }
+function getActiveRuneSlots(){ return normalizeRunePresets(runePresets)[Number(runePresetIdx||0)] || Array(9).fill(null); }
+function getAllActiveEquippedRuneUids(){ return getActiveRuneSlots().filter(Boolean); }
+function isRuneEquipped(uid){ return getAllActiveEquippedRuneUids().includes(String(uid)); }
+function clearRuneNewFlags(){
+  let changed = false;
+  runeInventory.forEach(r => { if (r.isNew){ r.isNew = false; changed = true; } });
+  if (changed) save();
+}
+function getRunePresetName(idx){ return `preset${idx+1}`; }
+function getRuneSlotUnlockCost(slotIndex){ return Number(RUNE_UNLOCK_COSTS[slotIndex] || 0); }
+function getRuneSortLabel(mode){ return mode === 'kind' ? '종류별' : (mode === 'level' ? '강화순' : '획득순'); }
+function getSortedRuneInventory(list){
+  const arr = [...list];
+  arr.sort((a,b)=>{
+    const ea = isRuneEquipped(a.uid) ? 0 : 1;
+    const eb = isRuneEquipped(b.uid) ? 0 : 1;
+    if (ea !== eb) return ea - eb;
+    if (runeSortMode === 'kind'){
+      const ka = getRuneDef(a.kind).kindOrder, kb = getRuneDef(b.kind).kindOrder;
+      if (ka !== kb) return ka - kb;
+      if (b.level !== a.level) return b.level - a.level;
+      return b.acquiredAt - a.acquiredAt;
+    }
+    if (runeSortMode === 'level'){
+      if (b.level !== a.level) return b.level - a.level;
+      const ka = getRuneDef(a.kind).kindOrder, kb = getRuneDef(b.kind).kindOrder;
+      if (ka !== kb) return ka - kb;
+      return b.acquiredAt - a.acquiredAt;
+    }
+    return b.acquiredAt - a.acquiredAt;
+  });
+  return arr;
+}
+function getRuneStatTotals(){
+  const totals = { flatAttack:0, flatSpell:0, pctAttack:0, pctSpell:0, critDamage:0, penetration:0, ignoreEvade:0, critRate:0 };
+  getAllActiveEquippedRuneUids().forEach(uid => {
+    const item = getRuneItemByUid(uid);
+    if (!item) return;
+    const val = getRuneValue(item);
+    switch (getRuneDef(item.kind).effectType){
+      case 'flat_attack': totals.flatAttack += val; break;
+      case 'flat_spell': totals.flatSpell += val; break;
+      case 'pct_attack': totals.pctAttack += val / 100; break;
+      case 'pct_spell': totals.pctSpell += val / 100; break;
+      case 'crit_damage': totals.critDamage += val / 100; break;
+      case 'penetration': totals.penetration += val / 100; break;
+      case 'ignore_evade': totals.ignoreEvade += val / 100; break;
+      case 'crit_rate': totals.critRate += val / 100; break;
+    }
+  });
+  return totals;
+}
+function getRuneStorageUsed(){ return Number(runeInventory.length || 0) + Math.max(0, Number(unidentifiedRuneStones || 0)); }
+function canReceiveRuneStone(){ return getRuneStorageUsed() < RUNE_STORAGE_LIMIT; }
+function addUnidentifiedRuneStone(qty=1){
+  qty = Math.max(0, Number(qty||0));
+  if (getRuneStorageUsed() + qty > RUNE_STORAGE_LIMIT) return false;
+  unidentifiedRuneStones += qty;
+  save();
+  return true;
+}
+function getVerdiaLine(mode){
+  const lines = RUNE_VERDIA_LINES[mode] || RUNE_VERDIA_LINES.equip;
+  return lines[Math.floor(Math.random() * lines.length)] || '';
+}
+function hideRuneInfoCard(){ const el = document.getElementById('runeInfoCard'); if (el) el.style.display = 'none'; }
+function closeRuneOverlay(){ hideRuneInfoCard(); runePendingEquipUid = ''; runeSelectedUid=''; runeSelectedStoneIndex=-1; runeSelectedTopUid=''; const el=document.getElementById('runeOverlay'); if (el) el.style.display='none'; const btn=document.getElementById('runeDockBtn'); if(btn) btn.classList.remove('active'); }
+function openRuneOverlay(){
+  if (!userRef || !userId) return;
+  runeTab = runeTab || 'equip';
+  const el = document.getElementById('runeOverlay');
+  if (!el) return;
+  el.style.display = 'flex';
+  const btn = document.getElementById('runeDockBtn');
+  if (btn) btn.classList.add('active');
+  renderRuneOverlay();
+}
+function renderRuneOverlay(){
+  const btn = document.getElementById('runeDockBtn');
+  if (btn) btn.classList.toggle('active', document.getElementById('runeOverlay')?.style.display === 'flex');
+  bindRuneTabs();
+  renderRuneTopArea();
+  renderRuneBottomArea();
+  if (['equip','upgrade','dismantle'].includes(runeTab)) clearRuneNewFlags();
+}
+function bindRuneTabs(){
+  [['equip','runeTabEquip'],['upgrade','runeTabUpgrade'],['dismantle','runeTabDismantle'],['appraise','runeTabAppraise']].forEach(([key,id])=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.classList.toggle('active', runeTab===key);
+    el.onclick = () => { hideRuneInfoCard(); runePendingEquipUid=''; runeSelectedUid=''; runeSelectedStoneIndex=-1; runeSelectedTopUid=''; runeTab=key; renderRuneOverlay(); };
+  });
+}
+function renderRuneTopArea(){
+  const top = document.getElementById('runeTopArea'); if (!top) return;
+  if (runeTab === 'equip') { top.innerHTML = buildRuneEquipTopHtml(); bindRuneEquipTop(); return; }
+  const mode = runeTab;
+  const selected = runeTab === 'appraise' ? (runeSelectedStoneIndex >= 0 ? { stone:true } : null) : getRuneItemByUid(runeSelectedTopUid || runeSelectedUid);
+  const quote = getVerdiaLine(mode);
+  let note = '';
+  if (mode === 'upgrade'){
+    const lv = Number(selected && selected.level || 0);
+    const meta = RUNE_UPGRADE_TABLE[lv];
+    note = meta ? `비용 : 마력의정수 ${meta.essence}개\n강화확률 ${meta.success}%, 강등확률 ${meta.down}%` : '최대 강화 단계입니다.';
+  } else if (mode === 'dismantle') {
+    note = '분해 시 룬 1개당 마력의정수 50개를 획득합니다.';
+  } else {
+    note = `비용 : ${formatNumberFullKR(RUNE_APPRAISAL_COST)} 골드`;
+  }
+  top.innerHTML = `
+    <div class="rune-top-grid">
+      <div class="rune-process-wrap">
+        <div class="rune-verdia-card">
+          <img src="${VERDIA_IMAGE_FALLBACK}" alt="베르디아" onerror="this.onerror=null;this.src='images/ui/icon_rune.png';">
+          <div class="rune-verdia-name">룬마법사 베르디아</div>
+        </div>
+        <div class="rune-process-main">
+          <div id="runeProcessBox" class="rune-process-box ${selected ? 'active' : ''}">${buildRuneProcessBoxInner()}</div>
+          <button id="runeProcessBtn" class="rune-process-btn" type="button" ${isRuneProcessEnabled() ? '' : 'disabled'}>${mode==='upgrade'?'강화하기':(mode==='dismantle'?'분해하기':'감정하기')}</button>
+          ${mode==='appraise' ? `<div style="margin-top:4px;font-size:12px;color:#c9ced8;">아래 ${formatNumberFullKR(RUNE_APPRAISAL_COST)} 골드</div>` : ''}
+          <div class="rune-process-note">${note}</div>
+          <div class="rune-process-quote">${quote}</div>
+          ${mode==='dismantle' ? `<label class="rune-sub-option"><input id="runeBulkDismantleChk" type="checkbox" ${runeBulkDismantle ? 'checked' : ''}> 일괄분해</label>` : ''}
+        </div>
+      </div>
+      <div></div>
+    </div>`;
+  const box = document.getElementById('runeProcessBox');
+  if (box) box.onclick = () => { if (runeTab === 'appraise') runeSelectedStoneIndex = -1; else { runeSelectedUid=''; runeSelectedTopUid=''; } renderRuneOverlay(); };
+  const processBtn = document.getElementById('runeProcessBtn');
+  if (processBtn) processBtn.onclick = () => { if (runeTab==='upgrade') attemptRuneUpgrade(); else if (runeTab==='dismantle') attemptRuneDismantle(); else attemptRuneAppraise(); };
+  const bulk = document.getElementById('runeBulkDismantleChk');
+  if (bulk) bulk.onchange = () => { runeBulkDismantle = !!bulk.checked; renderRuneOverlay(); };
+}
+function buildRuneProcessBoxInner(){
+  if (runeTab === 'appraise'){
+    if (runeSelectedStoneIndex >= 0) return `<img src="images/items/runes/rune_stone_unidentified.png" alt="미감정 룬석" onerror="this.onerror=null;this.src='${RUNE_IMAGE_FALLBACK}';">`;
+    return '<span>미감정 룬석을\n올려주세요</span>';
+  }
+  const item = getRuneItemByUid(runeSelectedTopUid || runeSelectedUid);
+  if (!item) return `<span>${runeTab === 'upgrade' ? '강화할 룬을\n선택하세요' : '분해할 룬을\n선택하세요'}</span>`;
+  return `<img src="${getRuneStoneIcon(item.kind)}" alt="" onerror="this.onerror=null;this.src='${RUNE_IMAGE_FALLBACK}';">`;
+}
+function isRuneProcessEnabled(){
+  if (runeTab === 'appraise') return runeSelectedStoneIndex >= 0 && gold >= RUNE_APPRAISAL_COST && runeInventory.length < RUNE_STORAGE_LIMIT;
+  const item = getRuneItemByUid(runeSelectedTopUid || runeSelectedUid);
+  if (!item) return false;
+  if (runeTab === 'upgrade'){
+    const meta = RUNE_UPGRADE_TABLE[Number(item.level||1)];
+    return !!meta && Number(itemEssence||0) >= meta.essence;
+  }
+  if (runeTab === 'dismantle') return true;
+  return false;
+}
+function buildRuneEquipTopHtml(){
+  return `
+    <div class="rune-equip-top-wrap">
+      <div class="rune-preset-bar">
+        ${[0,1,2].map(i => `<button type="button" class="rune-preset-btn ${Number(runePresetIdx||0)===i ? 'active':''}" data-rune-preset="${i}">${getRunePresetName(i)}</button>`).join('')}
+      </div>
+      <div class="rune-ring-wrap">
+        ${buildRuneSlotsHtml()}
+      </div>
+    </div>`;
+}
+function buildRuneSlotsHtml(){
+  const slots = getRuneSlotPositions();
+  const active = getActiveRuneSlots();
+  return slots.map((pos, idx) => {
+    const unlocked = idx < runeSlotUnlockCount;
+    const unlockableNext = idx === runeSlotUnlockCount;
+    const disabledFuture = idx > runeSlotUnlockCount;
+    const uid = active[idx];
+    const item = uid ? getRuneItemByUid(uid) : null;
+    const large = pos.large ? 'large' : 'small';
+    const classes = ['rune-slot', large];
+    if (unlockableNext) classes.push('locked');
+    if (disabledFuture) classes.push('disabled');
+    if (unlocked && !item) classes.push('empty');
+    if (runePendingEquipUid && unlocked) classes.push('selectable');
+    if (runePendingEquipUid && unlocked) classes.push('active-pick');
+    const showPlus = unlocked || unlockableNext;
+    const inner = item ? `<img src="${getRuneMarkIcon(item.kind)}" alt="" onerror="this.onerror=null;this.src='${RUNE_IMAGE_FALLBACK}';"><span class="rune-grade-mini">${Number(item.level||1) >= 2 ? '+' + Number(item.level) : ''}</span>` : `<span class="rune-slot-plus">${showPlus ? '+' : ''}</span>`;
+    return `<button type="button" class="${classes.join(' ')}" data-rune-slot="${idx}" style="left:${pos.left}px; top:${pos.top}px;">${inner}<span class="rune-slot-num">${idx+1}</span></button>`;
+  }).join('');
+}
+function bindRuneEquipTop(){
+  document.querySelectorAll('[data-rune-preset]').forEach(btn => btn.onclick = () => { runePresetIdx = Number(btn.dataset.runePreset || 0); runePendingEquipUid=''; save(); renderRuneOverlay(); });
+  document.querySelectorAll('[data-rune-slot]').forEach(btn => btn.onclick = () => handleRuneSlotClick(Number(btn.dataset.runeSlot || 0), btn));
+}
+function getRuneSlotPositions(){
+  const wrapW = 440;
+  const wrapH = 300;
+  const cx = wrapW / 2;
+  const cy = wrapH / 2;
+  const radius = 118;
+  const startAngle = -60; // 1시 방향부터 시작
+  const step = 40;        // 9칸 균등 배치
+  const largeIndexSet = new Set([2, 5, 8]); // 3시 / 7시 / 11시
+
+  return Array.from({ length: 9 }, (_, idx) => {
+    const angle = startAngle + (step * idx);
+    const rad = angle * Math.PI / 180;
+    return {
+      left: Math.round(cx + Math.cos(rad) * radius),
+      top: Math.round(cy + Math.sin(rad) * radius),
+      large: largeIndexSet.has(idx)
+    };
+  });
+}
+function handleRuneSlotClick(idx, el){
+  hideRuneInfoCard();
+  if (idx > runeSlotUnlockCount) return;
+  if (idx === runeSlotUnlockCount){
+    const cost = getRuneSlotUnlockCost(idx);
+    showRuneUnlockConfirm(idx, cost);
+    return;
+  }
+  const active = getActiveRuneSlots();
+  const uid = active[idx];
+  if (runePendingEquipUid){
+    active[idx] = String(runePendingEquipUid);
+    runePresets[runePresetIdx] = active;
+    runePendingEquipUid = '';
+    save();
+    renderRuneOverlay();
+    return;
+  }
+  if (uid){
+    showRuneInfoCard({ uid, slotIndex:idx, mode:'equipped' }, el.getBoundingClientRect());
+  }
+}
+function showRuneUnlockConfirm(idx, cost){
+  setNpcName('룬마법사 – 베르디아');
+  const popup = document.getElementById('npcPopup');
+  const msgEl = document.getElementById('npcPopupText');
+  const imgEl = document.getElementById('npcPopupImg');
+  const okBtn = document.getElementById('npcConfirmBtn');
+  const cancelBtn = document.getElementById('npcCancelBtn');
+  if (!popup || !msgEl || !imgEl || !okBtn || !cancelBtn) return;
+  imgEl.style.display = 'block';
+  imgEl.src = VERDIA_IMAGE_FALLBACK;
+  msgEl.innerHTML = `룬을 더 추가하고 싶어?<br><br><span style="color:#ffd54f;">${formatNumberFullKR(cost)} 골드</span>`;
+  okBtn.style.display = 'inline-block';
+  cancelBtn.style.display = 'inline-block';
+  okBtn.textContent = '확인';
+  cancelBtn.textContent = '닫기';
+  okBtn.onclick = function(){
+    if (gold < cost){ popup.style.display='none'; showNpcMessage('골드가 부족합니다.', null, true, ''); return; }
+    gold = Math.max(0, Number(gold||0) - cost);
+    runeSlotUnlockCount = Math.max(runeSlotUnlockCount, idx+1);
+    popup.style.display='none';
+    save();
+    update();
+    renderRuneOverlay();
+  };
+  cancelBtn.onclick = function(){ popup.style.display='none'; };
+  popup.style.display = 'flex';
+}
+function showRuneInfoCard(payload, rect){
+  const item = getRuneItemByUid(payload.uid); if (!item) return;
+  const card = document.getElementById('runeInfoCard');
+  if (!card) return;
+  document.getElementById('runeInfoCardTitle').textContent = getRuneDisplayName(item);
+  document.getElementById('runeInfoCardEffect').textContent = getRuneEffectText(item);
+  const img = document.getElementById('runeInfoCardImg');
+  img.src = payload.mode === 'equipped' ? getRuneMarkIcon(item.kind) : getRuneStoneIcon(item.kind);
+  img.onerror = function(){ this.onerror=null; this.src=RUNE_IMAGE_FALLBACK; };
+  const action = document.getElementById('runeInfoActionBtn');
+  action.textContent = payload.mode === 'equipped' ? '해제' : '장착';
+  action.onclick = () => {
+    hideRuneInfoCard();
+    if (payload.mode === 'equipped') {
+      const slots = getActiveRuneSlots();
+      slots[payload.slotIndex] = null;
+      runePresets[runePresetIdx] = slots;
+      save(); renderRuneOverlay(); return;
+    }
+    runePendingEquipUid = String(payload.uid);
+    renderRuneOverlay();
+  };
+  card.style.display = 'block';
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const left = Math.min(vw - card.offsetWidth - 10, Math.max(10, rect.left + rect.width/2 - 160));
+  const top = Math.min(vh - card.offsetHeight - 10, Math.max(10, rect.top + window.scrollY - card.offsetHeight - 12));
+  card.style.left = left + 'px';
+  card.style.top = top + 'px';
+}
+function renderRuneBottomArea(){
+  const title = document.getElementById('runeBottomTitle');
+  const area = document.getElementById('runeInventoryArea');
+  const sortBar = document.getElementById('runeSortBar');
+  if (!title || !area || !sortBar) return;
+  sortBar.innerHTML = '';
+  if (runeTab === 'appraise') title.textContent = `미감정 룬석 (${unidentifiedRuneStones}/${RUNE_STORAGE_LIMIT})`;
+  else title.textContent = `보유 룬 (${runeInventory.length}/${RUNE_STORAGE_LIMIT})`;
+  const modes = ['acquired','kind','level'];
+  if (runeTab !== 'appraise'){
+    sortBar.innerHTML = modes.map(m => `<button type="button" class="rune-sort-btn ${runeSortMode===m ? 'active':''}" data-rune-sort="${m}">${getRuneSortLabel(m)}</button>`).join('');
+    sortBar.querySelectorAll('[data-rune-sort]').forEach(btn => btn.onclick = () => { runeSortMode = btn.dataset.runeSort || 'acquired'; renderRuneBottomArea(); });
+  }
+  if (runeTab === 'equip') return renderRuneEquipInventory(area);
+  if (runeTab === 'upgrade') return renderRuneProcessInventory(area, 'upgrade');
+  if (runeTab === 'dismantle') return renderRuneProcessInventory(area, 'dismantle');
+  return renderRuneStoneInventory(area);
+}
+function makeRuneItemCell(item, opts={}){
+  const def = getRuneDef(item.kind);
+  const selected = opts.selected ? ' selected' : '';
+  const equipped = isRuneEquipped(item.uid) ? ' equipped' : '';
+  const newBadge = item.isNew ? '<span class="rune-badge new">NEW</span>' : '';
+  const eBadge = isRuneEquipped(item.uid) ? '<span class="rune-badge e">E</span>' : '';
+  const lvBadge = Number(item.level||1) >= 2 ? `<span class="rune-badge lv">+${Number(item.level)}</span>` : '';
+  return `<button type="button" class="rune-item${selected}${equipped}" data-rune-uid="${item.uid}">${newBadge}${eBadge}${lvBadge}<img src="${getRuneStoneIcon(item.kind)}" alt="" onerror="this.onerror=null;this.src='${RUNE_IMAGE_FALLBACK}';"><span class="rune-kind-label">${def.name.replace(' 룬','')}</span></button>`;
+}
+function renderRuneEquipInventory(area){
+  const list = getSortedRuneInventory(runeInventory);
+  if (!list.length){ area.innerHTML = '<div class="rune-empty">보유한 룬이 없습니다.</div>'; return; }
+  area.innerHTML = `<div class="rune-inventory-grid">${list.map(it => makeRuneItemCell(it)).join('')}</div>`;
+  area.querySelectorAll('[data-rune-uid]').forEach(btn => btn.onclick = () => {
+    const uid = btn.dataset.runeUid;
+    const rect = btn.getBoundingClientRect();
+    showRuneInfoCard({ uid, mode:'inventory' }, rect);
+  });
+}
+function renderRuneProcessInventory(area, mode){
+  let list = runeInventory.filter(it => !isRuneEquipped(it.uid));
+  if (mode === 'upgrade') list = list.filter(it => Number(it.level||1) < 5);
+  list = getSortedRuneInventory(list);
+  if (!list.length){ area.innerHTML = `<div class="rune-empty">${mode==='upgrade' ? '강화 가능한 룬이 없습니다.' : '분해 가능한 룬이 없습니다.'}</div>`; return; }
+  const selectedUid = String(runeSelectedTopUid || runeSelectedUid || '');
+  area.innerHTML = `<div class="rune-inventory-grid">${list.map(it => makeRuneItemCell(it, { selected:selectedUid===String(it.uid) })).join('')}</div>`;
+  area.querySelectorAll('[data-rune-uid]').forEach(btn => btn.onclick = () => { runeSelectedUid = String(btn.dataset.runeUid||''); runeSelectedTopUid = runeSelectedUid; renderRuneOverlay(); });
+}
+function renderRuneStoneInventory(area){
+  if (unidentifiedRuneStones <= 0){ area.innerHTML = '<div class="rune-empty">미감정 룬석이 없습니다.</div>'; return; }
+  const cells = Array.from({length:unidentifiedRuneStones}, (_, i) => `<button type="button" class="rune-item ${runeSelectedStoneIndex===i ? 'selected':''}" data-rune-stone-index="${i}"><img src="images/items/runes/rune_stone_unidentified.png" alt="" onerror="this.onerror=null;this.src='${RUNE_IMAGE_FALLBACK}';"><span class="rune-kind-label">미감정</span></button>`).join('');
+  area.innerHTML = `<div class="rune-inventory-grid">${cells}</div>`;
+  area.querySelectorAll('[data-rune-stone-index]').forEach(btn => btn.onclick = () => { runeSelectedStoneIndex = Number(btn.dataset.runeStoneIndex||-1); renderRuneOverlay(); });
+}
+function attemptRuneUpgrade(){
+  const item = getRuneItemByUid(runeSelectedTopUid || runeSelectedUid); if (!item) return;
+  const meta = RUNE_UPGRADE_TABLE[Number(item.level||1)];
+  if (!meta) { showNpcMessage('이미 최대 강화 단계입니다.', null, true, ''); return; }
+  if (Number(itemEssence||0) < meta.essence){ showNpcMessage('마력의정수가 부족합니다.', null, true, ''); return; }
+  itemEssence = Math.max(0, Number(itemEssence||0) - meta.essence);
+  const roll = Math.random() * 100;
+  let line='';
+  if (roll < meta.success){ item.level = Math.min(5, Number(item.level||1) + 1); line = `${getRuneDef(item.kind).name} 강화에 성공했습니다.`; try{ playUpgradeFlash('gold'); }catch(e){} }
+  else if (roll < meta.success + meta.keep){ line = `${getRuneDef(item.kind).name} 강화에 실패했습니다. 단계가 유지됩니다.`; try{ playUpgradeFlash('red'); }catch(e){} }
+  else { item.level = Math.max(1, Number(item.level||1) - 1); line = `${getRuneDef(item.kind).name} 강화에 실패했습니다. 1단계 하락했습니다.`; try{ playUpgradeFlash('red'); }catch(e){} }
+  save(); update(); renderRuneOverlay();
+  showNpcMessage(line, null, true, '');
+}
+function getRuneDismantleTargets(){
+  if (runeBulkDismantle){ return runeInventory.filter(it => !isRuneEquipped(it.uid) && Number(it.level||1) === 1); }
+  const item = getRuneItemByUid(runeSelectedTopUid || runeSelectedUid); return item ? [item] : [];
+}
+function attemptRuneDismantle(){
+  const targets = getRuneDismantleTargets();
+  if (!targets.length){ showNpcMessage('분해할 룬이 없습니다.', null, true, ''); return; }
+  const essenceGain = targets.length * 50;
+  setNpcName('룬마법사 – 베르디아');
+  const popup = document.getElementById('npcPopup');
+  const msgEl = document.getElementById('npcPopupText');
+  const imgEl = document.getElementById('npcPopupImg');
+  const okBtn = document.getElementById('npcConfirmBtn');
+  const cancelBtn = document.getElementById('npcCancelBtn');
+  if (!popup || !msgEl || !imgEl || !okBtn || !cancelBtn) return;
+  imgEl.style.display = 'block'; imgEl.src = VERDIA_IMAGE_FALLBACK;
+  msgEl.innerHTML = `분해하면 마력의 정수 ${essenceGain}개가 나올 거에요.`;
+  okBtn.style.display = 'inline-block'; cancelBtn.style.display='inline-block';
+  okBtn.textContent='확인'; cancelBtn.textContent='닫기';
+  okBtn.onclick = function(){
+    const removeSet = new Set(targets.map(t => String(t.uid)));
+    runeInventory = runeInventory.filter(it => !removeSet.has(String(it.uid)));
+    itemEssence = Number(itemEssence||0) + essenceGain;
+    runeSelectedUid=''; runeSelectedTopUid='';
+    popup.style.display='none';
+    save(); update(); renderRuneOverlay();
+  };
+  cancelBtn.onclick = function(){ popup.style.display='none'; };
+  popup.style.display = 'flex';
+}
+function attemptRuneAppraise(){
+  if (runeSelectedStoneIndex < 0 || unidentifiedRuneStones <= 0) return;
+  if (runeInventory.length >= RUNE_STORAGE_LIMIT){ showNpcMessage('룬 보관 공간이 가득 찼습니다.', null, true, ''); return; }
+  if (gold < RUNE_APPRAISAL_COST){ showNpcMessage('골드가 부족합니다.', null, true, ''); return; }
+  gold = Math.max(0, Number(gold||0) - RUNE_APPRAISAL_COST);
+  unidentifiedRuneStones = Math.max(0, Number(unidentifiedRuneStones||0) - 1);
+  const kind = RUNE_KIND_KEYS[Math.floor(Math.random() * RUNE_KIND_KEYS.length)];
+  runeInventory.push({ uid:makeRuneUid(), kind, level:1, acquiredAt:Date.now(), isNew:true });
+  runeSelectedStoneIndex = -1;
+  save(); update(); renderRuneOverlay();
+  setNpcName('룬마법사 – 베르디아');
+  const popup = document.getElementById('npcPopup');
+  const msgEl = document.getElementById('npcPopupText');
+  const imgEl = document.getElementById('npcPopupImg');
+  const okBtn = document.getElementById('npcConfirmBtn');
+  const cancelBtn = document.getElementById('npcCancelBtn');
+  if (!popup || !msgEl || !imgEl || !okBtn) return;
+  imgEl.style.display = 'block'; imgEl.src = VERDIA_IMAGE_FALLBACK;
+  msgEl.innerHTML = `감정결과 ${getRuneDef(kind).name}이에요.`;
+  okBtn.style.display='inline-block'; okBtn.textContent='확인';
+  if (cancelBtn) cancelBtn.style.display='none';
+  okBtn.onclick = function(){ popup.style.display='none'; };
+  popup.style.display='flex';
+}
+
 // 능력치 버튼 클릭 연결
 const statDockBtn = document.getElementById("statDockBtn");
 if (statDockBtn) {
@@ -24926,12 +25598,15 @@ if (statDockBtn) {
   openStatOverlay();   // ← 1단계 능력치 오버레이
   });
 }
-  // 🔒 룬(미구현) 버튼 클릭 연결
+  // 🔮 룬 버튼 클릭 연결
 const runeDockBtn = document.getElementById("runeDockBtn");
 if (runeDockBtn) {
+  runeDockBtn.classList.remove('locked');
+  const lock = runeDockBtn.querySelector('.dock-lock');
+  if (lock) lock.remove();
   runeDockBtn.addEventListener("click", () => {
     playUiDockTap();
-    showLockedFeaturePopup();
+    openRuneOverlay();
   });
 }
 
