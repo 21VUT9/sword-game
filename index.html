@@ -4747,7 +4747,9 @@ html, body {
 .rune-slot{overflow:hidden;}
 .rune-slot img{width:100%; height:100%; object-fit:contain; filter:drop-shadow(0 0 8px rgba(160,210,255,0.22));}
 .rune-slot .rune-slot-mark{transform:scale(10); transform-origin:center center;}
-.rune-slot .rune-grade-mini{position:absolute; left:6px; top:4px; font-size:13px; font-weight:900; color:#f7e8b0; text-shadow:0 1px 5px rgba(0,0,0,0.7);}
+.rune-slot.large .rune-slot-mark{transform:scale(2);}
+.rune-slot.small .rune-slot-mark{transform:scale(10);}
+.rune-slot .rune-grade-mini{position:absolute; left:6px; bottom:4px; font-size:19.5px; font-weight:900; color:#f7e8b0; text-shadow:0 1px 5px rgba(0,0,0,0.7);}
 .rune-slot .rune-slot-num{display:none !important;}
 .rune-preset-bar{position:absolute; left:0; top:0; display:flex; gap:6px; margin:0; z-index:3;}
 .rune-preset-btn{margin:0; padding:4px 8px; font-size:11px; font-weight:800; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:rgba(255,255,255,0.05); color:#ddd; cursor:pointer;}
@@ -4762,6 +4764,7 @@ html, body {
 .rune-process-box{width:126px; height:126px; border-radius:18px; border:2px dashed rgba(255,255,255,0.18); display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.04); cursor:pointer; position:relative;}
 .rune-process-box.active{border-color:#8cd2ff; box-shadow:0 0 16px rgba(100,180,255,0.22);}
 .rune-process-box img{width:78%; height:78%; object-fit:contain;}
+.rune-process-grade{position:absolute; left:8px; bottom:6px; font-size:19.5px; font-weight:900; color:#f7e8b0; text-shadow:0 1px 5px rgba(0,0,0,0.8);}
 .rune-process-box span{color:#6f7a88; font-size:14px; line-height:1.4;}
 .rune-process-btn{margin-top:12px; padding:11px 22px; font-size:15px; font-weight:900; border-radius:12px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.08); color:#fff; cursor:pointer;}
 .rune-process-btn:disabled{opacity:0.38; cursor:default;}
@@ -4784,7 +4787,7 @@ html, body {
 .rune-badge{position:absolute; display:flex; align-items:center; justify-content:center; min-width:20px; height:20px; padding:0 6px; border-radius:999px; font-size:11px; font-weight:900; box-shadow:0 2px 6px rgba(0,0,0,0.35);} 
 .rune-badge.e{top:5px; right:5px; background:#ffd54f; color:#1b1400;} 
 .rune-badge.new{left:5px; top:5px; background:#ff4d4d; color:#fff;} 
-.rune-badge.lv{left:5px; bottom:5px; background:rgba(255,255,255,0.11); color:#fff;} 
+.rune-badge.lv{left:5px; bottom:5px; background:transparent; color:#fff; box-shadow:none; padding:0; min-width:auto; height:auto; font-size:16.5px; line-height:1; text-shadow:0 1px 5px rgba(0,0,0,0.8);} 
 .rune-kind-label{position:absolute; bottom:5px; right:6px; font-size:11px; color:#bcc6d7; font-weight:800; text-shadow:0 1px 3px rgba(0,0,0,0.8);} 
 .rune-card{
   position:fixed; z-index:5400; display:none; width:min(320px, calc(100vw - 24px)); background:rgba(22,22,28,0.98); border:1px solid rgba(255,255,255,0.14); border-radius:14px; box-shadow:0 16px 30px rgba(0,0,0,0.45); padding:14px;
@@ -4794,7 +4797,8 @@ html, body {
 .rune-card img{display:block; width:92px; height:92px; object-fit:contain; margin:12px auto 10px;}
 .rune-card-btns{display:flex; gap:10px;}
 .rune-card-btns button{flex:1; margin:0; padding:10px 0; font-size:14px; font-weight:800; border-radius:10px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.07); color:#fff; cursor:pointer;}
-.rune-sub-option{display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px; color:#cfd5df; font-size:13px;}
+.rune-sub-option{display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px; color:#cfd5df; font-size:13px; flex-wrap:wrap;}
+.rune-sub-option-note{font-size:12px; color:#9fa7b4;}
 .rune-empty{flex:1; display:flex; align-items:center; justify-content:center; color:#767c86; font-size:14px; text-align:center; border:1px dashed rgba(255,255,255,0.10); border-radius:14px;}
 @media (max-width: 760px){
   .rune-header{flex-wrap:wrap;}
@@ -5369,7 +5373,7 @@ html, body {
           <div id="runeBottomTitle" class="rune-bottom-title">보유 룬</div>
           <div id="runeSortBar" class="rune-sort-bar"></div>
         </div>
-        <div id="runeInventoryArea" style="min-height:0; flex:1; display:flex;"></div>
+        <div id="runeInventoryArea" style="min-height:0; flex:1; display:flex; width:100%;"></div>
       </div>
     </div>
   </div>
@@ -7602,7 +7606,7 @@ const RUNE_DEFS = {
 };
 const RUNE_KIND_KEYS = Object.keys(RUNE_DEFS);
 const RUNE_UPGRADE_TABLE = {
-  1:{ success:60, keep:30, down:10, essence:100 },
+  1:{ success:60, keep:40, down:0, essence:100 },
   2:{ success:40, keep:40, down:20, essence:200 },
   3:{ success:20, keep:50, down:30, essence:300 },
   4:{ success:10, keep:50, down:40, essence:400 }
@@ -25359,6 +25363,7 @@ function renderRuneTopArea(){
     const lv = Number(selected && selected.level || 0);
     const meta = selected ? RUNE_UPGRADE_TABLE[lv] : null;
     note = !selected ? '' : (meta ? `비용 : 마력의정수 ${meta.essence}개\n강화확률 ${meta.success}%, 강등확률 ${meta.down}%` : '최대 강화 단계입니다.');
+    if (selected && meta && Number(meta.down||0) <= 0) note = `비용 : 마력의정수 ${meta.essence}개\n강화확률 ${meta.success}%, 유지확률 ${meta.keep}%`;
   } else if (mode === 'dismantle') {
     note = '';
   } else {
@@ -25376,7 +25381,7 @@ function renderRuneTopArea(){
           <div id="runeProcessBox" class="rune-process-box ${selected ? 'active' : ''}">${buildRuneProcessBoxInner()}</div>
           <button id="runeProcessBtn" class="rune-process-btn" type="button" ${isRuneProcessEnabled() ? '' : 'disabled'}>${mode==='upgrade'?'강화하기':(mode==='dismantle'?'분해하기':'감정하기')}</button>
           ${note ? `<div class="rune-process-note">${note}</div>` : ''}
-          ${mode==='dismantle' ? `<label class="rune-sub-option"><input id="runeBulkDismantleChk" type="checkbox" ${runeBulkDismantle ? 'checked' : ''}> 일괄분해</label>` : ''}
+          ${mode==='dismantle' ? `<label class="rune-sub-option"><input id="runeBulkDismantleChk" type="checkbox" ${runeBulkDismantle ? 'checked' : ''}> 일괄분해 <span class="rune-sub-option-note">(강화가 진행된 룬석은 제외)</span></label>` : ''}
         </div>
         <div class="rune-process-spacer" aria-hidden="true"></div>
       </div>
@@ -25395,7 +25400,8 @@ function buildRuneProcessBoxInner(){
   }
   const item = getRuneItemByUid(runeSelectedTopUid || runeSelectedUid);
   if (!item) return `<span>${runeTab === 'upgrade' ? '강화할 룬을\n선택하세요' : '분해할 룬을\n선택하세요'}</span>`;
-  return `<img src="${getRuneStoneIcon(item.kind)}" alt="" onerror="this.onerror=null;this.src='${RUNE_IMAGE_FALLBACK}';">`;
+  const lvBadge = Number(item.level||1) >= 2 ? `<span class="rune-process-grade">+${Number(item.level)}</span>` : '';
+  return `<img src="${getRuneStoneIcon(item.kind)}" alt="" onerror="this.onerror=null;this.src='${RUNE_IMAGE_FALLBACK}';">${lvBadge}`;
 }
 function isRuneProcessEnabled(){
   if (runeTab === 'appraise') return runeSelectedStoneIndex >= 0 && gold >= RUNE_APPRAISAL_COST && runeInventory.length < RUNE_STORAGE_LIMIT;
@@ -25603,8 +25609,9 @@ function renderRuneProcessInventory(area, mode){
 }
 function renderRuneStoneInventory(area){
   if (unidentifiedRuneStones <= 0){ area.innerHTML = '<div class="rune-empty">미감정 룬석이 없습니다.</div>'; return; }
-  const cells = Array.from({length:unidentifiedRuneStones}, (_, i) => `<button type="button" class="rune-item ${runeSelectedStoneIndex===i ? 'selected':''}" data-rune-stone-index="${i}"><img src="images/items/runes/rune_stone_unidentified.png" alt="" onerror="this.onerror=null;this.src='${RUNE_IMAGE_FALLBACK}';"><span class="rune-kind-label">미감정</span></button>`).join('');
-  area.innerHTML = `<div class="rune-inventory-grid">${cells}</div>`;
+  area.style.width = '100%';
+  const cells = Array.from({length:unidentifiedRuneStones}, (_, i) => `<button type="button" class="rune-item ${runeSelectedStoneIndex===i ? 'selected':''}" data-rune-stone-index="${i}"><img src="images/items/runes/rune_stone_unidentified.png" alt="미감정 룬석" onerror="this.onerror=null;this.src='images/ui/icon_rune.png';"><span class="rune-kind-label">미감정</span></button>`).join('');
+  area.innerHTML = `<div class="rune-inventory-grid" style="width:100%;flex:1 1 auto;align-content:start;">${cells}</div>`;
   area.querySelectorAll('[data-rune-stone-index]').forEach(btn => btn.onclick = () => { resetRuneVerdiaExpression(); runeSelectedStoneIndex = Number(btn.dataset.runeStoneIndex||-1); renderRuneOverlay(); });
 }
 function attemptRuneUpgrade(){
@@ -25621,11 +25628,14 @@ function attemptRuneUpgrade(){
     line = `${getRuneDef(item.kind).name} 강화에 성공했습니다.`;
     verdiaExpr = 'happy';
     try{ playUpgradeFlash('gold'); }catch(e){}
+    try{ playShardSfx(); }catch(e){}
   }
   else if (roll < meta.success + meta.keep){
     line = `${getRuneDef(item.kind).name} 강화에 실패했습니다. 단계가 유지됩니다.`;
     verdiaExpr = 'sad';
     try{ playUpgradeFlash('red'); }catch(e){}
+    try{ playMetalCrackSfx(); }catch(e){}
+    try{ playMetalCrackSfx(); }catch(e){}
   }
   else {
     item.level = Math.max(1, Number(item.level||1) - 1);
@@ -25641,10 +25651,18 @@ function getRuneDismantleTargets(){
   if (runeBulkDismantle){ return runeInventory.filter(it => !isRuneEquipped(it.uid) && Number(it.level||1) === 1); }
   const item = getRuneItemByUid(runeSelectedTopUid || runeSelectedUid); return item ? [item] : [];
 }
+function getRuneDismantleEssence(item){
+  const lv = Number(item && item.level || 1);
+  if (lv >= 5) return 1700;
+  if (lv === 4) return 1000;
+  if (lv === 3) return 500;
+  if (lv === 2) return 200;
+  return 50;
+}
 function attemptRuneDismantle(){
   const targets = getRuneDismantleTargets();
   if (!targets.length){ showNpcMessage('분해할 룬이 없습니다.', null, true, ''); return; }
-  const essenceGain = targets.length * 50;
+  const essenceGain = targets.reduce((sum, item) => sum + getRuneDismantleEssence(item), 0);
   setNpcName('룬마법사 – 베르디아');
   const popup = document.getElementById('npcPopup');
   const msgEl = document.getElementById('npcPopupText');
