@@ -4762,7 +4762,8 @@ html, body {
 .rune-process-spacer{width:266px; min-height:1px;}
 .rune-process-box{width:126px; height:126px; border-radius:18px; border:2px dashed rgba(255,255,255,0.18); display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.04); cursor:pointer; position:relative;}
 .rune-process-box.active{border-color:#8cd2ff; box-shadow:0 0 16px rgba(100,180,255,0.22);}
-.rune-process-box img{width:78%; height:78%; object-fit:contain;}
+.rune-process-box img{width:101.4%; height:101.4%; object-fit:contain;}
+.rune-process-box img.rune-flash-charge{animation: weaponFlashCharge 0.22s ease-out;}
 .rune-process-grade{position:absolute; left:8px; bottom:6px; font-size:19.5px; font-weight:900; color:#f7e8b0; text-shadow:0 1px 5px rgba(0,0,0,0.8);}
 .rune-process-box img.rune-flash-success{animation: weaponFlashSuccess 0.62s ease-out;}
 .rune-process-box img.rune-flash-fail{animation: weaponFlashFail 0.55s ease-out;}
@@ -25715,25 +25716,40 @@ function attemptRuneAppraise(){
   if (runeSelectedStoneIndex < 0 || unidentifiedRuneStones <= 0) return;
   if (runeInventory.length >= RUNE_STORAGE_LIMIT){ showNpcMessage('룬 보관 공간이 가득 찼습니다.', null, true, ''); return; }
   if (gold < RUNE_APPRAISAL_COST){ showNpcMessage('골드가 부족합니다.', null, true, ''); return; }
-  gold = Math.max(0, Number(gold||0) - RUNE_APPRAISAL_COST);
-  unidentifiedRuneStones = Math.max(0, Number(unidentifiedRuneStones||0) - 1);
-  const kind = RUNE_KIND_KEYS[Math.floor(Math.random() * RUNE_KIND_KEYS.length)];
-  runeInventory.push({ uid:makeRuneUid(), kind, level:1, acquiredAt:Date.now(), isNew:true });
-  runeSelectedStoneIndex = -1;
-  save(); update(); renderRuneOverlay();
-  setNpcName('룬마법사 – 베르디아');
-  const popup = document.getElementById('npcPopup');
-  const msgEl = document.getElementById('npcPopupText');
-  const imgEl = document.getElementById('npcPopupImg');
-  const okBtn = document.getElementById('npcConfirmBtn');
-  const cancelBtn = document.getElementById('npcCancelBtn');
-  if (!popup || !msgEl || !imgEl || !okBtn) return;
-  imgEl.style.display = 'block'; imgEl.src = getVerdiaImageByExpression('default');
-  msgEl.innerHTML = `감정결과 ${getRuneDef(kind).name}이에요.<div style="margin-top:10px; display:flex; justify-content:center;"><img src="${getRuneStoneIcon(kind)}" alt="${getRuneDef(kind).name}" style="width:72px; height:72px; object-fit:contain;" onerror="this.onerror=null;this.src='${RUNE_IMAGE_FALLBACK}';"></div>`;
-  okBtn.style.display='inline-block'; okBtn.textContent='확인';
-  if (cancelBtn) cancelBtn.style.display='none';
-  okBtn.onclick = function(){ popup.style.display='none'; };
-  popup.style.display='flex';
+
+  const processBox = document.getElementById('runeProcessBox');
+  const processImg = processBox ? processBox.querySelector('img') : null;
+  if (processImg){
+    processImg.classList.remove('rune-flash-charge','rune-flash-success','rune-flash-fail');
+    void processImg.offsetWidth;
+    processImg.classList.add('rune-flash-charge');
+  }
+  if (typeof playEngraveSound === 'function') playEngraveSound();
+
+  setTimeout(() => {
+    gold = Math.max(0, Number(gold||0) - RUNE_APPRAISAL_COST);
+    unidentifiedRuneStones = Math.max(0, Number(unidentifiedRuneStones||0) - 1);
+    const kind = RUNE_KIND_KEYS[Math.floor(Math.random() * RUNE_KIND_KEYS.length)];
+    runeInventory.push({ uid:makeRuneUid(), kind, level:1, acquiredAt:Date.now(), isNew:true });
+    runeSelectedStoneIndex = -1;
+    save(); update(); renderRuneOverlay();
+
+    setNpcName('룬마법사 – 베르디아');
+    const popup = document.getElementById('npcPopup');
+    const msgEl = document.getElementById('npcPopupText');
+    const imgEl = document.getElementById('npcPopupImg');
+    const okBtn = document.getElementById('npcConfirmBtn');
+    const cancelBtn = document.getElementById('npcCancelBtn');
+    if (!popup || !msgEl || !imgEl || !okBtn) return;
+    imgEl.style.display = 'block';
+    imgEl.src = getVerdiaImageByExpression('default');
+    msgEl.innerHTML = `감정결과 ${getRuneDef(kind).name}이에요.<div style="margin-top:10px; display:flex; justify-content:center;"><img src="${getRuneStoneIcon(kind)}" alt="${getRuneDef(kind).name}" style="width:72px; height:72px; object-fit:contain;" onerror="this.onerror=null;this.src='${RUNE_IMAGE_FALLBACK}';"></div>`;
+    okBtn.style.display='inline-block';
+    okBtn.textContent='확인';
+    if (cancelBtn) cancelBtn.style.display='none';
+    okBtn.onclick = function(){ popup.style.display='none'; };
+    popup.style.display='flex';
+  }, 260);
 }
 
 // 능력치 버튼 클릭 연결
