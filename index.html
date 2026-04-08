@@ -25381,6 +25381,22 @@ function renderProfileEquippedRunes(){
   const slots = getActiveRuneSlots();
   renderEquippedRunesToContainer('profileEquippedRuneDisplay', getProfileDisplayRuneUidsFromSlots(slots));
 }
+function syncEquippedRuneDisplaysImmediate(){
+  renderProfileEquippedRunes();
+  const otherOverlay = document.getElementById('otherProfileOverlay');
+  if (otherOverlay && otherOverlay.style.display === 'flex' && typeof userId !== 'undefined' && userId){
+    const otherNick = document.getElementById('otherProfileNickname');
+    const otherText = (otherNick?.textContent || '').trim();
+    const otherHtml = (otherNick?.innerText || '').trim();
+    if (otherText === String(userId) || otherHtml === String(userId)){
+      renderOtherProfileEquippedRunesByData({
+        runePresets,
+        runePresetIdx,
+        runeInventory
+      });
+    }
+  }
+}
 function renderOtherProfileEquippedRunesByData(userData){
   const slots = normalizeRunePresets(userData && userData.runePresets)[Number(userData && userData.runePresetIdx || 0)] || Array(9).fill(null);
   const uids = getProfileDisplayRuneUidsFromSlots(slots);
@@ -25576,6 +25592,7 @@ function handleRuneSlotClick(idx, el){
     runePresets[runePresetIdx] = active;
     runePendingEquipUid = '';
     save();
+    syncEquippedRuneDisplaysImmediate();
     renderRuneOverlay();
     return;
   }
@@ -25635,6 +25652,7 @@ function showRuneInfoCard(payload, rect){
         slots[targetIdx] = null;
         runePresets[runePresetIdx] = slots;
         save();
+        syncEquippedRuneDisplaysImmediate();
       }
       renderRuneOverlay();
       return;
