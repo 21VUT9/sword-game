@@ -4749,7 +4749,6 @@ html, body {
 .rune-slot .rune-slot-mark{transform:scale(10); transform-origin:center center;}
 .rune-slot.large .rune-slot-mark{transform:scale(2);}
 .rune-slot.small .rune-slot-mark{transform:scale(10);}
-.rune-slot .rune-grade-mini{position:absolute; left:6px; bottom:4px; font-size:19.5px; font-weight:900; color:#f7e8b0; text-shadow:0 1px 5px rgba(0,0,0,0.7);}
 .rune-slot .rune-slot-num{display:none !important;}
 .rune-preset-bar{position:absolute; left:0; top:0; display:flex; gap:6px; margin:0; z-index:3;}
 .rune-preset-btn{margin:0; padding:4px 8px; font-size:11px; font-weight:800; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:rgba(255,255,255,0.05); color:#ddd; cursor:pointer;}
@@ -4765,6 +4764,8 @@ html, body {
 .rune-process-box.active{border-color:#8cd2ff; box-shadow:0 0 16px rgba(100,180,255,0.22);}
 .rune-process-box img{width:78%; height:78%; object-fit:contain;}
 .rune-process-grade{position:absolute; left:8px; bottom:6px; font-size:19.5px; font-weight:900; color:#f7e8b0; text-shadow:0 1px 5px rgba(0,0,0,0.8);}
+.rune-process-box img.rune-flash-success{animation: weaponFlashSuccess 0.62s ease-out;}
+.rune-process-box img.rune-flash-fail{animation: weaponFlashFail 0.55s ease-out;}
 .rune-process-box span{color:#6f7a88; font-size:14px; line-height:1.4;}
 .rune-process-btn{margin-top:12px; padding:11px 22px; font-size:15px; font-weight:900; border-radius:12px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.08); color:#fff; cursor:pointer;}
 .rune-process-btn:disabled{opacity:0.38; cursor:default;}
@@ -4776,6 +4777,7 @@ html, body {
 .rune-sort-btn{margin:0; padding:7px 10px; font-size:12px; font-weight:800; border-radius:999px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); color:#ddd; cursor:pointer;}
 .rune-sort-btn.active{background:rgba(255,213,79,0.14); border-color:rgba(255,213,79,0.38); color:#ffd54f;}
 .rune-inventory-grid{display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:10px; overflow-y:auto; padding-right:6px; align-content:start; grid-auto-flow:row; grid-auto-rows:auto;}
+.rune-inventory-grid.appraise-grid{row-gap:18px; column-gap:10px;}
 .rune-item{
   position:relative; aspect-ratio:1/1; border-radius:12px; border:2px solid rgba(255,255,255,0.12); background:rgba(16,16,20,0.88);
   display:flex; align-items:center; justify-content:center; cursor:pointer; overflow:hidden;
@@ -25442,7 +25444,7 @@ function buildRuneSlotsHtml(){
     if (runePendingEquipUid && unlocked) classes.push('selectable');
     if (runePendingEquipUid && unlocked) classes.push('active-pick');
     const showPlus = unlocked || unlockableNext;
-    const inner = item ? `<img class="rune-slot-mark" src="${getRuneMarkIcon(item.kind)}" alt="" onerror="this.onerror=null;this.src='${RUNE_IMAGE_FALLBACK}';"><span class="rune-grade-mini">${Number(item.level||1) >= 2 ? '+' + Number(item.level) : ''}</span>` : `<span class="rune-slot-plus">${showPlus ? '+' : ''}</span>`;
+    const inner = item ? `<img class="rune-slot-mark" src="${getRuneMarkIcon(item.kind)}" alt="" onerror="this.onerror=null;this.src='${RUNE_IMAGE_FALLBACK}';">` : `<span class="rune-slot-plus">${showPlus ? '+' : ''}</span>`;
     return `<button type="button" class="${classes.join(' ')}" data-rune-slot="${idx}" style="left:${pos.left}px; top:${pos.top}px;">${inner}</button>`;
   }).join('');
 }
@@ -25611,7 +25613,7 @@ function renderRuneStoneInventory(area){
   if (unidentifiedRuneStones <= 0){ area.innerHTML = '<div class="rune-empty">미감정 룬석이 없습니다.</div>'; return; }
   area.style.width = '100%';
   const cells = Array.from({length:unidentifiedRuneStones}, (_, i) => `<button type="button" class="rune-item ${runeSelectedStoneIndex===i ? 'selected':''}" data-rune-stone-index="${i}"><img src="images/items/runes/rune_stone_unidentified.png" alt="미감정 룬석" onerror="this.onerror=null;this.src='images/ui/icon_rune.png';"><span class="rune-kind-label">미감정</span></button>`).join('');
-  area.innerHTML = `<div class="rune-inventory-grid" style="width:100%;flex:1 1 auto;align-content:start;">${cells}</div>`;
+  area.innerHTML = `<div class="rune-inventory-grid appraise-grid" style="width:100%;flex:1 1 auto;align-content:start;">${cells}</div>`;
   area.querySelectorAll('[data-rune-stone-index]').forEach(btn => btn.onclick = () => { resetRuneVerdiaExpression(); runeSelectedStoneIndex = Number(btn.dataset.runeStoneIndex||-1); renderRuneOverlay(); });
 }
 function attemptRuneUpgrade(){
@@ -25623,16 +25625,19 @@ function attemptRuneUpgrade(){
   const roll = Math.random() * 100;
   let line='';
   let verdiaExpr = 'default';
+  let flashClass = 'rune-flash-fail';
   if (roll < meta.success){
     item.level = Math.min(5, Number(item.level||1) + 1);
     line = `${getRuneDef(item.kind).name} 강화에 성공했습니다.`;
     verdiaExpr = 'happy';
+    flashClass = 'rune-flash-success';
     try{ playUpgradeFlash('gold'); }catch(e){}
     try{ playShardSfx(); }catch(e){}
   }
   else if (roll < meta.success + meta.keep){
     line = `${getRuneDef(item.kind).name} 강화에 실패했습니다. 단계가 유지됩니다.`;
     verdiaExpr = 'sad';
+    flashClass = 'rune-flash-fail';
     try{ playUpgradeFlash('red'); }catch(e){}
     try{ playMetalCrackSfx(); }catch(e){}
     try{ playMetalCrackSfx(); }catch(e){}
@@ -25641,11 +25646,28 @@ function attemptRuneUpgrade(){
     item.level = Math.max(1, Number(item.level||1) - 1);
     line = `${getRuneDef(item.kind).name} 강화에 실패했습니다. 1단계 하락했습니다.`;
     verdiaExpr = 'sad';
+    flashClass = 'rune-flash-fail';
     try{ playUpgradeFlash('red'); }catch(e){}
+    try{ playMetalCrackSfx(); }catch(e){}
   }
   setRuneVerdiaExpression(verdiaExpr);
-  save(); update(); renderRuneOverlay();
-  showNpcMessage(line, getVerdiaImageByExpression(verdiaExpr), true, '룬마법사 – 베르디아');
+  save(); update();
+
+  const finishUpgrade = () => {
+    renderRuneOverlay();
+    showNpcMessage(line, getVerdiaImageByExpression(verdiaExpr), true, '룬마법사 – 베르디아');
+  };
+
+  const box = document.getElementById('runeProcessBox');
+  const img = box ? box.querySelector('img') : null;
+  if (img){
+    img.classList.remove('rune-flash-success','rune-flash-fail');
+    void img.offsetWidth;
+    img.classList.add(flashClass);
+    setTimeout(finishUpgrade, flashClass === 'rune-flash-success' ? 620 : 550);
+  } else {
+    finishUpgrade();
+  }
 }
 function getRuneDismantleTargets(){
   if (runeBulkDismantle){ return runeInventory.filter(it => !isRuneEquipped(it.uid) && Number(it.level||1) === 1); }
@@ -25703,7 +25725,7 @@ function attemptRuneAppraise(){
   const cancelBtn = document.getElementById('npcCancelBtn');
   if (!popup || !msgEl || !imgEl || !okBtn) return;
   imgEl.style.display = 'block'; imgEl.src = getVerdiaImageByExpression('default');
-  msgEl.innerHTML = `감정결과 ${getRuneDef(kind).name}이에요.`;
+  msgEl.innerHTML = `감정결과 ${getRuneDef(kind).name}이에요.<div style="margin-top:10px; display:flex; justify-content:center;"><img src="${getRuneStoneIcon(kind)}" alt="${getRuneDef(kind).name}" style="width:72px; height:72px; object-fit:contain;" onerror="this.onerror=null;this.src='${RUNE_IMAGE_FALLBACK}';"></div>`;
   okBtn.style.display='inline-block'; okBtn.textContent='확인';
   if (cancelBtn) cancelBtn.style.display='none';
   okBtn.onclick = function(){ popup.style.display='none'; };
