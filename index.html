@@ -4776,11 +4776,13 @@ html, body {
 .rune-sort-bar{display:flex; gap:6px; flex-wrap:wrap;}
 .rune-sort-btn{margin:0; padding:7px 10px; font-size:12px; font-weight:800; border-radius:999px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); color:#ddd; cursor:pointer;}
 .rune-sort-btn.active{background:rgba(255,213,79,0.14); border-color:rgba(255,213,79,0.38); color:#ffd54f;}
-.rune-inventory-grid{display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:10px; overflow-y:auto; overflow-x:hidden; padding-right:6px; align-content:start; grid-auto-flow:row; grid-auto-rows:auto; width:100%; flex:1 1 auto; min-width:0; min-height:0; box-sizing:border-box; align-self:stretch;}
+.rune-inventory-grid{display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:10px; overflow-y:auto; overflow-x:hidden; padding-right:6px; align-content:start; grid-auto-flow:row; grid-auto-rows:minmax(0, 1fr); width:100%; flex:1 1 auto; min-width:0; min-height:0; box-sizing:border-box; align-self:stretch; justify-items:stretch;}
 .rune-inventory-grid.appraise-grid{row-gap:10px; column-gap:10px;}
 .rune-item{
-  position:relative; aspect-ratio:1/1; border-radius:12px; border:2px solid rgba(255,255,255,0.12); background:rgba(16,16,20,0.88);
+  position:relative; aspect-ratio:1/1; width:100%; min-width:0; min-height:0; box-sizing:border-box;
+  margin:0; padding:0; border-radius:12px; border:2px solid rgba(255,255,255,0.12); background:rgba(16,16,20,0.88);
   display:flex; align-items:center; justify-content:center; cursor:pointer; overflow:hidden;
+  align-self:stretch; justify-self:stretch;
 }
 .rune-item:hover{border-color:rgba(255,255,255,0.22);} 
 .rune-item.selected{border-color:#8cd2ff; box-shadow:0 0 14px rgba(100,180,255,0.24);} 
