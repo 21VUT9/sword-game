@@ -1345,6 +1345,41 @@ button {
   overflow: visible;
 }
 
+.profile-equipped-rune-display{
+  position:absolute;
+  left:12px;
+  bottom:12px;
+  display:flex;
+  flex-direction:column-reverse;
+  align-items:flex-start;
+  gap:6px;
+  z-index:7;
+  pointer-events:none;
+}
+
+.profile-equipped-rune-chip{
+  width:38px;
+  height:38px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,0.18);
+  background:rgba(8,12,24,0.62);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.05),
+    0 4px 10px rgba(0,0,0,0.34);
+  backdrop-filter: blur(2px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+
+.profile-equipped-rune-chip img{
+  width:84%;
+  height:84%;
+  object-fit:contain;
+  filter:drop-shadow(0 0 6px rgba(150,210,255,0.22));
+}
+
   /* ================= 무기 성공/실패 이펙트(파편/연기) ================= */
 
 .weapon-fx-layer{
@@ -4993,6 +5028,7 @@ html, body {
     <!-- ⚔️ 검 이미지 -->
     <div class="profile-weapon-box">
        <div id="weaponFxLayer" class="weapon-fx-layer"></div>
+       <div id="profileEquippedRuneDisplay" class="profile-equipped-rune-display" aria-hidden="true"></div>
       <img id="weaponImage"
            src="images/weapons/sword_real_temp.png"
            alt="내 무기">
@@ -14306,6 +14342,7 @@ function updateTopCurrencyBar(){
 
   // ⚔️ 강화 단계에 맞는 이미지로 교체
   updateWeaponImage();
+  renderProfileEquippedRunes();
 
   if (powerEl) {
     powerEl.textContent = formatGold(power);
@@ -19886,6 +19923,7 @@ function openOtherUserProfilePopup(targetId) {
 
   if (goldEl)        goldEl.textContent        = "0";
   if (imgEl)         imgEl.src                 = "images/weapons/sword_real_temp.png";
+  renderOtherProfileEquippedRunesByData(null);
 
   if (engr1El) engr1El.textContent = "1) -";
   if (engr2El) engr2El.textContent = "2) -";
@@ -19949,6 +19987,7 @@ function openOtherUserProfilePopup(targetId) {
     if (imgEl && wInfo && wInfo.img) {
       imgEl.src = wInfo.img;
     }
+    renderOtherProfileEquippedRunesByData(d);
 
     overlay.style.display = "flex";
   }).catch(err => {
@@ -19982,6 +20021,7 @@ function openHallOfFameProfilePopup(targetId, weaponTypeAt30, achievedAt) {
   if (weaponValueEl) weaponValueEl.textContent = "0";
   if (recordEl)      recordEl.textContent      = "승 0 / 패 0";
   if (imgEl)         imgEl.src                 = "images/weapons/sword_real_temp.png";
+  renderOtherProfileEquippedRunesByData(null);
 
   db.ref("users/" + targetId).once("value").then(snap => {
     if (!snap.exists()) {
@@ -20022,6 +20062,7 @@ function openHallOfFameProfilePopup(targetId, weaponTypeAt30, achievedAt) {
     if (recordEl) recordEl.textContent = `승 ${duelW} / 패 ${duelL}`;
 
     if (imgEl && wInfo && wInfo.img) imgEl.src = wInfo.img;
+    renderOtherProfileEquippedRunesByData(d);
 
     overlay.style.display = "flex";
   }).catch(err => {
@@ -25319,6 +25360,49 @@ function getRuneStatTotals(){
   return totals;
 }
 function getRuneStorageUsed(){ return Number(runeInventory.length || 0) + Math.max(0, Number(unidentifiedRuneStones || 0)); }
+function getProfileDisplayRuneUidsFromSlots(slots){
+  const safeSlots = Array.isArray(slots) ? slots : Array(9).fill(null);
+  return [safeSlots[2], safeSlots[5], safeSlots[8]].filter(Boolean);
+}
+function renderEquippedRunesToContainer(containerId, uids){
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const safeUids = Array.isArray(uids) ? uids.filter(Boolean).slice(0,3) : [];
+  if (!safeUids.length){
+    el.innerHTML = '';
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = 'flex';
+  el.innerHTML = safeUids.map(uid => {
+    const item = getRuneItemByUid(uid);
+    if (!item) return '';
+    return `<span class="profile-equipped-rune-chip"><img src="${getRuneMarkIcon(item.kind)}" alt="" onerror="this.onerror=null;this.src='${RUNE_IMAGE_FALLBACK}';"></span>`;
+  }).join('');
+}
+function renderProfileEquippedRunes(){
+  const slots = getActiveRuneSlots();
+  renderEquippedRunesToContainer('profileEquippedRuneDisplay', getProfileDisplayRuneUidsFromSlots(slots));
+}
+function renderOtherProfileEquippedRunesByData(userData){
+  const slots = normalizeRunePresets(userData && userData.runePresets)[Number(userData && userData.runePresetIdx || 0)] || Array(9).fill(null);
+  const uids = getProfileDisplayRuneUidsFromSlots(slots);
+  const inv = normalizeRuneInventory(userData && userData.runeInventory);
+  const byUid = new Map(inv.map(item => [String(item.uid), item]));
+  const el = document.getElementById('otherProfileEquippedRuneDisplay');
+  if (!el) return;
+  if (!uids.length){
+    el.innerHTML = '';
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = 'flex';
+  el.innerHTML = uids.map(uid => {
+    const item = byUid.get(String(uid));
+    if (!item) return '';
+    return `<span class="profile-equipped-rune-chip"><img src="${getRuneMarkIcon(item.kind)}" alt="" onerror="this.onerror=null;this.src='${RUNE_IMAGE_FALLBACK}';"></span>`;
+  }).join('');
+}
 function canReceiveRuneStone(){ return getRuneStorageUsed() < RUNE_STORAGE_LIMIT; }
 function addUnidentifiedRuneStone(qty=1){
   qty = Math.max(0, Number(qty||0));
@@ -29452,6 +29536,7 @@ setTimeout(() => {
 
     <div class="profile-card-inner">
       <div class="profile-weapon-box">
+        <div id="otherProfileEquippedRuneDisplay" class="profile-equipped-rune-display" aria-hidden="true"></div>
         <img id="otherWeaponImage"
              src="images/weapons/sword_real_temp.png"
              alt="무기">
