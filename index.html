@@ -25347,11 +25347,16 @@ function normalizeRuneInventory(arr){
   }).slice(0, RUNE_STORAGE_LIMIT);
 }
 function normalizeRunePresets(v){
-  const out = Array.from({length:3}, ()=> Array(9).fill(null));
-  const src = Array.isArray(v) ? v : [];
-  for (let i=0;i<3;i++){
-    const row = Array.isArray(src[i]) ? src[i] : [];
-    for (let j=0;j<9;j++) out[i][j] = row[j] ? String(row[j]) : null;
+  const out = Array.from({length:3}, () => Array(9).fill(null));
+  const src = Array.isArray(v) ? v : (v && typeof v === "object" ? [v[0] ?? v["0"], v[1] ?? v["1"], v[2] ?? v["2"]] : []);
+  for (let i = 0; i < 3; i++){
+    const rawRow = src[i];
+    const row = Array.isArray(rawRow)
+      ? rawRow
+      : (rawRow && typeof rawRow === "object"
+          ? Array.from({length:9}, (_, idx) => rawRow[idx] ?? rawRow[String(idx)] ?? null)
+          : []);
+    for (let j = 0; j < 9; j++) out[i][j] = row[j] ? String(row[j]) : null;
   }
   return out;
 }
