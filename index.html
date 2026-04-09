@@ -17497,6 +17497,18 @@ if (r < successChance) {
     );
   }
 
+  // ✅ 망령왕의 죽음세계: 0.1% 확률로 미확인 룬석 1개
+  if (currentField === 6 && Math.random() < adjDrop(0.001)) {
+    if (addUnidentifiedRuneStone(1)) {
+      popupMsg += `<br>🔹 미확인 룬석 1개를 획득했다!`;
+      writeLog(
+        `${userId}님이 사냥에서 <span style="color:#6cf;">미확인 룬석</span> 1개를 획득했습니다!`
+      );
+    } else {
+      popupMsg += `<br>⚠️ 룬 보관 공간이 가득 차 미확인 룬석을 획득하지 못했다.`;
+    }
+  }
+
   // LV4 이상: 10% 확률로 강등방지 주문서
   if (currentField >= 4 && Math.random() < adjDrop(0.05)) {
     itemDownProtect += 1;
@@ -19276,7 +19288,8 @@ function getBossRewardByPct(bossId, pct, isLeader){
     itemSuper: 0,
     itemBossPriority: 0,
     itemEngraveNormal: 0,
-    itemEngraveAdvanced: 0
+    itemEngraveAdvanced: 0,
+    unidentifiedRuneStones: 0
   };
 
   if (bossId === "swamp_elf_queen") {
@@ -19345,6 +19358,14 @@ function getBossRewardByPct(bossId, pct, isLeader){
       reward.itemEngraveNormal += 3;
     }
 
+  } else if (bossId === "dawn_twin_knights") {
+    reward.itemEssence += 140;
+    const roll = Math.random();
+    if (roll < 0.10) {
+      reward.unidentifiedRuneStones += 2;
+    } else if (roll < 0.70) {
+      reward.unidentifiedRuneStones += 1;
+    }
   } else {
     reward.itemEssence += 1;
   }
@@ -19452,6 +19473,16 @@ function claimBossReward(){
     itemEngraveNormal = Number(itemEngraveNormal || 0) + (rw.itemEngraveNormal || 0);
     itemEngraveAdvanced = Number(itemEngraveAdvanced || 0) + (rw.itemEngraveAdvanced || 0);
 
+    const bossRuneStoneGain = Number(rw.unidentifiedRuneStones || 0);
+    let bossRuneStoneReceived = 0;
+    if (bossRuneStoneGain > 0) {
+      const freeSlots = Math.max(0, Number(RUNE_STORAGE_LIMIT || 0) - getRuneStorageUsed());
+      bossRuneStoneReceived = Math.min(bossRuneStoneGain, freeSlots);
+      if (bossRuneStoneReceived > 0) {
+        addUnidentifiedRuneStone(bossRuneStoneReceived);
+      }
+    }
+
     bossKillCountById = (bossKillCountById && typeof bossKillCountById === "object") ? bossKillCountById : {};
     bossKillCountById[bossId] = Number(bossKillCountById[bossId] || 0) + 1;
     if (isLeader) {
@@ -19480,6 +19511,8 @@ function claimBossReward(){
     if (rw.itemBossPriority) lines.push(`보스토벌신청우선권 ${rw.itemBossPriority}개`);
     if (rw.itemEngraveNormal) lines.push(`일반각인의 주문서 ${rw.itemEngraveNormal}개`);
     if (rw.itemEngraveAdvanced) lines.push(`고급각인의 주문서 ${rw.itemEngraveAdvanced}개`);
+    if (bossRuneStoneReceived) lines.push(`미확인 룬석 ${bossRuneStoneReceived}개`);
+    if (bossRuneStoneGain > bossRuneStoneReceived) lines.push(`미확인 룬석 공간 부족 ${bossRuneStoneGain - bossRuneStoneReceived}개`);
 
     showNpcMessage(
       `보상 수령 완료!<br><span style="color:#ffd54f;">${lines.join(", ") || "없음"}</span>`,
