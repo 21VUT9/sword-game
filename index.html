@@ -28660,7 +28660,42 @@ function ensureBossCooldownResetByRun(bossId, runLike){
       }
 
       const run = (bossRunsActiveCache || {})[TWIN_BOSS_ID];
-      if (run && String(run.bonusProtectUid || '') === String(userId || '')) reward.itemBossPriority += 1;
+      if (run) {
+        const memberMap = (run && typeof run.members === 'object' && run.members) ? run.members : {};
+        const memberUids = Object.keys(memberMap)
+          .map(v => String(v || '').trim())
+          .filter(Boolean)
+          .sort();
+
+        if (memberUids.length >= 5) {
+          const seedBase = [
+            String(run.logKey || ''),
+            String(run.createdAt || ''),
+            String(run.clearedAt || ''),
+            String(run.leaderUid || '')
+          ].join('|');
+
+          const hashStringToUnit = (src) => {
+            let h = 2166136261;
+            const s = String(src || '');
+            for (let i = 0; i < s.length; i++) {
+              h ^= s.charCodeAt(i);
+              h = Math.imul(h, 16777619);
+            }
+            return ((h >>> 0) / 4294967296);
+          };
+
+          const dropRoll = hashStringToUnit(seedBase + '|priorityDrop');
+          if (dropRoll < 0.30) {
+            const winnerRoll = hashStringToUnit(seedBase + '|priorityWinner');
+            const winnerIdx = Math.floor(winnerRoll * memberUids.length);
+            const winnerUid = memberUids[Math.max(0, Math.min(memberUids.length - 1, winnerIdx))] || '';
+            if (winnerUid && winnerUid === String(userId || '')) {
+              reward.itemBossPriority += 1;
+            }
+          }
+        }
+      }
       return reward;
     },
     createRun(bossId, options = {}){
