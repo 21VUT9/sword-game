@@ -8099,10 +8099,10 @@ const couponRewards = {
     desc: "파괴방지 주문서 5개를 획득했습니다."
   },
 
-  "RUNE1GET": {
+  "CODE987654": {
   type: "runeStone",
-  count: 1,
-  desc: "미확인 룬석 1개를 획득했습니다."
+  count: 0,
+  desc: "미확인 룬석 0개를 획득했습니다."
 },
 
   "CODE9876543": {
@@ -28617,7 +28617,8 @@ function ensureBossCooldownResetByRun(bossId, runLike){
         itemSuper: 0,
         itemBossPriority: 0,
         itemEngraveNormal: 0,
-        itemEngraveAdvanced: 0
+        itemEngraveAdvanced: 0,
+        unidentifiedRuneStones: 0
       };
       if (pct >= 30) {
         reward.itemProtect += 6;
@@ -28645,6 +28646,14 @@ function ensureBossCooldownResetByRun(bossId, runLike){
         reward.itemProtect += 1;
         reward.itemEssence += 50;
       }
+
+      const runeRoll = Math.random();
+      if (runeRoll < 0.10) {
+        reward.unidentifiedRuneStones += 2;
+      } else if (runeRoll < 0.70) {
+        reward.unidentifiedRuneStones += 1;
+      }
+
       const run = (bossRunsActiveCache || {})[TWIN_BOSS_ID];
       if (run && String(run.bonusProtectUid || '') === String(userId || '')) reward.itemBossPriority += 1;
       return reward;
