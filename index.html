@@ -28951,6 +28951,46 @@ function ensureBossCooldownResetByRun(bossId, runLike){
       renderBossBattleLogs();
 
       const st = String(run.status || '');
+
+      // ✅ 쌍기사 전용 결과 로그 1회 출력
+      if ((st === 'cleared' || st === 'failed') && bossId && typeof db !== 'undefined' && db && typeof db.ref === 'function') {
+        const runRef = db.ref(`bossRunsActive/${bossId}`);
+        runRef.transaction((cur) => {
+          if (!cur) return;
+          const s = String(cur.status || '');
+          if (s !== 'cleared' && s !== 'failed') return;
+          if (cur.resultAnnounced) return;
+          cur.resultAnnounced = true;
+          cur.resultAnnouncedAt = Date.now();
+          return cur;
+        }, (err, committed) => {
+          if (err || !committed) return;
+          const leader = String(run.leaderNick || getNickSafe());
+          const mapName = String(def.mapName || run.mapName || '망령왕의 죽음세계');
+          const bossTitle = String(def.bossTitle || run.bossTitle || '보스');
+          const bossName = String(def.bossName || run.bossName || '');
+          const title = `${mapName}의 주인 ${bossTitle}${bossName ? ' ' + bossName : ''}`;
+          const successText = String(def.logSuccess || '');
+          const failText = String(def.logFail || '');
+
+          if (st === 'cleared') {
+            if (typeof writeLog === 'function') {
+              writeLog(`${leader}님의 토벌대가 ${title}를 토벌하는데 성공하였습니다.${successText ? ' ' + successText : ''}`, false);
+            }
+            if (typeof writeBossBattleLog === 'function') {
+              writeBossBattleLog(bossId, '✅ 토벌 성공! 보상 수령이 가능합니다.');
+            }
+          } else {
+            if (typeof writeLog === 'function') {
+              writeLog(`${leader}님의 토벌대가 ${title} 토벌에 실패하였습니다.${failText ? ' ' + failText : ''}`, false);
+            }
+            if (typeof writeBossBattleLog === 'function') {
+              writeBossBattleLog(bossId, '❌ 토벌 실패… 포기(정산) 처리가 가능합니다.');
+            }
+          }
+        });
+      }
+
       if (st === 'cleared') {
         if (lineMainEl) lineMainEl.textContent = def.deadLine || '';
         if (lineSubEl) lineSubEl.textContent = def.deadSubLine || '';
