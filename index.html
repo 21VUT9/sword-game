@@ -961,6 +961,27 @@ button {
   line-height:1;
 }
 
+
+.passive-lock-btn{
+  margin-left:auto;
+  padding:5px 9px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.28);
+  font-size:12px;
+  font-weight:900;
+  line-height:1;
+  cursor:pointer;
+  min-width:62px;
+}
+
+.passive-lock-btn.active{
+  color:#ffd54f;
+  border-color: rgba(255,213,79,0.45);
+  background: rgba(255,213,79,0.14);
+}
+
 .passive-locked{
   opacity:0.35;
 }
@@ -7412,18 +7433,97 @@ function getWeaponInfo(level, type) {
 
 // 0강에서 처음 무기가 생길 때, 타입(검/창/도끼) 랜덤 확정
 // 0강에서 처음 무기가 생길 때, 타입(검/창/도끼) 랜덤 확정
+function getPassiveMaxLevelByType(type){
+  return (String(type || "") === "magitech") ? 1 : 5;
+}
+
+function normalizeWeaponLocks(src){
+  const out = {};
+  if (!src || typeof src !== "object") return out;
+  Object.keys(src).forEach((k) => {
+    out[String(k)] = !!src[k];
+  });
+  return out;
+}
+
+function isWeaponLockedForSpawn(type){
+  const t = String(type || "");
+  return !!(weaponLocks && weaponLocks[t]);
+}
+
+function getLockableWeaponTypes(){
+  const lv = (typeof getPassiveLevels === "function") ? getPassiveLevels() : {};
+  const types = ["sword","spear","axe","bow","staff","dagger","gauntlet","scythe","magitech"];
+  return types.filter((t) => Number(lv[t] || 0) >= getPassiveMaxLevelByType(t));
+}
+
+function canActivateWeaponLock(type){
+  const t = String(type || "");
+  const lockables = getLockableWeaponTypes();
+  if (!lockables.includes(t)) return false;
+  const activeCount = lockables.reduce((acc, wt) => acc + (isWeaponLockedForSpawn(wt) ? 1 : 0), 0);
+  return (activeCount + (isWeaponLockedForSpawn(t) ? 0 : 1)) < lockables.length;
+}
+
+function requestWeaponLockToggle(type){
+  const t = String(type || "");
+  if (!t) return;
+
+  weaponLocks = normalizeWeaponLocks(weaponLocks);
+  const lockedNow = !!weaponLocks[t];
+
+  if (lockedNow) {
+    delete weaponLocks[t];
+    save();
+    openStatOverlay();
+    return;
+  }
+
+  showConfirmPopup(
+    "잠금을 활성화하면 더이상 이 무기는 등장하지 않을꺼야.",
+    "images/npc/linea_idle.png",
+    "서기관 리네아",
+    "확인",
+    () => {
+      if (!canActivateWeaponLock(t)) {
+        closeNpcPopup();
+        showConfirmPopup(
+          "모든 무기를 잠글 순 없어",
+          "images/npc/linea_idle.png",
+          "서기관 리네아",
+          "확인",
+          () => {
+            weaponLocks = normalizeWeaponLocks(weaponLocks);
+            delete weaponLocks[t];
+            closeNpcPopup();
+            openStatOverlay();
+          }
+        );
+        return;
+      }
+
+      weaponLocks[t] = true;
+      save();
+      closeNpcPopup();
+      openStatOverlay();
+    }
+  );
+}
+
 function ensureWeaponTypeAfterUpgrade(beforeLevel, afterLevel) {
   if (beforeLevel <= 0 && afterLevel >= 1) {
     if (!weaponType) {
-      const types = ["sword", "spear", "axe", "bow", "staff", "dagger", "gauntlet", "scythe"];
-      const idx = Math.floor(Math.random() * types.length);
-      weaponType = types[idx];
+      const baseTypes = ["sword", "spear", "axe", "bow", "staff", "dagger", "gauntlet", "scythe"];
+      const types = baseTypes.filter(t => !isWeaponLockedForSpawn(t));
+      const pickPool = types.length ? types : baseTypes;
+      const idx = Math.floor(Math.random() * pickPool.length);
+      weaponType = pickPool[idx];
     }
   }
 
   // ✅ 히든 무기(마법공학): 0강 → 1강 도달 시에만 0.n%
   if (beforeLevel === 0 && afterLevel === 1) {
-    if (Math.random() < 0.005) {
+    if (!isWeaponLockedForSpawn("magitech") && Math.random() < 0.005) {
       weaponType = "magitech";
 
       // ✅ (추가1) 뽑은 플레이어에게 NPC 안내 메시지
@@ -7869,6 +7969,7 @@ let fireworksDestroyed = { 21:false, 22:false, 23:false, 24:false, 25:false };
 // ✅ 30강 달성 횟수(전체/무기별)
 let reach30Count = 0;           // 30강 달성 누적(무기 상관없이)
 let weapon30Counts = {};        // { sword:0, axe:0, spear:0, bow:0 } 형태로 저장
+let weaponLocks = {};           // { sword:true, ... } 패시브 MAX 무기 잠금 상태
 
   // 🏛️ 명예의 전당(30강 도달 후 72시간 카운트)
 let hofDeadline = 0;          // 강제 전당행 만료시각(ms)
@@ -17781,6 +17882,7 @@ function login() {
       fireworksDestroyed = data.fireworksDestroyed || { 21:false, 22:false, 23:false, 24:false, 25:false };
       reach30Count = Number(data.reach30Count || 0);
       weapon30Counts = data.weapon30Counts || {};
+    weaponLocks = normalizeWeaponLocks(data.weaponLocks);
       hofDeadline = Number(data.hofDeadline || 0);
       hofAchievedAt = Number(data.hofAchievedAt || 0);
       hofWeaponTypeAt30 = data.hofWeaponTypeAt30 || "";
@@ -18083,6 +18185,7 @@ function login() {
       fireworksDestroyed: { 21:false, 22:false, 23:false, 24:false, 25:false },
       reach30Count: 0,
       weapon30Counts: {},
+      weaponLocks: {},
       hofDeadline: 0,
       hofAchievedAt: 0,
       hofWeaponTypeAt30: "",
@@ -18252,6 +18355,7 @@ function save() {
     fireworksDestroyed: fireworksDestroyed,
     reach30Count: reach30Count,
     weapon30Counts: weapon30Counts,
+    weaponLocks: normalizeWeaponLocks(weaponLocks),
     hofDeadline: Number(hofDeadline || 0),
     hofAchievedAt: Number(hofAchievedAt || 0),
     hofWeaponTypeAt30: hofWeaponTypeAt30 || "",
@@ -19787,6 +19891,7 @@ if (equippedTitle && equippedTitle.includes("${")) equippedTitle = "";
     fireworksDestroyed = data.fireworksDestroyed || { 21:false, 22:false, 23:false, 24:false, 25:false };
     reach30Count = Number(data.reach30Count || 0);
     weapon30Counts = data.weapon30Counts || {};
+    weaponLocks = normalizeWeaponLocks(data.weaponLocks);
     hofDeadline = Number(data.hofDeadline || 0);
     hofAchievedAt = Number(data.hofAchievedAt || 0);
     hofWeaponTypeAt30 = data.hofWeaponTypeAt30 || "";
@@ -26151,9 +26256,13 @@ if (invBtn) {
   // -----------------------------
   const listEl = document.getElementById("passiveSkillList");
   if (listEl) {
-    const row = (icon, name, desc, lv, locked) => {
-    const isOneMax = (name === "캡틴의 혼"); // magitech 전용
-    const lvTxt = locked ? "LOCK" : ((isOneMax && lv >= 1) ? "MAX" : ((lv >= 5) ? "MAX" : `LV${lv}`));
+    const row = (type, icon, name, desc, lv, locked) => {
+      const maxLv = getPassiveMaxLevelByType(type);
+      const isMax = !locked && Number(lv || 0) >= maxLv;
+      const lvTxt = locked ? "LOCK" : (isMax ? "MAX" : `LV${lv}`);
+      const lockBtn = isMax
+        ? `<button class="passive-lock-btn ${isWeaponLockedForSpawn(type) ? "active" : ""}" onclick="requestWeaponLockToggle('${type}')">(잠금)</button>`
+        : "";
       return `
         <div class="passive-row ${locked ? "passive-locked" : ""}">
           <img class="passive-icon" src="${icon}" alt="">
@@ -26161,6 +26270,7 @@ if (invBtn) {
             <div class="passive-name">${name}</div>
             <div class="passive-desc">${desc}</div>
           </div>
+          ${lockBtn}
           <div class="passive-lv">${locked ? "LOCK" : lvTxt}</div>
         </div>
       `;
@@ -26168,6 +26278,7 @@ if (invBtn) {
 
     const items = [];
     items.push(row(
+      "sword",
       "images/skills/passive_knight_sword.png",
       "기사의 혼",
       `공격력/주문력 +${lvSword * 10}%`,
@@ -26175,6 +26286,7 @@ if (invBtn) {
       lvSword <= 0
     ));
     items.push(row(
+      "spear",
       "images/skills/passive_warrior_spear.png",
       "전사의 혼",
       `관통력 +${lvSpear * 10}%`,
@@ -26182,6 +26294,7 @@ if (invBtn) {
       lvSpear <= 0
     ));
     items.push(row(
+      "axe",
       "images/skills/passive_viking_axe.png",
       "바이킹의 혼",
       `치명타확률 +${lvAxe * 10}%`,
@@ -26189,6 +26302,7 @@ if (invBtn) {
       lvAxe <= 0
     ));
     items.push(row(
+      "bow",
       "images/skills/passive_hunter_bow.png",
       "사냥꾼의 혼",
       `회피무시 +${lvBow * 10}%`,
@@ -26196,20 +26310,23 @@ if (invBtn) {
       lvBow <= 0
     ));
     items.push(row(
+      "staff",
       "images/skills/passive_mage_staff.png",
       "마법사의 혼",
-     `사냥횟수최대치 +${my.huntMaxPlus}`,
+      `사냥횟수최대치 +${my.huntMaxPlus}`,
       lvStaff,
       lvStaff <= 0
     ));
     items.push(row(
+      "dagger",
       "images/skills/passive_assassin_dagger.png",
       "어쌔신의 혼",
       `치명타데미지 +${lvDagger * 10}%`,
       lvDagger,
       lvDagger <= 0
     ));
-        items.push(row(
+    items.push(row(
+      "gauntlet",
       "images/skills/passive_fighter_gauntlet.png",
       "파이터의 혼",
       `관통력 +${lvGauntlet * 10}%`,
@@ -26217,6 +26334,7 @@ if (invBtn) {
       lvGauntlet <= 0
     ));
     items.push(row(
+      "scythe",
       "images/skills/passive_reaper_scythe.png",
       "수확자의 혼",
       `공격력/주문력 +${lvScythe * 10}%`,
@@ -26224,6 +26342,7 @@ if (invBtn) {
       lvScythe <= 0
     ));
     items.push(row(
+      "magitech",
       "images/skills/passive_captain_magitech.png",
       "캡틴의 혼",
       "공격력/주문력 +30%",
