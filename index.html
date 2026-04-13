@@ -54,6 +54,11 @@ body {
   font-weight: 800;
   color: #eaeaea;
   padding: 10px 6px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  line-height: 1.3;
   cursor: pointer;
   white-space: nowrap;          /* ✅ 1줄 고정 */
   overflow: hidden;
@@ -96,13 +101,6 @@ body {
 .questSectionTitle.done{
   color: #9a9a9a;
 }
-
-#questListArea{
-  max-height: 400px;
-  overflow-y: auto;
-  padding-right: 6px;
-}
-
 
 /* 공용 액션 팝업 버튼 (게임 버튼 느낌) */
 .actionBtn{
@@ -29654,32 +29652,87 @@ openQuestOverlay = function(){
   _origOpenQuestOverlay();
   const list = document.getElementById("questListArea");
   if (!list) return;
-  // remove empty message if our quests exist
-  const our = ["frost_01","frost_02","frost_03","frost_04","frost_05","frost_06"].filter(q=>Number(questState[q]||0)>0);
+
+  const frostQuestIds = ["frost_01","frost_02","frost_03","frost_04","frost_05","frost_06"];
+  const chapter2FullyUnlocked =
+    typeof isStorybookUnlocked === "function" &&
+    typeof getStorybookUnlockedPages === "function" &&
+    isStorybookUnlocked("chapter2") &&
+    getStorybookUnlockedPages("chapter2") >= STORYBOOK_CH2_PAGES.length;
+
+  if (chapter2FullyUnlocked) {
+    const completedMap = ensureQuestCompletedAtMap();
+    const stampBase = Date.now() - (frostQuestIds.length * 1000);
+    frostQuestIds.forEach((qid, idx) => {
+      if (Number(questState?.[qid] || 0) > 0 && questState[qid] !== QUEST_STATE.REWARDED) {
+        questState[qid] = QUEST_STATE.REWARDED;
+      }
+      if (Number(questState?.[qid] || 0) === QUEST_STATE.REWARDED && !completedMap[qid]) {
+        completedMap[qid] = stampBase + (idx * 1000);
+      }
+    });
+  }
+
+  const our = frostQuestIds.filter(q => Number(questState?.[q] || 0) > 0);
   if (!our.length) return;
+
   const empty = Array.from(list.children).find(el => el.textContent && el.textContent.includes("진행 중인 퀘스트가 없습니다"));
   if (empty) empty.remove();
-  const completedMap = ensureQuestCompletedAtMap();
-  let doneSection = Array.from(list.children).find(el => el.className === "questSectionTitle done");
-  let progressSection = Array.from(list.children).find(el => el.className === "questSectionTitle");
+
+  let doneSection = Array.from(list.children).find(el => el.classList && el.classList.contains("questSectionTitle") && el.classList.contains("done"));
+  let progressSection = Array.from(list.children).find(el => el.classList && el.classList.contains("questSectionTitle") && !el.classList.contains("done"));
+
   if (!progressSection) {
-    progressSection = document.createElement("div"); progressSection.className = "questSectionTitle"; progressSection.textContent = "진행중 퀘스트"; list.appendChild(progressSection);
+    progressSection = document.createElement("div");
+    progressSection.className = "questSectionTitle";
+    progressSection.textContent = "진행중 퀘스트";
+    if (doneSection) list.insertBefore(progressSection, doneSection);
+    else list.appendChild(progressSection);
   }
-  function makeRow(qid,label,onClick){
-    const state = questState[qid];
-    if (!state || state === QUEST_STATE.OFFERED) return;
-    const row = document.createElement("div");
-    if (state === QUEST_STATE.REWARDED){
-      row.className = "questRowText questRowDone"; row.textContent = `${label}  -  완료`;
-      if (!doneSection) { doneSection = document.createElement("div"); doneSection.className = "questSectionTitle done"; doneSection.textContent = "완료된 퀘스트"; list.appendChild(doneSection); }
-      list.appendChild(row); return;
+
+  function appendDoneRow(row){
+    if (!doneSection) {
+      doneSection = document.createElement("div");
+      doneSection.className = "questSectionTitle done";
+      doneSection.textContent = "완료된 퀘스트";
+      list.appendChild(doneSection);
     }
-    const status = state === QUEST_STATE.ACTIVE ? "진행중" : state === QUEST_STATE.COMPLETE ? "완료 가능" : "미수락";
-    row.className = "questRowText"; row.textContent = `${label}  -  ${status}`;
-    if (state === QUEST_STATE.COMPLETE) row.classList.add("questRowReady");
-    row.addEventListener("click", onClick);
-    list.insertBefore(row, doneSection || null);
+    list.appendChild(row);
   }
+
+  function appendProgressRow(row){
+    if (!progressSection) {
+      progressSection = document.createElement("div");
+      progressSection.className = "questSectionTitle";
+      progressSection.textContent = "진행중 퀘스트";
+      if (doneSection) list.insertBefore(progressSection, doneSection);
+      else list.appendChild(progressSection);
+    }
+    if (doneSection) list.insertBefore(row, doneSection);
+    else list.appendChild(row);
+  }
+
+  function makeRow(qid, label, onClick){
+    const state = Number(questState?.[qid] || 0);
+    if (!state || state === QUEST_STATE.OFFERED) return;
+
+    const row = document.createElement("div");
+
+    if (state === QUEST_STATE.REWARDED) {
+      row.className = "questRowText questRowDone";
+      row.textContent = `${label}  -  완료`;
+      appendDoneRow(row);
+      return;
+    }
+
+    const status = state === QUEST_STATE.ACTIVE ? "진행중" : state === QUEST_STATE.COMPLETE ? "완료 가능" : "미수락";
+    row.className = "questRowText";
+    row.textContent = `${label}  -  ${status}`;
+    if (state === QUEST_STATE.COMPLETE) row.classList.add("questRowReady");
+    if (typeof onClick === "function") row.addEventListener("click", onClick);
+    appendProgressRow(row);
+  }
+
   makeRow("frost_01","[서리깊은 한] 01 _ 대장간의 숯", openQuestDetail_frost01);
   makeRow("frost_02","[서리깊은 한] 02 _ 이상기후", openQuestDetail_frost02);
   makeRow("frost_03","[서리깊은 한] 03 _ 설산 탐사", openQuestDetail_frost03);
@@ -30087,7 +30140,7 @@ setTimeout(() => {
 
     <!-- 목록 -->
     <div id="questListArea"
-         style="padding:12px 14px; display:flex; flex-direction:column; gap:10px;">
+         style="padding:12px 14px; display:flex; flex-direction:column; gap:10px; max-height:400px; overflow-y:auto; padding-right:6px;">
     </div>
 
   </div>
