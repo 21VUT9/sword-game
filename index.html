@@ -28778,6 +28778,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
 
   function spawnTwinFloat(key, ev, valueOrText, kind){
     const isMagic = twinBossIsMagicWeapon();
+    playBossAttackSfx({ isMiss: kind === 'miss', isCrit: kind === 'crit' }, isMagic);
     spawnTwinBossHitEffectAt(ev.clientX, ev.clientY, kind, isMagic);
     if (kind === 'miss') spawnTwinBossDamageFloatAt(ev.clientX, ev.clientY, 'MISS', 'miss');
     else spawnTwinBossDamageFloatAt(ev.clientX, ev.clientY, valueOrText, kind);
@@ -29653,6 +29654,8 @@ function ensureBossCooldownResetByRun(bossId, runLike){
     const dmg = Number(result.damage || 0);
     const isMagic = guardianIsMagicWeapon();
     const kind = result.isMiss ? 'miss' : (result.isCrit ? 'crit' : 'hit');
+
+    playBossAttackSfx(result, isMagic);
 
     const shieldHpNow = Math.max(0, Number(run.shieldHp || 0));
     const shieldModeNow = String(run.shieldMode || '');
