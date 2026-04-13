@@ -2256,6 +2256,10 @@ hr.section-divider{
   padding:16px 20px;
   max-width:360px;
   width:90%;
+  max-height:80vh;
+  overflow:hidden;
+  overflow-x:hidden;
+  box-sizing:border-box;
   text-align:center;
   box-shadow:0 0 15px rgba(0,0,0,0.8);
 }
@@ -19215,6 +19219,7 @@ function openBossApplyList() {
     <div style="font-size:12px; color:#aaa; margin-bottom:10px; line-height:1.4;">
          토벌 신청자는 자동으로 토벌대에 참여합니다.
     </div>
+    <div style="max-height:420px; overflow-y:auto; overflow-x:hidden; padding-right:6px; box-sizing:border-box; width:100%; min-width:0;">
   `;
 
   BOSS_DEFS.forEach(def => {
@@ -19279,6 +19284,8 @@ function openBossApplyList() {
       </div>
     `;
   });
+
+  html += `</div>`;
 
   showNpcMessage(
     html,
@@ -21816,6 +21823,33 @@ const BOSS_DEFS = [
     // ✅ 토벌 결과 메인로그에 붙일 문장(보스별)
     logSuccess: "서리여왕의 냉기가 부서지며 동굴에 봄의 숨결이 스며듭니다!",
     logFail: "끝없는 냉기가 토벌대를 삼켰습니다… 동굴은 다시 침묵합니다."
+  },
+
+  {
+    id: "guardian_knight",
+    mapName: "망령왕의 죽음세계",
+    bossTitle: "망각의 가디안 나이트",
+    bossName: "",
+    desc: "천년의 저주 속에서도 성문을 지켜야 한다는 신념만 남은 기사. 침입자를 막기 위해 끝없이 방패를 들고 버텨냅니다.",
+    minSword: 25,
+    applyCostGold: 100000000000,
+    durationHours: 72,
+    maxHp: 3500000000000,
+    bgImg: "images/bossmaps/bossmap_deathworld_guardian_knight.png",
+    imgIdle: "images/bosses/guardian_knight_idle.png",
+    imgDead: "images/bosses/guardian_knight_down.png",
+    lines: [
+      "...여긴… 지나갈 수 없다…",
+      "나는 막아야 한다…",
+      "그는 한때 왕국의 성문을 지키던 기사였습니다.",
+      "지금, 그는 무엇을 지키는지조차 모릅니다.",
+      "천 년의 시간 속에서, 그는 자신의 명령을 다 할 뿐입니다."
+    ],
+    deadLine: "천년의 수호도, 마침내 끝을 맞이합니다.",
+    deadSubLine: "망각의 가디안 나이트 — 기록 종료",
+    failLine: "기사는 쓰러지지 않았습니다. 그는 여전히 성문을 지키고 있습니다.",
+    logSuccess: "망각의 가디안 나이트가 무너지며, 저주받은 성문 앞에 잠시 길이 열립니다!",
+    logFail: "망각의 가디안 나이트가 다시 방패를 세웁니다… 성문은 여전히 닫혀 있습니다."
   }
   ];
 
@@ -22296,11 +22330,15 @@ const BOSS_SPRITES = {
 };
 
 // ✅ 상태에 맞는 보스 이미지 src 반환
-function getBossSpriteSrc(bossId, status){
+function getBossSpriteSrc(bossId, status, run){
   const sp = (BOSS_SPRITES || {})[String(bossId || "")] || {};
   const st = String(status || "active");
+  const bossKey = String(bossId || "");
   if (st === "cleared") return sp.dead || sp.alive || "";
   if (st === "failed")  return sp.failed || sp.alive || "";
+  if (bossKey === "guardian_knight" && run && Boolean(run.guardianDefenseStanceOn)) {
+    return sp.defense || sp.alive || "";
+  }
   return sp.alive || "";
 }
   
@@ -23382,7 +23420,7 @@ if (bossImg) {
 
 bossBattlePrevShieldHp[bossId] = shieldHp;
 
-  if (bossImg && getBossSpriteSrc(bossId, st)) bossImg.src = getBossSpriteSrc(bossId, st);
+  if (bossImg && getBossSpriteSrc(bossId, st, run)) bossImg.src = getBossSpriteSrc(bossId, st, run);
 
   // ✅ (추가) 상태 변화 감지 → 사망/실패 순간 연출 1회(깜빡임 방지)
 const prevSt = bossBattleLastStatus[bossId];
@@ -29314,6 +29352,471 @@ function ensureBossCooldownResetByRun(bossId, runLike){
   }
 })();
 
+
+/* =========================
+   🛡️ 망각의 가디안 나이트 - 확장 보스전
+   ========================= */
+(function(){
+  const GUARDIAN_BOSS_ID = "guardian_knight";
+  const GUARDIAN_MAX_HP = 3500000000000;
+  const GUARDIAN_SHIELD_HP = 200000000000;
+  const GUARDIAN_SHIELD_INTERVAL = 2 * 60 * 60 * 1000;
+  const GUARDIAN_SHIELD_CHANCE = 0.60;
+  const GUARDIAN_CHAIN_FIRST_DELAY = 5 * 60 * 1000;
+  const GUARDIAN_CHAIN_INTERVAL = 100 * 60 * 1000;
+  const GUARDIAN_CHAIN_CHANCE = 0.50;
+  const GUARDIAN_CHAIN_MINUS = 5;
+
+  function guardianIsMagicWeapon(){
+    const t = String(weaponType || 'sword');
+    return (t === 'staff' || t === 'gauntlet' || t === 'magitech' || t === 'scythe');
+  }
+
+  function getGuardianPowerMultiplier(swordLv){
+    const table = { 25:1.00, 26:0.70, 27:0.50, 28:0.30, 29:0.25, 30:0.16 };
+    swordLv = Number(swordLv || 0);
+    return Object.prototype.hasOwnProperty.call(table, swordLv) ? table[swordLv] : 1;
+  }
+
+  function ensureGuardianBossDef(){
+    if (!Array.isArray(BOSS_DEFS)) return;
+    const def = BOSS_DEFS.find(b => String(b.id) === GUARDIAN_BOSS_ID);
+    if (def) {
+      if (typeof BOSS_FIELD_MAP === 'object' && BOSS_FIELD_MAP) BOSS_FIELD_MAP[GUARDIAN_BOSS_ID] = 6;
+      if (typeof BOSS_SPRITES === 'object' && BOSS_SPRITES) {
+        BOSS_SPRITES[GUARDIAN_BOSS_ID] = {
+          alive: "images/bosses/guardian_knight_idle.png",
+          defense: "images/bosses/guardian_knight_defense_stance.png",
+          dead: "images/bosses/guardian_knight_down.png",
+          failed: "images/bosses/guardian_knight_idle.png"
+        };
+      }
+      return;
+    }
+  }
+  ensureGuardianBossDef();
+
+  const __orig_getBossBattleStats_guardian = getBossBattleStats;
+  getBossBattleStats = function(bossId){
+    if (String(bossId || '') === GUARDIAN_BOSS_ID) {
+      const run = (bossRunsActiveCache || {})[GUARDIAN_BOSS_ID] || null;
+      const defPct = Number(run && run.guardianDefPct != null ? run.guardianDefPct : 0.15);
+      return { evade: 0.15, physDef: defPct, magicRes: 0.00 };
+    }
+    return __orig_getBossBattleStats_guardian.apply(this, arguments);
+  };
+
+  function updateGuardianChainMemberStamina(run){
+    const members = run && run.members ? Object.keys(run.members) : [];
+    members.forEach(uid => {
+      const ref = db.ref(`users/${uid}`);
+      ref.transaction((cur) => {
+        if (!cur) return cur;
+        const before = Math.max(0, Number(cur.huntStamina || 0));
+        const minus = Math.min(GUARDIAN_CHAIN_MINUS, before);
+        cur.huntStamina = Math.max(0, before - minus);
+        cur.huntCountToday = Math.max(0, Number(cur.huntCountToday || 0) + minus);
+        return cur;
+      });
+    });
+  }
+
+  function maybeHandleGuardianKnightSkill(run){
+    if (!run || String(run.status || '') !== 'active') return;
+    const now = Date.now();
+    const ref = db.ref(`bossRunsActive/${GUARDIAN_BOSS_ID}`);
+
+    const shieldHp = Math.max(0, Number(run.shieldHp || 0));
+    const shieldLast = Number(run.lastGuardianShieldTryAt || 0);
+    if (shieldHp <= 0 && (!shieldLast || now - shieldLast >= GUARDIAN_SHIELD_INTERVAL)) {
+      ref.transaction((cur) => {
+        if (!cur || String(cur.status || '') !== 'active') return;
+        const now2 = Date.now();
+        const shieldHp2 = Math.max(0, Number(cur.shieldHp || 0));
+        const last2 = Number(cur.lastGuardianShieldTryAt || 0);
+        if (shieldHp2 > 0) return cur;
+        if (last2 && (now2 - last2) < GUARDIAN_SHIELD_INTERVAL) return cur;
+        cur.lastGuardianShieldTryAt = now2;
+        if (Math.random() < GUARDIAN_SHIELD_CHANCE) {
+          const mode = (Math.random() < 0.5) ? 'physical' : 'magic';
+          cur.shieldMode = mode;
+          cur.shieldMax = GUARDIAN_SHIELD_HP;
+          cur.shieldHp = GUARDIAN_SHIELD_HP;
+          cur.guardianShieldOnAt = now2;
+          cur.guardianShieldAnnounceAt = now2;
+        }
+        return cur;
+      }, (err, committed, snap) => {
+        if (err || !committed || !snap || !snap.val) return;
+        const cur = snap.val() || {};
+        if (Number(cur.guardianShieldAnnounceAt || 0) > 0 && Math.abs(Number(cur.guardianShieldAnnounceAt || 0) - now) < 15000 && Number(cur.shieldHp || 0) > 0) {
+          const mode = String(cur.shieldMode || 'physical');
+          const msg = (mode === 'physical')
+            ? '가디안나이트가 [방패전개]를 사용하여 공격을 방어합니다. (공격력 데미지 10%적용)'
+            : '가디안나이트가 [방패전개]를 사용하여 마법을 방어합니다. (주문력 데미지 10%적용)';
+          writeBossBattleLog(GUARDIAN_BOSS_ID, msg, { tone:'yellow' });
+        }
+      });
+    }
+
+    if (!Boolean(run.guardianDefenseStanceOn) && Number(run.hp || 0) > 0 && Number(run.hp || 0) < Number(run.maxHp || GUARDIAN_MAX_HP) * 0.5) {
+      ref.transaction((cur) => {
+        if (!cur || String(cur.status || '') !== 'active') return;
+        if (cur.guardianDefenseStanceOn) return;
+        if (Number(cur.hp || 0) >= Number(cur.maxHp || GUARDIAN_MAX_HP) * 0.5) return;
+        cur.guardianDefenseStanceOn = true;
+        cur.guardianDefenseStanceAt = Date.now();
+        cur.guardianDefPct = 0.30;
+        return cur;
+      }, (err, committed) => {
+        if (!err && committed) {
+          writeBossBattleLog(GUARDIAN_BOSS_ID, '가디안나이트가 [방어태세]로 전환합니다. 보스의 방어력이 상승합니다. (15%->30%)', { tone:'yellow' });
+        }
+      });
+    }
+
+    const nextChainAt = Number(run.nextGuardianChainAt || 0);
+    if (nextChainAt > 0 && now >= nextChainAt) {
+      ref.transaction((cur) => {
+        if (!cur || String(cur.status || '') !== 'active') return;
+        const now2 = Date.now();
+        const next2 = Number(cur.nextGuardianChainAt || 0);
+        if (!next2 || now2 < next2) return;
+        cur.nextGuardianChainAt = now2 + GUARDIAN_CHAIN_INTERVAL;
+        if (Math.random() < GUARDIAN_CHAIN_CHANCE) {
+          cur.guardianChainTriggerAt = now2;
+        }
+        return cur;
+      }, (err, committed, snap) => {
+        if (err || !committed || !snap || !snap.val) return;
+        const cur = snap.val() || {};
+        if (Number(cur.guardianChainTriggerAt || 0) > 0 && Math.abs(Number(cur.guardianChainTriggerAt || 0) - now) < 15000) {
+          updateGuardianChainMemberStamina(cur);
+          writeBossBattleLog(GUARDIAN_BOSS_ID, '가디안나이트가 [속박의 사슬]로 플레이어의 행동에 제약을 겁니다. 사냥횟수 5회가 감소됩니다.', { tone:'yellow' });
+        }
+      });
+    }
+  }
+
+  setInterval(function(){
+    const run = (bossRunsActiveCache || {})[GUARDIAN_BOSS_ID];
+    maybeHandleGuardianKnightSkill(run);
+  }, 5000);
+
+  window.attackGuardianKnightBossByClick = function(ev){
+    const bossId = String(activeBossId || '');
+    const run = (bossRunsActiveCache || {})[bossId];
+    if (bossId !== GUARDIAN_BOSS_ID || !run || String(run.status || '') !== 'active') return;
+
+    if (!consumeHuntPointForBoss()) {
+      showNpcMessage('오늘 남은 사냥횟수가 없습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+      return;
+    }
+
+    const result = calcBossAttackResult(bossId);
+    const dmg = Number(result.damage || 0);
+    const isMagic = guardianIsMagicWeapon();
+    const kind = result.isMiss ? 'miss' : (result.isCrit ? 'crit' : 'hit');
+
+    const shieldHpNow = Math.max(0, Number(run.shieldHp || 0));
+    const shieldModeNow = String(run.shieldMode || '');
+    let displayDmg = dmg;
+    if (!result.isMiss && shieldHpNow > 0) {
+      const blocked = (shieldModeNow === 'physical' && !isMagic) || (shieldModeNow === 'magic' && isMagic);
+      if (blocked) displayDmg = Math.max(1, Math.floor(dmg * 0.1));
+    }
+
+    spawnBossHitEffectAt(ev.clientX, ev.clientY, kind, isMagic);
+    if (result.isMiss) spawnBossDamageFloatAt(ev.clientX, ev.clientY, 'MISS', 'miss');
+    else spawnBossDamageFloatAt(ev.clientX, ev.clientY, displayDmg, result.isCrit ? 'crit' : 'hit');
+    if (!result.isMiss) playBossHitFx();
+    if (dmg <= 0) return;
+
+    const runRef = db.ref(`bossRunsActive/${bossId}`);
+    runRef.transaction((cur) => {
+      if (!cur || String(cur.status || '') !== 'active' || !cur.members || !cur.members[userId]) return;
+      let applied = dmg;
+      let hp = Math.max(0, Number(cur.hp || 0));
+      let shieldHp = Math.max(0, Number(cur.shieldHp || 0));
+      const shieldMode = String(cur.shieldMode || '');
+      const blocked = shieldHp > 0 && ((shieldMode === 'physical' && !isMagic) || (shieldMode === 'magic' && isMagic));
+      if (blocked) applied = Math.max(1, Math.floor(applied * 0.1));
+
+      if (shieldHp > 0) {
+        const toShield = Math.min(shieldHp, applied);
+        shieldHp -= toShield;
+        cur.shieldHp = shieldHp;
+        const left = applied - toShield;
+        if (left > 0) hp = Math.max(0, hp - left);
+      } else {
+        hp = Math.max(0, hp - applied);
+      }
+
+      if (Number(cur.shieldHp || 0) <= 0) {
+        cur.shieldHp = 0;
+        cur.shieldMax = 0;
+        cur.shieldMode = '';
+      }
+
+      cur.hp = hp;
+      cur.lastAttackAt = Date.now();
+      cur.members[userId].dmg = Number(cur.members[userId].dmg || 0) + applied;
+
+      if (hp <= 0) {
+        const clearedAt = Date.now();
+        cur.hp = 0;
+        cur.status = 'cleared';
+        cur.clearedAt = clearedAt;
+        cur.lastHitUid = String(userId || '');
+        const memberUids = Object.keys(cur.members || {});
+        if (!cur.priorityWinnerUid && memberUids.length >= 5 && Math.random() < 0.30) {
+          cur.priorityWinnerUid = memberUids[Math.floor(Math.random() * memberUids.length)];
+        }
+      }
+      return cur;
+    }, (err, committed, snap) => {
+      if (err || !committed || !snap || !snap.val) return;
+      const cur = snap.val() || {};
+      if (String(cur.status || '') === 'cleared') {
+        ensureBossCooldownResetByRun(bossId, cur);
+      }
+    });
+  };
+
+  const guardianRenderBase = renderBossBattle;
+
+  const guardianBossRuntimeExtension = {
+    type: 'single_guardian',
+    powerMultiplier(swordLv){
+      return getGuardianPowerMultiplier(swordLv);
+    },
+    openHelp(){
+      const run = (bossRunsActiveCache || {})[GUARDIAN_BOSS_ID] || {};
+      const defPct = Math.round(Number(run.guardianDefPct != null ? run.guardianDefPct : 0.15) * 100);
+      const html = `
+        <div style="font-size:13px; line-height:1.65; text-align:left;">
+          <div style="font-weight:900; margin-bottom:8px;">망각의 가디안 나이트</div>
+          <div style="margin-bottom:8px; color:#cfcfcf;">그는 한때 왕국의 성문을 지키던 기사였습니다.<br>지금, 그는 무엇을 지키는지조차 모릅니다.<br>천 년의 시간 속에서, 그는 자신의 명령을 다 할 뿐입니다.</div>
+          <div style="margin-bottom:8px;">• 체력 3조5천억 / 회피율 15% / 방어력 ${defPct}%</div>
+          <div style="margin-bottom:8px;">• [방패전개] 2시간마다 60% 확률로 공격/마법 방패를 펼칩니다.<br>• [방어태세] 체력 50% 미만 시 방어력 30%로 상승합니다.<br>• [속박의 사슬] 5분 뒤부터 100분 간격으로 사냥횟수를 감소시킵니다.</div>
+        </div>`;
+      showNpcMessage(html, LEON_IMG.focus, true, '보스정보');
+    },
+    openRewards(){
+      const msg = `
+        <b>망각의 가디안 나이트 보상</b><br><br>
+        • 30% 이상 : 파괴방지 주문서 8개, 슈퍼강화 주문서 1개, 마력의정수 180개<br>
+        • 25% 이상 : 파괴방지 주문서 6개, 마력의정수 150개<br>
+        • 20% 이상 : 파괴방지 주문서 5개, 마력의정수 120개<br>
+        • 10% 이상 : 파괴방지 주문서 4개, 마력의정수 90개<br>
+        • 1% 이상 : 파괴방지 주문서 2개, 마력의정수 60개<br>
+        • 1% 미만 : 파괴방지 주문서 1개, 마력의정수 40개<br><br>
+        • 토벌대장 보너스 : 슈퍼강화 주문서 1개, 파괴방지 주문서 1개, 마력의정수 70개<br>
+        • 막타 보상 : 슈퍼강화 주문서 1개<br>
+        • 참여자 전원 랜덤 : 미확인 룬석 1~2개<br>
+        • 참여자 중 1인 랜덤 : 보스토벌우선신청권 1개
+      `;
+      showNpcMessage(msg, LEON_IMG.reward, true, '보상');
+    },
+    rewardByPct(bossId, pct, isLeader){
+      const reward = {
+        itemProtect: 0,
+        itemDownProtect: 0,
+        itemScroll21: 0,
+        itemScroll15: 0,
+        itemEssence: 0,
+        itemSuper: 0,
+        itemBossPriority: 0,
+        itemEngraveNormal: 0,
+        itemEngraveAdvanced: 0,
+        unidentifiedRuneStones: 0
+      };
+      pct = Number(pct || 0);
+      if (pct >= 30) {
+        reward.itemProtect += 8;
+        reward.itemSuper += 1;
+        reward.itemEssence += 180;
+      } else if (pct >= 25) {
+        reward.itemProtect += 6;
+        reward.itemEssence += 150;
+      } else if (pct >= 20) {
+        reward.itemProtect += 5;
+        reward.itemEssence += 120;
+      } else if (pct >= 10) {
+        reward.itemProtect += 4;
+        reward.itemEssence += 90;
+      } else if (pct >= 1) {
+        reward.itemProtect += 2;
+        reward.itemEssence += 60;
+      } else {
+        reward.itemProtect += 1;
+        reward.itemEssence += 40;
+      }
+      if (isLeader) {
+        reward.itemSuper += 1;
+        reward.itemProtect += 1;
+        reward.itemEssence += 70;
+      }
+      const ctx = (typeof resolveMyBossRun === 'function') ? resolveMyBossRun({ includeClosed: true }) : null;
+      const run = ctx && ctx.run;
+      if (run && String((ctx && ctx.bossId) || '') === GUARDIAN_BOSS_ID) {
+        if (String(run.lastHitUid || '') === String(userId || '')) {
+          reward.itemSuper += 1;
+        }
+        const roll = Math.random();
+        if (roll < 0.10) reward.unidentifiedRuneStones += 2;
+        else if (roll < 0.70) reward.unidentifiedRuneStones += 1;
+        if (String(run.priorityWinnerUid || '') === String(userId || '')) {
+          reward.itemBossPriority += 1;
+        }
+      }
+      return reward;
+    },
+    createRun(bossId, options = {}){
+      const def = BOSS_DEFS.find(b => String(b.id) === GUARDIAN_BOSS_ID);
+      if (!def) return;
+      const usePriorityTicket = !!(options && options.usePriorityTicket);
+      const curCtx = resolveMyBossRun({ includeClosed: true });
+      const curRun = curCtx && curCtx.run;
+      if (curRun && isMyPendingBossRun(curRun)) {
+        const curName = `${String(curRun.bossTitle || '').trim()} ${String(curRun.bossName || '').trim()}`.trim() || '보스전';
+        showNpcMessage(`<div style="font-size:13px; line-height:1.6;">이미 처리해야 할 보스전이 있습니다.<br><b>${curName}</b><br><br>현재 보스전을 <b>완료</b>하거나 <b>포기</b>한 뒤 다시 신청해주세요.</div>`, LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+        return;
+      }
+      if (Number(sword || 0) < Number(def.minSword || 0)) {
+        showNpcMessage(`조건이 부족합니다. (필요: +${def.minSword}강)`, LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+        return;
+      }
+      if (usePriorityTicket && Number(itemBossPriority || 0) <= 0) {
+        showNpcMessage('보스토벌우선신청권이 없습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+        return;
+      }
+
+      const beginRun = () => {
+        const localGold = Number(gold || 0);
+        const needGold = Number(def.applyCostGold || 0);
+        if (localGold < needGold) {
+          showNpcMessage(`골드가 부족합니다. (필요: ${formatGold(needGold)} 골드)`, LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+          return;
+        }
+
+        const userGoldRef = db.ref(`users/${userId}/gold`);
+        userGoldRef.transaction((g) => {
+          const serverGold = Math.max(Number(g || 0), localGold);
+          if (serverGold < needGold) return;
+          return serverGold - needGold;
+        }, (err, committed) => {
+          if (err) {
+            showNpcMessage('서버 처리 중 오류가 발생했습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+            return;
+          }
+          if (!committed) {
+            showNpcMessage(`골드가 부족합니다. (필요: ${formatGold(needGold)} 골드)`, LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+            return;
+          }
+          const runRef = db.ref(`bossRunsActive/${bossId}`);
+          const now = Date.now();
+          const endsAt = now + Number(def.durationHours || 72) * 60 * 60 * 1000;
+          runRef.transaction((cur) => {
+            if (cur && String(cur.status || '') === 'active') return;
+            return {
+              bossId: def.id,
+              mapName: def.mapName,
+              bossTitle: def.bossTitle,
+              bossName: def.bossName,
+              desc: String(def.desc || ''),
+              status: 'active',
+              logKey: 'run_' + now,
+              createdAt: now,
+              endsAt,
+              maxHp: GUARDIAN_MAX_HP,
+              hp: GUARDIAN_MAX_HP,
+              shieldMax: 0,
+              shieldHp: 0,
+              shieldMode: '',
+              lastGuardianShieldTryAt: 0,
+              guardianDefPct: 0.15,
+              guardianDefenseStanceOn: false,
+              guardianDefenseStanceAt: 0,
+              nextGuardianChainAt: now + GUARDIAN_CHAIN_FIRST_DELAY,
+              guardianChainTriggerAt: 0,
+              lastHitUid: '',
+              priorityWinnerUid: '',
+              leaderUid: userId,
+              leaderNick: getNickSafe(),
+              members: {
+                [userId]: {
+                  uid: userId,
+                  nick: getNickSafe(),
+                  joinedAt: now,
+                  dmg: 0,
+                  titleId: String(equippedTitle || ''),
+                  weaponType: String(weaponType || 'sword'),
+                  weaponLv: Number(sword || 0)
+                }
+              },
+              lastAttackAt: 0
+            };
+          }, (err2, committed2) => {
+            if (err2) {
+              showNpcMessage('서버 처리 중 오류가 발생했습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+              return;
+            }
+            if (!committed2) {
+              userGoldRef.transaction((g) => Number(g || 0) + needGold);
+              showNpcMessage(usePriorityTicket ? '이미 진행중인 토벌이 있습니다.' : '이미 진행중인 토벌이 있습니다. (소모된 골드는 환불 처리했습니다.)', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+              return;
+            }
+            gold = Math.max(0, localGold - needGold);
+            if (usePriorityTicket) itemBossPriority = Math.max(0, Number(itemBossPriority || 0) - 1);
+            activeBossId = bossId;
+            save();
+            writeLog(usePriorityTicket ? `${userNick}님이 보스토벌우선신청권을 사용해 망각의 가디안 나이트 토벌을 시작하였습니다.` : `${userNick}님이 망각의 가디안 나이트 토벌을 시작하였습니다.`, false, { tone:'boss_apply' });
+            writeBossBattleLog(bossId, usePriorityTicket ? `토벌대가 결성되었습니다. (대장: ${getNickSafe()}, 우선신청권 사용)` : `토벌대가 결성되었습니다. (대장: ${getNickSafe()})`);
+            showNpcMessage(usePriorityTicket ? '✅ 보스토벌우선신청권이 사용되었습니다.<br>즉시 토벌대가 개설되었습니다.' : '✅ 토벌이 시작됐다.<br>망령왕의 죽음세계에서 망각의 가디안 나이트가 그대들을 기다린다.', LEON_IMG.apply, true, '길드마스터 – 레온하르트 발렌');
+          });
+        });
+      };
+
+      const cooldownRef = db.ref(`bossCooldown/${GUARDIAN_BOSS_ID}`);
+      const runRefForCooldown = db.ref(`bossRunsActive/${GUARDIAN_BOSS_ID}`);
+      Promise.all([cooldownRef.once('value'), runRefForCooldown.once('value')]).then(([cdSnap, runSnap]) => {
+        const cd = cdSnap.val() || {};
+        const run = runSnap.val() || {};
+        let nextAt = Number(cd.nextAt || 0);
+        if (!Number.isFinite(nextAt)) nextAt = 0;
+        const status = String(run.status || '');
+        if ((status === 'cleared' || status === 'failed')) {
+          const baseTs = Number(run.cooldownFixedAt || run.clearedAt || run.failedAt || 0);
+          if (Number.isFinite(baseTs) && baseTs > 0) {
+            nextAt = Math.max(nextAt, baseTs + 24 * 60 * 60 * 1000);
+            if (Number(cd.nextAt || 0) !== nextAt) cooldownRef.set({ nextAt });
+          }
+        }
+        const remainMs = Math.max(0, nextAt - Date.now());
+        if (!usePriorityTicket && remainMs > 0) {
+          if (!Number(cd.nextAt || 0)) cooldownRef.set({ nextAt });
+          showNpcMessage(`아직 다시 토벌을 신청할 수 없습니다.<br><br>⏳ 신청 가능까지: <b>${formatHMS(remainMs)}</b>`, LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+          return;
+        }
+        beginRun();
+      }).catch(() => {
+        showNpcMessage('서버 처리 중 오류가 발생했습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
+      });
+    },
+    renderBattle(){
+      const run = (bossRunsActiveCache || {})[GUARDIAN_BOSS_ID];
+      if (run) maybeHandleGuardianKnightSkill(run);
+      guardianRenderBase.apply(this, arguments);
+      const bossImgEl = document.getElementById('bossBattleBossImg');
+      if (bossImgEl && String(activeBossId || '') === GUARDIAN_BOSS_ID) {
+        bossImgEl.onclick = window.attackGuardianKnightBossByClick;
+      }
+    }
+  };
+
+  registerBossRuntimeExtension(GUARDIAN_BOSS_ID, guardianBossRuntimeExtension);
+})();
 
 // =====================
 // ❄️ 메인퀘스트 CH2 : [서리깊은 한]
