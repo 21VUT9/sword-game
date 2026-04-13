@@ -19206,7 +19206,8 @@ uiRunTransitionSound.currentTime = 0;
 // ✅ 보스ID → 이동할 사냥터(fieldId) 매핑 (추후 보스 추가되면 여기만 늘리면 됨)
 const BOSS_FIELD_MAP = {
   "swamp_elf_queen": 4, // 실바나 릴리아네 → 늪엘프의 숲
-  "frost_queen": 5      // 아르셀리아 → 서리여왕의 동굴(필드ID 5)
+  "frost_queen": 5,     // 아르셀리아 → 서리여왕의 동굴(필드ID 5)
+  "guardian_knight": 6  // 망각의 가디안 나이트 → 망령왕의 죽음세계
 };
   
 // ✅ 보스전 아이콘 → "이동한다" 눌렀을 때
@@ -22359,6 +22360,13 @@ const BOSS_SPRITES = {
     alive:  "images/bosses/arshelia_idle.png",
     dead:   "images/bosses/arshelia_down.png",
     failed: "images/bosses/arshelia_idle.png"
+  },
+
+  guardian_knight: {
+    alive:   "images/bosses/guardian_knight_idle.png",
+    defense: "images/bosses/guardian_knight_defense_stance.png",
+    dead:    "images/bosses/guardian_knight_down.png",
+    failed:  "images/bosses/guardian_knight_idle.png"
   }
 };
 
@@ -29619,7 +29627,6 @@ function ensureBossCooldownResetByRun(bossId, runLike){
     });
   };
 
-  const guardianRenderBase = renderBossBattle;
 
   const guardianBossRuntimeExtension = {
     type: 'single_guardian',
@@ -29847,18 +29854,26 @@ function ensureBossCooldownResetByRun(bossId, runLike){
         showNpcMessage('서버 처리 중 오류가 발생했습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
       });
     },
-    renderBattle(){
-      const run = (bossRunsActiveCache || {})[GUARDIAN_BOSS_ID];
-      if (run) maybeHandleGuardianKnightSkill(run);
-      guardianRenderBase.apply(this, arguments);
-      const bossImgEl = document.getElementById('bossBattleBossImg');
-      if (bossImgEl && String(activeBossId || '') === GUARDIAN_BOSS_ID) {
-        bossImgEl.onclick = window.attackGuardianKnightBossByClick;
-      }
-    }
   };
 
   registerBossRuntimeExtension(GUARDIAN_BOSS_ID, guardianBossRuntimeExtension);
+
+  if (!window.__guardianBossRenderHookInstalled) {
+    window.__guardianBossRenderHookInstalled = true;
+    const __orig_renderBossBattle_guardian_hook = renderBossBattle;
+    renderBossBattle = function(){
+      const out = __orig_renderBossBattle_guardian_hook.apply(this, arguments);
+      if (isRankingBattleMode) return out;
+      const ctx = (typeof resolveMyBossRun === 'function') ? resolveMyBossRun({ includeClosed: true }) : null;
+      const bossId = String((ctx && ctx.bossId) || activeBossId || '');
+      const run = ctx && ctx.run;
+      if (bossId !== GUARDIAN_BOSS_ID || !run) return out;
+      maybeHandleGuardianKnightSkill(run);
+      const bossImgEl = document.getElementById('bossBattleBossImg');
+      if (bossImgEl) bossImgEl.onclick = window.attackGuardianKnightBossByClick;
+      return out;
+    };
+  }
 })();
 
 // =====================
