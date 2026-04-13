@@ -22207,6 +22207,29 @@ function clearActiveBossBinding(){
   try { localStorage.removeItem("pug_activeBossRunKey"); } catch(e) {}
   save();
 }
+function autoClearStaleBossBinding(opts = {}){
+  const includeClosed = opts.includeClosed !== false;
+  const curId = String(activeBossId || "");
+  const curKey = String(activeBossRunKey || getStoredActiveBossRunKey() || "");
+  if (!curId && !curKey) return false;
+
+  let stillValid = false;
+  if (curId) {
+    const activeRun = (bossRunsActiveCache || {})[curId];
+    if (activeRun && isMyPendingBossRun(activeRun)) {
+      stillValid = true;
+    } else if (includeClosed && bossRunsClosedReadable && curKey) {
+      const closedRun = getClosedBossRun(curId, curKey);
+      if (closedRun && isMyPendingBossRun(closedRun)) stillValid = true;
+    }
+  }
+
+  if (!stillValid) {
+    clearActiveBossBinding();
+    return true;
+  }
+  return false;
+}
 function getClosedBossRun(bossId, runKey){
   bossId = String(bossId || "");
   runKey = String(runKey || "");
@@ -22258,6 +22281,10 @@ function resolveMyBossRun(opts = {}){
       }
     }
   }
+
+  if (curId || curKey) {
+    autoClearStaleBossBinding({ includeClosed });
+  }
   return null;
 }
 function archiveBossRunIfNeeded(bossId, run){
@@ -22307,12 +22334,13 @@ function ensureBossRunsSubscription() {
   BOSS_RUNS_ACTIVE_REF.on("value", (snap) => {
     bossRunsActiveCache = snap.val() || {};
     try { repairGuardianRunsOnLoad(bossRunsActiveCache); } catch(e) { console.warn('repairGuardianRunsOnLoad failed', e); }
+    try { autoClearStaleBossBinding({ includeClosed: bossRunsClosedReadable }); } catch(e) { console.warn('autoClearStaleBossBinding(active) failed', e); }
     startBossRunWatchdog();
     refreshAdventureGuildAlert();
     updateBossBattleBtn();
 
     const bound = resolveMyBossRun({ includeClosed: true });
-    if (!bound && (activeBossId || activeBossRunKey)) clearActiveBossBinding();
+    if (!bound && (activeBossId || activeBossRunKey || getStoredActiveBossRunKey())) clearActiveBossBinding();
 
     renderAdventureGuildBossRuns();
   });
@@ -22320,8 +22348,9 @@ function ensureBossRunsSubscription() {
   BOSS_RUNS_CLOSED_REF.on("value", (snap) => {
     bossRunsClosedCache = snap.val() || {};
     bossRunsClosedReadable = true;
+    try { autoClearStaleBossBinding({ includeClosed: true }); } catch(e) { console.warn('autoClearStaleBossBinding(closed) failed', e); }
     const bound = resolveMyBossRun({ includeClosed: true });
-    if (!bound && (activeBossId || activeBossRunKey)) {
+    if (!bound && (activeBossId || activeBossRunKey || getStoredActiveBossRunKey())) {
       const live = resolveMyBossRun({ includeClosed: false });
       if (!live) clearActiveBossBinding();
     }
@@ -24315,6 +24344,7 @@ function createBossRun(bossId, options = {}) {
   if (!def) return;
   const usePriorityTicket = !!(options && options.usePriorityTicket);
 
+  try { autoClearStaleBossBinding({ includeClosed: true }); } catch(e) { console.warn('autoClearStaleBossBinding(create) failed', e); }
   const curCtx = resolveMyBossRun({ includeClosed: true });
   const curRun = curCtx && curCtx.run;
   if (curRun && isMyPendingBossRun(curRun)) {
