@@ -7675,6 +7675,41 @@ function playShardSfx(){
   playSfx("sounds/sfx_upgrade_success.mp3", 0.9);
 }
 
+// ✅ 보스 타격음 파일명 제안
+const BOSS_HIT_SFX = {
+  miss: "sounds/boss_hit_miss.mp3",
+  phys: "sounds/boss_hit_phys.mp3",
+  physCrit: "sounds/boss_hit_phys_crit.mp3",
+  magic: "sounds/boss_hit_magic.mp3",
+  magicCrit: "sounds/boss_hit_magic_crit.mp3"
+};
+
+// ✅ 보스 타격음 재생
+// - Effect 설정(getSfxScale)과 같은 playSfx 헬퍼를 사용
+// - 따라서 Effect가 0(음소거)이면 자동으로 같이 꺼짐
+function playBossAttackSfx(result, isMagic){
+  if (!result) return;
+
+  if (result.isMiss) {
+    playSfx(BOSS_HIT_SFX.miss, 0.9);
+    return;
+  }
+
+  if (isMagic) {
+    if (result.isCrit) {
+      playSfx(BOSS_HIT_SFX.magicCrit, 0.95);
+    } else {
+      playSfx(BOSS_HIT_SFX.magic, 0.88);
+    }
+  } else {
+    if (result.isCrit) {
+      playSfx(BOSS_HIT_SFX.physCrit, 0.95);
+    } else {
+      playSfx(BOSS_HIT_SFX.phys, 0.88);
+    }
+  }
+}
+
 /** ✅ 실패: 금속 파열음(노이즈 + 저주파 펀치) */
 function playMetalCrackSfx(){
   const ctx = getFxAudioCtx();
@@ -24067,6 +24102,9 @@ const dmg = Number(result.damage || 0);
 // ✅ (신규 FX) 보스 화면 내부 전용 레이어에 이펙트/숫자 생성
 const isMagic = (weaponType === "staff" || weaponType === "gauntlet" || weaponType === "magitech" || weaponType === "scythe");
 const kind = result.isMiss ? "miss" : (result.isCrit ? "crit" : "hit");
+
+// ✅ 보스 타격음
+playBossAttackSfx(result, isMagic);
 
 // ✅ (표기용 데미지) 실드 중 + 공격력무기면 숫자도 1로 보이게
 let displayDmg = dmg;
