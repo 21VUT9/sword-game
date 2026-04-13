@@ -24385,7 +24385,7 @@ function createBossRun(bossId, options = {}) {
           if (usePriorityTicket) itemBossPriority = Math.max(0, Number(itemBossPriority || 0) - 1);
           setActiveBossBinding(bossId, String(newRun.logKey || ""));
 
-          writeLog(usePriorityTicket ? `${userNick}님이 보스토벌우선신청권을 사용해 ${bossName} 토벌을 시작하였습니다.` : `${userNick}님이 ${bossName} 토벌을 시작하였습니다.`, false, { tone: "boss_apply" });
+          writeLog(usePriorityTicket ? `${getNickSafe()}님이 보스토벌우선신청권을 사용해 ${bossName} 토벌을 시작하였습니다.` : `${getNickSafe()}님이 ${bossName} 토벌을 시작하였습니다.`, false, { tone: "boss_apply" });
           writeBossBattleLog(bossId, usePriorityTicket ? `토벌대가 결성되었습니다. (대장: ${getNickSafe()}, 우선신청권 사용)` : `토벌대가 결성되었습니다. (대장: ${getNickSafe()})`);
 
           showNpcMessage(usePriorityTicket ? `<div style="font-size:14px; line-height:1.6;">✅ 보스토벌우선신청권이 사용되었습니다.<br>즉시 토벌대가 개설되었습니다.<br><span style="color:#aaa;">보유 수량이 1개 차감되었습니다.</span></div>` : `<div style="font-size:14px; line-height:1.6;">✅ 토벌이 시작됐다.<br>중앙 리스트에 등록될 거다.<br><span style="color:#aaa;">메인화면의 보스전 버튼으로 입장할 수 있습니다.</span></div>`, LEON_IMG.apply, true, "길드마스터 – 레온하르트 발렌");
@@ -29058,7 +29058,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
             }
             activeBossId = bossId;
             save();
-            writeLog(usePriorityTicket ? `${userNick}님이 보스토벌우선신청권을 사용해 여명의쌍기사 라에온&카르텔 토벌을 시작하였습니다.` : `${userNick}님이 여명의쌍기사 라에온&카르텔 토벌을 시작하였습니다.`, false, { tone:'boss_apply' });
+            writeLog(usePriorityTicket ? `${getNickSafe()}님이 보스토벌우선신청권을 사용해 여명의쌍기사 라에온&카르텔 토벌을 시작하였습니다.` : `${getNickSafe()}님이 여명의쌍기사 라에온&카르텔 토벌을 시작하였습니다.`, false, { tone:'boss_apply' });
             writeBossBattleLog(bossId, usePriorityTicket ? `토벌대가 결성되었습니다. (대장: ${getNickSafe()}, 우선신청권 사용)` : `토벌대가 결성되었습니다. (대장: ${getNickSafe()})`);
             showNpcMessage(usePriorityTicket ? '✅ 보스토벌우선신청권이 사용되었습니다.<br>즉시 토벌대가 개설되었습니다.' : '✅ 토벌이 시작됐다.<br>망령왕의 죽음세계에서 여명의쌍기사가 그대들을 기다린다.', LEON_IMG.apply, true, '길드마스터 – 레온하르트 발렌');
           });
@@ -29771,7 +29771,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
             if (usePriorityTicket) itemBossPriority = Math.max(0, Number(itemBossPriority || 0) - 1);
             activeBossId = bossId;
             save();
-            writeLog(usePriorityTicket ? `${userNick}님이 보스토벌우선신청권을 사용해 망각의 가디안 나이트 토벌을 시작하였습니다.` : `${userNick}님이 망각의 가디안 나이트 토벌을 시작하였습니다.`, false, { tone:'boss_apply' });
+            writeLog(usePriorityTicket ? `${getNickSafe()}님이 보스토벌우선신청권을 사용해 망각의 가디안 나이트 토벌을 시작하였습니다.` : `${getNickSafe()}님이 망각의 가디안 나이트 토벌을 시작하였습니다.`, false, { tone:'boss_apply' });
             writeBossBattleLog(bossId, usePriorityTicket ? `토벌대가 결성되었습니다. (대장: ${getNickSafe()}, 우선신청권 사용)` : `토벌대가 결성되었습니다. (대장: ${getNickSafe()})`);
             showNpcMessage(usePriorityTicket ? '✅ 보스토벌우선신청권이 사용되었습니다.<br>즉시 토벌대가 개설되었습니다.' : '✅ 토벌이 시작됐다.<br>망령왕의 죽음세계에서 망각의 가디안 나이트가 그대들을 기다린다.', LEON_IMG.apply, true, '길드마스터 – 레온하르트 발렌');
           });
