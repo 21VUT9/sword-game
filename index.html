@@ -21951,7 +21951,9 @@ let bossCooldownCache = {};     // { bossId: { nextAt: ms } }
 var bossRunsUnsubscribed = true;
 let bossRunsClosedReadable = true;
 
-  // ✅ 계정 전환/재로그인 시 보스전 리스너를 강제로 다시 붙이기 위한 리셋
+  console.log('[DEBUG FILE LOADED] 4534_guardian_debug_min');
+
+// ✅ 계정 전환/재로그인 시 보스전 리스너를 강제로 다시 붙이기 위한 리셋
 function resetBossRunsSubscription(){
   try { BOSS_RUNS_ACTIVE_REF.off(); } catch(e){}
   try { BOSS_RUNS_CLOSED_REF.off(); } catch(e){}
@@ -29019,6 +29021,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
       return reward;
     },
     createRun(bossId, options = {}){
+      console.log('[GUARDIAN APPLY handler reached]', { bossId, userId, activeBossId, activeBossRunKey, storedRunKey: (typeof getStoredActiveBossRunKey === 'function') ? getStoredActiveBossRunKey() : '' });
       const def = BOSS_DEFS.find(b => String(b.id) === TWIN_BOSS_ID);
       if (!def) return;
       const usePriorityTicket = !!(options && options.usePriorityTicket);
@@ -29050,6 +29053,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
           if (serverGold < needGold) return;
           return serverGold - needGold;
         }, (err, committed) => {
+          console.log('[GUARDIAN CREATE gold transaction callback reached]', { err: !!err, committed, bossId, userId });
           if (err) {
             console.error('[GUARDIAN CREATE gold transaction err]', err);
             try {
@@ -29075,6 +29079,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
           const runRef = db.ref(`bossRunsActive/${bossId}`);
           const now = Date.now();
           const endsAt = now + Number(def.durationHours || 72) * 60 * 60 * 1000;
+          console.log('[GUARDIAN CREATE before run transaction]', { bossId, path: `bossRunsActive/${bossId}`, now, endsAt });
           runRef.transaction((cur) => {
             console.log('[GUARDIAN CREATE tx curRun before create]', cur);
             if (cur && String(cur.status || '') === 'active') return;
@@ -29116,6 +29121,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
               lastAttackAt: 0
             };
           }, (err2, committed2, snap2) => {
+            console.log('[GUARDIAN CREATE run transaction callback reached]', { err2: !!err2, committed2, bossId, userId });
             if (err2) {
               console.error('[GUARDIAN CREATE err2]', err2);
               try {
