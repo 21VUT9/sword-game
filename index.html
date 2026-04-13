@@ -29647,38 +29647,75 @@ openQuestOverlay = function(){
   _origOpenQuestOverlay();
   const list = document.getElementById("questListArea");
   if (!list) return;
-  // remove empty message if our quests exist
-  const our = ["frost_01","frost_02","frost_03","frost_04","frost_05","frost_06"].filter(q=>Number(questState[q]||0)>0);
+
+  const our = [
+    ["frost_01","[서리깊은 한] 01 _ 대장간의 숯", openQuestDetail_frost01],
+    ["frost_02","[서리깊은 한] 02 _ 이상기후", openQuestDetail_frost02],
+    ["frost_03","[서리깊은 한] 03 _ 설산 탐사", openQuestDetail_frost03],
+    ["frost_04","[서리깊은 한] 04 _ 설산의 마력", openQuestDetail_frost04],
+    ["frost_05","[서리깊은 한] 05 _ 서리여왕 토벌", openQuestDetail_frost05],
+    ["frost_06","[서리깊은 한] 06 _ 서리여왕의 일기", openQuestDetail_frost06]
+  ].filter(([qid]) => Number(questState[qid] || 0) > 0);
+
   if (!our.length) return;
+
   const empty = Array.from(list.children).find(el => el.textContent && el.textContent.includes("진행 중인 퀘스트가 없습니다"));
   if (empty) empty.remove();
+
   const completedMap = ensureQuestCompletedAtMap();
   let doneSection = Array.from(list.children).find(el => el.className === "questSectionTitle done");
   let progressSection = Array.from(list.children).find(el => el.className === "questSectionTitle");
+
   if (!progressSection) {
-    progressSection = document.createElement("div"); progressSection.className = "questSectionTitle"; progressSection.textContent = "진행중 퀘스트"; list.appendChild(progressSection);
+    progressSection = document.createElement("div");
+    progressSection.className = "questSectionTitle";
+    progressSection.textContent = "진행중 퀘스트";
+    list.appendChild(progressSection);
   }
-  function makeRow(qid,label,onClick){
+
+  const progressRows = [];
+  const completedRows = [];
+
+  function makeRow(qid, label, onClick){
     const state = questState[qid];
     if (!state || state === QUEST_STATE.OFFERED) return;
+
     const row = document.createElement("div");
+
     if (state === QUEST_STATE.REWARDED){
-      row.className = "questRowText questRowDone"; row.textContent = `${label}  -  완료`;
-      if (!doneSection) { doneSection = document.createElement("div"); doneSection.className = "questSectionTitle done"; doneSection.textContent = "완료된 퀘스트"; list.appendChild(doneSection); }
-      list.appendChild(row); return;
+      row.className = "questRowText questRowDone";
+      row.textContent = `${label}  -  완료`;
+      completedRows.push({
+        row,
+        completedAt: Number(completedMap[qid] || 0)
+      });
+      return;
     }
+
     const status = state === QUEST_STATE.ACTIVE ? "진행중" : state === QUEST_STATE.COMPLETE ? "완료 가능" : "미수락";
-    row.className = "questRowText"; row.textContent = `${label}  -  ${status}`;
+    row.className = "questRowText";
+    row.textContent = `${label}  -  ${status}`;
     if (state === QUEST_STATE.COMPLETE) row.classList.add("questRowReady");
     row.addEventListener("click", onClick);
-    list.insertBefore(row, doneSection || null);
+    progressRows.push(row);
   }
-  makeRow("frost_01","[서리깊은 한] 01 _ 대장간의 숯", openQuestDetail_frost01);
-  makeRow("frost_02","[서리깊은 한] 02 _ 이상기후", openQuestDetail_frost02);
-  makeRow("frost_03","[서리깊은 한] 03 _ 설산 탐사", openQuestDetail_frost03);
-  makeRow("frost_04","[서리깊은 한] 04 _ 설산의 마력", openQuestDetail_frost04);
-  makeRow("frost_05","[서리깊은 한] 05 _ 서리여왕 토벌", openQuestDetail_frost05);
-  makeRow("frost_06","[서리깊은 한] 06 _ 서리여왕의 일기", openQuestDetail_frost06);
+
+  our.forEach(([qid, label, onClick]) => makeRow(qid, label, onClick));
+
+  progressRows.forEach(row => list.insertBefore(row, doneSection || null));
+
+  if (completedRows.length > 0) {
+    if (!doneSection) {
+      doneSection = document.createElement("div");
+      doneSection.className = "questSectionTitle done";
+      doneSection.textContent = "완료된 퀘스트";
+      list.appendChild(doneSection);
+    }
+
+    completedRows
+      .sort((a, b) => Number(b.completedAt || 0) - Number(a.completedAt || 0))
+      .forEach(({ row }) => list.appendChild(row));
+  }
 };
 
 const _origRenderTalkNpcGrid = renderTalkNpcGrid;
@@ -30080,7 +30117,7 @@ setTimeout(() => {
 
     <!-- 목록 -->
     <div id="questListArea"
-         style="padding:12px 14px; display:flex; flex-direction:column; gap:10px;">
+         style="padding:12px 14px; display:flex; flex-direction:column; gap:10px; overflow-y:auto; max-height:calc(84vh - 92px); min-height:0;">
     </div>
 
   </div>
