@@ -19699,6 +19699,17 @@ function claimBossReward(){
     grantTitleOnceNoSave("boss_raider");
     checkAndGrantTitles();
 
+    try {
+      if (source === "active") {
+        bossRunsActiveCache = bossRunsActiveCache || {};
+        bossRunsActiveCache[bossId] = Object.assign({}, runAfter);
+      } else {
+        bossRunsClosedCache = bossRunsClosedCache || {};
+        bossRunsClosedCache[bossId] = bossRunsClosedCache[bossId] || {};
+        if (runKey) bossRunsClosedCache[bossId][runKey] = Object.assign({}, runAfter);
+      }
+    } catch(e) {}
+
     clearActiveBossBinding();
     refreshBossBattleAlert("");
     update();
@@ -19750,6 +19761,17 @@ function giveUpBossRun(){
   }
 
   db.ref().update(updates).then(() => {
+    try {
+      if (source === "active") {
+        if (bossRunsActiveCache && bossRunsActiveCache[bossId] && bossRunsActiveCache[bossId].members) {
+          delete bossRunsActiveCache[bossId].members[userId];
+          if (String(run.leaderUid || "") === String(userId || "")) bossRunsActiveCache[bossId].leaderUid = "";
+        }
+      } else if (bossRunsClosedCache && bossRunsClosedCache[bossId] && bossRunsClosedCache[bossId][runKey] && bossRunsClosedCache[bossId][runKey].members) {
+        delete bossRunsClosedCache[bossId][runKey].members[userId];
+        if (String(run.leaderUid || "") === String(userId || "")) bossRunsClosedCache[bossId][runKey].leaderUid = "";
+      }
+    } catch(e) {}
     if (bossId === 'dawn_twin_knights' && typeof ensureTwinCooldownReset === 'function') {
       ensureTwinCooldownReset(run);
     }
@@ -22272,16 +22294,8 @@ function resolveMyBossRun(opts = {}){
     }
   }
 
-  if (includeClosed && bossRunsClosedReadable) {
-    for (const [bid, byKey] of Object.entries(bossRunsClosedCache || {})) {
-      for (const [rk, run] of Object.entries(byKey || {})) {
-        if (isMyPendingBossRun(run)) {
-          setActiveBossBinding(bid, rk);
-          return { bossId: String(bid), run, source: "closed" };
-        }
-      }
-    }
-  }
+  // ✅ closed 런은 현재 바인딩된 런만 복구 대상으로 본다.
+  // 전역 closed 스캔까지 허용하면, 직전 보스전이 새 토벌보다 우선 복구되는 경우가 생긴다.
 
   if (curId || curKey) {
     autoClearStaleBossBinding({ includeClosed });
@@ -22899,7 +22913,7 @@ function confirmSynthesize(){
 function startBossBattleMove(){
   closeNpcPopup();
 
-  const ctx = resolveMyBossRun({ includeClosed: true });
+  const ctx = resolveMyBossRun({ includeClosed: false });
   const bossId = String((ctx && ctx.bossId) || activeBossId || "");
   const targetFieldId = BOSS_FIELD_MAP[bossId];
 
@@ -22920,7 +22934,7 @@ function startBossBattleMove(){
 function closeBossBattle(){
   const ov = document.getElementById("bossBattleOverlay");
   if (ov) ov.style.display = "none";
-  markBossBattleLogsSeenNow(((resolveMyBossRun({ includeClosed: true }) || {}).bossId) || activeBossId);
+  markBossBattleLogsSeenNow(((resolveMyBossRun({ includeClosed: false }) || {}).bossId) || activeBossId);
   document.getElementById("bossBattleBossImg")?.classList.remove("boss-breathe");
   document.getElementById("bossBattleBossShadow")?.classList.remove("boss-breathe-shadow");
   if (bossBattleTickTimer) { clearInterval(bossBattleTickTimer); bossBattleTickTimer = null; }
@@ -27277,7 +27291,8 @@ function submitRankingBattleScore(damage){
 }
 
 function createRankingBattleRun(){
-  const maxAttacks = Math.max(0, Number((typeof getHuntStaminaMax === "function") ? getHuntStaminaMax() : 20));
+  try { recalcHuntStamina(); } catch(e) {}
+  const maxAttacks = Math.max(0, Number(huntStamina || 0));
   rankingBattleRun = {
     status: "active",
     bossId: RANKING_BATTLE_BOSS_ID,
@@ -27470,6 +27485,11 @@ function startRankingBattleMove(){
 
 function openRankingBattle(){
   ensureRankingBattleMetaLoaded(() => {
+    try { recalcHuntStamina(); save(); update(); } catch(e) {}
+    if (Number(huntStamina || 0) <= 0) {
+      showNpcMessage(`<div style="text-align:center; line-height:1.6;">오늘 남은 사냥횟수가 없습니다.</div>`, null, true, "랭킹전");
+      return;
+    }
     createRankingBattleRun();
     isRankingBattleMode = true;
 
@@ -27907,6 +27927,36 @@ function markRankingBattleWeeklyRewardClaimed(weekKey, rank){
   } catch(e) {}
 }
 
+function claimRankingBattleWeeklyRewardServer(weekKey, rank, onDone){
+  const safeWeekKey = String(weekKey || getPreviousKstWeekKey() || "");
+  const done = (typeof onDone === "function") ? onDone : function(){};
+  if (!userId || !safeWeekKey || !userRef) {
+    done(false);
+    return;
+  }
+
+  userRef.child(`rankingBattleRewardClaims/${safeWeekKey}`).transaction((cur) => {
+    if (cur) return;
+    return {
+      claimedAt: Date.now(),
+      rank: Number(rank || 0)
+    };
+  }, (err, committed) => {
+    if (err || !committed) {
+      done(false, err || null);
+      return;
+    }
+    rankingBattleLastWeekRank = Number(rank || 0);
+    rankingBattleLastWeekRewardClaimed = true;
+    rankingBattleLastRewardWeekKey = safeWeekKey;
+    try {
+      localStorage.setItem(getRankingBattleWeeklyRewardClaimLocalKey(safeWeekKey), "1");
+    } catch(e) {}
+    save();
+    done(true);
+  });
+}
+
 function grantWeeklyRankingBattleReward(myRank, rewardWeekKey){
   const safeWeekKey = String(rewardWeekKey || getPreviousKstWeekKey() || "");
   if (!safeWeekKey) return "";
@@ -28005,30 +28055,33 @@ function checkWeeklyRankingBattleReward(afterFn){
       }
       const __weeklyRankTitleChanged = checkAndGrantTitles();
       if (__weeklyRankTitleChanged && typeof save === "function") save();
-      const rewardText = grantWeeklyRankingBattleReward(myRank, prevWeekKey);
-      if (isRankingBattleWeeklyRewardAlreadyClaimed(prevWeekKey) && !rewardText) {
-        if (typeof afterFn === "function") afterFn();
-        return;
-      }
-
-      showConfirmPopup(
-        `
-        <div style="font-size:16px; font-weight:bold; margin-bottom:4px;">
-          지난주 네 랭킹전 랭킹은 <span style="color:#ffd54f;">${myRank}위</span>였어.
-        </div>
-        <div style="font-size:13px; line-height:1.6;">
-          그 노력에 대한 보상으로,<br>
-          <span style="color:#a5e1ff;">${rewardText || "없음"}</span>를 지급해 둘게.
-        </div>
-        `,
-        "images/npc/leonhardt_focus.png",
-        "길드마스터 – 레온하르트 발렌",
-        "확인",
-        function(){
-          closeNpcPopup();
+      claimRankingBattleWeeklyRewardServer(prevWeekKey, myRank, function(locked){
+        if (!locked) {
           if (typeof afterFn === "function") afterFn();
+          return;
         }
-      );
+
+        const rewardText = grantWeeklyRankingBattleReward(myRank, prevWeekKey);
+
+        showConfirmPopup(
+          `
+          <div style="font-size:16px; font-weight:bold; margin-bottom:4px;">
+            지난주 네 랭킹전 랭킹은 <span style="color:#ffd54f;">${myRank}위</span>였어.
+          </div>
+          <div style="font-size:13px; line-height:1.6;">
+            그 노력에 대한 보상으로,<br>
+            <span style="color:#a5e1ff;">${rewardText || "없음"}</span>를 지급해 둘게.
+          </div>
+          `,
+          "images/npc/leonhardt_focus.png",
+          "길드마스터 – 레온하르트 발렌",
+          "확인",
+          function(){
+            closeNpcPopup();
+            if (typeof afterFn === "function") afterFn();
+          }
+        );
+      });
     })
     .catch((err) => {
       console.error("주간 랭킹전 보상 계산 실패:", err);
@@ -28223,6 +28276,7 @@ function prepareRankingBattleOverlayUi(){
 
 function onRankingBattleIconClick(){
   ensureRankingBattleMetaLoaded(() => {
+    try { recalcHuntStamina(); save(); update(); } catch(e) {}
     if (isRankingBattleSettlementTimeKST()) {
       showNpcMessage(
         `<div style="text-align:center; line-height:1.6;">주간랭킹 집계중으로 이용불가합니다.</div>`,
