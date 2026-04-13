@@ -8196,6 +8196,22 @@ const scrollShopItems = [
     img: "images/items/scroll_super.png",
     desc: "강화 성공 시 한 번에 +2강이 되는 특별한 주문서입니다."
   },
+  {
+    id: "essence20",
+    name: "마력의 정수 20개",
+    priceType: "starShard",
+    price: 10,
+    img: "images/items/essence.png",
+    desc: "빛나지 못한 별의 조각 10개로 마력의 정수 20개를 교환합니다."
+  },
+  {
+    id: "runeStone1",
+    name: "미확인룬석 1개",
+    priceType: "starShard",
+    price: 100,
+    img: "images/items/runes/rune_stone_unidentified.png",
+    desc: "빛나지 못한 별의 조각 100개로 미확인 룬석 1개를 교환합니다."
+  },
     {
     id: "rateUp5",
     name: "강화 확률 +5% 주문서",
@@ -8771,7 +8787,15 @@ function getScrollShopMaxBuyable(item){
   if (item.id === "huntReset") return (getScrollShopCurrencyAmount(item) >= price) ? 1 : 0;
 
   const have = getScrollShopCurrencyAmount(item);
-  return Math.floor(have / price);
+  let maxBuy = Math.floor(have / price);
+
+  // ✅ 미확인룬석은 룬 보관 공간만큼만 구매 가능
+  if (item.id === "runeStone1") {
+    const freeSlots = Math.max(0, Number(RUNE_STORAGE_LIMIT || 0) - getRuneStorageUsed());
+    maxBuy = Math.min(maxBuy, freeSlots);
+  }
+
+  return maxBuy;
 }
 
   // 📜 상점 구매 진행 (재화 부족 / 구매중 / 성공 모두 팝업 처리)
@@ -9090,6 +9114,11 @@ function grantScrollShopItem(item, qty) {
 
   if (item.id === "super")      itemSuper += qty;
   if (item.id === "rateUp5")    itemRateUp5 += qty;
+  if (item.id === "essence20")  itemEssence += (20 * qty);
+  if (item.id === "runeStone1") {
+    const addCount = Math.max(0, Math.min(qty, Math.max(0, Number(RUNE_STORAGE_LIMIT || 0) - getRuneStorageUsed())));
+    if (addCount > 0) unidentifiedRuneStones = Number(unidentifiedRuneStones || 0) + addCount;
+  }
 
   // 구매 즉시 사용: 사냥횟수 20/20 초기화
   if (item.id === "huntReset") {
