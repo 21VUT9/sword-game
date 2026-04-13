@@ -21951,9 +21951,7 @@ let bossCooldownCache = {};     // { bossId: { nextAt: ms } }
 var bossRunsUnsubscribed = true;
 let bossRunsClosedReadable = true;
 
-  console.log('[DEBUG FILE LOADED] 4534_guardian_debug_min');
-
-// ✅ 계정 전환/재로그인 시 보스전 리스너를 강제로 다시 붙이기 위한 리셋
+  // ✅ 계정 전환/재로그인 시 보스전 리스너를 강제로 다시 붙이기 위한 리셋
 function resetBossRunsSubscription(){
   try { BOSS_RUNS_ACTIVE_REF.off(); } catch(e){}
   try { BOSS_RUNS_CLOSED_REF.off(); } catch(e){}
@@ -29021,7 +29019,6 @@ function ensureBossCooldownResetByRun(bossId, runLike){
       return reward;
     },
     createRun(bossId, options = {}){
-      console.log('[GUARDIAN APPLY handler reached]', { bossId, userId, activeBossId, activeBossRunKey, storedRunKey: (typeof getStoredActiveBossRunKey === 'function') ? getStoredActiveBossRunKey() : '' });
       const def = BOSS_DEFS.find(b => String(b.id) === TWIN_BOSS_ID);
       if (!def) return;
       const usePriorityTicket = !!(options && options.usePriorityTicket);
@@ -29053,7 +29050,6 @@ function ensureBossCooldownResetByRun(bossId, runLike){
           if (serverGold < needGold) return;
           return serverGold - needGold;
         }, (err, committed) => {
-          console.log('[GUARDIAN CREATE gold transaction callback reached]', { err: !!err, committed, bossId, userId });
           if (err) {
             console.error('[GUARDIAN CREATE gold transaction err]', err);
             try {
@@ -29079,7 +29075,6 @@ function ensureBossCooldownResetByRun(bossId, runLike){
           const runRef = db.ref(`bossRunsActive/${bossId}`);
           const now = Date.now();
           const endsAt = now + Number(def.durationHours || 72) * 60 * 60 * 1000;
-          console.log('[GUARDIAN CREATE before run transaction]', { bossId, path: `bossRunsActive/${bossId}`, now, endsAt });
           runRef.transaction((cur) => {
             console.log('[GUARDIAN CREATE tx curRun before create]', cur);
             if (cur && String(cur.status || '') === 'active') return;
@@ -29121,7 +29116,6 @@ function ensureBossCooldownResetByRun(bossId, runLike){
               lastAttackAt: 0
             };
           }, (err2, committed2, snap2) => {
-            console.log('[GUARDIAN CREATE run transaction callback reached]', { err2: !!err2, committed2, bossId, userId });
             if (err2) {
               console.error('[GUARDIAN CREATE err2]', err2);
               try {
@@ -29503,6 +29497,8 @@ function ensureBossCooldownResetByRun(bossId, runLike){
    🛡️ 망각의 가디안 나이트 - 확장 보스전
    ========================= */
 (function(){
+  console.log("[DEBUG FILE LOADED] 4534_guardian_debug_min");
+
   const GUARDIAN_BOSS_ID = "guardian_knight";
   const GUARDIAN_MAX_HP = 3500000000000;
   const GUARDIAN_SHIELD_HP = 200000000000;
@@ -29820,6 +29816,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
       return reward;
     },
     createRun(bossId, options = {}){
+      console.log('[GUARDIAN APPLY handler reached]', { bossId, options });
       const def = BOSS_DEFS.find(b => String(b.id) === GUARDIAN_BOSS_ID);
       if (!def) return;
       const usePriorityTicket = !!(options && options.usePriorityTicket);
@@ -29853,7 +29850,9 @@ function ensureBossCooldownResetByRun(bossId, runLike){
           if (serverGold < needGold) return;
           return serverGold - needGold;
         }, (err, committed) => {
+          console.log('[GUARDIAN CREATE gold transaction callback reached]', { err, committed, localGold, needGold });
           if (err) {
+            console.error('[GUARDIAN CREATE gold transaction err]', err);
             showNpcMessage('서버 처리 중 오류가 발생했습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
             return;
           }
@@ -29905,11 +29904,16 @@ function ensureBossCooldownResetByRun(bossId, runLike){
             lastAttackAt: 0
           };
 
+          console.log('[GUARDIAN CREATE before run transaction]', { bossId, runKey, newRun });
           runRef.transaction((cur) => {
+            console.log('[GUARDIAN CREATE tx curRun before create]', cur);
             if (cur && String(cur.status || '') === 'active') return;
             return newRun;
-          }, (err2, committed2) => {
+          }, (err2, committed2, snap2) => {
+            console.log('[GUARDIAN CREATE run transaction callback reached]', { err2, committed2, snapshot: snap2 && typeof snap2.val === 'function' ? snap2.val() : snap2 });
             if (err2) {
+              console.error('[GUARDIAN CREATE err2]', err2);
+              console.error('[GUARDIAN CREATE err2 context]', { bossId, runKey, newRun, committed2, snapshot: snap2 && typeof snap2.val === 'function' ? snap2.val() : snap2 });
               showNpcMessage('서버 처리 중 오류가 발생했습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
               return;
             }
@@ -29954,7 +29958,8 @@ function ensureBossCooldownResetByRun(bossId, runLike){
           return;
         }
         beginRun();
-      }).catch(() => {
+      }).catch((e) => {
+        console.error('[GUARDIAN CREATE cooldown precheck catch]', e);
         showNpcMessage('서버 처리 중 오류가 발생했습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
       });
     },
