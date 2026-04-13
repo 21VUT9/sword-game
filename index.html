@@ -22272,6 +22272,33 @@ function archiveBossRunIfNeeded(bossId, run){
   });
 }
 
+function repairGuardianRunsOnLoad(cache){
+  const run = cache && cache['guardian_knight'];
+  if (!run || String(run.status || '') !== 'active') return;
+  const createdAt = Number(run.createdAt || Date.now());
+  const patch = {};
+  if (String(run.bossId || '') !== 'guardian_knight') patch.bossId = 'guardian_knight';
+  if (!run.mapName) patch.mapName = '망령왕의 죽음세계';
+  if (!run.bossTitle) patch.bossTitle = '망각의 수호자';
+  if (!run.bossName) patch.bossName = '망각의 가디안 나이트';
+  if (run.desc == null || run.desc === '') patch.desc = '천 년의 시간 속에서, 그는 자신의 명령을 다 할 뿐입니다.';
+  if (!(Number(run.maxHp || 0) > 0)) patch.maxHp = 3500000000000;
+  if (!(Number(run.hp || 0) > 0) && Number(run.hp || 0) !== 0) patch.hp = Number(patch.maxHp || run.maxHp || 3500000000000);
+  if (run.shieldMax == null) patch.shieldMax = 0;
+  if (run.shieldHp == null) patch.shieldHp = 0;
+  if (run.shieldMode == null) patch.shieldMode = '';
+  if (!(Number(run.lastGuardianShieldTryAt || 0) > 0)) patch.lastGuardianShieldTryAt = createdAt;
+  if (!(Number(run.guardianDefPct || 0) > 0)) patch.guardianDefPct = 0.15;
+  if (typeof run.guardianDefenseStanceOn !== 'boolean') patch.guardianDefenseStanceOn = false;
+  if (run.guardianDefenseStanceAt == null) patch.guardianDefenseStanceAt = 0;
+  if (!(Number(run.nextGuardianChainAt || 0) > 0)) patch.nextGuardianChainAt = createdAt + (5 * 60 * 1000);
+  if (run.guardianChainTriggerAt == null) patch.guardianChainTriggerAt = 0;
+  if (run.lastHitUid == null) patch.lastHitUid = '';
+  if (run.priorityWinnerUid == null) patch.priorityWinnerUid = '';
+  if (Object.keys(patch).length <= 0) return;
+  db.ref('bossRunsActive/guardian_knight').update(patch).catch((e) => console.warn('guardian run repair failed', e));
+}
+
 // ✅ 모험가길드 열릴 때 한번만 구독 시작
 function ensureBossRunsSubscription() {
   if (bossRunsUnsubscribed === false) return;
@@ -22279,6 +22306,7 @@ function ensureBossRunsSubscription() {
   bossRunsUnsubscribed = false;
   BOSS_RUNS_ACTIVE_REF.on("value", (snap) => {
     bossRunsActiveCache = snap.val() || {};
+    try { repairGuardianRunsOnLoad(bossRunsActiveCache); } catch(e) { console.warn('repairGuardianRunsOnLoad failed', e); }
     startBossRunWatchdog();
     refreshAdventureGuildAlert();
     updateBossBattleBtn();
@@ -29427,15 +29455,16 @@ function ensureBossCooldownResetByRun(bossId, runLike){
     const ref = db.ref(`bossRunsActive/${GUARDIAN_BOSS_ID}`);
 
     const shieldHp = Math.max(0, Number(run.shieldHp || 0));
-    const shieldLast = Number(run.lastGuardianShieldTryAt || 0);
-    if (shieldHp <= 0 && (!shieldLast || now - shieldLast >= GUARDIAN_SHIELD_INTERVAL)) {
+    const shieldLast = Number(run.lastGuardianShieldTryAt || run.createdAt || 0);
+    if (shieldHp <= 0 && shieldLast > 0 && (now - shieldLast >= GUARDIAN_SHIELD_INTERVAL)) {
       ref.transaction((cur) => {
         if (!cur || String(cur.status || '') !== 'active') return;
         const now2 = Date.now();
         const shieldHp2 = Math.max(0, Number(cur.shieldHp || 0));
-        const last2 = Number(cur.lastGuardianShieldTryAt || 0);
+        const last2 = Number(cur.lastGuardianShieldTryAt || cur.createdAt || 0);
         if (shieldHp2 > 0) return cur;
-        if (last2 && (now2 - last2) < GUARDIAN_SHIELD_INTERVAL) return cur;
+        if (!(last2 > 0)) return cur;
+        if ((now2 - last2) < GUARDIAN_SHIELD_INTERVAL) return cur;
         cur.lastGuardianShieldTryAt = now2;
         if (Math.random() < GUARDIAN_SHIELD_CHANCE) {
           const mode = (Math.random() < 0.5) ? 'physical' : 'magic';
@@ -29475,7 +29504,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
       });
     }
 
-    const nextChainAt = Number(run.nextGuardianChainAt || 0);
+    const nextChainAt = Number(run.nextGuardianChainAt || ((run.createdAt || 0) ? (Number(run.createdAt || 0) + GUARDIAN_CHAIN_FIRST_DELAY) : 0));
     if (nextChainAt > 0 && now >= nextChainAt) {
       ref.transaction((cur) => {
         if (!cur || String(cur.status || '') !== 'active') return;
@@ -29734,7 +29763,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
               shieldMax: 0,
               shieldHp: 0,
               shieldMode: '',
-              lastGuardianShieldTryAt: 0,
+              lastGuardianShieldTryAt: now,
               guardianDefPct: 0.15,
               guardianDefenseStanceOn: false,
               guardianDefenseStanceAt: 0,
