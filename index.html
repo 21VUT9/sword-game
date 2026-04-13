@@ -29777,7 +29777,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
             shieldMax: 0,
             shieldHp: 0,
             shieldMode: '',
-            lastGuardianShieldTryAt: now,
+            lastGuardianShieldTryAt: now - GUARDIAN_SHIELD_INTERVAL,
             guardianDefPct: 0.15,
             guardianDefenseStanceOn: false,
             guardianDefenseStanceAt: 0,
