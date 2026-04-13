@@ -27329,8 +27329,7 @@ function submitRankingBattleScore(damage){
 }
 
 function createRankingBattleRun(){
-  try { recalcHuntStamina(); } catch(e) {}
-  const maxAttacks = Math.max(0, Number(huntStamina || 0));
+  const maxAttacks = Math.max(0, Number((typeof getHuntStaminaMax === "function") ? getHuntStaminaMax() : 20));
   rankingBattleRun = {
     status: "active",
     bossId: RANKING_BATTLE_BOSS_ID,
@@ -27523,11 +27522,6 @@ function startRankingBattleMove(){
 
 function openRankingBattle(){
   ensureRankingBattleMetaLoaded(() => {
-    try { recalcHuntStamina(); save(); update(); } catch(e) {}
-    if (Number(huntStamina || 0) <= 0) {
-      showNpcMessage(`<div style="text-align:center; line-height:1.6;">오늘 남은 사냥횟수가 없습니다.</div>`, null, true, "랭킹전");
-      return;
-    }
     createRankingBattleRun();
     isRankingBattleMode = true;
 
