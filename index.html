@@ -27908,6 +27908,11 @@ attackBossByClick = function(ev){
   const isMagic = (weaponType === "staff" || weaponType === "gauntlet" || weaponType === "magitech" || weaponType === "scythe");
   const kind = result.isMiss ? "miss" : (result.isCrit ? "crit" : "hit");
 
+  // ✅ 랭킹전도 보스전과 동일한 타격음 사용
+  if (typeof playBossAttackSfx === "function") {
+    playBossAttackSfx(result, isMagic);
+  }
+
   const cx = (ev && Number.isFinite(ev.clientX)) ? ev.clientX : (window.innerWidth / 2);
   const cy = (ev && Number.isFinite(ev.clientY)) ? ev.clientY : (window.innerHeight / 2);
 
