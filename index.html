@@ -667,6 +667,14 @@ body {
   background: rgba(255,255,255,0.10);
 }
 
+/* 🎮 게임설정 토글 버튼 활성화 */
+#global30NoticeToggleBtn.active{
+  background:#ffd54f !important;
+  color:#111 !important;
+  border-color:rgba(255,213,79,0.65) !important;
+  box-shadow:0 0 10px rgba(255,213,79,0.18);
+}
+
 /* 캡처 모드에서 숨기기 */
 .capture-mode #achievementIconBtn,
 .capture-mode #cumulativeRewardIconBtn{
@@ -5229,6 +5237,7 @@ html, body {
   <button type="button" class="hm-item" onclick="openCouponPopup(); closeHamburgerMenu();">쿠폰입력</button>
   <button type="button" class="hm-item" onclick="logout(); closeHamburgerMenu();">로그아웃</button>
   <div class="hm-item" onclick="openSoundSetting()">소리설정</div>
+  <div class="hm-item" onclick="openGameSetting()">게임설정</div>
 
 </div>
 
@@ -5265,6 +5274,31 @@ html, body {
   </div>
 </div>
   
+
+<!-- 🎮 게임설정 오버레이 -->
+<div id="gameSettingOverlay"
+     onclick="if(event.target===this) closeGameSetting();"
+     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:99999; align-items:center; justify-content:center;">
+  <div onclick="event.stopPropagation()"
+       style="width:min(360px, 92vw); background:#1f1f1f; border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:16px; color:#fff;">
+    <div style="font-weight:800; font-size:16px; margin-bottom:12px;">🎮 게임설정</div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin:12px 0;">
+      <div style="opacity:0.95;">30강 알림 메세지</div>
+      <button id="global30NoticeToggleBtn"
+              type="button"
+              onclick="toggleGlobal30NoticeSetting()"
+              style="min-width:60px; padding:5px 9px; border-radius:9px; border:1px solid rgba(255,255,255,0.18); background:#2a2a2a; color:#fff; font-weight:900; font-size:13px; cursor:pointer; margin:0;">
+        [끄기]
+      </button>
+    </div>
+
+    <div style="display:flex; gap:10px; margin-top:14px;">
+      <button onclick="closeGameSetting()" style="flex:1; padding:10px 0; border-radius:10px; border:0; background:#333; color:#fff; font-weight:700;">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- 🔔 로그 -->
 <div id="toastLog" class="log-view-five">
   <div class="toastLog-controls">
@@ -6418,6 +6452,13 @@ function subscribeGlobal30Events() {
 
     // ✅ 이미 본 이벤트면 아무것도 하지 않음 (신규 계정/재로그인 반복 방지 핵심)
     if (Number(lastSeenGlobal30EventId || 0) >= eventId) return;
+
+    // ✅ 게임설정에서 꺼둔 유저는 알림 없이 바로 "봤음" 처리
+    if (getDisableGlobal30Notice()) {
+      lastSeenGlobal30EventId = eventId;
+      save();
+      return;
+    }
 
     // ✅ 오버레이만 띄우기 (DB logs에는 쓰지 않는다!)
     openGlobal30Overlay(v);
@@ -18911,11 +18952,56 @@ function loadSoundSettings(){
     // 기본값(3) 없으면 세팅
     if (localStorage.getItem("bgmLevel") === null) localStorage.setItem("bgmLevel", "3");
     if (localStorage.getItem("sfxLevel") === null) localStorage.setItem("sfxLevel", "3");
+    if (localStorage.getItem("disableGlobal30Notice") === null) localStorage.setItem("disableGlobal30Notice", "0");
   }catch(e){}
 
   // 현재 오디오에도 즉시 반영
   try{ applyBgmVolumeNow(); }catch(e){}
   try{ applyIconTapVolumeNow(); }catch(e){}
+  try{ syncGameSettingUI(); }catch(e){}
+}
+
+function getDisableGlobal30Notice(){
+  try{
+    return localStorage.getItem("disableGlobal30Notice") === "1";
+  }catch(e){}
+  return false;
+}
+
+function setDisableGlobal30Notice(v){
+  try{
+    localStorage.setItem("disableGlobal30Notice", v ? "1" : "0");
+  }catch(e){}
+}
+
+function syncGameSettingUI(){
+  const btn = document.getElementById("global30NoticeToggleBtn");
+  if (!btn) return;
+  btn.classList.toggle("active", getDisableGlobal30Notice());
+}
+
+function openGameSetting(){
+  closeHamburgerMenu();
+  const ov = document.getElementById("gameSettingOverlay");
+  if (!ov) return;
+  syncGameSettingUI();
+  ov.style.display = "flex";
+}
+
+function closeGameSetting(){
+  const ov = document.getElementById("gameSettingOverlay");
+  if (ov) ov.style.display = "none";
+}
+
+function toggleGlobal30NoticeSetting(){
+  const next = !getDisableGlobal30Notice();
+  setDisableGlobal30Notice(next);
+  syncGameSettingUI();
+
+  if (next) {
+    const ov = document.getElementById("global30Overlay");
+    if (ov) ov.style.display = "none";
+  }
 }
 
 // ✅ 네 BGM 오디오 객체에 연결
