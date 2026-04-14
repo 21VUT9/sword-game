@@ -31298,5 +31298,71 @@ setTimeout(() => {
   </div>
 </div>
 
+
+
+<!-- 🔽 Scroll Indicator Auto System -->
+<style>
+.scroll-indicator-wrap{ position:relative; }
+.scroll-indicator{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  font-size:12px;
+  color:rgba(255,255,255,0.5);
+  pointer-events:none;
+  z-index:5;
+  opacity:0;
+  transition:opacity 0.2s;
+}
+.scroll-indicator.top{ top:4px; }
+.scroll-indicator.bottom{ bottom:4px; }
+.scroll-indicator.show{ opacity:1; }
+</style>
+
+<script>
+function attachScrollIndicator(el){
+  const wrap = document.createElement('div');
+  wrap.className = 'scroll-indicator-wrap';
+  el.parentNode.insertBefore(wrap, el);
+  wrap.appendChild(el);
+
+  const top = document.createElement('div');
+  top.className = 'scroll-indicator top';
+  top.innerText = '▲';
+
+  const bottom = document.createElement('div');
+  bottom.className = 'scroll-indicator bottom';
+  bottom.innerText = '▼';
+
+  wrap.appendChild(top);
+  wrap.appendChild(bottom);
+
+  function update(){
+    const scrollTop = el.scrollTop;
+    const maxScroll = el.scrollHeight - el.clientHeight;
+
+    if(scrollTop > 5){ top.classList.add('show'); }
+    else{ top.classList.remove('show'); }
+
+    if(scrollTop < maxScroll - 5){ bottom.classList.add('show'); }
+    else{ bottom.classList.remove('show'); }
+  }
+
+  el.addEventListener('scroll', update);
+  window.addEventListener('load', update);
+  update();
+}
+
+// 🔥 토벌 리스트 자동 적용
+window.addEventListener('load', ()=>{
+  document.querySelectorAll('*').forEach(el=>{
+    const style = getComputedStyle(el);
+    if(style.overflowY === 'auto' && el.scrollHeight > el.clientHeight){
+      attachScrollIndicator(el);
+    }
+  });
+});
+</script>
+
 </body>
 </html>
