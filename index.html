@@ -29269,9 +29269,9 @@ function ensureBossCooldownResetByRun(bossId, runLike){
             }
             activeBossId = bossId;
             save();
-            writeLog(usePriorityTicket ? `${getNickSafe()}님이 보스토벌우선신청권을 사용해 망각의 가디안 나이트 토벌을 시작하였습니다.` : `${getNickSafe()}님이 망각의 가디안 나이트 토벌을 시작하였습니다.`, false, { tone:'boss_apply' });
+            writeLog(usePriorityTicket ? `${getNickSafe()}님이 보스토벌우선신청권을 사용해 여명의쌍기사 토벌을 시작하였습니다.` : `${getNickSafe()}님이 여명의쌍기사 토벌을 시작하였습니다.`, false, { tone:'boss_apply' });
             writeBossBattleLog(bossId, usePriorityTicket ? `토벌대가 결성되었습니다. (대장: ${getNickSafe()}, 우선신청권 사용)` : `토벌대가 결성되었습니다. (대장: ${getNickSafe()})`);
-            showNpcMessage(usePriorityTicket ? '✅ 보스토벌우선신청권이 사용되었습니다.<br>즉시 토벌대가 개설되었습니다.' : '✅ 토벌이 시작됐다.<br>망령왕의 죽음세계에서 망각의 가디안 나이트가 그대들을 기다린다.', LEON_IMG.apply, true, '길드마스터 – 레온하르트 발렌');
+            showNpcMessage(usePriorityTicket ? '✅ 보스토벌우선신청권이 사용되었습니다.<br>즉시 토벌대가 개설되었습니다.' : '✅ 토벌이 시작됐다.<br>망령왕의 죽음세계에서 여명의쌍기사 라에온&카르텔이 그대들을 기다린다.', LEON_IMG.apply, true, '길드마스터 – 레온하르트 발렌');
           });
         });
       };
@@ -29312,7 +29312,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
           return;
         }
 
-        beginRun();
+        beginTwinRun();
       }).catch((errCatch) => {
         showNpcMessage('서버 처리 중 오류가 발생했습니다.', LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
       });
