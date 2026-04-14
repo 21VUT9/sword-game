@@ -29871,19 +29871,57 @@ function ensureBossCooldownResetByRun(bossId, runLike){
         reward.itemProtect += 1;
         reward.itemEssence += 70;
       }
-      const ctx = (typeof resolveMyBossRun === 'function') ? resolveMyBossRun({ includeClosed: true }) : null;
-      const run = ctx && ctx.run;
-      if (run && String((ctx && ctx.bossId) || '') === GUARDIAN_BOSS_ID) {
-        if (String(run.lastHitUid || '') === String(userId || '')) {
+
+      const isGuardianReward = String(bossId || '') === GUARDIAN_BOSS_ID;
+      if (!isGuardianReward) return reward;
+
+      // 가디안 전용 랜덤보상은 현재 UI 바인딩(resolveMyBossRun)에 의존하지 않게 처리한다.
+      // 보상 계산 자체는 bossId 기준으로 확정하고,
+      // 막타/우선신청권만 active/closed 캐시에서 가장 신뢰도 높은 guardian run을 찾아 판정한다.
+      let rewardRun = null;
+
+      const activeRun = (typeof bossRunsActiveCache === 'object' && bossRunsActiveCache)
+        ? bossRunsActiveCache[GUARDIAN_BOSS_ID]
+        : null;
+      if (activeRun && String(activeRun.status || '') !== 'active') {
+        rewardRun = activeRun;
+      }
+
+      if (!rewardRun && typeof bossRunsClosedCache === 'object' && bossRunsClosedCache) {
+        const closedMap = bossRunsClosedCache[GUARDIAN_BOSS_ID] || null;
+        if (closedMap && typeof closedMap === 'object') {
+          const storedKey = (typeof getStoredActiveBossRunKey === 'function') ? String(getStoredActiveBossRunKey() || '') : '';
+          if (storedKey && closedMap[storedKey]) {
+            rewardRun = closedMap[storedKey];
+          }
+          if (!rewardRun) {
+            const candidates = Object.values(closedMap)
+              .filter(v => v && String(v.status || '') === 'cleared')
+              .sort((a, b) => Number(b && b.clearedAt || b && b.endedAt || b && b.createdAt || 0) - Number(a && a.clearedAt || a && a.endedAt || a && a.createdAt || 0));
+            rewardRun = candidates[0] || null;
+          }
+        }
+      }
+
+      if (!rewardRun && activeRun) {
+        rewardRun = activeRun;
+      }
+
+      // 참가자 전원 랜덤보상: bossId 기준으로 항상 판정
+      const roll = Math.random();
+      if (roll < 0.10) reward.unidentifiedRuneStones += 2;
+      else if (roll < 0.70) reward.unidentifiedRuneStones += 1;
+
+      // 막타 / 우선신청권은 rewardRun이 있을 때만 추가 판정
+      if (rewardRun) {
+        if (String(rewardRun.lastHitUid || '') === String(userId || '')) {
           reward.itemSuper += 1;
         }
-        const roll = Math.random();
-        if (roll < 0.10) reward.unidentifiedRuneStones += 2;
-        else if (roll < 0.70) reward.unidentifiedRuneStones += 1;
-        if (String(run.priorityWinnerUid || '') === String(userId || '')) {
+        if (String(rewardRun.priorityWinnerUid || '') === String(userId || '')) {
           reward.itemBossPriority += 1;
         }
       }
+
       return reward;
     },
     createRun(bossId, options = {}){
