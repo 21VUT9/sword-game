@@ -17719,6 +17719,19 @@ if (r < successChance) {
     }
   }
 
+  // ✅ 메인퀘스트 CH3 드랍 처리
+  if (questState["fallen_04"] === QUEST_STATE.ACTIVE && Number(currentField || 0) === 6) {
+    const cur = Number(questState["fallen_item_faint_rune"] || 0);
+    if (cur < 100) {
+      const gain = Math.min(100 - cur, 10 + Math.floor(Math.random() * 11));
+      questState["fallen_item_faint_rune"] = cur + gain;
+      popupMsg += `<br>🔹 희미한 마법의 룬석 ${gain}개 획득`;
+      if (Number(questState["fallen_item_faint_rune"] || 0) >= 100) {
+        questState["fallen_04"] = QUEST_STATE.COMPLETE;
+      }
+    }
+  }
+
   // ✅ 드랍확률 보정 함수
   const adjDrop = (base) => {
     const p = base * (1 + Math.max(0, dropPct) / 100);
@@ -19750,6 +19763,11 @@ function claimBossReward(){
     if (bossId === "frost_queen") {
       if (questState["frost_05"] === QUEST_STATE.ACTIVE) {
         questState["frost_05"] = QUEST_STATE.COMPLETE;
+      }
+    }
+    if (bossId === "guardian_knight") {
+      if (questState["fallen_05"] === QUEST_STATE.ACTIVE) {
+        questState["fallen_05"] = QUEST_STATE.COMPLETE;
       }
     }
 
@@ -31417,6 +31435,365 @@ setTimeout(() => {
     <div class="mq-line" style="margin-top:18px;"></div>
   </div>
 </div>
+
+
+<script>
+// =====================
+// 👻 메인퀘스트 CH3 : [몰락한 왕국]
+// =====================
+const FALLEN_FAINT_RUNE_IMG = "images/items/faint_magic_runestone.png";
+const FALLEN_FAINT_RUNE_FALLBACK_IMG = "images/items/runes/rune_stone_unidentified.png";
+
+function getFallenFaintRuneCount(){ return Number(questState["fallen_item_faint_rune"] || 0); }
+function setFallenFaintRuneCount(v){ questState["fallen_item_faint_rune"] = Math.max(0, Number(v || 0)); }
+
+function shouldShowFallenEdelinBadge(){
+  const st01 = questState["fallen_01"];
+  const st02 = questState["fallen_02"];
+  return st01 === QUEST_STATE.ACTIVE || st02 === QUEST_STATE.OFFERED;
+}
+function shouldShowFallenVerdiaBadge(){
+  const st02 = questState["fallen_02"];
+  const st03 = questState["fallen_03"];
+  const st04 = questState["fallen_04"];
+  return (
+    st02 === QUEST_STATE.ACTIVE ||
+    st03 === QUEST_STATE.OFFERED || st03 === QUEST_STATE.COMPLETE ||
+    st04 === QUEST_STATE.OFFERED || st04 === QUEST_STATE.COMPLETE
+  );
+}
+function shouldShowFallenVallenBadge(){
+  const st01 = questState["fallen_01"];
+  const st05 = questState["fallen_05"];
+  return st01 === QUEST_STATE.OFFERED || st05 === QUEST_STATE.OFFERED || st05 === QUEST_STATE.COMPLETE;
+}
+
+const _prevShouldShowEdelinQuestBadge_fallen = shouldShowEdelinQuestBadge;
+shouldShowEdelinQuestBadge = function(){
+  return _prevShouldShowEdelinQuestBadge_fallen() || shouldShowFallenEdelinBadge();
+};
+const _prevShouldShowVallenQuestBadge_fallen = shouldShowVallenQuestBadge;
+shouldShowVallenQuestBadge = function(){
+  return _prevShouldShowVallenQuestBadge_fallen() || shouldShowFallenVallenBadge();
+};
+
+const _prevSyncQuestUnlocks_fallen = syncQuestUnlocks;
+syncQuestUnlocks = function(){
+  _prevSyncQuestUnlocks_fallen();
+
+  if (questState["frost_06"] === QUEST_STATE.REWARDED && Number(sword || 0) >= 15 && !questState["fallen_01"]) {
+    questState["fallen_01"] = QUEST_STATE.OFFERED;
+    save();
+  }
+  if (questState["fallen_01"] === QUEST_STATE.REWARDED && !questState["fallen_02"]) {
+    questState["fallen_02"] = QUEST_STATE.OFFERED;
+    save();
+  }
+  if (questState["fallen_02"] === QUEST_STATE.REWARDED && !questState["fallen_03"]) {
+    questState["fallen_03"] = QUEST_STATE.OFFERED;
+    save();
+  }
+  if (questState["fallen_03"] === QUEST_STATE.REWARDED && !questState["fallen_04"]) {
+    questState["fallen_04"] = QUEST_STATE.OFFERED;
+    save();
+  }
+  if (questState["fallen_04"] === QUEST_STATE.REWARDED && !questState["fallen_05"]) {
+    questState["fallen_05"] = QUEST_STATE.OFFERED;
+    save();
+  }
+};
+
+const _prevGetNpcDialogueNextLabel_fallen = getNpcDialogueNextLabel;
+getNpcDialogueNextLabel = function(){
+  const old = _prevGetNpcDialogueNextLabel_fallen();
+  if (old) return old;
+  const labelMap = {
+    "offer_fallen_01": ["그럴지도 모른대","하지만 기록대로라면..","그럼 어쩔수 없겠네","한번 물어볼게"],
+    "reward_fallen_01": ["역시 어렵지?","퀘스트완료"],
+    "offer_fallen_02": ["얼마전에 오신?","정말?","고마워"],
+    "reward_fallen_02": ["퀘스트완료"],
+    "offer_fallen_03": ["다음","정말, 어쩌면..!","감사합니다."],
+    "reward_fallen_03": ["퀘스트완료"],
+    "offer_fallen_04": ["근데 조금 더..","어떡하죠?","당장 출발하죠"],
+    "reward_fallen_04": ["퀘스트완료"],
+    "offer_fallen_05": ["이 모든건..","역시 안갈 수 없겠지?","다음","그래도...","가자!"],
+    "reward_fallen_05": ["하지만 이제 시작이야","다음"]
+  };
+  const labels = labelMap[npcDialogueActionMode];
+  if (Array.isArray(labels) && npcDialogueIndex >= 0 && npcDialogueIndex < labels.length) {
+    return labels[npcDialogueIndex];
+  }
+  return null;
+};
+
+const _prevFinishNpcTypewriter_fallen = finishNpcTypewriter;
+finishNpcTypewriter = function(){
+  _prevFinishNpcTypewriter_fallen();
+  const hasNext = npcDialogueIndex < npcDialogueQueue.length - 1;
+  if (hasNext) return;
+  const nextBtn = document.getElementById("npcDialogueNextBtn");
+  if (npcDialogueActionMode === "offer_fallen_01") { if (nextBtn) nextBtn.style.display = "none"; showFallen01AcceptReject(); return; }
+  if (npcDialogueActionMode === "reward_fallen_01") { if (nextBtn) nextBtn.style.display = "none"; showFallen01RewardBtn(); return; }
+  if (npcDialogueActionMode === "offer_fallen_02") { if (nextBtn) nextBtn.style.display = "none"; showFallen02AcceptReject(); return; }
+  if (npcDialogueActionMode === "reward_fallen_02") { if (nextBtn) nextBtn.style.display = "none"; showFallen02RewardBtn(); return; }
+  if (npcDialogueActionMode === "offer_fallen_03") { if (nextBtn) nextBtn.style.display = "none"; showFallen03AcceptReject(); return; }
+  if (npcDialogueActionMode === "reward_fallen_03") { if (nextBtn) nextBtn.style.display = "none"; showFallen03RewardBtn(); return; }
+  if (npcDialogueActionMode === "offer_fallen_04") { if (nextBtn) nextBtn.style.display = "none"; showFallen04AcceptReject(); return; }
+  if (npcDialogueActionMode === "reward_fallen_04") { if (nextBtn) nextBtn.style.display = "none"; showFallen04RewardBtn(); return; }
+  if (npcDialogueActionMode === "offer_fallen_05") { if (nextBtn) nextBtn.style.display = "none"; showFallen05AcceptReject(); return; }
+  if (npcDialogueActionMode === "reward_fallen_05") { if (nextBtn) nextBtn.style.display = "none"; showFallen05RewardBtn(); return; }
+};
+
+const _prevOpenEdelinDialogue_fallen = openEdelinDialogue;
+openEdelinDialogue = function(){
+  const st01 = questState["fallen_01"];
+  const st02 = questState["fallen_02"];
+  if (st01 === QUEST_STATE.ACTIVE) {
+    npcDialogueActionMode = "reward_fallen_01";
+    npcDialogueQueue = [
+      "불사의 저주 저항? 흠.. 천년도 더 전, 그랜드아르카니스트라는 최정점 마법사의 고대마법이라 나로썬 방법이 없겠는데?...",
+      "하지만, 단서가 아예 없는건 아니야."
+    ];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "세레나 에델린", "images/npc/edelin_talk.png");
+    return;
+  }
+  if (st02 === QUEST_STATE.OFFERED) {
+    npcDialogueActionMode = "offer_fallen_02";
+    npcDialogueQueue = [
+      "그러고보니 베르디아님이 있잖아?",
+      "맞아. 베르디아님은 고대의 신비를 연구하셔, 관련 마법에도 능통하실거야.",
+      "어쩌면 잘 아실지도 몰라. 베르디아님을 찾아가보는게 어때?"
+    ];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "세레나 에델린", "images/npc/edelin_talk.png");
+    return;
+  }
+  _prevOpenEdelinDialogue_fallen();
+};
+
+const _prevOpenVallenDialogue_fallen = openVallenDialogue;
+openVallenDialogue = function(){
+  const st01 = questState["fallen_01"];
+  const st05 = questState["fallen_05"];
+  if (st01 === QUEST_STATE.OFFERED) {
+    npcDialogueActionMode = "offer_fallen_01";
+    npcDialogueQueue = [
+      "그러니까, 리네아의 말에 따르면 동쪽 망령들의 땅은 사실 인간의 잊혀진 왕국이였다는 건가?",
+      "안그래도 퍼그란트 아저씨가 동쪽 망령들의 땅 토벌 의뢰를 하긴 했는데...",
+      "들어가는 순간 저주에 침식되어 못빠져나오겠지. 우리도 망령신세가 되고 말꺼야.",
+      "혹시 에델린, 그녀라면 저주에 저항하는 마법스크롤을 알지 않을까?"
+    ];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "레온하르트 발렌", "images/npc/vallen_talk.png");
+    return;
+  }
+  if (st05 === QUEST_STATE.OFFERED) {
+    npcDialogueActionMode = "offer_fallen_05";
+    npcDialogueQueue = [
+      "아르카니스트의 기록과, 고대마법. 그리고 마법에 저항하는 신비한 광석의 흔적까지..",
+      "그래. 서리여왕의 일기에 등장하는 발테리온 왕궁이 이곳일지도 모른다는 유력한 증거야.",
+      "정찰대의 말에 따르면, 왕국으로 향하는 성문에서부터 강한 기사가 지키고 서 있다더군.",
+      "저주를 받아 천년의 시간을 넘게 신념만 남은채 지키고 서있었겠지. 그래서 왕국에 대한 더이상의 정보는 얻을 수 없었어.",
+      "맞아, 대장간의 의뢰, 그리고 잊혀진 최초의 인간왕국에 대한 비밀. 우린 가야만해."
+    ];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "레온하르트 발렌", "images/npc/vallen_talk.png");
+    return;
+  }
+  if (st05 === QUEST_STATE.COMPLETE) {
+    npcDialogueActionMode = "reward_fallen_05";
+    npcDialogueQueue = [
+      "후우.. 시작부터 정말 힘든 상대였다. 왕국은 이런 괴물같은 녀석들이 득실거릴거야.",
+      "정비하고 계속 진행하자"
+    ];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "레온하르트 발렌", "images/npc/vallen_talk.png");
+    return;
+  }
+  _prevOpenVallenDialogue_fallen();
+};
+
+const _prevOpenVerdiaDialogue_fallen = openVerdiaDialogue;
+openVerdiaDialogue = function(){
+  const st02 = questState["fallen_02"];
+  const st03 = questState["fallen_03"];
+  const st04 = questState["fallen_04"];
+  if (st02 === QUEST_STATE.ACTIVE) {
+    npcDialogueActionMode = "reward_fallen_02";
+    npcDialogueQueue = ["고대 마법사의 저주에 저항하는 마법이라..."];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "룬마법사 베르디아", "images/npc/rune_mage_verdia_talk.png");
+    return;
+  }
+  if (st03 === QUEST_STATE.OFFERED) {
+    npcDialogueActionMode = "offer_fallen_03";
+    npcDialogueQueue = [
+      "이건 룬석이라고 알려진 아주 희귀한 광석이에요. 고대, 인간이 마법에 익숙하지 않았던 시절에는 이 광석으로 마력의 폭주를 억누르며 마법을 익혔다고 해요.",
+      "어쩌면, 인간이 대마법사 종족, 아르카니스트를 상대할 수 있었던 이유는 이 광석의 힘이 크게 작용했을거에요.",
+      "하지만 이상태로는 고작 돌덩이에 불과해요. 이 룬석안에 담겨져있는 힘을 끌어내는게 필요하죠. 당신께 맡기겠어요."
+    ];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "룬마법사 베르디아", "images/npc/rune_mage_verdia_talk.png");
+    return;
+  }
+  if (st03 === QUEST_STATE.COMPLETE) {
+    npcDialogueActionMode = "reward_fallen_03";
+    npcDialogueQueue = ["역시 룬의 힘이 응답할줄 알았어요."];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "룬마법사 베르디아", "images/npc/rune_mage_verdia_talk.png");
+    return;
+  }
+  if (st04 === QUEST_STATE.OFFERED) {
+    npcDialogueActionMode = "offer_fallen_04";
+    npcDialogueQueue = [
+      "이 룬석이라면, 그랜드 아르카니스트의 저주로부터 그대를 보호 할 수 있을 거에요.",
+      "물론 토벌대 모두가 필요합니다. 하지만 룬석은 매우 희귀하여 제가 가진건 이것뿐이랍니다.",
+      "만약 고대 왕국이 사실이라면, 망자들의 땅을 수색하면 비슷한 광석을 찾을 수 있지 않을까요?"
+    ];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "룬마법사 베르디아", "images/npc/rune_mage_verdia_talk.png");
+    return;
+  }
+  if (st04 === QUEST_STATE.COMPLETE) {
+    npcDialogueActionMode = "reward_fallen_04";
+    npcDialogueQueue = ["이정도면 어느정도는 버틸 수 있을거에요."];
+    openNpcDialogueFromTalkSets([npcDialogueQueue], "룬마법사 베르디아", "images/npc/rune_mage_verdia_talk.png");
+    return;
+  }
+  _prevOpenVerdiaDialogue_fallen();
+};
+
+function showFallen01AcceptReject(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="acceptFallen01()">한번 물어볼게</button><button class="actionBtn" type="button" onclick="rejectFallenQuest()">좀 불편한데..</button>`; }
+function acceptFallen01(){ questState["fallen_01"] = QUEST_STATE.ACTIVE; npcDialogueActionMode=null; npcDialogueQueue=[`에델린에게 저주에 관한 마법을 물어보자\n\n[보상] : 2억골드, 명예의 훈장 60개`]; save(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} openNpcDialogueFromTalkSets([npcDialogueQueue], "레온하르트 발렌", "images/npc/vallen_talk.png"); }
+function showFallen01RewardBtn(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="completeFallen01()">퀘스트 완료</button>`; }
+function completeFallen01(){ if (questState["fallen_01"] !== QUEST_STATE.ACTIVE) return; gold = Number(gold||0)+200000000; itemHonorMedal = Number(itemHonorMedal||0)+60; markQuestRewarded("fallen_01"); save(); update(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} npcDialogueActionMode=null; npcDialogueQueue=[`퀘스트 완료!\n보상 : 2억골드, 명예의훈장 60개 지급!`]; openNpcDialogueFromTalkSets([npcDialogueQueue], "세레나 에델린", "images/npc/edelin_talk.png"); }
+
+function showFallen02AcceptReject(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="acceptFallen02()">고마워</button><button class="actionBtn" type="button" onclick="rejectFallenQuest()">내가 낯을 가려서...</button>`; }
+function acceptFallen02(){ questState["fallen_02"] = QUEST_STATE.ACTIVE; npcDialogueActionMode=null; npcDialogueQueue=[`베르디아에게 고대마법을 물어보자\n\n[보상] : 2억골드, 명예의 훈장 80개`]; save(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} openNpcDialogueFromTalkSets([npcDialogueQueue], "세레나 에델린", "images/npc/edelin_talk.png"); }
+function showFallen02RewardBtn(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="completeFallen02()">퀘스트 완료</button>`; }
+function completeFallen02(){ if (questState["fallen_02"] !== QUEST_STATE.ACTIVE) return; gold = Number(gold||0)+200000000; itemHonorMedal = Number(itemHonorMedal||0)+80; markQuestRewarded("fallen_02"); save(); update(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} npcDialogueActionMode=null; npcDialogueQueue=[`퀘스트 완료!\n보상 : 2억골드, 명예의훈장 80개 지급!`]; openNpcDialogueFromTalkSets([npcDialogueQueue], "룬마법사 베르디아", "images/npc/rune_mage_verdia_talk.png"); }
+
+function showFallen03AcceptReject(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="acceptFallen03()">감사합니다.</button><button class="actionBtn" type="button" onclick="rejectFallenQuest()">부담스러워서...</button>`; }
+function acceptFallen03(){ questState["fallen_03"] = QUEST_STATE.ACTIVE; addUnidentifiedRuneStone(1); npcDialogueActionMode=null; npcDialogueQueue=[`미확인 룬석 1개를 획득했다.\n\n베르디아에게 받은 룬석을 감정해보자\n[보상] : 파괴방지주문서 1개, 마력의정수 100개, 명예의훈장 70개`]; save(); update(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} openNpcDialogueFromTalkSets([npcDialogueQueue], "룬마법사 베르디아", "images/npc/rune_mage_verdia_talk.png"); }
+function showFallen03RewardBtn(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="completeFallen03()">퀘스트 완료</button>`; }
+function completeFallen03(){ if (questState["fallen_03"] !== QUEST_STATE.COMPLETE) return; itemProtect = Number(itemProtect||0)+1; itemEssence = Number(itemEssence||0)+100; itemHonorMedal = Number(itemHonorMedal||0)+70; markQuestRewarded("fallen_03"); save(); update(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} npcDialogueActionMode=null; npcDialogueQueue=[`퀘스트 완료!\n보상 : 파괴방지주문서 1개, 마력의정수 100개, 명예의훈장 70개 지급!`]; openNpcDialogueFromTalkSets([npcDialogueQueue], "룬마법사 베르디아", "images/npc/rune_mage_verdia_talk.png"); }
+
+function showFallen04AcceptReject(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="acceptFallen04()">당장 출발하죠</button><button class="actionBtn" type="button" onclick="rejectFallenQuest()">조금 무서운데</button>`; }
+function acceptFallen04(){ questState["fallen_04"] = QUEST_STATE.ACTIVE; npcDialogueActionMode=null; npcDialogueQueue=[`망령왕의 죽음세계에서 사냥하여 희미한 마법의 룬석 100개를 수집하자\n\n[보상] : 마력의정수 100개, 파괴방지주문서 2개, 명예의훈장 100개`]; save(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} openNpcDialogueFromTalkSets([npcDialogueQueue], "룬마법사 베르디아", "images/npc/rune_mage_verdia_talk.png"); }
+function showFallen04RewardBtn(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="completeFallen04()">퀘스트 완료</button>`; }
+function completeFallen04(){ if (questState["fallen_04"] !== QUEST_STATE.COMPLETE) return; itemEssence = Number(itemEssence||0)+100; itemProtect = Number(itemProtect||0)+2; itemHonorMedal = Number(itemHonorMedal||0)+100; setFallenFaintRuneCount(0); markQuestRewarded("fallen_04"); save(); update(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} npcDialogueActionMode=null; npcDialogueQueue=[`퀘스트 완료!\n보상 : 마력의정수 100개, 파괴방지주문서 2개, 명예의훈장 100개 지급!`]; openNpcDialogueFromTalkSets([npcDialogueQueue], "룬마법사 베르디아", "images/npc/rune_mage_verdia_talk.png"); }
+
+function showFallen05AcceptReject(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="acceptFallen05()">가자!</button><button class="actionBtn" type="button" onclick="rejectFallenQuest()">다녀와</button>`; }
+function acceptFallen05(){ questState["fallen_05"] = QUEST_STATE.ACTIVE; npcDialogueActionMode=null; npcDialogueQueue=[`망령왕의 죽음세계의 입구를 지키는 "망각의 가디안 나이트"를 토벌하자\n\n[보상] : 슈퍼강화주문서 2개, 미확인룬석 1개, 명예의훈장 150개`]; save(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} openNpcDialogueFromTalkSets([npcDialogueQueue], "레온하르트 발렌", "images/npc/vallen_talk.png"); }
+function showFallen05RewardBtn(){ const a=document.getElementById("npcDialogueBtnArea"); if(a) a.innerHTML=`<button class="actionBtn" type="button" onclick="completeFallen05()">퀘스트 완료</button>`; }
+function completeFallen05(){
+  if (questState["fallen_05"] !== QUEST_STATE.COMPLETE) return;
+  itemSuper = Number(itemSuper||0)+2;
+  addUnidentifiedRuneStone(1);
+  itemHonorMedal = Number(itemHonorMedal||0)+150;
+  markQuestRewarded("fallen_05");
+  save(); update(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){}
+  npcDialogueActionMode=null;
+  runChapterCompleteEffect(
+    "몰락한 왕국",
+    "새로운 기록 없음",
+    "슈퍼강화주문서 2개, 미확인룬석 1개, 명예의훈장 150개 지급!",
+    "레온하르트 발렌",
+    "images/npc/vallen_talk.png"
+  );
+}
+
+function rejectFallenQuest(){ npcDialogueActionMode = null; closeNpcDialogue(); updateQuestBadges(); try{renderTalkNpcGrid();}catch(e){} }
+
+const _prevAttemptRuneAppraise_fallen = attemptRuneAppraise;
+attemptRuneAppraise = function(){
+  const shouldCompleteAfter = (questState["fallen_03"] === QUEST_STATE.ACTIVE);
+  _prevAttemptRuneAppraise_fallen();
+  if (!shouldCompleteAfter) return;
+  setTimeout(() => {
+    if (questState["fallen_03"] === QUEST_STATE.ACTIVE) {
+      questState["fallen_03"] = QUEST_STATE.COMPLETE;
+      save();
+      if (typeof update === "function") update();
+      updateQuestBadges();
+      try{renderTalkNpcGrid();}catch(e){}
+    }
+  }, 320);
+};
+
+const _prevRenderInventory_fallen = renderInventory;
+renderInventory = function(){
+  _prevRenderInventory_fallen();
+  const listEl = document.getElementById("inventoryScrollArea");
+  const grid = listEl ? listEl.querySelector('.inventory-grid') : null;
+  if (!grid) return;
+  const extra = [];
+  if (getFallenFaintRuneCount() > 0) {
+    extra.push({ id:"fallenFaintRune", name:"희미한 마법의 룬석", count:getFallenFaintRuneCount(), img:FALLEN_FAINT_RUNE_IMG, fallbackImg:FALLEN_FAINT_RUNE_FALLBACK_IMG, desc:"망령왕의 죽음세계에서 찾은 희미한 마법의 룬석. 고대의 저항 마력이 아주 옅게 남아 있다." });
+  }
+  extra.forEach(item => {
+    const slot = document.createElement("div"); slot.className = "inventory-slot";
+    const img = document.createElement("img"); img.src = item.img; img.alt = item.name; img.title = item.name; if (item.fallbackImg) img.onerror = function(){ this.onerror=null; this.src=item.fallbackImg; }; slot.appendChild(img);
+    if (item.count > 1) { const countBadge = document.createElement("div"); countBadge.className = "inventory-count"; countBadge.textContent = item.count; slot.appendChild(countBadge); }
+    slot.addEventListener("click", (e) => showItemDetail(item, e.clientX, e.clientY));
+    grid.appendChild(slot);
+  });
+  const countEl = document.getElementById("inventoryCountInfo");
+  if (countEl && extra.length > 0) {
+    const m = countEl.textContent.match(/(\d+)/);
+    if (m) countEl.textContent = `${Number(m[1]) + extra.length}종`;
+  }
+};
+
+function openQuestDetail_fallen01(){ const st = questState?.["fallen_01"]; let body = `<div style="font-weight:900; font-size:15px; margin-bottom:8px;">[몰락한 왕국] 01 _ 고대마법</div><div style="font-size:13px; line-height:1.6;">발렌이 동쪽 망령들의 땅에 걸린 저주를 막을 방법을 찾아보자고 제안했다.<br><br><b>달성조건</b> : 에델린에게 저주에 관한 마법을 물어보자<br><b>완료보상</b> : 2억골드, 명예의훈장 60개</div>`; if (st===QUEST_STATE.ACTIVE) body += `<div style="margin-top:10px; font-size:12px; color:#aaa;">※ 에델린과 대화하면 완료됩니다.</div>`; else if (st===QUEST_STATE.REWARDED) body += `<div style="margin-top:10px; font-size:12px; color:#7CFF7C;">※ 완료한 퀘스트입니다.</div>`; showNpcMessage(body, null, true, "퀘스트 상세"); }
+function openQuestDetail_fallen02(){ const st = questState?.["fallen_02"]; let body = `<div style="font-weight:900; font-size:15px; margin-bottom:8px;">[몰락한 왕국] 02 _ 베르디아</div><div style="font-size:13px; line-height:1.6;">에델린이 베르디아에게 고대마법의 저주를 물어보라고 권했다.<br><br><b>달성조건</b> : 베르디아에게 고대마법을 물어보자<br><b>완료보상</b> : 2억골드, 명예의훈장 80개</div>`; if (st===QUEST_STATE.ACTIVE) body += `<div style="margin-top:10px; font-size:12px; color:#aaa;">※ 베르디아와 대화하면 완료됩니다.</div>`; else if (st===QUEST_STATE.REWARDED) body += `<div style="margin-top:10px; font-size:12px; color:#7CFF7C;">※ 완료한 퀘스트입니다.</div>`; showNpcMessage(body, null, true, "퀘스트 상세"); }
+function openQuestDetail_fallen03(){ const st = questState?.["fallen_03"]; let body = `<div style="font-weight:900; font-size:15px; margin-bottom:8px;">[몰락한 왕국] 03 _ 마법이 깃든 광석</div><div style="font-size:13px; line-height:1.6;">베르디아가 룬석의 힘을 끌어내 보라고 부탁했다.<br><br><b>달성조건</b> : 미확인 룬석 1개 감정<br><b>완료보상</b> : 파괴방지주문서 1개, 마력의정수 100개, 명예의훈장 70개</div>`; if (st===QUEST_STATE.ACTIVE) body += `<div style="margin-top:10px; font-size:12px; color:#aaa;">※ 퀘스트 보상으로 받은 룬석이 아니어도, 기존 미확인 룬석을 감정하면 완료됩니다.</div>`; else if (st===QUEST_STATE.COMPLETE) body += `<div style="margin-top:10px; font-size:12px; color:#ffd54f;">※ 베르디아에게 돌아가서 퀘스트 완료를 진행하세요.</div>`; else if (st===QUEST_STATE.REWARDED) body += `<div style="margin-top:10px; font-size:12px; color:#7CFF7C;">※ 완료한 퀘스트입니다.</div>`; showNpcMessage(body, null, true, "퀘스트 상세"); }
+function openQuestDetail_fallen04(){ const st = questState?.["fallen_04"]; let body = `<div style="font-weight:900; font-size:15px; margin-bottom:8px;">[몰락한 왕국] 04 _ 광석 수집</div><div style="font-size:13px; line-height:1.6;">망령왕의 죽음세계에서 희미한 마법의 룬석을 모아 저주 저항에 필요한 광석을 확보하자.<br><br><b>달성조건</b> : 희미한 마법의 룬석 100개 수집<br><b>진행도</b> : ${Math.min(getFallenFaintRuneCount(),100)} / 100<br><b>완료보상</b> : 마력의정수 100개, 파괴방지주문서 2개, 명예의훈장 100개</div>`; if (st===QUEST_STATE.ACTIVE) body += `<div style="margin-top:10px; font-size:12px; color:#aaa;">※ 망령왕의 죽음세계 사냥 성공 시 희미한 마법의 룬석을 10~20개 획득합니다.</div>`; else if (st===QUEST_STATE.COMPLETE) body += `<div style="margin-top:10px; font-size:12px; color:#ffd54f;">※ 베르디아에게 돌아가서 퀘스트 완료를 진행하세요.</div>`; else if (st===QUEST_STATE.REWARDED) body += `<div style="margin-top:10px; font-size:12px; color:#7CFF7C;">※ 완료한 퀘스트입니다.</div>`; showNpcMessage(body, null, true, "퀘스트 상세"); }
+function openQuestDetail_fallen05(){ const st = questState?.["fallen_05"]; let body = `<div style="font-weight:900; font-size:15px; margin-bottom:8px;">[몰락한 왕국] 05 _ 성문을 지키는 기사</div><div style="font-size:13px; line-height:1.6;">발렌이 왕국 입구를 지키는 망각의 가디안 나이트 토벌을 제안했다.<br><br><b>달성조건</b> : 망각의 가디안 나이트 토벌성공 1회<br><b>완료보상</b> : 슈퍼강화주문서 2개, 미확인룬석 1개, 명예의훈장 150개</div>`; if (st===QUEST_STATE.ACTIVE) body += `<div style="margin-top:10px; font-size:12px; color:#aaa;">※ 가디안 나이트 토벌에 성공하면 완료 가능 상태로 전환됩니다.</div>`; else if (st===QUEST_STATE.COMPLETE) body += `<div style="margin-top:10px; font-size:12px; color:#ffd54f;">※ 발렌에게 돌아가서 퀘스트 완료를 진행하세요.</div>`; else if (st===QUEST_STATE.REWARDED) body += `<div style="margin-top:10px; font-size:12px; color:#7CFF7C;">※ 완료한 퀘스트입니다.</div>`; showNpcMessage(body, null, true, "퀘스트 상세"); }
+
+const _prevOpenQuestOverlay_fallen = openQuestOverlay;
+openQuestOverlay = function(){
+  _prevOpenQuestOverlay_fallen();
+  const list = document.getElementById("questListArea");
+  if (!list) return;
+  const our = ["fallen_01","fallen_02","fallen_03","fallen_04","fallen_05"].filter(q => Number(questState?.[q] || 0) > 0);
+  if (!our.length) return;
+  const empty = Array.from(list.children).find(el => el.textContent && el.textContent.includes("진행 중인 퀘스트가 없습니다"));
+  if (empty) empty.remove();
+  let doneSection = Array.from(list.children).find(el => el.classList && el.classList.contains("questSectionTitle") && el.classList.contains("done"));
+  let progressSection = Array.from(list.children).find(el => el.classList && el.classList.contains("questSectionTitle") && !el.classList.contains("done"));
+  if (!progressSection) {
+    progressSection = document.createElement("div"); progressSection.className = "questSectionTitle"; progressSection.textContent = "진행중 퀘스트";
+    if (doneSection) list.insertBefore(progressSection, doneSection); else list.appendChild(progressSection);
+  }
+  function appendDoneRow(row){ if (!doneSection) { doneSection = document.createElement("div"); doneSection.className = "questSectionTitle done"; doneSection.textContent = "완료된 퀘스트"; list.appendChild(doneSection); } list.appendChild(row); }
+  function appendProgressRow(row){ if (!progressSection) { progressSection = document.createElement("div"); progressSection.className = "questSectionTitle"; progressSection.textContent = "진행중 퀘스트"; if (doneSection) list.insertBefore(progressSection, doneSection); else list.appendChild(progressSection); } if (doneSection) list.insertBefore(row, doneSection); else list.appendChild(row); }
+  function makeRow(qid, label, onClick){ const state = Number(questState?.[qid] || 0); if (!state || state === QUEST_STATE.OFFERED) return; const row = document.createElement("div"); if (state === QUEST_STATE.REWARDED) { row.className = "questRowText questRowDone"; row.textContent = `${label}  -  완료`; appendDoneRow(row); return; } const status = state === QUEST_STATE.ACTIVE ? "진행중" : state === QUEST_STATE.COMPLETE ? "완료 가능" : "미수락"; row.className = "questRowText"; row.textContent = `${label}  -  ${status}`; if (state === QUEST_STATE.COMPLETE) row.classList.add("questRowReady"); if (typeof onClick === "function") row.addEventListener("click", onClick); appendProgressRow(row); }
+  makeRow("fallen_01","[몰락한 왕국] 01 _ 고대마법", openQuestDetail_fallen01);
+  makeRow("fallen_02","[몰락한 왕국] 02 _ 베르디아", openQuestDetail_fallen02);
+  makeRow("fallen_03","[몰락한 왕국] 03 _ 마법이 깃든 광석", openQuestDetail_fallen03);
+  makeRow("fallen_04","[몰락한 왕국] 04 _ 광석 수집", openQuestDetail_fallen04);
+  makeRow("fallen_05","[몰락한 왕국] 05 _ 성문을 지키는 기사", openQuestDetail_fallen05);
+};
+
+const _prevRenderTalkNpcGrid_fallen = renderTalkNpcGrid;
+renderTalkNpcGrid = function(){
+  _prevRenderTalkNpcGrid_fallen();
+  const grid = document.getElementById("talkNpcGrid");
+  if (!grid) return;
+  const buttons = Array.from(grid.querySelectorAll(".talkNpcBtn"));
+  buttons.forEach(btn => {
+    const name = (btn.querySelector(".talkNpcName") || {}).textContent || "";
+    const imgBox = btn.querySelector(".talkNpcImgBox");
+    if (!imgBox) return;
+    const has = !!imgBox.querySelector('.icon-alert-badge[data-fallen="1"]');
+    let should = false;
+    if (name === "룬마법사 베르디아" || name === "베르디아") should = shouldShowFallenVerdiaBadge();
+    if (!should || has) return;
+    const b = document.createElement('div'); b.className='icon-alert-badge'; b.dataset.fallen='1'; b.textContent='!'; b.style.display='flex'; imgBox.appendChild(b);
+  });
+};
+
+const _prevUpdateQuestBadges_fallen = updateQuestBadges;
+updateQuestBadges = function(){
+  _prevUpdateQuestBadges_fallen();
+  const badge = document.getElementById("questAlertBadge");
+  const on = (badge && badge.style.display === "flex") || shouldShowFallenEdelinBadge() || shouldShowFallenVerdiaBadge() || shouldShowFallenVallenBadge();
+  if (badge) badge.style.display = on ? "flex" : "none";
+};
+</script>
 
 </body>
 </html>
