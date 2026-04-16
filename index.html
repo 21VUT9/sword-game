@@ -32008,7 +32008,28 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function deepClone(v){ return JSON.parse(JSON.stringify(v)); }
   function getEpicForField(fieldId){ return epicFieldCache && epicFieldCache[String(fieldId||'')] || null; }
   function isEpicActiveOnField(fieldId){ const e=getEpicForField(fieldId); return !!(e && (e.status==='active' || e.status==='cleared')); }
-  function localFieldName(fid){ const f=(window.HUNT_FIELDS||[]).find(x=>Number(x.id)===Number(fid)); return f?f.name:`필드 ${fid}`; }
+  function localFieldName(fid){
+    fid = Number(fid || 0);
+    try {
+      if (typeof HUNT_FIELDS !== 'undefined' && HUNT_FIELDS) {
+        const direct = HUNT_FIELDS[fid];
+        if (direct && direct.name) return String(direct.name);
+        if (Array.isArray(HUNT_FIELDS)) {
+          const found = HUNT_FIELDS.find(x => x && Number(x.id) === fid);
+          if (found && found.name) return String(found.name);
+        }
+      }
+    } catch(e) {}
+    try {
+      const legacy = (window.HUNT_FIELDS || []);
+      if (Array.isArray(legacy)) {
+        const found = legacy.find(x => x && Number(x.id) === fid);
+        if (found && found.name) return String(found.name);
+        if (legacy[fid] && legacy[fid].name) return String(legacy[fid].name);
+      }
+    } catch(e) {}
+    return `필드 ${fid}`;
+  }
   function formatRemain(ms){ const sec=Math.max(0, Math.floor(ms/1000)); const m=String(Math.floor(sec/60)).padStart(2,'0'); const s=String(sec%60).padStart(2,'0'); return `${m}:${s}`; }
   function appendLocalEpicLog(msg){
     const toastListEl = document.getElementById('toastList'); if(!toastListEl) return;
