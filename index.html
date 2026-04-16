@@ -31871,7 +31871,16 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   let epicFieldCache = {};
   let epicFieldUnsubBound = false;
   let epicRenderTimer = null;
-  let epicLastField = Number(window.currentField || 0);
+  function getCurrentEpicFieldId(){
+    try {
+      if (typeof currentField !== 'undefined') return Number(currentField || 0);
+    } catch(e) {}
+    try {
+      if (typeof window.currentField !== 'undefined') return getCurrentEpicFieldId();
+    } catch(e) {}
+    return 0;
+  }
+  let epicLastField = getCurrentEpicFieldId();
   let epicPresenceTimer = null;
   let epicPrevStatusByField = {};
   let epicLastWarningKey = '';
@@ -32088,7 +32097,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function handleEpicStateTransitions(){
-    const fieldId = Number(window.currentField || 0);
+    const fieldId = getCurrentEpicFieldId();
     const cur = getEpicForField(fieldId);
     const key = String(fieldId);
     const prev = String(epicPrevStatusByField[key] || '');
@@ -32121,7 +32130,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function renderEpicOverlay(){
     const overlay = document.getElementById('epicMonsterOverlay');
     if (!overlay) return;
-    const fieldId = Number(window.currentField || 0);
+    const fieldId = getCurrentEpicFieldId();
     const event = getEpicForField(fieldId);
     const eligible = EPIC_LOCAL_ELIGIBLE[String(fieldId)] && event && String(event.spawnedAt||0) === String(EPIC_LOCAL_ELIGIBLE[String(fieldId)]);
     const imgEl = document.getElementById('epicMonsterImg');
@@ -32159,7 +32168,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
   function syncEpicPresence(){
     if (!userId) return;
-    const fieldId = Number(window.currentField || 0);
+    const fieldId = getCurrentEpicFieldId();
     if (Number(epicLastField) !== fieldId) {
       leaveEpicField(epicLastField);
       delete EPIC_LOCAL_ELIGIBLE[String(epicLastField)];
@@ -32188,7 +32197,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function maybeTickEpic(){
-    const fieldId = Number(window.currentField || 0);
+    const fieldId = getCurrentEpicFieldId();
     const event = getEpicForField(fieldId);
     if (!event || event.status !== 'active') return;
     const now = Date.now();
@@ -32270,7 +32279,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
           if (e2 || !committed2) return resolve(false);
           const msg = `현재 [${localFieldName(fieldId)}]에 ${def.name}가 등장하였습니다.`;
           writeLog(msg, false, { tone:'boss_apply' });
-          if (Number(window.currentField || 0) === fieldId) showEpicWarning();
+          if (getCurrentEpicFieldId() === fieldId) showEpicWarning();
           resolve(true);
         });
       });
@@ -32285,7 +32294,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function attackEpicMonster(){
-    const fieldId = Number(window.currentField || 0);
+    const fieldId = getCurrentEpicFieldId();
     const event = getEpicForField(fieldId);
     if (!event || event.status !== 'active' || !userId) return;
     const eventRef = EPIC_BY_FIELD_REF.child(String(fieldId));
@@ -32320,7 +32329,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function claimEpicReward(){
-    const fieldId = Number(window.currentField || 0);
+    const fieldId = getCurrentEpicFieldId();
     const event = getEpicForField(fieldId);
     if (!event || event.status !== 'cleared') return;
     if (String(EPIC_LOCAL_ELIGIBLE[String(fieldId)] || '') !== String(event.spawnedAt || 0)) return;
@@ -32349,7 +32358,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   // override hunt: 에픽 활성 중일 때만 사냥 차단 (스폰/피티는 실제 hunt 본체에서 처리)
   const __orig_hunt = window.hunt;
   window.hunt = function(){
-    const fieldId = Number(window.currentField || 0);
+    const fieldId = getCurrentEpicFieldId();
     const event = getEpicForField(fieldId);
 
     if (event && event.status === 'active') {
@@ -32362,7 +32371,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
   // override logout for presence cleanup
   const __orig_logout = window.logout;
-  window.logout = function(){ try{ leaveEpicField(window.currentField); }catch(e){} return __orig_logout.apply(this, arguments); };
+  window.logout = function(){ try{ leaveEpicField(getCurrentEpicFieldId()); }catch(e){} return __orig_logout.apply(this, arguments); };
 
   const epicImg = document.getElementById('epicMonsterImg');
   if (epicImg) epicImg.addEventListener('click', attackEpicMonster);
@@ -32373,26 +32382,26 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   epicRenderTimer = setInterval(() => { renderEpicOverlay(); maybeTickEpic(); maybeCleanupEpic(); }, 1000);
   epicPresenceTimer = setInterval(syncEpicPresence, 3000);
   setInterval(() => {
-    const fieldId = Number(window.currentField || 0);
+    const fieldId = getCurrentEpicFieldId();
     Object.keys(epicFieldCache || {}).forEach(fid => {
       if (Number(fid) !== fieldId) delete EPIC_LOCAL_ELIGIBLE[String(fid)];
     });
   }, 2000);
 
   window.__epicApi = {
-    processAttempt(fieldId){ return processEpicSpawnAttempt(Number(fieldId || window.currentField || 0)); },
-    spawn(fieldId){ return maybeSpawnEpic(Number(fieldId || window.currentField || 0)); },
-    get(fieldId){ return getEpicForField(Number(fieldId || window.currentField || 0)); },
-    pity(fieldId){ return getEpicSpawnPity(Number(fieldId || window.currentField || 0)); },
-    resetPity(fieldId){ clearEpicSpawnPity(Number(fieldId || window.currentField || 0)); return 0; }
+    processAttempt(fieldId){ return processEpicSpawnAttempt(Number(fieldId || getCurrentEpicFieldId() || 0)); },
+    spawn(fieldId){ return maybeSpawnEpic(Number(fieldId || getCurrentEpicFieldId() || 0)); },
+    get(fieldId){ return getEpicForField(Number(fieldId || getCurrentEpicFieldId() || 0)); },
+    pity(fieldId){ return getEpicSpawnPity(Number(fieldId || getCurrentEpicFieldId() || 0)); },
+    resetPity(fieldId){ clearEpicSpawnPity(Number(fieldId || getCurrentEpicFieldId() || 0)); return 0; }
   };
 
   window.__epicDebug = {
-    spawn(fieldId){ return maybeSpawnEpic(Number(fieldId || window.currentField || 0)); },
-    get(fieldId){ return getEpicForField(Number(fieldId || window.currentField || 0)); },
-    pity(fieldId){ return getEpicSpawnPity(Number(fieldId || window.currentField || 0)); },
-    resetPity(fieldId){ clearEpicSpawnPity(Number(fieldId || window.currentField || 0)); return 0; },
-    process(fieldId){ return processEpicSpawnAttempt(Number(fieldId || window.currentField || 0)); }
+    spawn(fieldId){ return maybeSpawnEpic(Number(fieldId || getCurrentEpicFieldId() || 0)); },
+    get(fieldId){ return getEpicForField(Number(fieldId || getCurrentEpicFieldId() || 0)); },
+    pity(fieldId){ return getEpicSpawnPity(Number(fieldId || getCurrentEpicFieldId() || 0)); },
+    resetPity(fieldId){ clearEpicSpawnPity(Number(fieldId || getCurrentEpicFieldId() || 0)); return 0; },
+    process(fieldId){ return processEpicSpawnAttempt(Number(fieldId || getCurrentEpicFieldId() || 0)); }
   };
 
   // expose names for convenience
