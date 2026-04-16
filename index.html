@@ -32358,8 +32358,25 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const parts = cur.participants || {};
     Object.keys(parts).forEach(uid => {
       const uref = db.ref('users/' + uid);
-      uref.child('huntCountToday').transaction(v => Math.min(20, Math.max(0, Number(v || 0)) + amount));
-      uref.child('lastStaminaUpdate').transaction(v => Number(v || Date.now()) || Date.now());
+      uref.transaction(user => {
+        user = user || {};
+        const beforeSt = Math.max(0, Number(user.huntStamina || 0));
+        const loss = Math.min(amount, beforeSt);
+        user.huntStamina = Math.max(0, beforeSt - loss);
+        user.huntCountToday = Math.max(0, Number(user.huntCountToday || 0) + loss);
+        user.lastStaminaUpdate = Number(user.lastStaminaUpdate || Date.now()) || Date.now();
+        return user;
+      });
+      if (String(uid) === String(userId)) {
+        try {
+          const localBefore = Math.max(0, Number(huntStamina || 0));
+          const localLoss = Math.min(amount, localBefore);
+          huntStamina = Math.max(0, localBefore - localLoss);
+          huntCountToday = Math.max(0, Number(huntCountToday || 0) + localLoss);
+          if (typeof update === 'function') update();
+          if (typeof save === 'function') save();
+        } catch(e){}
+      }
     });
   }
 
@@ -32492,7 +32509,13 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     }
   }
 
+  let epicAttackLockUntil = 0;
+
   function attackEpicMonster(ev){
+    if (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch(e){} }
+    const nowClick = Date.now();
+    if (nowClick < epicAttackLockUntil) return;
+    epicAttackLockUntil = nowClick + 180;
     const fieldId = getCurrentEpicFieldId();
     const event = getEpicForField(fieldId);
     if (!event || event.status !== 'active' || !userId) return;
@@ -32543,6 +32566,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       return cur;
     }, (err, committed) => {
       if (err || !committed || !fx) {
+        epicAttackLockUntil = 0;
         huntStamina = prevStamina;
         huntCountToday = prevCount;
         try { if (typeof update === 'function') update(); } catch(e){}
@@ -32558,6 +32582,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         }
         if (fx.kind !== 'miss' && typeof playEpicHitFx === 'function') playEpicHitFx();
       } catch(e){}
+      setTimeout(() => { epicAttackLockUntil = 0; }, 80);
     });
   }
 
@@ -32613,11 +32638,11 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   window.logout = function(){ try{ leaveEpicField(getCurrentEpicFieldId()); }catch(e){} return __orig_logout.apply(this, arguments); };
 
   const epicImg = document.getElementById('epicMonsterImg');
-  if (epicImg) { epicImg.addEventListener('click', attackEpicMonster); epicImg.onclick = attackEpicMonster; }
+  if (epicImg) { epicImg.onclick = null; epicImg.addEventListener('click', attackEpicMonster, { passive:false }); }
   const claimBtn = document.getElementById('epicMonsterClaimBtn');
-  if (claimBtn) { claimBtn.addEventListener('click', claimEpicReward); claimBtn.onclick = claimEpicReward; }
+  if (claimBtn) { claimBtn.onclick = null; claimBtn.addEventListener('click', claimEpicReward, { passive:false }); }
   const claimBtnFloating = document.getElementById('epicMonsterClaimBtnFloating');
-  if (claimBtnFloating) { claimBtnFloating.addEventListener('click', claimEpicReward); claimBtnFloating.onclick = claimEpicReward; }
+  if (claimBtnFloating) { claimBtnFloating.onclick = null; claimBtnFloating.addEventListener('click', claimEpicReward, { passive:false }); }
 
   ensureEpicSubscription();
   epicRenderTimer = setInterval(() => { renderEpicOverlay(); maybeTickEpic(); maybeCleanupEpic(); }, 1000);
