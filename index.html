@@ -31823,22 +31823,23 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 #epicMonsterOverlay{position:fixed;inset:0;z-index:980;pointer-events:none;display:none}
 #epicMonsterOverlay.show{display:block}
 #epicMonsterStage{position:absolute;inset:0;pointer-events:none}
-#epicMonsterWrap{position:absolute;left:50%;top:57%;transform:translate(-50%,-50%);width:min(560px,72vw);height:min(560px,72vw);display:flex;align-items:center;justify-content:center;pointer-events:none}
-#epicMonsterWrap.hit{animation:bossHitShake 140ms ease-out 1}
-#epicMonsterWrap::after{content:'';position:absolute;left:50%;top:52%;width:120px;height:120px;transform:translate(-50%,-50%) scale(.6);pointer-events:none;opacity:0;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,.95) 0%,rgba(255,210,210,.55) 35%,rgba(255,80,80,.25) 60%,rgba(0,0,0,0) 72%);mix-blend-mode:screen}
-#epicMonsterWrap.hit-spark::after{animation:bossHitSpark 180ms ease-out 1}
-#epicMonsterImg{max-width:100%;max-height:100%;object-fit:contain;pointer-events:auto;cursor:pointer;filter:drop-shadow(0 18px 30px rgba(0,0,0,.55));user-select:none;-webkit-user-select:none}
-#epicMonsterImg.hit-flash{animation:bossHitFlash 160ms ease-out 1;will-change:filter}
+#epicMonsterWrap{position:absolute;left:50%;top:57%;transform:translate(-50%,-50%);width:min(560px,72vw);height:min(560px,72vw);display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:2}
+#epicMonsterImg{max-width:100%;max-height:100%;object-fit:contain;pointer-events:auto;cursor:pointer;filter:drop-shadow(0 18px 30px rgba(0,0,0,.55));user-select:none;-webkit-user-select:none;position:relative;z-index:2}
 #epicMonsterHpBox{position:absolute;left:50%;top:130px;transform:translateX(-50%);width:min(540px,86vw);pointer-events:none}
 #epicMonsterTimer{font-size:26px;font-weight:900;color:#ffe6b6;text-shadow:0 0 10px rgba(0,0,0,.65),0 0 18px rgba(255,155,0,.28);margin-bottom:8px}
 #epicMonsterName{font-size:22px;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 2px 8px rgba(0,0,0,.7);margin-bottom:6px}
 #epicMonsterHpInner{position:relative;width:100%;height:44px}
-#epicMonsterHpFillWrap{position:absolute;left:14px;top:7px;width:calc(100% - 28px);height:30px;overflow:hidden;border-radius:999px}
+#epicMonsterHpFillWrap{position:absolute;left:14px;top:8px;width:calc(100% - 28px);height:28px;overflow:hidden;border-radius:999px}
 #epicMonsterHpFill{width:100%;height:100%;object-fit:fill;transform-origin:left center}
 #epicMonsterHpFrame{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}
 #epicMonsterHpText{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000}
-#epicMonsterClaimBox{position:absolute;left:50%;top:calc(57% + 170px);transform:translateX(-50%);display:none;pointer-events:auto;z-index:2}
-#epicMonsterClaimBtn{margin:0;padding:12px 24px;border-radius:12px;border:1px solid rgba(255,223,132,.42);background:rgba(255,223,132,.16);color:#ffe9aa;font-weight:900;cursor:pointer;box-shadow:0 0 14px rgba(255,215,90,.18);pointer-events:auto}
+#epicMonsterClaimBox{display:none !important}
+#epicMonsterClaimBtn{margin:0;padding:12px 24px;border-radius:12px;border:1px solid rgba(255,223,132,.42);background:rgba(255,223,132,.16);color:#ffe9aa;font-weight:900;cursor:pointer;box-shadow:0 0 14px rgba(255,215,90,.18)}
+#epicMonsterClaimFloating{position:fixed;left:50%;top:calc(57% + 170px);transform:translateX(-50%);display:none;pointer-events:auto;z-index:5005}
+#epicMonsterClaimFloating.show{display:block}
+#epicMonsterClaimBtnFloating{margin:0;padding:12px 24px;border-radius:12px;border:1px solid rgba(255,223,132,.42);background:rgba(255,223,132,.16);color:#ffe9aa;font-weight:900;cursor:pointer;box-shadow:0 0 14px rgba(255,215,90,.18)}
+#epicMonsterClaimBtnFloating:hover{background:rgba(255,223,132,.24)}
+#epicMonsterDim{position:absolute;left:50%;top:57%;transform:translate(-50%,-50%);width:min(620px,84vw);height:min(620px,84vw);border-radius:50%;pointer-events:none;z-index:1;background:radial-gradient(circle, rgba(0,0,0,.42) 0%, rgba(0,0,0,.26) 42%, rgba(0,0,0,.08) 68%, rgba(0,0,0,0) 80%);} 
 #epicMonsterClaimBtn:hover{background:rgba(255,223,132,.24)}
 #epicMonsterHint{position:absolute;left:50%;top:calc(57% + 140px);transform:translateX(-50%);font-size:13px;font-weight:700;color:#dcdcdc;text-shadow:0 1px 4px rgba(0,0,0,.8);display:none}
 .epic-local-log{color:#8ed3ff;font-weight:900}
@@ -31860,11 +31861,13 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     </div>
   </div>
   <div id="epicMonsterStage">
+    <div id="epicMonsterDim"></div>
     <div id="epicMonsterWrap"><img id="epicMonsterImg" alt="에픽 몬스터"></div>
     <div id="epicMonsterHint">에픽 몬스터를 클릭해 공격</div>
     <div id="epicMonsterClaimBox"><button id="epicMonsterClaimBtn">보상받기</button></div>
   </div>
 </div>
+<div id="epicMonsterClaimFloating"><button id="epicMonsterClaimBtnFloating" type="button">보상받기</button></div>
 <script>
 (function(){
   if (window.__EPIC_MONSTER_SYSTEM__) return; window.__EPIC_MONSTER_SYSTEM__ = true;
@@ -31880,7 +31883,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       if (typeof currentField !== 'undefined') return Number(currentField || 0);
     } catch(e) {}
     try {
-      if (typeof window.currentField !== 'undefined') return getCurrentEpicFieldId();
+      if (typeof window.currentField !== 'undefined') return Number(window.currentField || 0);
     } catch(e) {}
     return 0;
   }
@@ -31913,7 +31916,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         if (cur.skill.sporeUseCount >= 5) return true;
         if (Math.random() < 0.5){
           cur.skill.sporeUseCount += 1;
-          cur.evade = Math.min(0.60, Number(cur.evade || 0) + 0.10);
+          const baseEvade = Number(cur.baseEvade || 0.10);
+          cur.evade = Math.min(0.60, baseEvade + (Number(cur.skill.sporeUseCount || 0) * 0.10));
           cur.localLog = `극독의 스포어노이드가 [포자분산]을 하여 플레이어를 중독시킵니다. 회피력 10%상승. (현재 ${Math.round(Number(cur.evade||0)*100)}%)`;
           cur.localLogAt = now;
         }
@@ -32090,21 +32094,6 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     btn.style.opacity = on ? '0.75' : '';
   }
 
-  function playEpicHitFx(){
-    const wrap = document.getElementById('epicMonsterWrap');
-    const img  = document.getElementById('epicMonsterImg');
-    if (!wrap || !img) return;
-    wrap.classList.remove('hit', 'hit-spark');
-    img.classList.remove('hit-flash');
-    void wrap.offsetWidth;
-    wrap.classList.add('hit', 'hit-spark');
-    img.classList.add('hit-flash');
-    setTimeout(() => {
-      wrap.classList.remove('hit', 'hit-spark');
-      img.classList.remove('hit-flash');
-    }, 220);
-  }
-
   function ensureEpicSubscription(){
     if (epicFieldUnsubBound) return;
     epicFieldUnsubBound = true;
@@ -32158,12 +32147,14 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const hpText = document.getElementById('epicMonsterHpText');
     const hpFill = document.getElementById('epicMonsterHpFill');
     const claimBox = document.getElementById('epicMonsterClaimBox');
+    const claimFloating = document.getElementById('epicMonsterClaimFloating');
     const hintEl = document.getElementById('epicMonsterHint');
 
     if (!event || (event.status !== 'active' && !(event.status === 'cleared' && eligible))) {
       overlay.classList.remove('show');
       setHuntButtonLocked(false);
       if (claimBox) claimBox.style.display = 'none';
+      if (claimFloating) claimFloating.classList.remove('show');
       if (hintEl) hintEl.style.display = 'none';
       return;
     }
@@ -32182,7 +32173,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     timerEl.textContent = event.status === 'active' ? formatRemain(Number(event.expiresAt || 0) - Date.now()) : '토벌 완료';
     setHuntButtonLocked(event.status === 'active');
     hintEl.style.display = event.status === 'active' ? 'block' : 'none';
-    claimBox.style.display = (event.status === 'cleared' && eligible) ? 'block' : 'none';
+    if (claimBox) claimBox.style.display = 'none';
+    if (claimFloating) claimFloating.classList.toggle('show', !!(event.status === 'cleared' && eligible));
   }
 
   function syncEpicPresence(){
@@ -32279,6 +32271,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
           maxHp: Number(def.hp || 1),
           defense: Number(def.defense || 0),
           evade: Number(def.evade || 0),
+          baseEvade: Number(def.evade || 0),
+          skill: {},
           participants: {},
           playerDebuffs: {},
           localLog:'', localLogAt:0,
@@ -32316,32 +32310,29 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const fieldId = getCurrentEpicFieldId();
     const event = getEpicForField(fieldId);
     if (!event || event.status !== 'active' || !userId) return;
-
-    const isMagic = (weaponType === 'staff' || weaponType === 'gauntlet' || weaponType === 'magitech' || weaponType === 'scythe');
-    let fx = { isMiss:false, isCrit:false, displayDamage:0, damage:0, clickX:(ev && ev.clientX) || (window.innerWidth/2), clickY:(ev && ev.clientY) || (window.innerHeight/2) };
-
     const eventRef = EPIC_BY_FIELD_REF.child(String(fieldId));
+    const cx = ev && typeof ev.clientX === 'number' ? ev.clientX : (window.innerWidth / 2);
+    const cy = ev && typeof ev.clientY === 'number' ? ev.clientY : (window.innerHeight / 2);
+    let fx = null;
     eventRef.transaction(cur => {
       if (!cur || cur.status !== 'active') return cur;
       const now = Date.now();
       cur.participants = cur.participants || {};
       cur.participants[String(userId)] = { uid:String(userId), nick:String((typeof getNickSafe === 'function' ? getNickSafe() : userId) || userId), fieldId, lastSeen: now };
-
       const evade = Math.max(0, Math.min(0.95, Number(cur.evade || 0)));
+      const isMagic = (typeof isMagicWeaponType === 'function') ? !!isMagicWeaponType(String(weaponType || 'sword')) : false;
       if (Math.random() < evade) {
-        fx = { ...fx, isMiss:true, isCrit:false, damage:0, displayDamage:'MISS' };
+        fx = { kind:'miss', isMagic, dmg:'MISS' };
         return cur;
       }
-
       const debuffPct = getMyEpicAtkDownPct(cur);
       const baseAtk = Math.max(1, Math.floor(Number(power || 10) * (1 - debuffPct)));
+      const isCrit = Math.random() < 0.15;
       let dmg = Math.max(1, Math.floor(baseAtk * (0.9 + Math.random() * 0.2)));
+      if (isCrit) dmg = Math.floor(dmg * 1.6);
       dmg = Math.max(1, Math.floor(dmg * (1 - Math.max(0, Number(cur.defense || 0)))));
-      const isCrit = Math.random() < 0.18;
-      if (isCrit) dmg = Math.max(1, Math.floor(dmg * 1.75));
       cur.hp = Math.max(0, Number(cur.hp || 0) - dmg);
-      fx = { ...fx, isMiss:false, isCrit, damage:dmg, displayDamage:dmg };
-
+      fx = { kind:isCrit ? 'crit' : 'hit', isMagic, dmg };
       if (Number(cur.hp || 0) <= 0) {
         cur.hp = 0;
         cur.status = 'cleared';
@@ -32352,48 +32343,45 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       }
       return cur;
     }, (err, committed) => {
-      if (err || !committed) return;
-      if (typeof playBossAttackSfx === 'function') playBossAttackSfx({ isMiss:fx.isMiss, isCrit:fx.isCrit }, isMagic);
-      if (!fx.isMiss) playEpicHitFx();
-      if (typeof spawnBossHitEffectAt === 'function') {
-        const kind = fx.isMiss ? 'miss' : (fx.isCrit ? 'crit' : 'hit');
-        spawnBossHitEffectAt(fx.clickX, fx.clickY, kind, isMagic);
-      }
-      if (typeof spawnBossDamageFloatAt === 'function') {
-        if (fx.isMiss) spawnBossDamageFloatAt(fx.clickX, fx.clickY, 'MISS', 'miss');
-        else spawnBossDamageFloatAt(fx.clickX, fx.clickY, fx.displayDamage, fx.isCrit ? 'crit' : 'hit');
-      }
-      renderEpicOverlay();
+      if (err || !committed || !fx) return;
+      try {
+        if (typeof playBossAttackSfx === 'function') playBossAttackSfx({ isMiss: fx.kind === 'miss', isCrit: fx.kind === 'crit' }, !!fx.isMagic);
+        if (typeof spawnBossHitEffectAt === 'function') spawnBossHitEffectAt(cx, cy, fx.kind, !!fx.isMagic);
+        if (typeof spawnBossDamageFloatAt === 'function') {
+          if (fx.kind === 'miss') spawnBossDamageFloatAt(cx, cy, 'MISS', 'miss');
+          else spawnBossDamageFloatAt(cx, cy, fx.dmg, fx.kind === 'crit' ? 'crit' : 'hit');
+        }
+      } catch(e){}
     });
   }
 
-  function claimEpicReward(){
+  function claimEpicReward(ev){
+    if (ev) { try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} }
     const fieldId = getCurrentEpicFieldId();
     const event = getEpicForField(fieldId);
-    if (!event || event.status !== 'cleared' || !userId) return;
-    const eligibleLocal = String(EPIC_LOCAL_ELIGIBLE[String(fieldId)] || '') === String(event.spawnedAt || 0);
-    const part = event.participants && event.participants[userId];
-    const eligiblePart = !!(part && Number(part.lastSeen || 0) >= Number(event.clearedAt || 0) - 15000);
-    if (!eligibleLocal && !eligiblePart) return;
-    if (eligiblePart) EPIC_LOCAL_ELIGIBLE[String(fieldId)] = String(event.spawnedAt || 0);
+    if (!event || event.status !== 'cleared') return;
+    const eligibleByStamp = String(EPIC_LOCAL_ELIGIBLE[String(fieldId)] || '') === String(event.spawnedAt || 0);
+    const myPart = event.participants && event.participants[userId];
+    const eligibleByPart = !!(myPart && Number(myPart.lastSeen || 0) >= Number(event.clearedAt || 0) - 15000);
+    if (!eligibleByStamp && !eligibleByPart) return;
     const claimedRef = EPIC_BY_FIELD_REF.child(String(fieldId)).child('claimed').child(String(userId));
     claimedRef.transaction(cur => {
-      if (cur) return cur;
+      if (cur) return;
       return { t: Date.now(), uid: String(userId) };
     }, (err, committed) => {
       if (err || !committed) return;
       const def = EPIC_MONSTERS[event.bossId];
       const lines = [];
-      const pool = deepClone(def.rewardPools || []);
+      const pool = Array.isArray(def.rewardPools) ? def.rewardPools.slice() : [];
       for (let i=0; i<3 && pool.length; i++) {
         const idx = Math.floor(Math.random() * pool.length);
-        const fn = pool[idx];
-        lines.push(fn());
+        const fn = pool.splice(idx, 1)[0];
+        if (typeof fn === 'function') lines.push(fn());
       }
       if (typeof update === 'function') update();
       if (typeof save === 'function') save();
       delete EPIC_LOCAL_ELIGIBLE[String(fieldId)];
-      leaveEpicField(fieldId);
+      try { leaveEpicField(fieldId); } catch(e){}
       renderEpicOverlay();
       setHuntButtonLocked(false);
       showHuntPopup(`에픽 토벌 보상 획득!<br>${lines.join('<br>')}`, '#FFD27D');
@@ -32419,15 +32407,11 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   window.logout = function(){ try{ leaveEpicField(getCurrentEpicFieldId()); }catch(e){} return __orig_logout.apply(this, arguments); };
 
   const epicImg = document.getElementById('epicMonsterImg');
-  if (epicImg) {
-    epicImg.addEventListener('click', attackEpicMonster);
-    epicImg.onclick = attackEpicMonster;
-  }
+  if (epicImg) { epicImg.addEventListener('click', attackEpicMonster); epicImg.onclick = attackEpicMonster; }
   const claimBtn = document.getElementById('epicMonsterClaimBtn');
-  if (claimBtn) {
-    claimBtn.addEventListener('click', (ev) => { ev.stopPropagation(); ev.preventDefault(); claimEpicReward(); });
-    claimBtn.onclick = (ev) => { if (ev) { ev.stopPropagation(); ev.preventDefault(); } claimEpicReward(); };
-  }
+  if (claimBtn) { claimBtn.addEventListener('click', claimEpicReward); claimBtn.onclick = claimEpicReward; }
+  const claimBtnFloating = document.getElementById('epicMonsterClaimBtnFloating');
+  if (claimBtnFloating) { claimBtnFloating.addEventListener('click', claimEpicReward); claimBtnFloating.onclick = claimEpicReward; }
 
   ensureEpicSubscription();
   epicRenderTimer = setInterval(() => { renderEpicOverlay(); maybeTickEpic(); maybeCleanupEpic(); }, 1000);
