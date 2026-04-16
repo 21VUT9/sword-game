@@ -32387,15 +32387,56 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     return String(ids[0]) === String(userId);
   }
 
+  function normalizeClearedEpicState(cur, now, keepMessage){
+    const ts = Number(now || Date.now());
+    cur.hp = 0;
+    cur.status = 'cleared';
+    if (!Number(cur.clearedAt || 0)) cur.clearedAt = ts;
+    if (!Number(cur.cleanupAt || 0)) cur.cleanupAt = Number(cur.clearedAt || ts) + 60000;
+    if (!keepMessage && !String(cur.localLog || '')) {
+      cur.localLog = EPIC_MONSTERS[cur.bossId]?.onDeathMessage || '에픽 몬스터가 쓰러졌습니다.';
+      cur.localLogAt = Number(cur.clearedAt || ts);
+    }
+    return cur;
+  }
+
+  function deterministicEpicRoll(seed){
+    let x = Number(seed || 0) >>> 0;
+    x ^= x << 13; x >>>= 0;
+    x ^= x >>> 17; x >>>= 0;
+    x ^= x << 5; x >>>= 0;
+    return (x % 1000000) / 1000000;
+  }
+
   function maybeTickEpic(){
     const fieldId = getCurrentEpicFieldId();
     const event = getEpicForField(fieldId);
     if (!event || event.status !== 'active') return;
     if (!shouldDriveEpic(fieldId, event)) return;
+
     const now = Date.now();
+    const tickSeedBase = Number(event.spawnedAt || 0) + Number(fieldId || 0) * 1009;
+    const rollA = deterministicEpicRoll(tickSeedBase ^ Math.floor(now / 1000));
+    const rollB = deterministicEpicRoll((tickSeedBase + 17) ^ Math.floor(now / 1000));
+
     EPIC_BY_FIELD_REF.child(String(fieldId)).transaction(cur => {
-      if (!cur || cur.status !== 'active') return cur;
+      if (!cur) return cur;
+
       const now2 = Date.now();
+
+      if (cur.status === 'cleared') {
+        return normalizeClearedEpicState(cur, Number(cur.clearedAt || now2), true);
+      }
+      if (cur.status === 'failed') {
+        if (!Number(cur.cleanupAt || 0)) cur.cleanupAt = now2 + 10000;
+        return cur;
+      }
+      if (cur.status !== 'active') return cur;
+
+      if (Number(cur.hp || 0) <= 0 || Number(cur.clearedAt || 0) > 0) {
+        return normalizeClearedEpicState(cur, now2, false);
+      }
+
       if (Number(cur.expiresAt || 0) <= now2){
         cur.status = 'failed';
         cur.failedAt = now2;
@@ -32405,10 +32446,72 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         cur.cleanupAt = now2 + 10000;
         return cur;
       }
-      const def = EPIC_MONSTERS[cur.bossId];
-      if (!def || typeof def.onTick !== 'function') return cur;
-      const changed = !!def.onTick(cur, now2);
-      return changed ? cur : undefined;
+
+      cur.skill = cur.skill || {};
+      cur.playerDebuffs = cur.playerDebuffs || {};
+
+      if (cur.bossId === 'spore_noid') {
+        const nextAt = Number(cur.skill.sporeNextAt || (cur.spawnedAt + 10000));
+        if (now2 < nextAt) return;
+        cur.skill.sporeNextAt = now2 + 10000;
+        cur.skill.sporeUseCount = Number(cur.skill.sporeUseCount || 0);
+        if (cur.skill.sporeUseCount >= 5) return cur;
+        if (rollA < 0.5){
+          cur.skill.sporeUseCount += 1;
+          const baseEvade = Number(cur.baseEvade || 0.10);
+          cur.evade = Math.min(0.60, baseEvade + (Number(cur.skill.sporeUseCount || 0) * 0.10));
+          cur.localLog = `극독의 스포어노이드가 [포자분산]을 하여 플레이어를 중독시킵니다. 회피력 10%상승. (현재 ${Math.round(Number(cur.evade||0)*100)}%)`;
+          cur.localLogAt = now2;
+        }
+        return cur;
+      }
+
+      if (cur.bossId === 'plague_lord') {
+        const nextAt = Number(cur.skill.bioNextAt || (cur.spawnedAt + 10000));
+        if (now2 < nextAt) return;
+        cur.skill.bioNextAt = now2 + 10000;
+        if (rollA < 0.5){
+          applyHuntLossToParticipants(cur, 1);
+          cur.localLog = '질병의 페스트로드가 [생화학탄살포]를 하여 플레이어의 행동력을 감소시킵니다. 사냥횟수1회 감소.';
+          cur.localLogAt = now2;
+        }
+        return cur;
+      }
+
+      if (cur.bossId === 'briella') {
+        let changed = false;
+        const nextSteal = Number(cur.skill.stealNextAt || (cur.spawnedAt + 15000));
+        if (now2 >= nextSteal){
+          cur.skill.stealNextAt = now2 + 15000;
+          if (rollA < 0.4){
+            applyHuntLossToParticipants(cur, 1);
+            cur.localLog = '브리엘라가 [강탈]을 하여 플레이어의 사냥횟수를 뺏습니다. 사냥횟수1회 감소.';
+            cur.localLogAt = now2;
+          }
+          changed = true;
+        }
+        const nextThreat = Number(cur.skill.threatNextAt || (cur.spawnedAt + 10000));
+        if (now2 >= nextThreat){
+          cur.skill.threatNextAt = now2 + 10000;
+          if (rollB < 0.5){
+            const parts = cur.participants || {};
+            Object.keys(parts).forEach(uid => {
+              const row = Object.assign({}, cur.playerDebuffs[uid] || {});
+              const stack = Math.min(5, Number(row.atkDownStacks || 0) + 1);
+              row.atkDownStacks = stack;
+              row.atkDownUntil = now2 + 60000;
+              cur.playerDebuffs[uid] = row;
+            });
+            const myRow = (cur.playerDebuffs && cur.playerDebuffs[userId]) || {};
+            cur.localLog = `브리엘라가 [위협]을 하여 플레이어의 공격력이 1분간 10% 감소됩니다. (총 ${Math.min(50, Number(myRow.atkDownStacks||0)*10)}%감소)`;
+            cur.localLogAt = now2;
+          }
+          changed = true;
+        }
+        return changed ? cur : undefined;
+      }
+
+      return cur;
     });
   }
 
@@ -32519,6 +32622,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const fieldId = getCurrentEpicFieldId();
     const event = getEpicForField(fieldId);
     if (!event || event.status !== 'active' || !userId) return;
+    if (Number(event.hp || 0) <= 0 || Number(event.clearedAt || 0) > 0) return;
     if (Number(huntStamina || 0) <= 0) {
       if (typeof showHuntPopup === 'function') showHuntPopup('사냥 횟수가 부족하여 공격할 수 없습니다.', '#FF8C8C');
       return;
@@ -32535,33 +32639,50 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const eventRef = EPIC_BY_FIELD_REF.child(String(fieldId));
     const cx = ev && typeof ev.clientX === 'number' ? ev.clientX : (window.innerWidth / 2);
     const cy = ev && typeof ev.clientY === 'number' ? ev.clientY : (window.innerHeight / 2);
+    const fixedRollMiss = Math.random();
+    const fixedRollCrit = Math.random();
+    const fixedRollVariance = Math.random();
     let fx = null;
+
     eventRef.transaction(cur => {
-      if (!cur || cur.status !== 'active') return cur;
+      if (!cur) return cur;
       const now = Date.now();
+
+      if (cur.status === 'cleared') {
+        return normalizeClearedEpicState(cur, Number(cur.clearedAt || now), true);
+      }
+      if (cur.status !== 'active') return cur;
+      if (Number(cur.hp || 0) <= 0 || Number(cur.clearedAt || 0) > 0) {
+        return normalizeClearedEpicState(cur, now, false);
+      }
+      if (Number(cur.lastAttackAt || 0) > 0 && (now - Number(cur.lastAttackAt || 0)) < 70) return;
+      cur.lastAttackAt = now;
+
       cur.participants = cur.participants || {};
       cur.participants[String(userId)] = { uid:String(userId), nick:String((typeof getNickSafe === 'function' ? getNickSafe() : userId) || userId), fieldId, lastSeen: now };
+
       const evade = Math.max(0, Math.min(0.95, Number(cur.evade || 0)));
       const isMagic = (typeof isMagicWeaponType === 'function') ? !!isMagicWeaponType(String(weaponType || 'sword')) : false;
-      if (Math.random() < evade) {
+      if (fixedRollMiss < evade) {
         fx = { kind:'miss', isMagic, dmg:'MISS' };
         return cur;
       }
+
       const debuffPct = getMyEpicAtkDownPct(cur);
       const baseAtk = Math.max(1, Math.floor(Number(power || 10) * (1 - debuffPct)));
-      const isCrit = Math.random() < 0.15;
-      let dmg = Math.max(1, Math.floor(baseAtk * (0.9 + Math.random() * 0.2)));
+      const isCrit = fixedRollCrit < 0.15;
+      let dmg = Math.max(1, Math.floor(baseAtk * (0.9 + fixedRollVariance * 0.2)));
       if (isCrit) dmg = Math.floor(dmg * 1.6);
       dmg = Math.max(1, Math.floor(dmg * (1 - Math.max(0, Number(cur.defense || 0)))));
       cur.hp = Math.max(0, Number(cur.hp || 0) - dmg);
       fx = { kind:isCrit ? 'crit' : 'hit', isMagic, dmg };
-      if (Number(cur.hp || 0) <= 0) {
-        cur.hp = 0;
-        cur.status = 'cleared';
-        cur.clearedAt = now;
-        cur.cleanupAt = now + 60000;
-        cur.localLog = EPIC_MONSTERS[cur.bossId]?.onDeathMessage || '에픽 몬스터가 쓰러졌습니다.';
-        cur.localLogAt = now;
+
+      if (!cur.members) cur.members = {};
+      if (!cur.members[String(userId)]) cur.members[String(userId)] = { uid:String(userId), nick:String((typeof getNickSafe === 'function' ? getNickSafe() : userId) || userId), dmg:0 };
+      cur.members[String(userId)].dmg = Number(cur.members[String(userId)].dmg || 0) + Number(dmg || 0);
+
+      if (Number(cur.hp || 0) <= 0 && !Number(cur.clearedAt || 0)) {
+        cur = normalizeClearedEpicState(cur, now, false);
       }
       return cur;
     }, (err, committed) => {
