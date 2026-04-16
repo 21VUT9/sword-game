@@ -17832,6 +17832,13 @@ if (
     addSwampElfKill();
   }
 
+  // ✅ 에픽몬스터 스폰/피티는 아이템 드랍처럼 "성공 사냥" 흐름 안에서만 처리
+  try {
+    if (window.__epicApi && typeof window.__epicApi.processAttempt === 'function') {
+      window.__epicApi.processAttempt(Number(currentField || 0));
+    }
+  } catch (e) {}
+
   // ✅ 최종 팝업 한 번만 호출 (골드 + 드랍 결과 모두 포함)
   showHuntPopup(popupMsg, "#6CF");
 
@@ -17853,27 +17860,6 @@ if (
   if (beforeStamina === 20 && huntStamina === 19) {
     lastStaminaUpdate = Date.now();
   }
-
-  // ✅ 에픽몬스터 스폰/피티는 실제 사냥 본체 안에서 직접 처리
-  try {
-    const epicFieldId = Number(currentField || 0);
-    const epicActive = (typeof getEpicForField === "function") ? getEpicForField(epicFieldId) : null;
-    if (epicFieldId > 0 && epicFieldId !== 11 && !(epicActive && epicActive.status === 'active')) {
-      if (typeof getEpicSpawnPity === 'function' && typeof setEpicSpawnPity === 'function') {
-        const nextPity = Number(getEpicSpawnPity(epicFieldId) || 0) + 1;
-        setEpicSpawnPity(epicFieldId, nextPity);
-
-        const passed = (Math.random() < (typeof EPIC_SPAWN_CHANCE !== 'undefined' ? EPIC_SPAWN_CHANCE : 0.005))
-          || (typeof EPIC_SPAWN_PITY_MAX !== 'undefined' && nextPity >= EPIC_SPAWN_PITY_MAX);
-
-        if (passed && typeof maybeSpawnEpic === 'function') {
-          Promise.resolve(maybeSpawnEpic(epicFieldId)).then((ok) => {
-            if (ok && typeof clearEpicSpawnPity === 'function') clearEpicSpawnPity(epicFieldId);
-          }).catch(() => {});
-        }
-      }
-    }
-  } catch (e) {}
 
   update();
   save();
@@ -32026,6 +32012,20 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     }
   }
   function clearEpicSpawnPity(fieldId){ setEpicSpawnPity(fieldId, 0); }
+  function processEpicSpawnAttempt(fieldId){
+    fieldId = Number(fieldId || 0);
+    if (!fieldId || fieldId === 11) return false;
+    const epicActive = getEpicForField(fieldId);
+    if (epicActive && (epicActive.status === 'active' || epicActive.status === 'cleared')) return false;
+    const nextPity = Number(getEpicSpawnPity(fieldId) || 0) + 1;
+    setEpicSpawnPity(fieldId, nextPity);
+    const passed = (Math.random() < EPIC_SPAWN_CHANCE) || (nextPity >= EPIC_SPAWN_PITY_MAX);
+    if (!passed) return false;
+    return Promise.resolve(maybeSpawnEpic(fieldId)).then((ok) => {
+      if (ok) clearEpicSpawnPity(fieldId);
+      return !!ok;
+    }).catch(() => false);
+  }
   function deepClone(v){ return JSON.parse(JSON.stringify(v)); }
   function getEpicForField(fieldId){ return epicFieldCache && epicFieldCache[String(fieldId||'')] || null; }
   function isEpicActiveOnField(fieldId){ const e=getEpicForField(fieldId); return !!(e && (e.status==='active' || e.status==='cleared')); }
@@ -32379,11 +32379,20 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     });
   }, 2000);
 
+  window.__epicApi = {
+    processAttempt(fieldId){ return processEpicSpawnAttempt(Number(fieldId || window.currentField || 0)); },
+    spawn(fieldId){ return maybeSpawnEpic(Number(fieldId || window.currentField || 0)); },
+    get(fieldId){ return getEpicForField(Number(fieldId || window.currentField || 0)); },
+    pity(fieldId){ return getEpicSpawnPity(Number(fieldId || window.currentField || 0)); },
+    resetPity(fieldId){ clearEpicSpawnPity(Number(fieldId || window.currentField || 0)); return 0; }
+  };
+
   window.__epicDebug = {
     spawn(fieldId){ return maybeSpawnEpic(Number(fieldId || window.currentField || 0)); },
     get(fieldId){ return getEpicForField(Number(fieldId || window.currentField || 0)); },
     pity(fieldId){ return getEpicSpawnPity(Number(fieldId || window.currentField || 0)); },
-    resetPity(fieldId){ clearEpicSpawnPity(Number(fieldId || window.currentField || 0)); }
+    resetPity(fieldId){ clearEpicSpawnPity(Number(fieldId || window.currentField || 0)); return 0; },
+    process(fieldId){ return processEpicSpawnAttempt(Number(fieldId || window.currentField || 0)); }
   };
 
   // expose names for convenience
