@@ -32048,6 +32048,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   let epicPresenceTimer = null;
   let epicPrevStatusByField = {};
   let epicLastWarningKey = '';
+  let epicLastLocalLogStampByField = Object.create(null);
 
   const EPIC_MONSTERS = {
     spore_noid: {
@@ -32279,15 +32280,13 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       if (part && Number(part.lastSeen || 0) >= Number(cur.clearedAt || 0) - 15000) {
         EPIC_LOCAL_ELIGIBLE[key] = String(cur.spawnedAt || 0);
       }
-      if (cur.localLog) appendLocalEpicLog(cur.localLog);
-      else appendLocalEpicLog(EPIC_MONSTERS[cur.bossId]?.onDeathMessage || '에픽 몬스터가 쓰러졌습니다.');
     }
-    if (cur && prev === 'active' && nowStatus === 'failed') {
-      appendLocalEpicLog(cur.failMessage || `시간내 처치에 실패하여 ${EPIC_MONSTERS[cur.bossId]?.name || '에픽 몬스터'}가 모습을 감춥니다`);
-    }
-    if (cur && cur.localLog && Number(cur.localLogAt || 0) > Number(window.__epicLastLocalLogAt || 0) && Number(fieldId) === Number(cur.fieldId)) {
-      window.__epicLastLocalLogAt = Number(cur.localLogAt || 0);
-      appendLocalEpicLog(cur.localLog);
+    if (cur && cur.localLog && Number(fieldId) === Number(cur.fieldId)) {
+      const stamp = Number(cur.localLogAt || 0);
+      if (stamp > 0 && stamp > Number(epicLastLocalLogStampByField[key] || 0)) {
+        epicLastLocalLogStampByField[key] = stamp;
+        appendLocalEpicLog(cur.localLog);
+      }
     }
     epicPrevStatusByField[key] = nowStatus;
   }
@@ -32364,10 +32363,18 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     });
   }
 
+  function shouldDriveEpic(fieldId, event){
+    if (!userId || !event || event.status !== 'active') return false;
+    const ids = Object.keys(event.participants || {}).filter(Boolean).sort();
+    if (!ids.length) return true;
+    return String(ids[0]) === String(userId);
+  }
+
   function maybeTickEpic(){
     const fieldId = getCurrentEpicFieldId();
     const event = getEpicForField(fieldId);
     if (!event || event.status !== 'active') return;
+    if (!shouldDriveEpic(fieldId, event)) return;
     const now = Date.now();
     EPIC_BY_FIELD_REF.child(String(fieldId)).transaction(cur => {
       if (!cur || cur.status !== 'active') return cur;
@@ -32376,6 +32383,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         cur.status = 'failed';
         cur.failedAt = now2;
         cur.failMessage = `시간내 처치에 실패하여 ${EPIC_MONSTERS[cur.bossId]?.name || '에픽 몬스터'}가 모습을 감춥니다`;
+        cur.localLog = cur.failMessage;
+        cur.localLogAt = now2;
         cur.cleanupAt = now2 + 10000;
         return cur;
       }
@@ -32389,6 +32398,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function maybeCleanupEpic(){
     Object.keys(epicFieldCache || {}).forEach(fid => {
       const cur = epicFieldCache[fid];
+      if ((cur?.status === 'active' || cur?.status === 'cleared' || cur?.status === 'failed') && !shouldDriveEpic(Number(fid), cur) && !(cur?.status === 'failed' || cur?.status === 'cleared')) return;
       if (!cur) return;
       if ((cur.status === 'failed' || cur.status === 'cleared') && Number(cur.cleanupAt || 0) > 0 && Date.now() >= Number(cur.cleanupAt || 0)) {
         EPIC_BY_FIELD_REF.child(String(fid)).remove();
@@ -32449,7 +32459,6 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
           if (e2 || !committed2) return resolve(false);
           const msg = `현재 [${localFieldName(fieldId)}]에 ${def.name}가 등장하였습니다.`;
           writeLog(msg, false, { tone:'boss_apply' });
-          if (getCurrentEpicFieldId() === fieldId) showEpicWarning();
           resolve(true);
         });
       });
