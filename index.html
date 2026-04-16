@@ -4493,7 +4493,7 @@ hr.section-divider{
 }
 
 #epicMonsterWrap.hit {
-  animation: bossHitShake 140ms ease-out 1;
+  animation: epicHitShake 140ms ease-out 1;
 }
 
 @keyframes bossHitShake {
@@ -4502,6 +4502,14 @@ hr.section-divider{
   45%  { transform: translateX(3px); }
   70%  { transform: translateX(-2px); }
   100% { transform: translateX(0); }
+}
+
+@keyframes epicHitShake {
+  0%   { transform: translate(-50%,-50%) translateX(0); }
+  20%  { transform: translate(-50%,-50%) translateX(-4px); }
+  45%  { transform: translate(-50%,-50%) translateX(3px); }
+  70%  { transform: translate(-50%,-50%) translateX(-2px); }
+  100% { transform: translate(-50%,-50%) translateX(0); }
 }
 
 /* 번쩍이는 하얀 플래시 + 붉은 글로우 */
@@ -24227,6 +24235,103 @@ function playBossHitFx(){
   }, 220);
 }
 
+function epicFxToLocalXY(clientX, clientY){
+  const layer = document.getElementById("epicFxLayer");
+  if (!layer) return null;
+  const rect = layer.getBoundingClientRect();
+  return { x: clientX - rect.left, y: clientY - rect.top };
+}
+
+function spawnEpicHitEffectAt(clientX, clientY, kind, isMagic){
+  const layer = document.getElementById("epicFxLayer");
+  if (!layer) return;
+  const pos = epicFxToLocalXY(clientX, clientY);
+  if (!pos) return;
+
+  const idx = String(1 + Math.floor(Math.random() * 7)).padStart(2, "0");
+  const src = isMagic
+    ? `images/effects/boss_hit_mag_${idx}.png`
+    : `images/effects/boss_hit_atk_${idx}.png`;
+
+  const img = document.createElement("img");
+  img.src = src;
+  img.style.position = "absolute";
+  img.style.left = pos.x + "px";
+  img.style.top  = pos.y + "px";
+  img.style.width = (kind === "crit") ? "88px" : "76px";
+  img.style.height = img.style.width;
+  img.style.transform = "translate(-50%, -50%) scale(0.85)";
+  img.style.opacity = (kind === "miss") ? "0.55" : "0";
+  img.style.pointerEvents = "none";
+  img.style.zIndex = "20";
+  img.style.filter = "drop-shadow(0 2px 6px rgba(0,0,0,0.85))";
+  img.style.transition = "transform 520ms ease, opacity 520ms ease";
+  layer.appendChild(img);
+
+  requestAnimationFrame(() => {
+    img.style.opacity = "1";
+    img.style.transform = "translate(-50%, -50%) scale(1.15)";
+  });
+
+  setTimeout(() => {
+    img.style.opacity = "0";
+    img.style.transform = "translate(-50%, -50%) scale(1.00)";
+  }, 240);
+
+  setTimeout(() => img.remove(), 620);
+}
+
+function spawnEpicDamageFloatAt(clientX, clientY, valueOrText, kind){
+  const layer = document.getElementById("epicFxLayer");
+  if (!layer) return;
+  const pos = epicFxToLocalXY(clientX, clientY);
+  if (!pos) return;
+
+  const el = document.createElement("div");
+  el.style.position = "absolute";
+  el.style.left = pos.x + "px";
+  el.style.top  = pos.y + "px";
+  el.style.transform = "translate(-50%, 0) scale(0.95)";
+  el.style.pointerEvents = "none";
+  el.style.zIndex = "30";
+  el.style.fontWeight = "900";
+  el.style.whiteSpace = "nowrap";
+  el.style.textShadow = "0 0 10px rgba(0,0,0,0.85)";
+  el.style.opacity = "0";
+
+  if (kind === "miss") {
+    el.textContent = "MISS";
+    el.style.color = "#bdbdbd";
+    el.style.fontSize = "18px";
+    el.style.letterSpacing = "1px";
+  } else {
+    const v = (typeof valueOrText === "number") ? formatDamageKoUnits(valueOrText) : String(valueOrText);
+    if (kind === "crit") {
+      el.textContent = v + "!";
+      el.style.color = "#ff3b3b";
+      el.style.fontSize = "24px";
+    } else {
+      el.textContent = v;
+      el.style.color = "#ffd700";
+      el.style.fontSize = "18px";
+    }
+  }
+  layer.appendChild(el);
+
+  const HOLD_MS = 1500;
+  const FADE_MS = 3000;
+  el.style.transition = "opacity 180ms ease, transform 180ms ease";
+  requestAnimationFrame(() => {
+    el.style.opacity = "1";
+    el.style.transform = "translate(-50%, 0) scale(1)";
+  });
+  setTimeout(() => {
+    el.style.transition = `opacity ${FADE_MS}ms ease`;
+    el.style.opacity = "0";
+  }, HOLD_MS);
+  setTimeout(() => el.remove(), HOLD_MS + FADE_MS + 80);
+}
+
 function playEpicHitFx(){
   const wrap = document.getElementById("epicMonsterWrap");
   const img  = document.getElementById("epicMonsterImg");
@@ -31873,8 +31978,9 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 #epicMonsterOverlay{position:fixed;inset:0;z-index:980;pointer-events:none;display:none}
 #epicMonsterOverlay.show{display:block}
 #epicMonsterStage{position:absolute;inset:0;pointer-events:none}
-#epicMonsterWrap{position:absolute;left:50%;top:35%;transform:translate(-50%,-50%);width:min(560px,72vw);height:min(560px,72vw);display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:2}
-#epicMonsterImg{max-width:100%;max-height:100%;object-fit:contain;pointer-events:auto;cursor:pointer;filter:drop-shadow(0 18px 30px rgba(0,0,0,.55));user-select:none;-webkit-user-select:none;position:relative;z-index:2}
+#epicFxLayer{position:absolute;inset:0;pointer-events:none;z-index:6}
+#epicMonsterWrap{position:absolute;left:50%;top:35%;transform:translate(-50%,-50%);width:min(560px,72vw);height:min(560px,72vw);display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:4}
+#epicMonsterImg{max-width:100%;max-height:100%;object-fit:contain;pointer-events:auto;cursor:pointer;filter:drop-shadow(0 18px 30px rgba(0,0,0,.55));user-select:none;-webkit-user-select:none;position:relative;z-index:10}
 #epicMonsterHpBox{position:absolute;left:50%;top:70px;transform:translateX(-50%);width:min(560px,88vw);pointer-events:none}
 #epicMonsterTimer{font-size:26px;font-weight:900;color:#ffe6b6;text-shadow:0 0 10px rgba(0,0,0,.65),0 0 18px rgba(255,155,0,.28);margin-bottom:8px}
 #epicMonsterName{font-size:22px;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 2px 8px rgba(0,0,0,.7);margin-bottom:6px}
@@ -31912,6 +32018,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   </div>
   <div id="epicMonsterStage">
     <div id="epicMonsterDim"></div>
+    <div id="epicFxLayer"></div>
     <div id="epicMonsterWrap"><img id="epicMonsterImg" alt="에픽 몬스터"></div>
     <div id="epicMonsterHint">에픽 몬스터를 클릭해 공격</div>
     <div id="epicMonsterClaimBox"><button id="epicMonsterClaimBtn">보상받기</button></div>
@@ -32435,10 +32542,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       }
       try {
         if (typeof playBossAttackSfx === 'function') playBossAttackSfx({ isMiss: fx.kind === 'miss', isCrit: fx.kind === 'crit' }, !!fx.isMagic);
-        if (typeof spawnBossHitEffectAt === 'function') spawnBossHitEffectAt(cx, cy, fx.kind, !!fx.isMagic);
-        if (typeof spawnBossDamageFloatAt === 'function') {
-          if (fx.kind === 'miss') spawnBossDamageFloatAt(cx, cy, 'MISS', 'miss');
-          else spawnBossDamageFloatAt(cx, cy, fx.dmg, fx.kind === 'crit' ? 'crit' : 'hit');
+        if (typeof spawnEpicHitEffectAt === 'function') spawnEpicHitEffectAt(cx, cy, fx.kind, !!fx.isMagic);
+        if (typeof spawnEpicDamageFloatAt === 'function') {
+          if (fx.kind === 'miss') spawnEpicDamageFloatAt(cx, cy, 'MISS', 'miss');
+          else spawnEpicDamageFloatAt(cx, cy, fx.dmg, fx.kind === 'crit' ? 'crit' : 'hit');
         }
         if (fx.kind !== 'miss' && typeof playEpicHitFx === 'function') playEpicHitFx();
       } catch(e){}
