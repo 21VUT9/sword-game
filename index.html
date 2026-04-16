@@ -31991,6 +31991,20 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const dd = String(d.getDate()).padStart(2,'0');
     return `${y}-${m}-${dd}`;
   }
+  const EPIC_SPAWN_CHANCE = 0.005;
+  const EPIC_SPAWN_PITY_MAX = 200;
+  function getEpicSpawnPityKey(fieldId){ return `epicSpawnPity_${String(userId || 'guest')}_${String(fieldId || 0)}`; }
+  function getEpicSpawnPity(fieldId){
+    try { return Math.max(0, Number(localStorage.getItem(getEpicSpawnPityKey(fieldId)) || 0)); } catch(e){ return Number(window.__epicSpawnPity && window.__epicSpawnPity[String(fieldId||0)] || 0); }
+  }
+  function setEpicSpawnPity(fieldId, value){
+    value = Math.max(0, Number(value || 0));
+    try { localStorage.setItem(getEpicSpawnPityKey(fieldId), String(value)); } catch(e){
+      window.__epicSpawnPity = window.__epicSpawnPity || {};
+      window.__epicSpawnPity[String(fieldId||0)] = value;
+    }
+  }
+  function clearEpicSpawnPity(fieldId){ setEpicSpawnPity(fieldId, 0); }
   function deepClone(v){ return JSON.parse(JSON.stringify(v)); }
   function getEpicForField(fieldId){ return epicFieldCache && epicFieldCache[String(fieldId||'')] || null; }
   function isEpicActiveOnField(fieldId){ const e=getEpicForField(fieldId); return !!(e && (e.status==='active' || e.status==='cleared')); }
@@ -32165,47 +32179,58 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
   function maybeSpawnEpic(fieldId){
     fieldId = Number(fieldId || 0);
-    if (!userId) return;
-    if (fieldId <= 0 || fieldId === 11) return;
-    const existing = getEpicForField(fieldId);
-    if (existing && (existing.status === 'active' || existing.status === 'cleared')) return;
-    const dayKey = getTodayKey();
-    EPIC_DAILY_REF.child(dayKey).transaction(cur => {
-      cur = cur || { count:0, updatedAt:0 };
-      const cnt = Number(cur.count || 0);
-      if (cnt >= 3) return;
-      cur.count = cnt + 1;
-      cur.updatedAt = Date.now();
-      return cur;
-    }, (err, committed) => {
-      if (err || !committed) return;
-      const bossId = EPIC_IDS[Math.floor(Math.random() * EPIC_IDS.length)];
-      const def = EPIC_MONSTERS[bossId];
-      const now = Date.now();
-      const payload = {
-        bossId,
-        fieldId,
-        status:'active',
-        spawnedAt: now,
-        expiresAt: now + 600000,
-        hp: Number(def.hp || 1),
-        maxHp: Number(def.hp || 1),
-        defense: Number(def.defense || 0),
-        evade: Number(def.evade || 0),
-        participants: {},
-        playerDebuffs: {},
-        localLog:'', localLogAt:0,
-        cleanupAt: 0
-      };
-      payload.participants[String(userId)] = { uid:String(userId), nick:String((typeof getNickSafe === 'function' ? getNickSafe() : userId) || userId), fieldId, lastSeen: now };
-      EPIC_BY_FIELD_REF.child(String(fieldId)).transaction(cur => {
-        if (cur && (cur.status === 'active' || cur.status === 'cleared')) return;
-        return payload;
-      }, (e2, committed2) => {
-        if (e2 || !committed2) return;
-        const msg = `현재 [${localFieldName(fieldId)}]에 ${def.name}가 등장하였습니다.`;
-        writeLog(msg, false, { tone:'boss_apply' });
-        if (Number(window.currentField || 0) === fieldId) showEpicWarning();
+    return new Promise((resolve) => {
+      if (!userId) return resolve(false);
+      if (fieldId <= 0 || fieldId === 11) return resolve(false);
+      try { EPIC_REF.child('_lastTouchedAt').set(Date.now()); } catch(e){}
+      const existing = getEpicForField(fieldId);
+      if (existing && (existing.status === 'active' || existing.status === 'cleared')) return resolve(false);
+      const dayKey = getTodayKey();
+      EPIC_DAILY_REF.child(dayKey).transaction(cur => {
+        cur = cur || { count:0, updatedAt:0 };
+        const cnt = Number(cur.count || 0);
+        if (cnt >= 3) return;
+        cur.count = cnt + 1;
+        cur.updatedAt = Date.now();
+        return cur;
+      }, (err, committed) => {
+        if (err || !committed) return resolve(false);
+        const bossId = EPIC_IDS[Math.floor(Math.random() * EPIC_IDS.length)];
+        const def = EPIC_MONSTERS[bossId];
+        if (!def) return resolve(false);
+        const now = Date.now();
+        const payload = {
+          bossId,
+          fieldId,
+          status:'active',
+          spawnedAt: now,
+          expiresAt: now + 600000,
+          hp: Number(def.hp || 1),
+          maxHp: Number(def.hp || 1),
+          defense: Number(def.defense || 0),
+          evade: Number(def.evade || 0),
+          participants: {},
+          playerDebuffs: {},
+          localLog:'', localLogAt:0,
+          cleanupAt: 0,
+          claimed: {}
+        };
+        payload.participants[String(userId)] = {
+          uid:String(userId),
+          nick:String((typeof getNickSafe === 'function' ? getNickSafe() : userId) || userId),
+          fieldId,
+          lastSeen: now
+        };
+        EPIC_BY_FIELD_REF.child(String(fieldId)).transaction(cur => {
+          if (cur && (cur.status === 'active' || cur.status === 'cleared')) return;
+          return payload;
+        }, (e2, committed2) => {
+          if (e2 || !committed2) return resolve(false);
+          const msg = `현재 [${localFieldName(fieldId)}]에 ${def.name}가 등장하였습니다.`;
+          writeLog(msg, false, { tone:'boss_apply' });
+          if (Number(window.currentField || 0) === fieldId) showEpicWarning();
+          resolve(true);
+        });
       });
     });
   }
@@ -32292,11 +32317,16 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
     const res = __orig_hunt.apply(this, arguments);
 
-    // ✅ 아이템 드랍처럼 "사냥이 실제 실행된 뒤" 곧바로 에픽 스폰 판정
-    //    huntCountToday / huntStamina 변화 여부에는 의존하지 않음
     if (fieldId > 0 && fieldId !== 11 && !isEpicActiveOnField(fieldId)) {
-      if (Math.random() < 0.005) {
-        setTimeout(() => maybeSpawnEpic(fieldId), 20);
+      const nextPity = getEpicSpawnPity(fieldId) + 1;
+      setEpicSpawnPity(fieldId, nextPity);
+      const passed = (Math.random() < EPIC_SPAWN_CHANCE) || nextPity >= EPIC_SPAWN_PITY_MAX;
+      if (passed) {
+        setTimeout(() => {
+          maybeSpawnEpic(fieldId).then((ok) => {
+            if (ok) clearEpicSpawnPity(fieldId);
+          }).catch(() => {});
+        }, 20);
       }
     }
 
@@ -32321,6 +32351,13 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       if (Number(fid) !== fieldId) delete EPIC_LOCAL_ELIGIBLE[String(fid)];
     });
   }, 2000);
+
+  window.__epicDebug = {
+    spawn(fieldId){ return maybeSpawnEpic(Number(fieldId || window.currentField || 0)); },
+    get(fieldId){ return getEpicForField(Number(fieldId || window.currentField || 0)); },
+    pity(fieldId){ return getEpicSpawnPity(Number(fieldId || window.currentField || 0)); },
+    resetPity(fieldId){ clearEpicSpawnPity(Number(fieldId || window.currentField || 0)); }
+  };
 
   // expose names for convenience
   window.EPIC_MONSTER_IMAGE_FILES = {
