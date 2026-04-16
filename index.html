@@ -31800,5 +31800,536 @@ updateQuestBadges = function(){
 };
 </script>
 
+
+<style>
+#epicWarningOverlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:120000;pointer-events:none}
+#epicWarningOverlay.show{display:flex}
+#epicWarningOverlay .epic-warning-backdrop{position:absolute;inset:0;background:radial-gradient(circle at center,rgba(255,40,40,.08) 0%,rgba(120,0,0,.28) 45%,rgba(0,0,0,.76) 100%);animation:epicWarningFlash .9s ease-in-out infinite}
+#epicWarningOverlay .epic-warning-scan{position:absolute;inset:0;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.03) 0px,rgba(255,255,255,.03) 2px,rgba(0,0,0,0) 2px,rgba(0,0,0,0) 6px);opacity:.35;mix-blend-mode:screen;animation:epicWarningScanMove 1.2s linear infinite}
+#epicWarningOverlay .epic-warning-text{position:relative;z-index:2;font-size:72px;font-weight:900;letter-spacing:6px;color:#ff3b3b;text-shadow:0 0 8px rgba(255,255,255,.25),0 0 14px rgba(255,0,0,.5),0 0 30px rgba(255,0,0,.7);animation:epicWarningBlink .6s steps(2,end) infinite}
+#epicWarningOverlay .epic-warning-sub{position:absolute;top:calc(50% + 56px);left:50%;transform:translateX(-50%);z-index:2;font-size:22px;font-weight:800;color:#ffd6d6;letter-spacing:2px;text-shadow:0 0 10px rgba(255,0,0,.45)}
+body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
+@keyframes epicWarningFlash{0%,100%{opacity:.35}50%{opacity:.92}}
+@keyframes epicWarningBlink{0%,49%{opacity:1}50%,100%{opacity:.2}}
+@keyframes epicWarningScanMove{0%{transform:translateY(-12px)}100%{transform:translateY(12px)}}
+@keyframes epicWarningShake{0%{transform:translate(0,0)}20%{transform:translate(-4px,2px)}40%{transform:translate(4px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(3px,-1px)}100%{transform:translate(0,0)}}
+#epicMonsterOverlay{position:fixed;inset:0;z-index:2700;pointer-events:none;display:none}
+#epicMonsterOverlay.show{display:block}
+#epicMonsterStage{position:absolute;inset:0;pointer-events:none}
+#epicMonsterWrap{position:absolute;left:50%;top:57%;transform:translate(-50%,-50%);width:min(560px,72vw);height:min(560px,72vw);display:flex;align-items:center;justify-content:center;pointer-events:none}
+#epicMonsterImg{max-width:100%;max-height:100%;object-fit:contain;pointer-events:auto;cursor:pointer;filter:drop-shadow(0 18px 30px rgba(0,0,0,.55));user-select:none;-webkit-user-select:none}
+#epicMonsterHpBox{position:absolute;left:50%;top:130px;transform:translateX(-50%);width:min(540px,86vw);pointer-events:none}
+#epicMonsterTimer{font-size:26px;font-weight:900;color:#ffe6b6;text-shadow:0 0 10px rgba(0,0,0,.65),0 0 18px rgba(255,155,0,.28);margin-bottom:8px}
+#epicMonsterName{font-size:22px;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 2px 8px rgba(0,0,0,.7);margin-bottom:6px}
+#epicMonsterHpInner{position:relative;width:100%;height:34px}
+#epicMonsterHpFillWrap{position:absolute;left:14px;top:6px;width:calc(100% - 28px);height:22px;overflow:hidden;border-radius:999px}
+#epicMonsterHpFill{width:100%;height:100%;object-fit:fill;transform-origin:left center}
+#epicMonsterHpFrame{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}
+#epicMonsterHpText{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000}
+#epicMonsterClaimBox{position:absolute;left:50%;top:calc(57% + 170px);transform:translateX(-50%);display:none;pointer-events:auto}
+#epicMonsterClaimBtn{margin:0;padding:12px 24px;border-radius:12px;border:1px solid rgba(255,223,132,.42);background:rgba(255,223,132,.16);color:#ffe9aa;font-weight:900;cursor:pointer;box-shadow:0 0 14px rgba(255,215,90,.18)}
+#epicMonsterClaimBtn:hover{background:rgba(255,223,132,.24)}
+#epicMonsterHint{position:absolute;left:50%;top:calc(57% + 140px);transform:translateX(-50%);font-size:13px;font-weight:700;color:#dcdcdc;text-shadow:0 1px 4px rgba(0,0,0,.8);display:none}
+.epic-local-log{color:#8ed3ff;font-weight:900}
+</style>
+<div id="epicWarningOverlay" aria-hidden="true">
+  <div class="epic-warning-backdrop"></div>
+  <div class="epic-warning-scan"></div>
+  <div class="epic-warning-text">WARNING</div>
+  <div class="epic-warning-sub">에픽 몬스터 출현</div>
+</div>
+<div id="epicMonsterOverlay" aria-hidden="true">
+  <div id="epicMonsterHpBox">
+    <div id="epicMonsterTimer">10:00</div>
+    <div id="epicMonsterName">에픽 몬스터</div>
+    <div id="epicMonsterHpInner">
+      <div id="epicMonsterHpFillWrap"><img id="epicMonsterHpFill" src="images/ui/boss_hp_fill.png" alt=""></div>
+      <img id="epicMonsterHpFrame" src="images/ui/boss_hp_frame.png" alt="">
+      <div id="epicMonsterHpText">-</div>
+    </div>
+  </div>
+  <div id="epicMonsterStage">
+    <div id="epicMonsterWrap"><img id="epicMonsterImg" alt="에픽 몬스터"></div>
+    <div id="epicMonsterHint">에픽 몬스터를 클릭해 공격</div>
+    <div id="epicMonsterClaimBox"><button id="epicMonsterClaimBtn">보상받기</button></div>
+  </div>
+</div>
+<script>
+(function(){
+  if (window.__EPIC_MONSTER_SYSTEM__) return; window.__EPIC_MONSTER_SYSTEM__ = true;
+  const EPIC_REF = db.ref('epicEvents');
+  const EPIC_BY_FIELD_REF = EPIC_REF.child('byField');
+  const EPIC_DAILY_REF = EPIC_REF.child('daily');
+  const EPIC_LOCAL_ELIGIBLE = Object.create(null);
+  let epicFieldCache = {};
+  let epicFieldUnsubBound = false;
+  let epicRenderTimer = null;
+  let epicLastField = Number(window.currentField || 0);
+  let epicPresenceTimer = null;
+  let epicPrevStatusByField = {};
+  let epicLastWarningKey = '';
+
+  const EPIC_MONSTERS = {
+    spore_noid: {
+      id:'spore_noid', name:'극독의 스포어노이드', hp:1660000000000, defense:0.05, evade:0.10,
+      alive:'images/epic/spore_noid_idle.png', dead:'images/epic/spore_noid_down.png',
+      rewardPools:[
+        ()=>{ gold = Number(gold||0) + 50000000000; return '500억골드'; },
+        ()=>{ starShard = Number(starShard||0) + 30; return '빛나지못한별의조각 30개'; },
+        ()=>{ itemHonorMedal = Number(itemHonorMedal||0) + 50; return '명예의훈장 50개'; },
+        ()=>{ itemMagicPaper = Number(itemMagicPaper||0) + 90; return '마력의정수 90개'; },
+        ()=>{ itemDownProtect = Number(itemDownProtect||0) + 5; return '강등방어주문서 5개'; },
+        ()=>{ itemProtect = Number(itemProtect||0) + 1; return '파괴방지주문서 1개'; },
+        ()=>{ itemScroll15 = Number(itemScroll15||0) + 3; return '15강강화주문서 3개'; },
+        ()=>{ itemScroll21 = Number(itemScroll21||0) + 1; return '21강강화주문서 1개'; },
+        ()=>{ itemEngraveNormal = Number(itemEngraveNormal||0) + 3; return '일반각인의주문서 3개'; }
+      ],
+      onTick(cur, now){
+        cur.skill = cur.skill || {};
+        const nextAt = Number(cur.skill.sporeNextAt || (cur.spawnedAt + 10000));
+        if (now < nextAt) return false;
+        cur.skill.sporeNextAt = now + 10000;
+        cur.skill.sporeUseCount = Number(cur.skill.sporeUseCount || 0);
+        if (cur.skill.sporeUseCount >= 5) return true;
+        if (Math.random() < 0.5){
+          cur.skill.sporeUseCount += 1;
+          cur.evade = Math.min(0.60, Number(cur.evade || 0) + 0.10);
+          cur.localLog = `극독의 스포어노이드가 [포자분산]을 하여 플레이어를 중독시킵니다. 회피력 10%상승. (현재 ${Math.round(Number(cur.evade||0)*100)}%)`;
+          cur.localLogAt = now;
+        }
+        return true;
+      },
+      onDeathMessage:'극독의 스포어노이드가 포자속으로 모습을 감춥니다.'
+    },
+    plague_lord: {
+      id:'plague_lord', name:'질병의 페스트로드', hp:2310000000000, defense:0.10, evade:0.10,
+      alive:'images/epic/plague_lord_idle.png', dead:'images/epic/plague_lord_down.png',
+      rewardPools:[
+        ()=>{ gold = Number(gold||0) + 100000000000; return '1000억골드'; },
+        ()=>{ starShard = Number(starShard||0) + 50; return '빛나지못한별의조각 50개'; },
+        ()=>{ itemHonorMedal = Number(itemHonorMedal||0) + 70; return '명예의훈장 70개'; },
+        ()=>{ itemMagicPaper = Number(itemMagicPaper||0) + 120; return '마력의정수 120개'; },
+        ()=>{ itemProtect = Number(itemProtect||0) + 2; return '파괴방지주문서 2개'; },
+        ()=>{ itemScroll15 = Number(itemScroll15||0) + 5; return '15강강화주문서 5개'; },
+        ()=>{ itemScroll21 = Number(itemScroll21||0) + 2; return '21강강화주문서 2개'; },
+        ()=>{ itemEngraveNormal = Number(itemEngraveNormal||0) + 5; return '일반각인의주문서 5개'; },
+        ()=>{ itemEngraveAdvanced = Number(itemEngraveAdvanced||0) + 3; return '고급각인의주문서 3개'; },
+        ()=>{ itemSuper = Number(itemSuper||0) + 1; return '슈퍼강화주문서 1개'; }
+      ],
+      onTick(cur, now){
+        cur.skill = cur.skill || {};
+        const nextAt = Number(cur.skill.bioNextAt || (cur.spawnedAt + 10000));
+        if (now < nextAt) return false;
+        cur.skill.bioNextAt = now + 10000;
+        if (Math.random() < 0.5){
+          applyHuntLossToParticipants(cur, 1);
+          cur.localLog = '질병의 페스트로드가 [생화학탄살포]를 하여 플레이어의 행동력을 감소시킵니다. 사냥횟수1회 감소.';
+          cur.localLogAt = now;
+        }
+        return true;
+      },
+      onDeathMessage:'질병의 페스트로드가 독안개 속으로 도망갑니다.'
+    },
+    briella: {
+      id:'briella', name:'시체수집가 브리엘라', hp:3540000000000, defense:0.10, evade:0.15,
+      alive:'images/epic/briella_idle.png', dead:'images/epic/briella_down.png',
+      rewardPools:[
+        ()=>{ gold = Number(gold||0) + 200000000000; return '2000억골드'; },
+        ()=>{ starShard = Number(starShard||0) + 70; return '빛나지못한별의조각 70개'; },
+        ()=>{ itemHonorMedal = Number(itemHonorMedal||0) + 90; return '명예의훈장 90개'; },
+        ()=>{ itemMagicPaper = Number(itemMagicPaper||0) + 200; return '마력의정수 200개'; },
+        ()=>{ itemProtect = Number(itemProtect||0) + 3; return '파괴방지주문서 3개'; },
+        ()=>{ itemScroll21 = Number(itemScroll21||0) + 4; return '21강강화주문서 4개'; },
+        ()=>{ itemEngraveAdvanced = Number(itemEngraveAdvanced||0) + 5; return '고급각인의주문서 5개'; },
+        ()=>{ itemSuper = Number(itemSuper||0) + 2; return '슈퍼강화주문서 2개'; },
+        ()=>{ addUnidentifiedRuneStone(1); return '미확인룬석 1개'; }
+      ],
+      onTick(cur, now){
+        cur.skill = cur.skill || {};
+        let changed = false;
+        const nextSteal = Number(cur.skill.stealNextAt || (cur.spawnedAt + 15000));
+        if (now >= nextSteal){
+          cur.skill.stealNextAt = now + 15000;
+          if (Math.random() < 0.4){
+            applyHuntLossToParticipants(cur, 1);
+            cur.localLog = '브리엘라가 [강탈]을 하여 플레이어의 사냥횟수를 뺏습니다. 사냥횟수1회 감소.';
+            cur.localLogAt = now;
+          }
+          changed = true;
+        }
+        const nextThreat = Number(cur.skill.threatNextAt || (cur.spawnedAt + 10000));
+        if (now >= nextThreat){
+          cur.skill.threatNextAt = now + 10000;
+          if (Math.random() < 0.5){
+            cur.playerDebuffs = cur.playerDebuffs || {};
+            const parts = cur.participants || {};
+            Object.keys(parts).forEach(uid => {
+              const row = Object.assign({}, cur.playerDebuffs[uid] || {});
+              const stack = Math.min(5, Number(row.atkDownStacks || 0) + 1);
+              row.atkDownStacks = stack;
+              row.atkDownUntil = now + 60000;
+              cur.playerDebuffs[uid] = row;
+            });
+            const myRow = (cur.playerDebuffs && cur.playerDebuffs[userId]) || {};
+            cur.localLog = `브리엘라가 [위협]을 하여 플레이어의 공격력이 1분간 10% 감소됩니다. (총 ${Math.min(50, Number(myRow.atkDownStacks||0)*10)}%감소)`;
+            cur.localLogAt = now;
+          }
+          changed = true;
+        }
+        return changed;
+      },
+      onDeathMessage:'시체수집가 브리엘라가 모래 폭풍속으로 후퇴합니다.'
+    }
+  };
+
+  const EPIC_IDS = Object.keys(EPIC_MONSTERS);
+
+  function getTodayKey(){
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${dd}`;
+  }
+  function deepClone(v){ return JSON.parse(JSON.stringify(v)); }
+  function getEpicForField(fieldId){ return epicFieldCache && epicFieldCache[String(fieldId||'')] || null; }
+  function isEpicActiveOnField(fieldId){ const e=getEpicForField(fieldId); return !!(e && (e.status==='active' || e.status==='cleared')); }
+  function localFieldName(fid){ const f=(window.HUNT_FIELDS||[]).find(x=>Number(x.id)===Number(fid)); return f?f.name:`필드 ${fid}`; }
+  function formatRemain(ms){ const sec=Math.max(0, Math.floor(ms/1000)); const m=String(Math.floor(sec/60)).padStart(2,'0'); const s=String(sec%60).padStart(2,'0'); return `${m}:${s}`; }
+  function appendLocalEpicLog(msg){
+    const toastListEl = document.getElementById('toastList'); if(!toastListEl) return;
+    const ts = (typeof formatTime === 'function') ? formatTime(Date.now()) : '';
+    const toastEl = document.createElement('div');
+    toastEl.className = 'toast-item toast-boss-apply';
+    toastEl.innerHTML = `<span style="color:#888;">[${ts}]</span> <span class="epic-local-log">${msg}</span>`;
+    toastListEl.prepend(toastEl);
+    while (toastListEl.children.length > 50) toastListEl.lastChild.remove();
+  }
+  function showEpicWarning(){
+    const overlay = document.getElementById('epicWarningOverlay');
+    if (!overlay) return;
+    overlay.classList.add('show');
+    document.body.classList.add('epic-warning-shake');
+    setTimeout(()=>overlay.classList.remove('show'), 2200);
+    setTimeout(()=>document.body.classList.remove('epic-warning-shake'), 1000);
+  }
+  function setHuntButtonLocked(on){
+    const btn = document.getElementById('huntBtn');
+    if (!btn) return;
+    btn.disabled = !!on;
+    btn.style.filter = on ? 'grayscale(1) brightness(0.8)' : '';
+    btn.style.opacity = on ? '0.75' : '';
+  }
+
+  function ensureEpicSubscription(){
+    if (epicFieldUnsubBound) return;
+    epicFieldUnsubBound = true;
+    EPIC_BY_FIELD_REF.on('value', snap => {
+      epicFieldCache = snap.val() || {};
+      handleEpicStateTransitions();
+      renderEpicOverlay();
+    });
+  }
+
+  function handleEpicStateTransitions(){
+    const fieldId = Number(window.currentField || 0);
+    const cur = getEpicForField(fieldId);
+    const key = String(fieldId);
+    const prev = String(epicPrevStatusByField[key] || '');
+    const nowStatus = cur ? String(cur.status || 'active') : '';
+    if (cur && nowStatus === 'active') {
+      const warningKey = `${key}_${cur.spawnedAt || 0}`;
+      if (warningKey !== epicLastWarningKey) {
+        epicLastWarningKey = warningKey;
+        showEpicWarning();
+      }
+    }
+    if (cur && prev === 'active' && nowStatus === 'cleared') {
+      const part = cur.participants && cur.participants[userId];
+      if (part && Number(part.lastSeen || 0) >= Number(cur.clearedAt || 0) - 15000) {
+        EPIC_LOCAL_ELIGIBLE[key] = String(cur.spawnedAt || 0);
+      }
+      if (cur.localLog) appendLocalEpicLog(cur.localLog);
+      else appendLocalEpicLog(EPIC_MONSTERS[cur.bossId]?.onDeathMessage || '에픽 몬스터가 쓰러졌습니다.');
+    }
+    if (cur && prev === 'active' && nowStatus === 'failed') {
+      appendLocalEpicLog(cur.failMessage || `시간내 처치에 실패하여 ${EPIC_MONSTERS[cur.bossId]?.name || '에픽 몬스터'}가 모습을 감춥니다`);
+    }
+    if (cur && cur.localLog && Number(cur.localLogAt || 0) > Number(window.__epicLastLocalLogAt || 0) && Number(fieldId) === Number(cur.fieldId)) {
+      window.__epicLastLocalLogAt = Number(cur.localLogAt || 0);
+      appendLocalEpicLog(cur.localLog);
+    }
+    epicPrevStatusByField[key] = nowStatus;
+  }
+
+  function renderEpicOverlay(){
+    const overlay = document.getElementById('epicMonsterOverlay');
+    if (!overlay) return;
+    const fieldId = Number(window.currentField || 0);
+    const event = getEpicForField(fieldId);
+    const eligible = EPIC_LOCAL_ELIGIBLE[String(fieldId)] && event && String(event.spawnedAt||0) === String(EPIC_LOCAL_ELIGIBLE[String(fieldId)]);
+    const imgEl = document.getElementById('epicMonsterImg');
+    const timerEl = document.getElementById('epicMonsterTimer');
+    const nameEl = document.getElementById('epicMonsterName');
+    const hpText = document.getElementById('epicMonsterHpText');
+    const hpFill = document.getElementById('epicMonsterHpFill');
+    const claimBox = document.getElementById('epicMonsterClaimBox');
+    const hintEl = document.getElementById('epicMonsterHint');
+
+    if (!event || (event.status !== 'active' && !(event.status === 'cleared' && eligible))) {
+      overlay.classList.remove('show');
+      setHuntButtonLocked(false);
+      if (claimBox) claimBox.style.display = 'none';
+      if (hintEl) hintEl.style.display = 'none';
+      return;
+    }
+
+    const def = EPIC_MONSTERS[event.bossId];
+    if (!def) return;
+    overlay.classList.add('show');
+    nameEl.textContent = def.name;
+    imgEl.src = (event.status === 'cleared') ? def.dead : def.alive;
+    imgEl.style.cursor = (event.status === 'active') ? 'pointer' : 'default';
+    const hp = Math.max(0, Number(event.hp || 0));
+    const maxHp = Math.max(1, Number(event.maxHp || def.hp || 1));
+    hpText.textContent = `${typeof formatBossHpShort === 'function' ? formatBossHpShort(hp) : hp.toLocaleString('ko-KR')} / ${typeof formatBossHpShort === 'function' ? formatBossHpShort(maxHp) : maxHp.toLocaleString('ko-KR')}`;
+    const ratio = Math.max(0, Math.min(1, hp / maxHp));
+    hpFill.style.transform = `scaleX(${ratio})`;
+    timerEl.textContent = event.status === 'active' ? formatRemain(Number(event.expiresAt || 0) - Date.now()) : '토벌 완료';
+    setHuntButtonLocked(event.status === 'active');
+    hintEl.style.display = event.status === 'active' ? 'block' : 'none';
+    claimBox.style.display = (event.status === 'cleared' && eligible) ? 'block' : 'none';
+  }
+
+  function syncEpicPresence(){
+    if (!userId) return;
+    const fieldId = Number(window.currentField || 0);
+    if (Number(epicLastField) !== fieldId) {
+      leaveEpicField(epicLastField);
+      delete EPIC_LOCAL_ELIGIBLE[String(epicLastField)];
+      epicLastField = fieldId;
+    }
+    const event = getEpicForField(fieldId);
+    if (!event || event.status !== 'active') return;
+    const partRef = EPIC_BY_FIELD_REF.child(String(fieldId)).child('participants').child(String(userId));
+    partRef.update({ uid:String(userId), nick:String((typeof getNickSafe === 'function' ? getNickSafe() : userId) || userId), fieldId, lastSeen: Date.now() });
+  }
+
+  function leaveEpicField(fieldId){
+    fieldId = Number(fieldId || 0);
+    if (!userId || !fieldId) return;
+    try{ EPIC_BY_FIELD_REF.child(String(fieldId)).child('participants').child(String(userId)).remove(); }catch(e){}
+  }
+
+  function applyHuntLossToParticipants(cur, amount){
+    amount = Math.max(0, Number(amount || 0));
+    const parts = cur.participants || {};
+    Object.keys(parts).forEach(uid => {
+      const uref = db.ref('users/' + uid);
+      uref.child('huntCountToday').transaction(v => Math.min(20, Math.max(0, Number(v || 0)) + amount));
+      uref.child('lastStaminaUpdate').transaction(v => Number(v || Date.now()) || Date.now());
+    });
+  }
+
+  function maybeTickEpic(){
+    const fieldId = Number(window.currentField || 0);
+    const event = getEpicForField(fieldId);
+    if (!event || event.status !== 'active') return;
+    const now = Date.now();
+    EPIC_BY_FIELD_REF.child(String(fieldId)).transaction(cur => {
+      if (!cur || cur.status !== 'active') return cur;
+      const now2 = Date.now();
+      if (Number(cur.expiresAt || 0) <= now2){
+        cur.status = 'failed';
+        cur.failedAt = now2;
+        cur.failMessage = `시간내 처치에 실패하여 ${EPIC_MONSTERS[cur.bossId]?.name || '에픽 몬스터'}가 모습을 감춥니다`;
+        cur.cleanupAt = now2 + 10000;
+        return cur;
+      }
+      const def = EPIC_MONSTERS[cur.bossId];
+      if (!def || typeof def.onTick !== 'function') return cur;
+      const changed = !!def.onTick(cur, now2);
+      return changed ? cur : undefined;
+    });
+  }
+
+  function maybeCleanupEpic(){
+    Object.keys(epicFieldCache || {}).forEach(fid => {
+      const cur = epicFieldCache[fid];
+      if (!cur) return;
+      if ((cur.status === 'failed' || cur.status === 'cleared') && Number(cur.cleanupAt || 0) > 0 && Date.now() >= Number(cur.cleanupAt || 0)) {
+        EPIC_BY_FIELD_REF.child(String(fid)).remove();
+      }
+    });
+  }
+
+  function maybeSpawnEpic(fieldId){
+    fieldId = Number(fieldId || 0);
+    if (!userId) return;
+    if (fieldId <= 0 || fieldId === 11) return;
+    const existing = getEpicForField(fieldId);
+    if (existing && (existing.status === 'active' || existing.status === 'cleared')) return;
+    if (Math.random() >= 0.005) return;
+    const dayKey = getTodayKey();
+    EPIC_DAILY_REF.child(dayKey).transaction(cur => {
+      cur = cur || { count:0, updatedAt:0 };
+      const cnt = Number(cur.count || 0);
+      if (cnt >= 3) return;
+      cur.count = cnt + 1;
+      cur.updatedAt = Date.now();
+      return cur;
+    }, (err, committed) => {
+      if (err || !committed) return;
+      const bossId = EPIC_IDS[Math.floor(Math.random() * EPIC_IDS.length)];
+      const def = EPIC_MONSTERS[bossId];
+      const now = Date.now();
+      const payload = {
+        bossId,
+        fieldId,
+        status:'active',
+        spawnedAt: now,
+        expiresAt: now + 600000,
+        hp: Number(def.hp || 1),
+        maxHp: Number(def.hp || 1),
+        defense: Number(def.defense || 0),
+        evade: Number(def.evade || 0),
+        participants: {},
+        playerDebuffs: {},
+        localLog:'', localLogAt:0,
+        cleanupAt: 0
+      };
+      payload.participants[String(userId)] = { uid:String(userId), nick:String((typeof getNickSafe === 'function' ? getNickSafe() : userId) || userId), fieldId, lastSeen: now };
+      EPIC_BY_FIELD_REF.child(String(fieldId)).transaction(cur => {
+        if (cur && (cur.status === 'active' || cur.status === 'cleared')) return;
+        return payload;
+      }, (e2, committed2) => {
+        if (e2 || !committed2) return;
+        const msg = `현재 [${localFieldName(fieldId)}]에 ${def.name}가 등장하였습니다.`;
+        writeLog(msg, false, { tone:'boss_apply' });
+        if (Number(window.currentField || 0) === fieldId) showEpicWarning();
+      });
+    });
+  }
+
+  function getMyEpicAtkDownPct(event){
+    if (!event || !event.playerDebuffs || !event.playerDebuffs[userId]) return 0;
+    const row = event.playerDebuffs[userId];
+    if (Date.now() > Number(row.atkDownUntil || 0)) return 0;
+    return Math.min(0.5, Number(row.atkDownStacks || 0) * 0.1);
+  }
+
+  function attackEpicMonster(){
+    const fieldId = Number(window.currentField || 0);
+    const event = getEpicForField(fieldId);
+    if (!event || event.status !== 'active' || !userId) return;
+    const eventRef = EPIC_BY_FIELD_REF.child(String(fieldId));
+    eventRef.transaction(cur => {
+      if (!cur || cur.status !== 'active') return cur;
+      const now = Date.now();
+      cur.participants = cur.participants || {};
+      cur.participants[String(userId)] = { uid:String(userId), nick:String((typeof getNickSafe === 'function' ? getNickSafe() : userId) || userId), fieldId, lastSeen: now };
+      const evade = Math.max(0, Math.min(0.95, Number(cur.evade || 0)));
+      if (Math.random() < evade) {
+        cur.localLog = `${EPIC_MONSTERS[cur.bossId]?.name || '에픽 몬스터'}의 회피!`;
+        cur.localLogAt = now;
+        return cur;
+      }
+      const debuffPct = getMyEpicAtkDownPct(cur);
+      const baseAtk = Math.max(1, Math.floor(Number(power || 10) * (1 - debuffPct)));
+      let dmg = Math.max(1, Math.floor(baseAtk * (0.9 + Math.random() * 0.2)));
+      dmg = Math.max(1, Math.floor(dmg * (1 - Math.max(0, Number(cur.defense || 0)))));
+      cur.hp = Math.max(0, Number(cur.hp || 0) - dmg);
+      cur.localLog = `${EPIC_MONSTERS[cur.bossId]?.name || '에픽 몬스터'}에게 ${formatGold ? formatGold(dmg) : dmg.toLocaleString('ko-KR')} 피해!`;
+      cur.localLogAt = now;
+      if (Number(cur.hp || 0) <= 0) {
+        cur.hp = 0;
+        cur.status = 'cleared';
+        cur.clearedAt = now;
+        cur.cleanupAt = now + 60000;
+        cur.localLog = EPIC_MONSTERS[cur.bossId]?.onDeathMessage || '에픽 몬스터가 쓰러졌습니다.';
+        cur.localLogAt = now;
+      }
+      return cur;
+    });
+  }
+
+  function claimEpicReward(){
+    const fieldId = Number(window.currentField || 0);
+    const event = getEpicForField(fieldId);
+    if (!event || event.status !== 'cleared') return;
+    if (String(EPIC_LOCAL_ELIGIBLE[String(fieldId)] || '') !== String(event.spawnedAt || 0)) return;
+    const claimedRef = EPIC_BY_FIELD_REF.child(String(fieldId)).child('claimed').child(String(userId));
+    claimedRef.transaction(cur => {
+      if (cur) return;
+      return { t: Date.now(), uid: String(userId) };
+    }, (err, committed) => {
+      if (err || !committed) return;
+      const def = EPIC_MONSTERS[event.bossId];
+      const lines = [];
+      const pool = deepClone(def.rewardPools || []);
+      for (let i=0; i<3 && pool.length; i++) {
+        const idx = Math.floor(Math.random() * pool.length);
+        const fn = pool[idx];
+        lines.push(fn());
+      }
+      if (typeof update === 'function') update();
+      if (typeof save === 'function') save();
+      delete EPIC_LOCAL_ELIGIBLE[String(fieldId)];
+      renderEpicOverlay();
+      showHuntPopup(`에픽 토벌 보상 획득!<br>${lines.join('<br>')}`, '#FFD27D');
+    });
+  }
+
+  // override hunt to block and spawn chance
+  const __orig_hunt = window.hunt;
+  window.hunt = function(){
+    const fieldId = Number(window.currentField || 0);
+    const event = getEpicForField(fieldId);
+    if (event && event.status === 'active') {
+      showHuntPopup('에픽 몬스터의 출현으로 사냥이 잠겨 있습니다.', '#FF8C8C');
+      return;
+    }
+    const beforeCount = Number(window.huntCountToday || 0);
+    const beforeSt = Number(window.huntStamina || 0);
+    const res = __orig_hunt.apply(this, arguments);
+    const afterCount = Number(window.huntCountToday || 0);
+    const afterSt = Number(window.huntStamina || 0);
+    if ((afterCount !== beforeCount || afterSt !== beforeSt) && !isEpicActiveOnField(fieldId)) {
+      setTimeout(() => maybeSpawnEpic(fieldId), 20);
+    }
+    return res;
+  };
+
+  // override logout for presence cleanup
+  const __orig_logout = window.logout;
+  window.logout = function(){ try{ leaveEpicField(window.currentField); }catch(e){} return __orig_logout.apply(this, arguments); };
+
+  const epicImg = document.getElementById('epicMonsterImg');
+  if (epicImg) epicImg.addEventListener('click', attackEpicMonster);
+  const claimBtn = document.getElementById('epicMonsterClaimBtn');
+  if (claimBtn) claimBtn.addEventListener('click', claimEpicReward);
+
+  ensureEpicSubscription();
+  epicRenderTimer = setInterval(() => { renderEpicOverlay(); maybeTickEpic(); maybeCleanupEpic(); }, 1000);
+  epicPresenceTimer = setInterval(syncEpicPresence, 3000);
+  setInterval(() => {
+    const fieldId = Number(window.currentField || 0);
+    Object.keys(epicFieldCache || {}).forEach(fid => {
+      if (Number(fid) !== fieldId) delete EPIC_LOCAL_ELIGIBLE[String(fid)];
+    });
+  }, 2000);
+
+  // expose names for convenience
+  window.EPIC_MONSTER_IMAGE_FILES = {
+    spore_noid_alive: 'images/epic/spore_noid_idle.png',
+    spore_noid_dead: 'images/epic/spore_noid_down.png',
+    plague_lord_alive: 'images/epic/plague_lord_idle.png',
+    plague_lord_dead: 'images/epic/plague_lord_down.png',
+    briella_alive: 'images/epic/briella_idle.png',
+    briella_dead: 'images/epic/briella_down.png'
+  };
+})();
+</script>
+
 </body>
 </html>
