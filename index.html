@@ -32169,7 +32169,6 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     if (fieldId <= 0 || fieldId === 11) return;
     const existing = getEpicForField(fieldId);
     if (existing && (existing.status === 'active' || existing.status === 'cleared')) return;
-    if (Math.random() >= 0.005) return;
     const dayKey = getTodayKey();
     EPIC_DAILY_REF.child(dayKey).transaction(cur => {
       cur = cur || { count:0, updatedAt:0 };
@@ -32296,7 +32295,9 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     // ✅ 아이템 드랍처럼 "사냥이 실제 실행된 뒤" 곧바로 에픽 스폰 판정
     //    huntCountToday / huntStamina 변화 여부에는 의존하지 않음
     if (fieldId > 0 && fieldId !== 11 && !isEpicActiveOnField(fieldId)) {
-      setTimeout(() => maybeSpawnEpic(fieldId), 20);
+      if (Math.random() < 0.005) {
+        setTimeout(() => maybeSpawnEpic(fieldId), 20);
+      }
     }
 
     return res;
