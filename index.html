@@ -17854,6 +17854,27 @@ if (
     lastStaminaUpdate = Date.now();
   }
 
+  // ✅ 에픽몬스터 스폰/피티는 실제 사냥 본체 안에서 직접 처리
+  try {
+    const epicFieldId = Number(currentField || 0);
+    const epicActive = (typeof getEpicForField === "function") ? getEpicForField(epicFieldId) : null;
+    if (epicFieldId > 0 && epicFieldId !== 11 && !(epicActive && epicActive.status === 'active')) {
+      if (typeof getEpicSpawnPity === 'function' && typeof setEpicSpawnPity === 'function') {
+        const nextPity = Number(getEpicSpawnPity(epicFieldId) || 0) + 1;
+        setEpicSpawnPity(epicFieldId, nextPity);
+
+        const passed = (Math.random() < (typeof EPIC_SPAWN_CHANCE !== 'undefined' ? EPIC_SPAWN_CHANCE : 0.005))
+          || (typeof EPIC_SPAWN_PITY_MAX !== 'undefined' && nextPity >= EPIC_SPAWN_PITY_MAX);
+
+        if (passed && typeof maybeSpawnEpic === 'function') {
+          Promise.resolve(maybeSpawnEpic(epicFieldId)).then((ok) => {
+            if (ok && typeof clearEpicSpawnPity === 'function') clearEpicSpawnPity(epicFieldId);
+          }).catch(() => {});
+        }
+      }
+    }
+  } catch (e) {}
+
   update();
   save();
 }
@@ -32325,7 +32346,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     });
   }
 
-  // override hunt to block and spawn chance
+  // override hunt: 에픽 활성 중일 때만 사냥 차단 (스폰/피티는 실제 hunt 본체에서 처리)
   const __orig_hunt = window.hunt;
   window.hunt = function(){
     const fieldId = Number(window.currentField || 0);
@@ -32336,22 +32357,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       return;
     }
 
-    const res = __orig_hunt.apply(this, arguments);
-
-    if (fieldId > 0 && fieldId !== 11 && !isEpicActiveOnField(fieldId)) {
-      const nextPity = getEpicSpawnPity(fieldId) + 1;
-      setEpicSpawnPity(fieldId, nextPity);
-      const passed = (Math.random() < EPIC_SPAWN_CHANCE) || nextPity >= EPIC_SPAWN_PITY_MAX;
-      if (passed) {
-        setTimeout(() => {
-          maybeSpawnEpic(fieldId).then((ok) => {
-            if (ok) clearEpicSpawnPity(fieldId);
-          }).catch(() => {});
-        }, 20);
-      }
-    }
-
-    return res;
+    return __orig_hunt.apply(this, arguments);
   };
 
   // override logout for presence cleanup
