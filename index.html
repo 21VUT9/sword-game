@@ -32285,18 +32285,20 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   window.hunt = function(){
     const fieldId = Number(window.currentField || 0);
     const event = getEpicForField(fieldId);
+
     if (event && event.status === 'active') {
       showHuntPopup('에픽 몬스터의 출현으로 사냥이 잠겨 있습니다.', '#FF8C8C');
       return;
     }
-    const beforeCount = Number(window.huntCountToday || 0);
-    const beforeSt = Number(window.huntStamina || 0);
+
     const res = __orig_hunt.apply(this, arguments);
-    const afterCount = Number(window.huntCountToday || 0);
-    const afterSt = Number(window.huntStamina || 0);
-    if ((afterCount !== beforeCount || afterSt !== beforeSt) && !isEpicActiveOnField(fieldId)) {
+
+    // ✅ 아이템 드랍처럼 "사냥이 실제 실행된 뒤" 곧바로 에픽 스폰 판정
+    //    huntCountToday / huntStamina 변화 여부에는 의존하지 않음
+    if (fieldId > 0 && fieldId !== 11 && !isEpicActiveOnField(fieldId)) {
       setTimeout(() => maybeSpawnEpic(fieldId), 20);
     }
+
     return res;
   };
 
