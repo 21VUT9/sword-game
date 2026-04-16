@@ -4492,6 +4492,10 @@ hr.section-divider{
   animation: bossHitShake 140ms ease-out 1;
 }
 
+#epicMonsterWrap.hit {
+  animation: bossHitShake 140ms ease-out 1;
+}
+
 @keyframes bossHitShake {
   0%   { transform: translateX(0); }
   20%  { transform: translateX(-4px); }
@@ -4502,6 +4506,11 @@ hr.section-divider{
 
 /* 번쩍이는 하얀 플래시 + 붉은 글로우 */
 #bossBattleBossImg.hit-flash {
+  animation: bossHitFlash 160ms ease-out 1;
+  will-change: filter;
+}
+
+#epicMonsterImg.hit-flash {
   animation: bossHitFlash 160ms ease-out 1;
   will-change: filter;
 }
@@ -4538,7 +4547,30 @@ hr.section-divider{
   mix-blend-mode: screen;
 }
 
+#epicMonsterWrap::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:52%;
+  width: 120px;
+  height: 120px;
+  transform: translate(-50%,-50%) scale(0.6);
+  pointer-events:none;
+  opacity:0;
+  border-radius:999px;
+  background: radial-gradient(circle,
+    rgba(255,255,255,0.95) 0%,
+    rgba(255,210,210,0.55) 35%,
+    rgba(255,80,80,0.25) 60%,
+    rgba(0,0,0,0) 72%);
+  mix-blend-mode: screen;
+}
+
 #bossBattleBossWrap.hit-spark::after{
+  animation: bossHitSpark 180ms ease-out 1;
+}
+
+#epicMonsterWrap.hit-spark::after{
   animation: bossHitSpark 180ms ease-out 1;
 }
 
@@ -24195,6 +24227,24 @@ function playBossHitFx(){
   }, 220);
 }
 
+function playEpicHitFx(){
+  const wrap = document.getElementById("epicMonsterWrap");
+  const img  = document.getElementById("epicMonsterImg");
+  if (!wrap || !img) return;
+
+  wrap.classList.remove("hit", "hit-spark");
+  img.classList.remove("hit-flash");
+  void wrap.offsetWidth;
+
+  wrap.classList.add("hit", "hit-spark");
+  img.classList.add("hit-flash");
+
+  setTimeout(() => {
+    wrap.classList.remove("hit", "hit-spark");
+    img.classList.remove("hit-flash");
+  }, 220);
+}
+
 function attackBossByClick(ev){
   const bossId = String(activeBossId || "");
   const run = (bossRunsActiveCache || {})[bossId];
@@ -32390,6 +32440,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
           if (fx.kind === 'miss') spawnBossDamageFloatAt(cx, cy, 'MISS', 'miss');
           else spawnBossDamageFloatAt(cx, cy, fx.dmg, fx.kind === 'crit' ? 'crit' : 'hit');
         }
+        if (fx.kind !== 'miss' && typeof playEpicHitFx === 'function') playEpicHitFx();
       } catch(e){}
     });
   }
