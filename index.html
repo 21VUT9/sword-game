@@ -31823,25 +31823,25 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 #epicMonsterOverlay{position:fixed;inset:0;z-index:980;pointer-events:none;display:none}
 #epicMonsterOverlay.show{display:block}
 #epicMonsterStage{position:absolute;inset:0;pointer-events:none}
-#epicMonsterWrap{position:absolute;left:50%;top:57%;transform:translate(-50%,-50%);width:min(560px,72vw);height:min(560px,72vw);display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:2}
+#epicMonsterWrap{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,72vw);height:min(560px,72vw);display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:2}
 #epicMonsterImg{max-width:100%;max-height:100%;object-fit:contain;pointer-events:auto;cursor:pointer;filter:drop-shadow(0 18px 30px rgba(0,0,0,.55));user-select:none;-webkit-user-select:none;position:relative;z-index:2}
-#epicMonsterHpBox{position:absolute;left:50%;top:130px;transform:translateX(-50%);width:min(540px,86vw);pointer-events:none}
+#epicMonsterHpBox{position:absolute;left:50%;top:90px;transform:translateX(-50%);width:min(560px,88vw);pointer-events:none}
 #epicMonsterTimer{font-size:26px;font-weight:900;color:#ffe6b6;text-shadow:0 0 10px rgba(0,0,0,.65),0 0 18px rgba(255,155,0,.28);margin-bottom:8px}
 #epicMonsterName{font-size:22px;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 2px 8px rgba(0,0,0,.7);margin-bottom:6px}
-#epicMonsterHpInner{position:relative;width:100%;height:44px}
-#epicMonsterHpFillWrap{position:absolute;left:14px;top:8px;width:calc(100% - 28px);height:28px;overflow:hidden;border-radius:999px}
+#epicMonsterHpInner{position:relative;width:100%;height:58px}
+#epicMonsterHpFillWrap{position:absolute;left:14px;top:9px;width:calc(100% - 28px);height:38px;overflow:hidden;border-radius:999px}
 #epicMonsterHpFill{width:100%;height:100%;object-fit:fill;transform-origin:left center}
 #epicMonsterHpFrame{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}
-#epicMonsterHpText{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000}
+#epicMonsterHpText{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000}
 #epicMonsterClaimBox{display:none !important}
 #epicMonsterClaimBtn{margin:0;padding:12px 24px;border-radius:12px;border:1px solid rgba(255,223,132,.42);background:rgba(255,223,132,.16);color:#ffe9aa;font-weight:900;cursor:pointer;box-shadow:0 0 14px rgba(255,215,90,.18)}
-#epicMonsterClaimFloating{position:fixed;left:50%;top:calc(57% + 170px);transform:translateX(-50%);display:none;pointer-events:auto;z-index:5005}
+#epicMonsterClaimFloating{position:fixed;left:50%;top:calc(50% + 150px);transform:translateX(-50%);display:none;pointer-events:auto;z-index:5005}
 #epicMonsterClaimFloating.show{display:block}
 #epicMonsterClaimBtnFloating{margin:0;padding:12px 24px;border-radius:12px;border:1px solid rgba(255,223,132,.42);background:rgba(255,223,132,.16);color:#ffe9aa;font-weight:900;cursor:pointer;box-shadow:0 0 14px rgba(255,215,90,.18)}
 #epicMonsterClaimBtnFloating:hover{background:rgba(255,223,132,.24)}
-#epicMonsterDim{position:absolute;left:50%;top:57%;transform:translate(-50%,-50%);width:min(620px,84vw);height:min(620px,84vw);border-radius:50%;pointer-events:none;z-index:1;background:radial-gradient(circle, rgba(0,0,0,.42) 0%, rgba(0,0,0,.26) 42%, rgba(0,0,0,.08) 68%, rgba(0,0,0,0) 80%);} 
+#epicMonsterDim{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(660px,88vw);height:min(660px,88vw);border-radius:50%;pointer-events:none;z-index:1;background:radial-gradient(circle, rgba(0,0,0,.48) 0%, rgba(0,0,0,.30) 42%, rgba(0,0,0,.10) 68%, rgba(0,0,0,0) 82%);} 
 #epicMonsterClaimBtn:hover{background:rgba(255,223,132,.24)}
-#epicMonsterHint{position:absolute;left:50%;top:calc(57% + 140px);transform:translateX(-50%);font-size:13px;font-weight:700;color:#dcdcdc;text-shadow:0 1px 4px rgba(0,0,0,.8);display:none}
+#epicMonsterHint{position:absolute;left:50%;top:calc(50% + 130px);transform:translateX(-50%);font-size:13px;font-weight:700;color:#dcdcdc;text-shadow:0 1px 4px rgba(0,0,0,.8);display:none}
 .epic-local-log{color:#8ed3ff;font-weight:900}
 </style>
 <div id="epicWarningOverlay" aria-hidden="true">
@@ -32306,10 +32306,43 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     return Math.min(0.5, Number(row.atkDownStacks || 0) * 0.1);
   }
 
+
+  function showEpicRewardConfirm(lines){
+    const safe = Array.isArray(lines) ? lines.filter(Boolean) : [];
+    const html = `
+      <div style="text-align:center;font-size:14px;line-height:1.7;">
+        <div style="font-weight:900;font-size:16px;margin-bottom:8px;">에픽 토벌 보상 획득!</div>
+        <div style="color:#ffe2a6;white-space:pre-line;">${safe.join('<br>') || '보상을 획득했습니다.'}</div>
+        <div style="margin-top:14px;">
+          <button onclick="closeNpcPopup()" style="padding:8px 18px;border-radius:10px;border:1px solid #66512a;background:#2a2112;color:#ffe7a3;font-weight:900;cursor:pointer;">확인</button>
+        </div>
+      </div>`;
+    if (typeof showNpcMessage === 'function') {
+      showNpcMessage(html, null, false, '');
+    } else if (typeof showHuntPopup === 'function') {
+      showHuntPopup(`에픽 토벌 보상 획득!<br>${safe.join('<br>')}`, '#FFD27D');
+    } else {
+      alert('에픽 토벌 보상 획득!\n' + safe.join('\n'));
+    }
+  }
+
   function attackEpicMonster(ev){
     const fieldId = getCurrentEpicFieldId();
     const event = getEpicForField(fieldId);
     if (!event || event.status !== 'active' || !userId) return;
+    if (Number(huntStamina || 0) <= 0) {
+      if (typeof showHuntPopup === 'function') showHuntPopup('사냥 횟수가 부족하여 공격할 수 없습니다.', '#FF8C8C');
+      return;
+    }
+
+    const maxSt = (typeof getHuntStaminaMax === 'function') ? Number(getHuntStaminaMax() || 20) : 20;
+    const prevStamina = Number(huntStamina || 0);
+    const prevCount = Number(huntCountToday || 0);
+    huntStamina = Math.max(0, prevStamina - 1);
+    huntCountToday = Math.max(0, maxSt - huntStamina);
+    try { if (typeof update === 'function') update(); } catch(e){}
+    try { if (typeof save === 'function') save(); } catch(e){}
+
     const eventRef = EPIC_BY_FIELD_REF.child(String(fieldId));
     const cx = ev && typeof ev.clientX === 'number' ? ev.clientX : (window.innerWidth / 2);
     const cy = ev && typeof ev.clientY === 'number' ? ev.clientY : (window.innerHeight / 2);
@@ -32343,7 +32376,13 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       }
       return cur;
     }, (err, committed) => {
-      if (err || !committed || !fx) return;
+      if (err || !committed || !fx) {
+        huntStamina = prevStamina;
+        huntCountToday = prevCount;
+        try { if (typeof update === 'function') update(); } catch(e){}
+        try { if (typeof save === 'function') save(); } catch(e){}
+        return;
+      }
       try {
         if (typeof playBossAttackSfx === 'function') playBossAttackSfx({ isMiss: fx.kind === 'miss', isCrit: fx.kind === 'crit' }, !!fx.isMagic);
         if (typeof spawnBossHitEffectAt === 'function') spawnBossHitEffectAt(cx, cy, fx.kind, !!fx.isMagic);
@@ -32384,7 +32423,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       try { leaveEpicField(fieldId); } catch(e){}
       renderEpicOverlay();
       setHuntButtonLocked(false);
-      showHuntPopup(`에픽 토벌 보상 획득!<br>${lines.join('<br>')}`, '#FFD27D');
+      showEpicRewardConfirm(lines);
     });
   }
 
