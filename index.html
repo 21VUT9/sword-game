@@ -31997,6 +31997,33 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 #epicMonsterClaimBtnFloating:hover{background:rgba(255,223,132,.24)}
 #epicMonsterDim{position:absolute;left:50%;top:35%;transform:translate(-50%,-50%);width:min(660px,88vw);height:min(660px,88vw);border-radius:50%;pointer-events:none;z-index:1;background:radial-gradient(circle, rgba(0,0,0,.48) 0%, rgba(0,0,0,.30) 42%, rgba(0,0,0,.10) 68%, rgba(0,0,0,0) 82%);} 
 #epicMonsterClaimBtn:hover{background:rgba(255,223,132,.24)}
+
+#epicChestOverlay{position:fixed;inset:0;z-index:6200;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.78);backdrop-filter:blur(3px)}
+#epicChestOverlay.show{display:flex}
+#epicChestPanel{width:min(430px,92vw);padding:24px 18px 20px;border-radius:18px;border:1px solid rgba(255,233,170,.22);background:linear-gradient(180deg,rgba(34,25,14,.97),rgba(18,13,8,.98));box-shadow:0 18px 40px rgba(0,0,0,.55);text-align:center;color:#f7ebcf}
+#epicChestTitle{font-size:20px;font-weight:900;color:#ffe6a0;margin-bottom:6px;letter-spacing:.3px}
+#epicChestSub{font-size:13px;color:#d8c7a3;line-height:1.5;margin-bottom:18px;white-space:pre-line}
+#epicChestVisualWrap{display:flex;justify-content:center;align-items:center;min-height:220px;margin-bottom:14px}
+#epicChestVisual{position:relative;width:180px;height:146px;cursor:pointer;transform:translateZ(0);transition:transform .16s ease,filter .16s ease}
+#epicChestVisual:hover{transform:translateY(-2px) scale(1.02);filter:brightness(1.06)}
+#epicChestVisual:active{transform:translateY(1px) scale(.99)}
+#epicChestVisual.opened{cursor:default;animation:epicChestGlow 1.1s ease-out 1}
+#epicChestVisual .chest-base{position:absolute;left:18px;right:18px;bottom:10px;height:84px;border-radius:18px 18px 22px 22px;background:linear-gradient(180deg,#8f5b24 0%,#6f431a 34%,#4c2d12 100%);border:3px solid rgba(255,214,120,.32);box-shadow:inset 0 8px 0 rgba(255,223,150,.12),0 14px 28px rgba(0,0,0,.38)}
+#epicChestVisual .chest-lid{position:absolute;left:10px;right:10px;top:18px;height:58px;border-radius:24px 24px 16px 16px;background:linear-gradient(180deg,#a36a2c 0%,#7a4a1c 55%,#5b3514 100%);border:3px solid rgba(255,214,120,.34);transform-origin:50% 100%;transition:transform .34s cubic-bezier(.2,.8,.2,1),top .34s cubic-bezier(.2,.8,.2,1),filter .22s ease;box-shadow:inset 0 8px 0 rgba(255,227,168,.12),0 10px 18px rgba(0,0,0,.28)}
+#epicChestVisual .chest-band-v{position:absolute;top:18px;bottom:10px;left:50%;width:16px;transform:translateX(-50%);background:linear-gradient(180deg,#d4b05d 0%,#9b7631 100%);box-shadow:inset 0 0 0 2px rgba(64,39,10,.28)}
+#epicChestVisual .chest-band-h{position:absolute;left:18px;right:18px;top:74px;height:14px;background:linear-gradient(180deg,#d4b05d 0%,#9b7631 100%);box-shadow:inset 0 0 0 2px rgba(64,39,10,.28)}
+#epicChestVisual .chest-lock{position:absolute;left:50%;top:72px;width:28px;height:34px;transform:translateX(-50%);border-radius:8px 8px 10px 10px;background:linear-gradient(180deg,#f0d890 0%,#b98732 100%);box-shadow:inset 0 0 0 2px rgba(91,57,12,.35),0 4px 8px rgba(0,0,0,.24)}
+#epicChestVisual .chest-lock:before{content:"";position:absolute;left:50%;top:-12px;width:18px;height:16px;transform:translateX(-50%);border:4px solid #cfa247;border-bottom:none;border-radius:12px 12px 0 0;box-sizing:border-box}
+#epicChestVisual .chest-spark{position:absolute;inset:-14px;border-radius:28px;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 44%,rgba(255,229,138,.68),rgba(255,201,79,.18) 38%,rgba(255,179,70,0) 72%)}
+#epicChestVisual.opened .chest-lid{top:-6px;transform:perspective(340px) rotateX(-72deg);filter:brightness(1.12)}
+#epicChestVisual.opened .chest-spark{opacity:1;animation:epicChestSpark 1.2s ease-out infinite alternate}
+#epicChestRewardList{display:none;margin-top:6px;padding:14px 14px 10px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,233,170,.12);font-size:14px;line-height:1.75;color:#ffe7b8;white-space:pre-line}
+#epicChestRewardList.show{display:block}
+#epicChestActionRow{margin-top:16px;display:flex;justify-content:center;gap:10px}
+#epicChestConfirmBtn{display:none;margin:0;padding:10px 22px;border-radius:12px;border:1px solid rgba(255,223,132,.36);background:rgba(255,223,132,.14);color:#ffe9aa;font-weight:900;cursor:pointer}
+#epicChestConfirmBtn.show{display:inline-block}
+@keyframes epicChestGlow{0%{filter:brightness(1)}50%{filter:brightness(1.18)}100%{filter:brightness(1)}}
+@keyframes epicChestSpark{0%{transform:scale(.96);opacity:.55}100%{transform:scale(1.06);opacity:1}}
 #epicMonsterHint{position:absolute;left:50%;top:calc(50% + 130px);transform:translateX(-50%);font-size:13px;font-weight:700;color:#dcdcdc;text-shadow:0 1px 4px rgba(0,0,0,.8);display:none}
 .epic-local-log{color:#8ed3ff;font-weight:900}
 </style>
@@ -32025,6 +32052,27 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   </div>
 </div>
 <div id="epicMonsterClaimFloating"><button id="epicMonsterClaimBtnFloating" type="button">보상받기</button></div>
+
+<div id="epicChestOverlay" aria-hidden="true">
+  <div id="epicChestPanel">
+    <div id="epicChestTitle">에픽 보물상자</div>
+    <div id="epicChestSub">보물상자를 터치해 열기</div>
+    <div id="epicChestVisualWrap">
+      <div id="epicChestVisual" role="button" tabindex="0" aria-label="보물상자 열기">
+        <div class="chest-spark"></div>
+        <div class="chest-lid"></div>
+        <div class="chest-base"></div>
+        <div class="chest-band-v"></div>
+        <div class="chest-band-h"></div>
+        <div class="chest-lock"></div>
+      </div>
+    </div>
+    <div id="epicChestRewardList"></div>
+    <div id="epicChestActionRow">
+      <button id="epicChestConfirmBtn" type="button">확인</button>
+    </div>
+  </div>
+</div>
 <script>
 (function(){
   if (window.__EPIC_MONSTER_SYSTEM__) return; window.__EPIC_MONSTER_SYSTEM__ = true;
@@ -32593,24 +32641,66 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
 
+
+  const EPIC_CHEST_STATE = { lines: [], opened: false, visible: false };
+
+  function resetEpicChestState(){
+    EPIC_CHEST_STATE.lines = [];
+    EPIC_CHEST_STATE.opened = false;
+    EPIC_CHEST_STATE.visible = false;
+    const overlay = document.getElementById('epicChestOverlay');
+    const visual = document.getElementById('epicChestVisual');
+    const rewardList = document.getElementById('epicChestRewardList');
+    const confirmBtn = document.getElementById('epicChestConfirmBtn');
+    const sub = document.getElementById('epicChestSub');
+    if (overlay) overlay.classList.remove('show');
+    if (visual) visual.classList.remove('opened');
+    if (rewardList) { rewardList.classList.remove('show'); rewardList.innerHTML = ''; }
+    if (confirmBtn) confirmBtn.classList.remove('show');
+    if (sub) sub.textContent = '보물상자를 터치해 열기';
+  }
+
   function showEpicRewardConfirm(lines){
     const safe = Array.isArray(lines) ? lines.filter(Boolean) : [];
-    const html = `
-      <div style="text-align:center;font-size:14px;line-height:1.7;">
-        <div style="font-weight:900;font-size:16px;margin-bottom:8px;">에픽 토벌 보상 획득!</div>
-        <div style="color:#ffe2a6;white-space:pre-line;">${safe.join('<br>') || '보상을 획득했습니다.'}</div>
-        <div style="margin-top:14px;">
-          <button onclick="closeNpcPopup()" style="padding:8px 18px;border-radius:10px;border:1px solid #66512a;background:#2a2112;color:#ffe7a3;font-weight:900;cursor:pointer;">확인</button>
-        </div>
-      </div>`;
-    if (typeof showNpcMessage === 'function') {
-      showNpcMessage(html, null, false, '');
-    } else if (typeof showHuntPopup === 'function') {
-      showHuntPopup(`에픽 토벌 보상 획득!<br>${safe.join('<br>')}`, '#FFD27D');
-    } else {
-      alert('에픽 토벌 보상 획득!\n' + safe.join('\n'));
-    }
+    EPIC_CHEST_STATE.lines = safe.slice();
+    EPIC_CHEST_STATE.opened = false;
+    EPIC_CHEST_STATE.visible = true;
+    const overlay = document.getElementById('epicChestOverlay');
+    const visual = document.getElementById('epicChestVisual');
+    const rewardList = document.getElementById('epicChestRewardList');
+    const confirmBtn = document.getElementById('epicChestConfirmBtn');
+    const sub = document.getElementById('epicChestSub');
+    if (rewardList) { rewardList.classList.remove('show'); rewardList.innerHTML = ''; }
+    if (confirmBtn) confirmBtn.classList.remove('show');
+    if (visual) visual.classList.remove('opened');
+    if (sub) sub.textContent = '보물상자를 터치해 열기';
+    if (overlay) overlay.classList.add('show');
   }
+
+  function openEpicRewardChest(ev){
+    if (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch(e){} }
+    if (!EPIC_CHEST_STATE.visible || EPIC_CHEST_STATE.opened) return;
+    EPIC_CHEST_STATE.opened = true;
+    const visual = document.getElementById('epicChestVisual');
+    const rewardList = document.getElementById('epicChestRewardList');
+    const confirmBtn = document.getElementById('epicChestConfirmBtn');
+    const sub = document.getElementById('epicChestSub');
+    if (visual) visual.classList.add('opened');
+    if (sub) sub.textContent = '에픽 토벌 보상 획득!';
+    if (rewardList) {
+      rewardList.innerHTML = EPIC_CHEST_STATE.lines.length ? EPIC_CHEST_STATE.lines.join('<br>') : '보상을 획득했습니다.';
+      rewardList.classList.add('show');
+    }
+    if (confirmBtn) confirmBtn.classList.add('show');
+  }
+
+  function closeEpicRewardChest(ev){
+    if (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch(e){} }
+    resetEpicChestState();
+  }
+
+  window.openEpicRewardChest = openEpicRewardChest;
+  window.closeEpicRewardChest = closeEpicRewardChest;
 
   let epicAttackLockUntil = 0;
 
@@ -32764,6 +32854,11 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   if (claimBtn) { claimBtn.onclick = null; claimBtn.addEventListener('click', claimEpicReward, { passive:false }); }
   const claimBtnFloating = document.getElementById('epicMonsterClaimBtnFloating');
   if (claimBtnFloating) { claimBtnFloating.onclick = null; claimBtnFloating.addEventListener('click', claimEpicReward, { passive:false }); }
+
+  const epicChestVisual = document.getElementById('epicChestVisual');
+  if (epicChestVisual) { epicChestVisual.onclick = null; epicChestVisual.addEventListener('click', openEpicRewardChest, { passive:false }); epicChestVisual.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') openEpicRewardChest(e); }); }
+  const epicChestConfirmBtn = document.getElementById('epicChestConfirmBtn');
+  if (epicChestConfirmBtn) { epicChestConfirmBtn.onclick = null; epicChestConfirmBtn.addEventListener('click', closeEpicRewardChest, { passive:false }); }
 
   ensureEpicSubscription();
   epicRenderTimer = setInterval(() => { renderEpicOverlay(); maybeTickEpic(); maybeCleanupEpic(); }, 1000);
