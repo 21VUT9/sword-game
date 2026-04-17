@@ -31990,13 +31990,32 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 #epicMonsterHpFrame{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}
 #epicMonsterHpText{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000}
 #epicMonsterClaimBox{display:none !important}
-#epicMonsterClaimBtn{margin:0;padding:12px 24px;border-radius:12px;border:1px solid rgba(255,223,132,.42);background:rgba(255,223,132,.16);color:#111;font-weight:900;cursor:pointer;box-shadow:0 0 14px rgba(255,215,90,.18)}
+#epicMonsterClaimBtn,
+#epicMonsterClaimBtnFloating{
+  margin:0;
+  padding:12px 20px;
+  background: linear-gradient(180deg, #ffd54f, #ff9800);
+  color:#111;
+  font-weight:900;
+  font-size:16px;
+  border:2px solid #ffffff;
+  border-radius:12px;
+  text-shadow:
+    0 1px 0 #ffffff,
+    0 0 4px rgba(0,0,0,0.8);
+  box-shadow:
+    0 0 10px rgba(255,180,0,0.6),
+    0 4px 10px rgba(0,0,0,0.5);
+  cursor:pointer;
+  z-index:9999;
+  transition: transform .1s ease, box-shadow .1s ease;
+}
 #epicMonsterClaimFloating{position:fixed;left:50%;top:calc(35% + 150px);transform:translateX(-50%);display:none;pointer-events:auto;z-index:5005}
 #epicMonsterClaimFloating.show{display:block}
 #epicMonsterClaimBtnFloating{margin:0;padding:12px 24px;border-radius:12px;border:1px solid rgba(255,223,132,.42);background:rgba(255,223,132,.16);color:#111;font-weight:900;cursor:pointer;box-shadow:0 0 14px rgba(255,215,90,.18)}
-#epicMonsterClaimBtnFloating:hover{background:rgba(255,223,132,.24)}
+
 #epicMonsterDim{position:absolute;left:50%;top:35%;transform:translate(-50%,-50%);width:min(660px,88vw);height:min(660px,88vw);border-radius:50%;pointer-events:none;z-index:1;background:radial-gradient(circle, rgba(0,0,0,.48) 0%, rgba(0,0,0,.30) 42%, rgba(0,0,0,.10) 68%, rgba(0,0,0,0) 82%);} 
-#epicMonsterClaimBtn:hover{background:rgba(255,223,132,.24)}
+
 
 #epicChestOverlay{position:fixed;inset:0;z-index:6200;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.78);backdrop-filter:blur(3px)}
 #epicChestOverlay.show{display:flex}
@@ -32039,10 +32058,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     <div id="epicFxLayer"></div>
     <div id="epicMonsterWrap"><img id="epicMonsterImg" alt="에픽 몬스터"></div>
     <div id="epicMonsterHint">에픽 몬스터를 클릭해 공격</div>
-    <div id="epicMonsterClaimBox"><button id="epicMonsterClaimBtn">보상받기</button></div>
+    <div id="epicMonsterClaimBox"><button id="epicMonsterClaimBtn">🎁 보상받기</button></div>
   </div>
 </div>
-<div id="epicMonsterClaimFloating"><button id="epicMonsterClaimBtnFloating" type="button">보상받기</button></div>
+<div id="epicMonsterClaimFloating"><button id="epicMonsterClaimBtnFloating" type="button">🎁 보상받기</button></div>
 
 <div id="epicChestOverlay" aria-hidden="true">
   <div id="epicChestPanel">
