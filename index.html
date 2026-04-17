@@ -32587,19 +32587,23 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       try { EPIC_REF.child('_lastTouchedAt').set(Date.now()); } catch(e){}
       const existing = getEpicForField(fieldId);
       if (existing && (existing.status === 'active' || existing.status === 'cleared')) return resolve(false);
+
       const dayKey = getTodayKey();
-      EPIC_DAILY_REF.child(dayKey).transaction(cur => {
-        cur = cur || { count:0, updatedAt:0 };
-        const cnt = Number(cur.count || 0);
-        if (cnt >= 10) return;
-        cur.count = cnt + 1;
-        cur.updatedAt = Date.now();
-        return cur;
-      }, (err, committed) => {
-        if (err || !committed) return resolve(false);
+      EPIC_DAILY_REF.child(dayKey).once('value').then(snap => {
+        const row = snap.val() || { count:0, updatedAt:0 };
+        const cnt = Number(row.count || 0);
+        if (cnt >= 10) {
+          resolve(false);
+          return;
+        }
+
         const bossId = EPIC_IDS[Math.floor(Math.random() * EPIC_IDS.length)];
         const def = EPIC_MONSTERS[bossId];
-        if (!def) return resolve(false);
+        if (!def) {
+          resolve(false);
+          return;
+        }
+
         const now = Date.now();
         const payload = {
           bossId,
@@ -32619,22 +32623,41 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
           cleanupAt: 0,
           claimed: {}
         };
+
         payload.participants[String(userId)] = {
           uid:String(userId),
           nick:String((typeof getNickSafe === 'function' ? getNickSafe() : userId) || userId),
           fieldId,
           lastSeen: now
         };
+
         EPIC_BY_FIELD_REF.child(String(fieldId)).transaction(cur => {
           if (cur && (cur.status === 'active' || cur.status === 'cleared')) return;
           return payload;
         }, (e2, committed2) => {
-          if (e2 || !committed2) return resolve(false);
-          const msg = `현재 [${localFieldName(fieldId)}]에 ${def.name}가 등장하였습니다.`;
-          writeLog(msg, false, { tone:'boss_apply' });
-          resolve(true);
+          if (e2 || !committed2) {
+            resolve(false);
+            return;
+          }
+
+          EPIC_DAILY_REF.child(dayKey).transaction(cur => {
+            cur = cur || { count:0, updatedAt:0 };
+            const nextCnt = Number(cur.count || 0);
+            if (nextCnt >= 10) return cur;
+            cur.count = nextCnt + 1;
+            cur.updatedAt = Date.now();
+            return cur;
+          }, (e3, committed3) => {
+            if (e3 || !committed3) {
+              resolve(false);
+              return;
+            }
+            const msg = `현재 [${localFieldName(fieldId)}]에 ${def.name}가 등장하였습니다.`;
+            writeLog(msg, false, { tone:'boss_apply' });
+            resolve(true);
+          });
         });
-      });
+      }).catch(() => resolve(false));
     });
   }
 
