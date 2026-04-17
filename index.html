@@ -849,21 +849,131 @@ button {
   margin: 6px 0 8px 0;
 }
   
-/* 🔔 토스트 */
-#toastLog {
-  position:fixed;
+/* 🔔 하단 실시간 영역 (로그 + 접속중 패널) */
+#toastDock{
+  position: fixed;
   bottom: calc(var(--workbench-h) + 10px);
-  left:50%;
-  transform:translateX(-50%);
-  width:90%;
-  max-width:600px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(96vw, 840px);
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 10px;
+  z-index: 1000;
+}
+
+#toastLog {
+  position: relative;
+  width: 560px;
+  max-width: 560px;
   background:rgba(0,0,0,0.75);
   border:1px solid #444;
   padding:8px;
   font-size:14px;
-  z-index:1000;
-  display: none;
+  box-sizing: border-box;
+  flex: 0 0 560px;
 }
+
+#onlineUsersPanel{
+  position: relative;
+  width: 260px;
+  max-width: 260px;
+  background:rgba(0,0,0,0.75);
+  border:1px solid #444;
+  padding:8px;
+  font-size:14px;
+  box-sizing: border-box;
+  flex: 0 0 260px;
+  color:#f2f2f2;
+  min-height: 44px;
+}
+
+.onlineUsers-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  font-size:13px;
+  font-weight:800;
+  color:#ececec;
+}
+
+.onlineUsers-count-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:30px;
+  height:22px;
+  padding:0 8px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.08);
+  color:#fff;
+  font-size:12px;
+  font-weight:900;
+}
+
+#onlineUsersSummary{
+  display:none;
+  padding:2px 0;
+  font-size:13px;
+  color:#ddd;
+  text-align:left;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+#onlineUsersList{
+  margin-top:8px;
+}
+
+.online-user-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:4px 0;
+  border-bottom:1px solid #333;
+  font-size:13px;
+}
+
+.online-user-name{
+  flex:1 1 auto;
+  min-width:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  text-align:left;
+  color:#f2f2f2;
+}
+
+.online-user-dot{
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  flex:0 0 10px;
+  box-shadow:0 0 8px rgba(0,0,0,0.45);
+}
+
+.online-user-dot.active{
+  background:#33d65f;
+  box-shadow:0 0 10px rgba(51,214,95,0.55);
+}
+
+.online-user-dot.idle{
+  background:#ff4d4d;
+  box-shadow:0 0 10px rgba(255,77,77,0.40);
+}
+
+.online-users-empty{
+  padding:8px 0 2px;
+  text-align:center;
+  color:#9b9b9b;
+  font-size:12px;
+}
+
   /* 🔔 로그 접기/펼치기 버튼 */
 .toastLog-controls{
   position: absolute;
@@ -889,10 +999,6 @@ button {
   margin: 0;
 }
 
-/* 버튼 때문에 상단 여백 살짝 확보(필요시 숫자만 조절) */
-#toastLog{
-  position: fixed; /* 기존 fixed면 그대로 두고, 아니면 이 줄은 빼도 됨 */
- }
 
 /* ✅ 모드별 표시 줄수 제어 */
 #toastLog.log-view-one  #toastList .toast-item:nth-child(n+2){ display:none; }
@@ -909,6 +1015,52 @@ button {
   max-height: 270px;     /* 컨트롤 버튼 영역 제외한 높이 */
   overflow-y: auto;
   padding-right: 6px;    /* 스크롤바 공간 */
+}
+
+#onlineUsersPanel.log-view-five #onlineUsersList{
+  max-height: 148px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+#onlineUsersPanel.log-view-panel #onlineUsersList{
+  max-height: 270px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+#onlineUsersPanel.log-view-one #onlineUsersSummary{
+  display:block;
+}
+#onlineUsersPanel.log-view-one #onlineUsersList,
+#onlineUsersPanel.log-view-one .onlineUsers-header{
+  display:none;
+}
+
+#onlineUsersPanel.log-view-five #onlineUsersSummary,
+#onlineUsersPanel.log-view-panel #onlineUsersSummary{
+  display:none;
+}
+
+@media (max-width: 920px){
+  #toastDock{
+    width: min(94vw, 620px);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  #toastLog,
+  #onlineUsersPanel{
+    width: 100%;
+    max-width: none;
+    flex: 1 1 auto;
+  }
+
+  #onlineUsersPanel.log-view-five #onlineUsersList,
+  #onlineUsersPanel.log-view-panel #onlineUsersList{
+    max-height: 120px;
+  }
 }
 
 /* panel 모드에서는 하단은 그냥 5줄로 둬도 되고(선호),
@@ -5339,14 +5491,25 @@ html, body {
   </div>
 </div>
 
-<!-- 🔔 로그 -->
-<div id="toastLog" class="log-view-five">
-  <div class="toastLog-controls">
-    <button id="toastFoldBtn" type="button">접기</button>
-    <button id="toastExpandBtn" type="button">펼치기</button>
+<!-- 🔔 로그 + 👥 접속중 -->
+<div id="toastDock">
+  <div id="toastLog" class="log-view-five">
+    <div class="toastLog-controls">
+      <button id="toastFoldBtn" type="button">접기</button>
+      <button id="toastExpandBtn" type="button">펼치기</button>
+    </div>
+
+    <div id="toastList"></div>
   </div>
 
-  <div id="toastList"></div>
+  <div id="onlineUsersPanel" class="log-view-five" aria-live="polite">
+    <div class="onlineUsers-header">
+      <span>현재 접속중</span>
+      <span id="onlineUsersCountBadge" class="onlineUsers-count-badge">0</span>
+    </div>
+    <div id="onlineUsersSummary">현재 접속중 0명</div>
+    <div id="onlineUsersList"></div>
+  </div>
 </div>
 
   <div id="workbenchDock">
@@ -9542,7 +9705,7 @@ destroyCount  = 0;
   setDisp("bossBattleIconBtn", "none");
 
   // ✅ 로그/작업대
-  setDisp("toastLog", "none");
+  setDisp("toastDock", "none");
   setDisp("workbenchDock", "none");
   setDisp("workbenchDockUI", "none");
 
@@ -10017,6 +10180,68 @@ function isSessionStale(data){
   const t = Number(data?.sessionUpdatedAt || 0);
   // 90초 이상 업데이트 없으면 죽은 세션으로 간주
   return !t || (Date.now() - t > 90000);
+}
+
+
+let onlineUsersRenderTimer = null;
+
+function getOnlineUsersForPanel(){
+  const now = Date.now();
+  const src = Array.isArray(allUsersCache) ? allUsersCache : [];
+  return src
+    .filter(u => u && u.id && u.sessionId)
+    .map(u => {
+      const last = Number(u.sessionUpdatedAt || 0);
+      const diff = last > 0 ? (now - last) : Number.POSITIVE_INFINITY;
+      return Object.assign({}, u, {
+        sessionUpdatedAt: last,
+        onlineDiffMs: diff,
+        isFreshOnline: diff <= 15000,
+        isVisibleOnline: diff <= 90000
+      });
+    })
+    .filter(u => u.isVisibleOnline)
+    .sort((a, b) => {
+      if (Number(b.isFreshOnline) !== Number(a.isFreshOnline)) {
+        return Number(b.isFreshOnline) - Number(a.isFreshOnline);
+      }
+      if (a.onlineDiffMs !== b.onlineDiffMs) return a.onlineDiffMs - b.onlineDiffMs;
+      return String(a.id || "").localeCompare(String(b.id || ""), "ko");
+    });
+}
+
+function renderOnlineUsersPanel(){
+  const panel = document.getElementById("onlineUsersPanel");
+  const badge = document.getElementById("onlineUsersCountBadge");
+  const summary = document.getElementById("onlineUsersSummary");
+  const listEl = document.getElementById("onlineUsersList");
+  if (!panel || !badge || !summary || !listEl) return;
+
+  const onlineUsers = getOnlineUsersForPanel();
+  const count = onlineUsers.length;
+
+  badge.textContent = String(count);
+  summary.textContent = `현재 접속중 ${count}명`;
+
+  if (count === 0){
+    listEl.innerHTML = '<div class="online-users-empty">접속중인 유저가 없습니다.</div>';
+    return;
+  }
+
+  listEl.innerHTML = onlineUsers.map(u => {
+    const dotClass = u.isFreshOnline ? 'active' : 'idle';
+    return `
+      <div class="online-user-row" title="${String(u.id || '').replace(/"/g, '&quot;')}">
+        <div class="online-user-name">${formatNicknameWithTitle(u.id, u.equippedTitle, u.reach30Count)}</div>
+        <span class="online-user-dot ${dotClass}"></span>
+      </div>
+    `;
+  }).join('');
+}
+
+function ensureOnlineUsersRenderTimer(){
+  if (onlineUsersRenderTimer) return;
+  onlineUsersRenderTimer = setInterval(renderOnlineUsersPanel, 5000);
 }
 
   // ================================
@@ -18271,7 +18496,7 @@ function login() {
     setDisplay("storybookIconBtn",  "block");
     setDisplay("cumulativeRewardIconBtn", "block");
 
-    setDisplay("toastLog",        "block");
+    setDisplay("toastDock",       "flex");
     setDisplay("workbenchDock",   "block");
     setDisplay("workbenchDockUI", "flex");
 
@@ -20336,7 +20561,7 @@ setDisplay("questIconBtn",      "block");
 setDisplay("storybookIconBtn",  "block");
 setDisplay("cumulativeRewardIconBtn", "block");
 
-setDisplay("toastLog",        "block");
+setDisplay("toastDock",       "flex");
 setDisplay("workbenchDock",   "block");
 setDisplay("workbenchDockUI", "flex");
 
@@ -20835,7 +21060,9 @@ function bindRankingUsersCache(){
         duelLose: Number(d.duelLose || 0),
         weaponType: d.weaponType || "sword",
         equippedTitle: d.equippedTitle || "",
-        reach30Count: Number(d.reach30Count || 0)
+        reach30Count: Number(d.reach30Count || 0),
+        sessionId: d.sessionId || "",
+        sessionUpdatedAt: Number(d.sessionUpdatedAt || 0)
       });
     });
     arr.sort((a, b) => {
@@ -20844,6 +21071,7 @@ function bindRankingUsersCache(){
     });
     allUsersCache = arr.slice();
     refreshUserListOverlayIfOpen();
+    renderOnlineUsersPanel();
     if (mainRankingTab === "upgrade") renderMainRanking();
   });
 }
@@ -25312,14 +25540,25 @@ function setToastLogMode(mode){
   toastLogMode = mode;
 
   const wrap = document.getElementById("toastLog");
+  const onlinePanel = document.getElementById("onlineUsersPanel");
   const foldBtn = document.getElementById("toastFoldBtn");
   const expBtn  = document.getElementById("toastExpandBtn");
-  if (!wrap || !foldBtn || !expBtn) return;
+  if (!wrap || !onlinePanel || !foldBtn || !expBtn) return;
 
   wrap.classList.remove("log-view-one","log-view-five","log-view-panel");
-  if (mode === "one")  wrap.classList.add("log-view-one");
-  if (mode === "five") wrap.classList.add("log-view-five");
-  if (mode === "panel")wrap.classList.add("log-view-panel");
+  onlinePanel.classList.remove("log-view-one","log-view-five","log-view-panel");
+  if (mode === "one") {
+    wrap.classList.add("log-view-one");
+    onlinePanel.classList.add("log-view-one");
+  }
+  if (mode === "five") {
+    wrap.classList.add("log-view-five");
+    onlinePanel.classList.add("log-view-five");
+  }
+  if (mode === "panel") {
+    wrap.classList.add("log-view-panel");
+    onlinePanel.classList.add("log-view-panel");
+  }
 
   // 버튼 노출 규칙:
   // five : 접기/펼치기 둘다
@@ -25335,6 +25574,8 @@ function setToastLogMode(mode){
     foldBtn.style.display = "inline-block";
     expBtn.style.display  = "none";
   }
+
+  renderOnlineUsersPanel();
 }
 
 function openLogPanelOnly(){
@@ -25384,6 +25625,8 @@ function onToastExpand(){
   const expBtn  = document.getElementById("toastExpandBtn");
   if (foldBtn) foldBtn.onclick = onToastFold;
   if (expBtn)  expBtn.onclick  = onToastExpand;
+
+  ensureOnlineUsersRenderTimer();
 
   // 초기 상태: 5줄
   setToastLogMode("five");
