@@ -33454,5 +33454,43 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 })();
 </script>
 
+
+<!-- 🔊 효과음 -->
+<audio id="sfxPurchase" src="sounds/shop_purchase.mp3"></audio>
+<audio id="sfxDismantle" src="sounds/scroll_dismantle.mp3"></audio>
+<audio id="sfxCombine" src="sounds/scroll_combine.mp3"></audio>
+
+<script>
+(function(){
+  const purchase = document.getElementById('sfxPurchase');
+  const dis = document.getElementById('sfxDismantle');
+  const com = document.getElementById('sfxCombine');
+
+  function play(a){
+    if(!a) return;
+    a.currentTime = 0;
+    a.play().catch(()=>{});
+  }
+
+  const log = document.getElementById('toastList');
+  if(log){
+    const obs = new MutationObserver(()=>{
+      const items = log.querySelectorAll('.toast-item');
+      if(!items.length) return;
+      const last = items[items.length-1].innerText;
+
+      if(last.includes('구매 완료') || last.includes('구매완료')){
+        play(purchase);
+      }else if(last.includes('분해')){
+        play(dis);
+      }else if(last.includes('합성')){
+        play(com);
+      }
+    });
+    obs.observe(log, {childList:true});
+  }
+})();
+</script>
+
 </body>
 </html>
