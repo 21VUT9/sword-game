@@ -9081,11 +9081,13 @@ function renderScrollShopItems() {
 
   scrollShopItems.forEach((item) => {
     const priceIcon =
-  item.priceType === "starShard"
-    ? "images/items/star_shard.png"
-    : item.priceType === "honor"
-      ? "images/items/honor_medal.png"
-      : "images/items/scroll_down_protect.png";
+  item.priceType === "gold"
+    ? "images/items/gold.png"
+    : item.priceType === "starShard"
+      ? "images/items/star_shard.png"
+      : item.priceType === "honor"
+        ? "images/items/honor_medal.png"
+        : "images/items/scroll_down_protect.png";
 
     html += `
       <div
