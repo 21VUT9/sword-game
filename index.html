@@ -10807,7 +10807,6 @@ const TITLE_DEFS = [
   { id:"runeIdentify100", name:"통찰자", how:"룬 감정 100회" },
   { id:"runeDis10", name:"믹서기", how:"룬 분해 10회" },
   { id:"runeDis100", name:"분쇄기", how:"룬 분해 100회" },
-  { id:"arselia10", name:"한의민족", how:"아르셀리아 10회 토벌" },
   { id:"briella50", name:"협객", how:"시체수집가 브리엘라 50회 토벌" },
   { id:"spore50", name:"독버섯", how:"극독의 스포어노이드 50회 토벌" },
   { id:"pest50", name:"흑사병", how:"질병의 페스트로드 50회 토벌" },
@@ -11161,7 +11160,6 @@ if (weaponType === "scythe" && curLv >= 30) {
   if (Number(runeAppraiseCount || 0) >= 100) changed = grantTitleOnceNoSave("runeIdentify100") || changed;
   if (Number(runeDismantleCount || 0) >= 10) changed = grantTitleOnceNoSave("runeDis10") || changed;
   if (Number(runeDismantleCount || 0) >= 100) changed = grantTitleOnceNoSave("runeDis100") || changed;
-  if (Number((bossKillCountById && bossKillCountById["frost_queen"]) || 0) >= 10) changed = grantTitleOnceNoSave("arselia10") || changed;
   if (Number((bossKillCountById && bossKillCountById["briella"]) || 0) >= 50) changed = grantTitleOnceNoSave("briella50") || changed;
   if (Number((bossKillCountById && bossKillCountById["spore_noid"]) || 0) >= 50) changed = grantTitleOnceNoSave("spore50") || changed;
   if (Number((bossKillCountById && bossKillCountById["plague_lord"]) || 0) >= 50) changed = grantTitleOnceNoSave("pest50") || changed;
