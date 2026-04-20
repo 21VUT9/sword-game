@@ -8043,6 +8043,21 @@ function playShardSfx(){
   playSfx("sounds/sfx_upgrade_success.mp3", 0.9);
 }
 
+// ✅ 마법스크롤상점 전용 SFX
+const SFX_SCROLLSHOP_PURCHASE = "sounds/shop_purchase_confirm.mp3";
+const SFX_SCROLLSHOP_DISMANTLE = "sounds/scroll_dismantle_magic.mp3";
+const SFX_SCROLLSHOP_SYNTHESIZE = "sounds/scroll_synthesize_magic.mp3";
+
+function playScrollShopPurchaseSfx(){
+  playSfx(SFX_SCROLLSHOP_PURCHASE, 0.92);
+}
+function playScrollShopDismantleSfx(){
+  playSfx(SFX_SCROLLSHOP_DISMANTLE, 0.95);
+}
+function playScrollShopSynthesizeSfx(){
+  playSfx(SFX_SCROLLSHOP_SYNTHESIZE, 0.95);
+}
+
 // ✅ 보스 타격음 파일명 제안
 const BOSS_HIT_SFX = {
   miss: "sounds/boss_hit_miss.mp3",
@@ -9322,6 +9337,7 @@ function proceedScrollShopPurchase(item, qty) {
     grantScrollShopItem(item, qty2);
 
     // 구매 성공 멘트
+    playScrollShopPurchaseSfx();
     showNpcMessage(
       `
       <div style="font-size:15px; margin-bottom:4px;">
@@ -9482,6 +9498,7 @@ function confirmDisassemble(){
 
   // 4) 팝업 닫고 완료 메시지
   closeNpcPopup();
+  playScrollShopDismantleSfx();
   showNpcMessage(
     `분해 완료!<br><span style="color:#ffd54f;">마력이 깃든 종이 ${meta.paper * disQty}개</span> 획득`,
     null, true, ""
@@ -23509,6 +23526,7 @@ function confirmSynthesize(){
     renderScrollShopItems();
 
     // ✅ 분해와 동일한 구조로 결과 메시지
+    playScrollShopSynthesizeSfx();
     showNpcMessage(
       `합성 완료!<br><span style="color:#ffd54f;">${meta.name} ${qty}개</span> 획득`,
       meta.img,
@@ -33451,44 +33469,6 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     briella_alive: 'images/epic/briella_idle.png',
     briella_dead: 'images/epic/briella_down.png'
   };
-})();
-</script>
-
-
-<!-- 🔊 효과음 -->
-<audio id="sfxPurchase" src="sounds/shop_purchase.mp3"></audio>
-<audio id="sfxDismantle" src="sounds/scroll_dismantle.mp3"></audio>
-<audio id="sfxCombine" src="sounds/scroll_combine.mp3"></audio>
-
-<script>
-(function(){
-  const purchase = document.getElementById('sfxPurchase');
-  const dis = document.getElementById('sfxDismantle');
-  const com = document.getElementById('sfxCombine');
-
-  function play(a){
-    if(!a) return;
-    a.currentTime = 0;
-    a.play().catch(()=>{});
-  }
-
-  const log = document.getElementById('toastList');
-  if(log){
-    const obs = new MutationObserver(()=>{
-      const items = log.querySelectorAll('.toast-item');
-      if(!items.length) return;
-      const last = items[items.length-1].innerText;
-
-      if(last.includes('구매 완료') || last.includes('구매완료')){
-        play(purchase);
-      }else if(last.includes('분해')){
-        play(dis);
-      }else if(last.includes('합성')){
-        play(com);
-      }
-    });
-    obs.observe(log, {childList:true});
-  }
 })();
 </script>
 
