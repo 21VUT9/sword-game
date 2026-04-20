@@ -402,6 +402,60 @@ body {
   font-weight: 900 !important;
   animation: redGlowPulse 1.25s infinite ease-in-out;
 }
+
+/* 💜 [이게되네?] 연보라 글로우 + 별먼지 */
+@keyframes lilacGlowPulse {
+  0% {
+    text-shadow:
+      0 0 4px rgba(190, 150, 255, 0.34),
+      0 0 10px rgba(185, 135, 255, 0.26),
+      0 0 16px rgba(220, 190, 255, 0.18);
+    filter: saturate(1.02);
+  }
+  50% {
+    text-shadow:
+      0 0 7px rgba(210, 168, 255, 0.62),
+      0 0 16px rgba(193, 145, 255, 0.48),
+      0 0 28px rgba(230, 205, 255, 0.32);
+    filter: saturate(1.18);
+  }
+  100% {
+    text-shadow:
+      0 0 4px rgba(190, 150, 255, 0.34),
+      0 0 10px rgba(185, 135, 255, 0.26),
+      0 0 16px rgba(220, 190, 255, 0.18);
+    filter: saturate(1.02);
+  }
+}
+
+.title-lilacglow {
+  position: relative;
+  display: inline-block;
+  color: #d8b6ff !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.3px;
+  animation: lilacGlowPulse 1.5s ease-in-out infinite;
+}
+
+.title-lilacglow::after {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle, rgba(238,224,255,0.55) 1px, transparent 1.8px),
+    radial-gradient(circle, rgba(203,168,255,0.34) 1px, transparent 2.1px);
+  background-size: 18px 18px, 28px 28px;
+  background-position: 0 0, 11px 7px;
+  opacity: 0.42;
+  filter: blur(0.35px);
+  animation: lilacDustFloat 7.8s linear infinite;
+}
+
+@keyframes lilacDustFloat {
+  from { background-position: 0 0, 11px 7px; }
+  to   { background-position: 34px 44px, 58px 70px; }
+}
   
 @keyframes plagueShine {
   0%   { background-position: 0% 50%; }
@@ -8168,6 +8222,10 @@ let unidentifiedRuneStones = 0;
 let runeSlotUnlockCount = 3;
 let runePresetIdx = 0;
 let runePresets = Array.from({length:3}, () => Array(9).fill(null));
+let runeAppraiseCount = 0;
+let runeDismantleCount = 0;
+let runeCollectedCount = 0;
+let runeStraightFiveCount = 0;
 let runeTab = "equip";
 let runeSortMode = "acquired";
 let runePendingEquipUid = "";
@@ -9795,6 +9853,10 @@ titleOverlayTab = "list";
   bossLeaderClearCount = 0;
   bossKillCountById = {};
   weeklyRank1Streak = 0;
+  runeAppraiseCount = 0;
+  runeDismantleCount = 0;
+  runeCollectedCount = 0;
+  runeStraightFiveCount = 0;
   superSuccessStreak = 0;
   upgradeFailStreak = 0;
   engraveNormalCount = 0;
@@ -10735,6 +10797,21 @@ const TITLE_DEFS = [
   { id:"rank_100t", name:"한계돌파", how:"랭킹전 딜량 100조 달성" },
   { id:"rank_200t", name:"초월", how:"랭킹전 딜량 200조 달성" },
   { id: "boss_raider",  name: "토벌대", how:"보스전 토벌1회 성공" },
+  { id:"runeSlot9", name:"해방", how:"룬 슬롯 9개 해금" },
+  { id:"runeEnh2", name:"각성자", how:"룬 2강 달성" },
+  { id:"runeEnh5", name:"초월자", how:"룬 5강 달성" },
+  { id:"starStraight", name:"이게되네?", how:"1→5성 스트레이트 강화", color:"lilacglow" },
+  { id:"runeCollect10", name:"룬입문자", how:"룬 10개 이상 수집" },
+  { id:"runeCollect100", name:"돌수집가", how:"룬 100개 이상 수집" },
+  { id:"runeIdentify10", name:"돋보기", how:"룬 감정 10회" },
+  { id:"runeIdentify100", name:"통찰자", how:"룬 감정 100회" },
+  { id:"runeDis10", name:"믹서기", how:"룬 분해 10회" },
+  { id:"runeDis100", name:"분쇄기", how:"룬 분해 100회" },
+  { id:"arselia10", name:"한의민족", how:"아르셀리아 10회 토벌" },
+  { id:"briella50", name:"협객", how:"시체수집가 브리엘라 50회 토벌" },
+  { id:"spore50", name:"독버섯", how:"극독의 스포어노이드 50회 토벌" },
+  { id:"pest50", name:"흑사병", how:"질병의 페스트로드 50회 토벌" },
+  { id:"epic100", name:"몬스터헌터", how:"에픽몬스터 100회 토벌" },
 
 ];
 
@@ -10756,6 +10833,10 @@ function getTitleColorStyle(colorKey) {
   // 역병쥐(반짝 짙은 초록)
   if (colorKey === "plague") {
     return "color:#00c853;font-weight:bold;text-shadow:0 0 10px rgba(0,200,83,0.7); animation:sparkle 1.2s infinite alternate;";
+  }
+
+  if (colorKey === "lilacglow") {
+    return "color:#d8b6ff;font-weight:bold;text-shadow:0 0 10px rgba(210,170,255,0.40);";
   }
 
   return "color:#9a9a9a;";
@@ -10795,7 +10876,9 @@ if (titleId === "god" || titleName === "신") {
       ? `<span class="title-redglow">[${titleName}]</span>`
       : (colorKey === "navyglow")
         ? `<span class="title-navyglow">[${titleName}]</span>`
-        : `<span style="${style}">[${titleName}]</span>`;
+        : (colorKey === "lilacglow")
+          ? `<span class="title-lilacglow">[${titleName}]</span>`
+          : `<span style="${style}">[${titleName}]</span>`;
 
   // ✅ 칭호 + 닉네임 + ★ 모두 유지
   return `${titleSpan}${safeId}${starHtml}`;
@@ -10818,6 +10901,10 @@ if (colorKey === "gold") {
   // 역병쥐(짙은 초록 + 반짝 느낌은 일단 글로우)
   if (colorKey === "plague") {
     return "color:#00c853;font-weight:bold;text-shadow:0 0 8px rgba(0,200,83,0.45);";
+  }
+
+  if (colorKey === "lilacglow") {
+    return "color:#d8b6ff;font-weight:bold;text-shadow:0 0 10px rgba(210,170,255,0.40);";
   }
 
   return "color:#9a9a9a;";
@@ -11060,6 +11147,28 @@ if (weaponType === "scythe" && curLv >= 30) {
   if (Number(upgradeFailStreak || 0) >= 20) changed = grantTitleOnceNoSave("great_challenge") || changed;
   if (Number(engraveNormalCount || 0) >= 300) changed = grantTitleOnceNoSave("engrave_normal_300") || changed;
   if (Number(engraveAdvancedCount || 0) >= 300) changed = grantTitleOnceNoSave("engrave_advanced_300") || changed;
+
+  const runeMaxLevel = Array.isArray(runeInventory) && runeInventory.length
+    ? Math.max(0, ...runeInventory.map(r => Number(r && r.level || 0)))
+    : 0;
+  if (Number(runeSlotUnlockCount || 0) >= 9) changed = grantTitleOnceNoSave("runeSlot9") || changed;
+  if (runeMaxLevel >= 2) changed = grantTitleOnceNoSave("runeEnh2") || changed;
+  if (runeMaxLevel >= 5) changed = grantTitleOnceNoSave("runeEnh5") || changed;
+  if (Number(runeStraightFiveCount || 0) >= 1) changed = grantTitleOnceNoSave("starStraight") || changed;
+  if (Number(runeCollectedCount || 0) >= 10) changed = grantTitleOnceNoSave("runeCollect10") || changed;
+  if (Number(runeCollectedCount || 0) >= 100) changed = grantTitleOnceNoSave("runeCollect100") || changed;
+  if (Number(runeAppraiseCount || 0) >= 10) changed = grantTitleOnceNoSave("runeIdentify10") || changed;
+  if (Number(runeAppraiseCount || 0) >= 100) changed = grantTitleOnceNoSave("runeIdentify100") || changed;
+  if (Number(runeDismantleCount || 0) >= 10) changed = grantTitleOnceNoSave("runeDis10") || changed;
+  if (Number(runeDismantleCount || 0) >= 100) changed = grantTitleOnceNoSave("runeDis100") || changed;
+  if (Number((bossKillCountById && bossKillCountById["frost_queen"]) || 0) >= 10) changed = grantTitleOnceNoSave("arselia10") || changed;
+  if (Number((bossKillCountById && bossKillCountById["briella"]) || 0) >= 50) changed = grantTitleOnceNoSave("briella50") || changed;
+  if (Number((bossKillCountById && bossKillCountById["spore_noid"]) || 0) >= 50) changed = grantTitleOnceNoSave("spore50") || changed;
+  if (Number((bossKillCountById && bossKillCountById["plague_lord"]) || 0) >= 50) changed = grantTitleOnceNoSave("pest50") || changed;
+  const epicKillTotal = Number((bossKillCountById && bossKillCountById["briella"]) || 0)
+    + Number((bossKillCountById && bossKillCountById["spore_noid"]) || 0)
+    + Number((bossKillCountById && bossKillCountById["plague_lord"]) || 0);
+  if (epicKillTotal >= 100) changed = grantTitleOnceNoSave("epic100") || changed;
 
   return changed;
 }
@@ -16294,8 +16403,11 @@ switch (reward.type) {
         kind,
         level: 1,
         isNew: true,
-        acquiredAt: Date.now()
+        acquiredAt: Date.now(),
+        perfectPath: true,
+        straightSuccessCount: 0
       });
+      runeCollectedCount = Number(runeCollectedCount || 0) + 1;
     }
     break;
   }
@@ -18458,6 +18570,10 @@ function login() {
       runeSlotUnlockCount = clampRuneUnlockCount(data.runeSlotUnlockCount);
       runePresetIdx = [0,1,2].includes(Number(data.runePresetIdx)) ? Number(data.runePresetIdx) : 0;
       runePresets = normalizeRunePresets(data.runePresets);
+      runeAppraiseCount = Number(data.runeAppraiseCount || 0);
+      runeDismantleCount = Number(data.runeDismantleCount || 0);
+      runeCollectedCount = Number(data.runeCollectedCount || 0);
+      runeStraightFiveCount = Number(data.runeStraightFiveCount || 0);
       couponUsedMap = data.couponUsed || {};
       // ✅ 퀘스트 상태(계정별) 로드
       questState = (data.questState && typeof data.questState === "object") ? data.questState : {};
@@ -18706,6 +18822,10 @@ function login() {
       runeSlotUnlockCount: 3,
       runePresetIdx: 0,
       runePresets: [Array(9).fill(null), Array(9).fill(null), Array(9).fill(null)],
+      runeAppraiseCount: 0,
+      runeDismantleCount: 0,
+      runeCollectedCount: 0,
+      runeStraightFiveCount: 0,
       // ⚠️ 네가 쓰던 글로벌30 기본값도 여기 포함(있으면)
       // lastSeenGlobal30EventId: ...,
       // aweUsedGlobal30EventId: 0
@@ -18780,6 +18900,10 @@ function save() {
     runeSlotUnlockCount: clampRuneUnlockCount(runeSlotUnlockCount),
     runePresetIdx: Number(runePresetIdx || 0),
     runePresets: normalizeRunePresets(runePresets),
+    runeAppraiseCount: Number(runeAppraiseCount || 0),
+    runeDismantleCount: Number(runeDismantleCount || 0),
+    runeCollectedCount: Number(runeCollectedCount || 0),
+    runeStraightFiveCount: Number(runeStraightFiveCount || 0),
     cumulativeRewardState: normalizeCumulativeRewardState(cumulativeRewardState),
     huntStamina: Number(huntStamina),
     lastStaminaUpdate: Number(lastStaminaUpdate),
@@ -21001,6 +21125,8 @@ function getRankingSnapshotTitleHtml(snap){
     titleHtml = `<span class="title-redglow">[${titleName}]</span>`;
   } else if (colorKey === "navyglow") {
     titleHtml = `<span class="title-navyglow">[${titleName}]</span>`;
+  } else if (colorKey === "lilacglow") {
+    titleHtml = `<span class="title-lilacglow">[${titleName}]</span>`;
   } else {
     titleHtml = `<span style="${getTitleColorStyle(colorKey)}">[${titleName}]</span>`;
   }
@@ -26259,7 +26385,9 @@ function normalizeRuneInventory(arr){
       kind,
       level: normalizeRuneLevel(it && it.level),
       acquiredAt: Number((it && it.acquiredAt) || Date.now() + idx),
-      isNew: Boolean(it && it.isNew)
+      isNew: Boolean(it && it.isNew),
+      perfectPath: (it && typeof it.perfectPath === "boolean") ? it.perfectPath : true,
+      straightSuccessCount: Math.max(0, Math.min(4, Number(it && it.straightSuccessCount || 0)))
     };
   }).slice(0, RUNE_STORAGE_LIMIT);
 }
@@ -26719,7 +26847,12 @@ function attemptRuneUpgrade(){
   let verdiaExpr = 'default';
   let flashClass = 'rune-flash-fail';
   if (roll < meta.success){
+    item.perfectPath = (typeof item.perfectPath === "boolean") ? item.perfectPath : true;
+    item.straightSuccessCount = Math.max(0, Number(item.straightSuccessCount || 0)) + 1;
     item.level = Math.min(5, Number(item.level||1) + 1);
+    if (Number(item.level || 1) >= 5 && item.perfectPath && Number(item.straightSuccessCount || 0) >= 4) {
+      runeStraightFiveCount = Number(runeStraightFiveCount || 0) + 1;
+    }
     line = `${getRuneDef(item.kind).name} 강화에 성공했습니다.`;
     verdiaExpr = 'happy';
     flashClass = 'rune-flash-success';
@@ -26727,6 +26860,8 @@ function attemptRuneUpgrade(){
     try{ playShardSfx(); }catch(e){}
   }
   else if (roll < meta.success + meta.keep){
+    item.perfectPath = false;
+    item.straightSuccessCount = 0;
     line = `${getRuneDef(item.kind).name} 강화에 실패했습니다. 단계가 유지됩니다.`;
     verdiaExpr = 'sad';
     flashClass = 'rune-flash-fail';
@@ -26735,6 +26870,8 @@ function attemptRuneUpgrade(){
     try{ playMetalCrackSfx(); }catch(e){}
   }
   else {
+    item.perfectPath = false;
+    item.straightSuccessCount = 0;
     item.level = Math.max(1, Number(item.level||1) - 1);
     line = `${getRuneDef(item.kind).name} 강화에 실패했습니다. 1단계 하락했습니다.`;
     verdiaExpr = 'sad';
@@ -26743,6 +26880,7 @@ function attemptRuneUpgrade(){
     try{ playMetalCrackSfx(); }catch(e){}
   }
   setRuneVerdiaExpression(verdiaExpr);
+  const titleChanged = checkAndGrantTitles();
   save(); update();
 
   const finishUpgrade = () => {
@@ -26792,8 +26930,10 @@ function attemptRuneDismantle(){
     const removeSet = new Set(targets.map(t => String(t.uid)));
     runeInventory = runeInventory.filter(it => !removeSet.has(String(it.uid)));
     itemEssence = Number(itemEssence||0) + essenceGain;
+    runeDismantleCount = Number(runeDismantleCount || 0) + Number(targets.length || 0);
     runeSelectedUid=''; runeSelectedTopUid='';
     popup.style.display='none';
+    checkAndGrantTitles();
     save(); update(); renderRuneOverlay();
   };
   cancelBtn.onclick = function(){ popup.style.display='none'; };
@@ -26817,8 +26957,11 @@ function attemptRuneAppraise(){
     gold = Math.max(0, Number(gold||0) - RUNE_APPRAISAL_COST);
     unidentifiedRuneStones = Math.max(0, Number(unidentifiedRuneStones||0) - 1);
     const kind = RUNE_KIND_KEYS[Math.floor(Math.random() * RUNE_KIND_KEYS.length)];
-    runeInventory.push({ uid:makeRuneUid(), kind, level:1, acquiredAt:Date.now(), isNew:true });
+    runeInventory.push({ uid:makeRuneUid(), kind, level:1, acquiredAt:Date.now(), isNew:true, perfectPath:true, straightSuccessCount:0 });
+    runeAppraiseCount = Number(runeAppraiseCount || 0) + 1;
+    runeCollectedCount = Number(runeCollectedCount || 0) + 1;
     runeSelectedStoneIndex = -1;
+    checkAndGrantTitles();
     save(); update(); renderRuneOverlay();
 
     setNpcName('룬마법사 – 베르디아');
