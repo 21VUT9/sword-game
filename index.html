@@ -10723,7 +10723,7 @@ const TITLE_DEFS = [
   { id:"swamp_lord", name:"늪의주인", how:"하이엘프퀸 실바나 토벌 10회" },
   { id:"captain10", name:"대장", how:"토벌대 대장 상태로 토벌 성공 10회" },
   { id:"attendance30", name:"개근", how:"연속 출석 30회 이상" },
-  { id:"dominion4", name:"군림", how:"랭킹전 주간랭킹 1위 4주 연속" },
+  { id:"dominion4", name:"군림", how:"랭킹전 주간랭킹 1위 4주 연속", color:"navyglow" },
   { id:"slayer10", name:"학살자", how:"나와 같거나 높은 강화의 상대에게 10회 연속 승리" },
   { id:"super_chain4", name:"우주대스타", how:"슈퍼강화 연속 4회 성공" },
   { id:"great_challenge", name:"위대한도전", how:"강화 연속 20회 실패" },
@@ -10793,7 +10793,9 @@ if (titleId === "god" || titleName === "신") {
   const titleSpan =
     (colorKey === "redgold")
       ? `<span class="title-redglow">[${titleName}]</span>`
-      : `<span style="${style}">[${titleName}]</span>`;
+      : (colorKey === "navyglow")
+        ? `<span class="title-navyglow">[${titleName}]</span>`
+        : `<span style="${style}">[${titleName}]</span>`;
 
   // ✅ 칭호 + 닉네임 + ★ 모두 유지
   return `${titleSpan}${safeId}${starHtml}`;
@@ -20997,6 +20999,8 @@ function getRankingSnapshotTitleHtml(snap){
     titleHtml = `<span class="title-god">[${titleName}]</span>`;
   } else if (colorKey === "redgold") {
     titleHtml = `<span class="title-redglow">[${titleName}]</span>`;
+  } else if (colorKey === "navyglow") {
+    titleHtml = `<span class="title-navyglow">[${titleName}]</span>`;
   } else {
     titleHtml = `<span style="${getTitleColorStyle(colorKey)}">[${titleName}]</span>`;
   }
