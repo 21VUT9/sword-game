@@ -5286,6 +5286,22 @@ a, button, [role="button"], .actionBtn, .dock-btn, .map-field, .inventory-slot {
   cursor: pointer;
 }
 
+
+/* ⚡ 보스전/랭킹전 연타 입력 가속 */
+#bossBattleBossWrap,
+#bossBattleBossImg,
+#bossBattleOverlay,
+#bossBattleOverlay * {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+#bossBattleBossImg{
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+}
+
 </style>
 </head>
 
@@ -6217,7 +6233,7 @@ box-sizing: border-box;">
          -webkit-tap-highlight-color: rgba(0,0,0,0);
          -webkit-user-select:none;
          -webkit-touch-callout:none;"
-       onclick="attackBossByClick(event)">
+       >
 </div>
           
           <!-- ✅ (신규) 보스 타격/숫자 FX 레이어 (보스 화면 내부 전용) -->
@@ -33730,6 +33746,77 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       }
     }, { passive: false });
   });
+})();
+</script>
+
+
+<script>
+/* ⚡ 모바일 보스전/랭킹전 연타 가속 */
+(function(){
+  let lastFastAttackAt = 0;
+  let suppressClickUntil = 0;
+
+  function buildAttackEventFromTouch(touch){
+    return {
+      clientX: touch && Number.isFinite(touch.clientX) ? touch.clientX : (window.innerWidth / 2),
+      clientY: touch && Number.isFinite(touch.clientY) ? touch.clientY : (window.innerHeight / 2)
+    };
+  }
+
+  function shouldHandleBossFastTap(target){
+    if (!target) return false;
+    return !!(target.id === "bossBattleBossImg" || target.closest && target.closest("#bossBattleBossImg"));
+  }
+
+  function tryFastAttack(ev){
+    const now = Date.now();
+
+    // 너무 촘촘한 중복 이벤트(동일 탭에서 pointerdown + touchstart 둘 다 오는 경우)만 억제
+    if (now - lastFastAttackAt < 22) return false;
+
+    lastFastAttackAt = now;
+    suppressClickUntil = now + 420;
+
+    try {
+      attackBossByClick(ev || { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 });
+      return true;
+    } catch (err) {
+      console.warn("fast boss tap 실패", err);
+      return false;
+    }
+  }
+
+  document.addEventListener("touchstart", function(e){
+    if (!shouldHandleBossFastTap(e.target)) return;
+    if (!e.changedTouches || !e.changedTouches.length) return;
+
+    const touch = e.changedTouches[0];
+    const fakeEv = buildAttackEventFromTouch(touch);
+
+    e.preventDefault();
+    e.stopPropagation();
+    tryFastAttack(fakeEv);
+  }, { passive: false, capture: true });
+
+  document.addEventListener("pointerdown", function(e){
+    if (!shouldHandleBossFastTap(e.target)) return;
+
+    // 모바일 터치/펜 위주로 즉시 처리. 마우스는 기존 클릭 체계 유지해도 되지만 체감 통일 위해 같이 처리
+    if (e.pointerType === "touch" || e.pointerType === "pen" || e.pointerType === "mouse") {
+      e.preventDefault();
+      e.stopPropagation();
+      tryFastAttack({ clientX: e.clientX, clientY: e.clientY });
+    }
+  }, { passive: false, capture: true });
+
+  // 기존 inline click / click 리스너가 남아 있어도 모바일에선 중복 공격 막기
+  document.addEventListener("click", function(e){
+    if (!shouldHandleBossFastTap(e.target)) return;
+    if (Date.now() < suppressClickUntil) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, { passive: false, capture: true });
 })();
 </script>
 
