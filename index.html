@@ -5228,6 +5228,64 @@ button,
   -webkit-tap-highlight-color: rgba(0,0,0,0);
 }
 
+
+/* 📱 모바일 게임 터치 강화 세트 (오버레이 포함) */
+html, body, #appFrame,
+.uiOverlay,
+#bossBattleOverlay,
+#rankingBattleOverlay,
+#duelOverlay,
+#npcOverlay,
+#attendanceOverlay,
+#achievementOverlay,
+#questOverlay,
+#storybookOverlay,
+#inventoryOverlay,
+#scrollShopOverlay,
+#engraveOverlay,
+#otherProfileOverlay,
+#cumulativeRewardOverlay,
+#mapPanel,
+.invPanel,
+.other-profile-card,
+#worldBanner {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+
+button,
+.actionBtn,
+.dock-btn,
+.map-icon-btn,
+.left-icon-btn,
+.inventory-slot,
+.questRowText,
+.userListName,
+.rank-user,
+#weaponImage,
+#fieldBg,
+#bossImage,
+#bossBattleOverlay button,
+#rankingBattleOverlay button,
+#duelOverlay button,
+.uiOverlay button,
+.uiOverlay [role="button"],
+.uiOverlay .map-field,
+.uiOverlay .inventory-slot,
+.uiOverlay .questRowText,
+.uiOverlay .userListName,
+.uiOverlay .rank-user {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 터치 반응 지연 감소용 */
+a, button, [role="button"], .actionBtn, .dock-btn, .map-field, .inventory-slot {
+  cursor: pointer;
+}
+
 </style>
 </head>
 
@@ -33576,36 +33634,106 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 </script>
 
 
+
 <script>
-/* 📱 더블탭 확대 차단 + 탭 반응 최적화 */
+/* 📱 오버레이 포함 더블탭 확대 차단 + 연속터치 최적화 */
 (function () {
   let lastTouchEnd = 0;
   let lastTouchX = 0;
   let lastTouchY = 0;
+  let lastTouchTarget = null;
+
+  function isGameInteractiveTarget(target) {
+    if (!target) return false;
+    return !!target.closest(
+      [
+        '#appFrame',
+        '.uiOverlay',
+        '#bossBattleOverlay',
+        '#rankingBattleOverlay',
+        '#duelOverlay',
+        '#npcOverlay',
+        '#attendanceOverlay',
+        '#achievementOverlay',
+        '#questOverlay',
+        '#storybookOverlay',
+        '#inventoryOverlay',
+        '#scrollShopOverlay',
+        '#engraveOverlay',
+        '#otherProfileOverlay',
+        '#cumulativeRewardOverlay',
+        '.dock-btn',
+        '.actionBtn',
+        'button',
+        '.inventory-slot',
+        '.map-field',
+        '.questRowText',
+        '.rank-user',
+        '.userListName',
+        '#weaponImage',
+        '#fieldBg',
+        '#bossImage'
+      ].join(',')
+    );
+  }
+
+  function sameTargetArea(a, b) {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    return a.closest && b.closest && (
+      a.closest('button, .actionBtn, .dock-btn, .inventory-slot, .map-field, .questRowText, .rank-user, .userListName, #weaponImage, #fieldBg, #bossImage') ===
+      b.closest('button, .actionBtn, .dock-btn, .inventory-slot, .map-field, .questRowText, .rank-user, .userListName, #weaponImage, #fieldBg, #bossImage')
+    );
+  }
+
+  document.addEventListener('touchstart', function (e) {
+    // 핀치 줌은 유지
+    if (e.touches && e.touches.length > 1) return;
+    const target = e.target;
+    if (!isGameInteractiveTarget(target)) return;
+
+    const now = Date.now();
+    const touch = e.touches && e.touches[0];
+    if (!touch) return;
+
+    const delta = now - lastTouchEnd;
+    const dx = Math.abs(touch.clientX - lastTouchX);
+    const dy = Math.abs(touch.clientY - lastTouchY);
+
+    // 같은 영역에서의 빠른 2연속 탭은 브라우저 확대 제스처로 가지 못하게 차단
+    if (delta > 0 && delta < 320 && dx < 30 && dy < 30 && sameTargetArea(target, lastTouchTarget)) {
+      e.preventDefault();
+    }
+  }, { passive: false });
 
   document.addEventListener('touchend', function (e) {
     if ((e.touches && e.touches.length > 1) || (e.changedTouches && e.changedTouches.length > 1)) {
       return;
     }
-
     const touch = e.changedTouches && e.changedTouches[0];
-    const now = Date.now();
-    const delta = now - lastTouchEnd;
+    if (!touch) return;
 
-    if (touch) {
-      const dx = Math.abs(touch.clientX - lastTouchX);
-      const dy = Math.abs(touch.clientY - lastTouchY);
+    lastTouchEnd = Date.now();
+    lastTouchX = touch.clientX;
+    lastTouchY = touch.clientY;
+    lastTouchTarget = e.target;
+  }, { passive: true });
 
-      if (delta > 0 && delta < 320 && dx < 28 && dy < 28) {
+  // iOS Safari 일부 확대 제스처 방지 (게임 오버레이에서만)
+  document.addEventListener('dblclick', function (e) {
+    if (isGameInteractiveTarget(e.target)) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  // 오래된 iOS gesture 계열 방어
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(function(evtName){
+    document.addEventListener(evtName, function(e){
+      if (isGameInteractiveTarget(e.target)) {
         e.preventDefault();
       }
-
-      lastTouchX = touch.clientX;
-      lastTouchY = touch.clientY;
-    }
-
-    lastTouchEnd = now;
-  }, { passive: false });
+    }, { passive: false });
+  });
 })();
 </script>
 
