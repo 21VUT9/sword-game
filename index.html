@@ -19005,6 +19005,7 @@ function save(options = {}) {
   const saveUid = String(userId || "");
   const saveGen = loginGeneration;
   const mySessionId = String(currentSessionId || "");
+
   if (!saveRef || !saveUid) return Promise.resolve(false);
   if (!isUserDataLoaded) return Promise.resolve(false);
   if (isLoginContextStale(saveGen, saveUid)) return Promise.resolve(false);
@@ -19031,7 +19032,7 @@ function save(options = {}) {
     itemDownProtect: Number(itemDownProtect),
     starShard: Number(starShard),
     itemEssence: Number(itemEssence || 0),
-    itemMagicPaper: Number(itemMagicPaper || 0), 
+    itemMagicPaper: Number(itemMagicPaper || 0),
     itemElfHunterBow: Number(itemElfHunterBow || 0),
     itemMysteriousPaper: Number(itemMysteriousPaper || 0),
     itemDecodedElfDoc: Number(itemDecodedElfDoc || 0),
@@ -19122,20 +19123,15 @@ function save(options = {}) {
 
     const dbData = snap.val() || {};
     const dbSessionId = String(dbData.sessionId || "");
-    const localVersion = Number(loadedSaveVersion || 0);
-
     const sessionMismatch = !!(dbSessionId && mySessionId && dbSessionId !== mySessionId);
-    const versionMismatch = !!(dbVersion && dbVersion > localVersion);
 
-    if (sessionMismatch || versionMismatch) {
-      if (!suppressConflictPopup) {
+    if (sessionMismatch) {
+      if (!suppressConflictPopup && typeof showStaleDataReloadPopup === "function") {
         showStaleDataReloadPopup();
       }
       return false;
     }
 
-    const nextVersion = Math.max(now, dbVersion, localVersion) + 1;
-    updateData.saveVersion = nextVersion;
     if (!updateData.updated) {
       updateData.updated = now;
     }
