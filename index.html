@@ -8172,6 +8172,9 @@ let lastAttendanceDay = "";   // 마지막 출석 날짜 (streak 전용)
 let maxSwordLevel = 0;   // 계정 전체 최고 강화 기록
 let destroyCount  = 0;   // 계정 전체 누적 파괴 횟수
 let currentSessionId = null;   // 🔐 이 브라우저 탭의 세션 ID
+// 🔐 현재 클라이언트가 로드한 최신 저장 버전
+let staleSessionReloadPending = false;
+let logoutInProgress = false;
 let duelPointWeekKey = "";           // 현재 내가 플레이 중인 주(월요일 기준)
 let duelLastWeekPoint = 0;           // 지난주 내가 모았던 결투 포인트
 let duelLastWeekRank  = 0;           // 지난주 내 랭킹 (0이면 기록 없음)
@@ -9751,12 +9754,52 @@ function hideDuelBattleOverlay() {
   actionButtons.forEach(btn => btn.disabled = false);
 }
   
+
+function getDataVersionValue(data){
+  if (!data || typeof data !== "object") return 0;
+  return Math.max(Number(data.saveVersion || 0), Number(data.updated || 0));
+}
+
+function showStaleDataReloadPopup(){
+  if (staleSessionReloadPending) return;
+  staleSessionReloadPending = true;
+  showConfirmPopup(
+    "장시간 미접속 데이터로, 재접속 됩니다.",
+    null,
+    "",
+    "확인",
+    function(){
+      closeNpcPopup();
+      location.reload();
+    }
+  );
+}
+
 function logout() {
+  if (logoutInProgress) return;
+  logoutInProgress = true;
+
+  showNpcMessage("데이터 저장중...", null, false, "");
+
+  Promise.resolve(save({ suppressConflictPopup: true })).catch(() => false).finally(() => {
+    setTimeout(() => {
+      showNpcMessage("저장 완료!", null, false, "");
+      setTimeout(() => {
+        closeNpcPopup();
+        performLogoutNow();
+        logoutInProgress = false;
+      }, 1000);
+    }, 1200);
+  });
+}
+
+function performLogoutNow() {
   const prevUserRef = userRef;
   const prevUserId = userId;
   nextLoginGeneration();
   cleanupSessionBindings();
   isUserDataLoaded = false;
+  staleSessionReloadPending = false;
   resetRankingBattleSessionState();
   storybookState = normalizeStorybookState(null);
 
@@ -9771,6 +9814,7 @@ if (prevUserId) {
 }
 
 currentSessionId = null;
+staleSessionReloadPending = false;
 pendingLoginUserId = null;
 pendingLoginData = null;
   
@@ -9863,7 +9907,7 @@ destroyCount  = 0;
   // ✅ (구버전 버튼이 남아있을 수도 있으니) 있으면 숨김
   setDisp("logoutBtn", "none");
   setDisp("couponBtn", "none");
-
+  staleSessionReloadPending = false;
   titlesOwned = {};
 equippedTitle = "";
 titleCollectionRewardClaimed = {};
@@ -10321,7 +10365,7 @@ function watchSessionId(uid, mySessionId, sessionGen) {
       // 내 로컬 세션키도 비워서 다음 접속 때 정상 재발급
       clearLocalSessionId(uid);
 
-      logout();
+      performLogoutNow();
     }
   });
 }
@@ -18549,6 +18593,7 @@ function login() {
 
       // ⭐ 이 시점의 강화값을 기준으로 기록
       lastSavedSwordForUpdated = sword;
+      staleSessionReloadPending = false;
 
       // 최고 강화 / 파괴 기록 불러오기
       maxSwordLevel = data.maxSwordLevel ?? sword; // 없으면 현재 강화로 초기화
@@ -18873,13 +18918,15 @@ return;
   });
 }
 
-function save() {
+function save(options = {}) {
+  const suppressConflictPopup = !!options.suppressConflictPopup;
   const saveRef = userRef;
   const saveUid = String(userId || "");
   const saveGen = loginGeneration;
-  if (!saveRef || !saveUid) return;
-  if (!isUserDataLoaded) return;
-  if (isLoginContextStale(saveGen, saveUid)) return;
+  const mySessionId = String(currentSessionId || "");
+  if (!saveRef || !saveUid) return Promise.resolve(false);
+  if (!isUserDataLoaded) return Promise.resolve(false);
+  if (isLoginContextStale(saveGen, saveUid)) return Promise.resolve(false);
 
   const updateData = {
     sword: Number(sword),
@@ -18949,8 +18996,7 @@ function save() {
     engraveAdvancedCount: Number(engraveAdvancedCount || 0),
     duelUpdated: Number(duelUpdated || 0),
     duelLastWeekUpdated: Number(duelLastWeekUpdated || 0),
-    couponUsed: couponUsedMap,   // 🆕 사용 완료 쿠폰 기록
-    // 🏷️ 칭호 저장
+    couponUsed: couponUsedMap,
     titlesOwned: titlesOwned,
     equippedTitle: equippedTitle,
     titleCollectionRewardClaimed: titleCollectionRewardClaimed,
@@ -18973,25 +19019,56 @@ function save() {
     hofWeaponTypeAt30: hofWeaponTypeAt30 || "",
     hofProcessedAt: Number(hofProcessedAt || 0),
     lastSeenGlobal30EventId: Number(lastSeenGlobal30EventId || 0),
-aweUsedGlobal30EventId: Number(aweUsedGlobal30EventId || 0),
-     engravePresetIdx: Number(engravePresetIdx || 0),
-     engravePresets: engravePresets,
+    aweUsedGlobal30EventId: Number(aweUsedGlobal30EventId || 0),
+    engravePresetIdx: Number(engravePresetIdx || 0),
+    engravePresets: engravePresets,
     questState: questState,
     questCompletedAt: ensureQuestCompletedAtMap(),
     repeatQuestState: repeatQuestState,
     storybookState: storybookState,
-     engraveLines: engraveLines // ✅ (구버전/외부표기 호환용) "현재 프리셋" 3줄
-
+    engraveLines: engraveLines
   };
 
-  // ⭐ 강화 수치가 바뀌었을 때만 updated 갱신
+  const now = Date.now();
   if (sword !== lastSavedSwordForUpdated) {
-    updateData.updated = Date.now();
-    lastSavedSwordForUpdated = sword;
+    updateData.updated = now;
   }
 
-  if (isLoginContextStale(saveGen, saveUid)) return;
-  saveRef.update(updateData);
+  if (isLoginContextStale(saveGen, saveUid)) return Promise.resolve(false);
+
+  return saveRef.once("value").then((snap) => {
+    if (isLoginContextStale(saveGen, saveUid)) return false;
+
+    const dbData = snap.val() || {};
+    const dbSessionId = String(dbData.sessionId || "");
+    const localVersion = Number(loadedSaveVersion || 0);
+
+    const sessionMismatch = !!(dbSessionId && mySessionId && dbSessionId !== mySessionId);
+    const versionMismatch = !!(dbVersion && dbVersion > localVersion);
+
+    if (sessionMismatch || versionMismatch) {
+      if (!suppressConflictPopup) {
+        showStaleDataReloadPopup();
+      }
+      return false;
+    }
+
+    const nextVersion = Math.max(now, dbVersion, localVersion) + 1;
+    updateData.saveVersion = nextVersion;
+    if (!updateData.updated) {
+      updateData.updated = now;
+    }
+
+    return saveRef.update(updateData).then(() => {
+      if (sword !== lastSavedSwordForUpdated) {
+        lastSavedSwordForUpdated = sword;
+      }
+      return true;
+    });
+  }).catch((e) => {
+    console.warn("save() 실패", e);
+    return false;
+  });
 }
 
 /* 색상 */
@@ -20643,6 +20720,7 @@ ensureEngravePresetShape();
     
     // ⭐ 자동로그인 시에도 초기화
     lastSavedSwordForUpdated = sword;
+    staleSessionReloadPending = false;
 
         // 최고 강화 / 파괴 기록 불러오기
     maxSwordLevel = data.maxSwordLevel ?? sword;
