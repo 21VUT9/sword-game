@@ -32830,7 +32830,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         ()=>{ gold = Number(gold||0) + 30000000000; return '300억골드'; },
         ()=>{ starShard = Number(starShard||0) + 20; return '빛나지못한별의조각 20개'; },
         ()=>{ itemHonorMedal = Number(itemHonorMedal||0) + 50; return '명예의훈장 50개'; },
-        ()=>{ itemMagicPaper = Number(itemMagicPaper||0) + 90; return '마력의정수 90개'; },
+        ()=>{ itemEssence = Number(itemEssence||0) + 90; return '마력의정수 90개'; },
         ()=>{ itemDownProtect = Number(itemDownProtect||0) + 5; return '강등방어주문서 5개'; },
         ()=>{ itemProtect = Number(itemProtect||0) + 1; return '파괴방지주문서 1개'; },
         ()=>{ itemScroll15 = Number(itemScroll15||0) + 3; return '15강강화주문서 3개'; },
@@ -32862,7 +32862,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         ()=>{ gold = Number(gold||0) + 80000000000; return '800억골드'; },
         ()=>{ starShard = Number(starShard||0) + 50; return '빛나지못한별의조각 50개'; },
         ()=>{ itemHonorMedal = Number(itemHonorMedal||0) + 70; return '명예의훈장 70개'; },
-        ()=>{ itemMagicPaper = Number(itemMagicPaper||0) + 120; return '마력의정수 120개'; },
+        ()=>{ itemEssence = Number(itemEssence||0) + 120; return '마력의정수 120개'; },
         ()=>{ itemProtect = Number(itemProtect||0) + 2; return '파괴방지주문서 2개'; },
         ()=>{ itemScroll15 = Number(itemScroll15||0) + 5; return '15강강화주문서 5개'; },
         ()=>{ itemScroll21 = Number(itemScroll21||0) + 2; return '21강강화주문서 2개'; },
@@ -32891,7 +32891,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         ()=>{ gold = Number(gold||0) + 140000000000; return '1400억골드'; },
         ()=>{ starShard = Number(starShard||0) + 70; return '빛나지못한별의조각 70개'; },
         ()=>{ itemHonorMedal = Number(itemHonorMedal||0) + 90; return '명예의훈장 90개'; },
-        ()=>{ itemMagicPaper = Number(itemMagicPaper||0) + 200; return '마력의정수 200개'; },
+        ()=>{ itemEssence = Number(itemEssence||0) + 200; return '마력의정수 200개'; },
         ()=>{ itemProtect = Number(itemProtect||0) + 3; return '파괴방지주문서 3개'; },
         ()=>{ itemScroll21 = Number(itemScroll21||0) + 4; return '21강강화주문서 4개'; },
         ()=>{ itemEngraveAdvanced = Number(itemEngraveAdvanced||0) + 5; return '고급각인의주문서 5개'; },
@@ -33559,6 +33559,19 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       return { t: Date.now(), uid: String(userId) };
     }, (err, committed) => {
       if (err || !committed) return;
+
+      const beforeState = {
+        gold: Number(gold || 0),
+        itemProtect: Number(itemProtect || 0),
+        itemDownProtect: Number(itemDownProtect || 0),
+        itemScroll21: Number(itemScroll21 || 0),
+        itemSuper: Number(itemSuper || 0),
+        itemHonorMedal: Number(itemHonorMedal || 0),
+        itemEssence: Number(itemEssence || 0),
+        itemMagicPaper: Number(itemMagicPaper || 0),
+        unidentifiedRuneStones: Number(unidentifiedRuneStones || 0)
+      };
+
       const def = EPIC_MONSTERS[event.bossId];
       const lines = [];
       const pool = Array.isArray(def.rewardPools) ? def.rewardPools.slice() : [];
@@ -33567,13 +33580,51 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         const fn = pool.splice(idx, 1)[0];
         if (typeof fn === 'function') lines.push(fn());
       }
+
       if (typeof update === 'function') update();
-      if (typeof save === 'function') save();
-      delete EPIC_LOCAL_ELIGIBLE[String(fieldId)];
-      try { leaveEpicField(fieldId); } catch(e){}
-      renderEpicOverlay();
-      setHuntButtonLocked(false);
-      showEpicRewardConfirm(lines);
+
+      const savePromise = (typeof save === 'function')
+        ? Promise.resolve(save())
+        : Promise.resolve(true);
+
+      savePromise.then((ok) => {
+        if (!ok) {
+          gold = beforeState.gold;
+          itemProtect = beforeState.itemProtect;
+          itemDownProtect = beforeState.itemDownProtect;
+          itemScroll21 = beforeState.itemScroll21;
+          itemSuper = beforeState.itemSuper;
+          itemHonorMedal = beforeState.itemHonorMedal;
+          itemEssence = beforeState.itemEssence;
+          itemMagicPaper = beforeState.itemMagicPaper;
+          unidentifiedRuneStones = beforeState.unidentifiedRuneStones;
+
+          if (typeof update === 'function') update();
+          try { claimedRef.remove(); } catch(e){}
+          showNpcMessage('에픽 보상 저장에 실패했습니다. 다시 시도해주세요.', null, true, '');
+          return;
+        }
+
+        delete EPIC_LOCAL_ELIGIBLE[String(fieldId)];
+        try { leaveEpicField(fieldId); } catch(e){}
+        renderEpicOverlay();
+        setHuntButtonLocked(false);
+        showEpicRewardConfirm(lines);
+      }).catch(() => {
+        gold = beforeState.gold;
+        itemProtect = beforeState.itemProtect;
+        itemDownProtect = beforeState.itemDownProtect;
+        itemScroll21 = beforeState.itemScroll21;
+        itemSuper = beforeState.itemSuper;
+        itemHonorMedal = beforeState.itemHonorMedal;
+        itemEssence = beforeState.itemEssence;
+        itemMagicPaper = beforeState.itemMagicPaper;
+        unidentifiedRuneStones = beforeState.unidentifiedRuneStones;
+
+        if (typeof update === 'function') update();
+        try { claimedRef.remove(); } catch(e){}
+        showNpcMessage('에픽 보상 저장에 실패했습니다. 다시 시도해주세요.', null, true, '');
+      });
     });
   }
 
