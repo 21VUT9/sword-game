@@ -33552,5 +33552,27 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 })();
 </script>
 
+  <script>
+(function () {
+  let lastTouchEnd = 0;
+
+  document.addEventListener('touchend', function (e) {
+    // 두 손가락 이상 제스처는 막지 않음 (핀치 줌 허용)
+    if (e.touches && e.touches.length > 1) return;
+    if (e.changedTouches && e.changedTouches.length > 1) return;
+
+    const now = Date.now();
+    const delta = now - lastTouchEnd;
+
+    // 300ms 이내의 빠른 연속 단일 탭만 차단
+    if (delta > 0 && delta < 300) {
+      e.preventDefault();
+    }
+
+    lastTouchEnd = now;
+  }, { passive: false });
+})();
+</script>
+  
 </body>
 </html>
