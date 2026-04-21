@@ -10,6 +10,9 @@ body {
   color:white;
   text-align:center;
   font-family:Arial;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overscroll-behavior: none;
 }
 
   /* ✅ PC 과도한 가로 확장 방지용 프레임 (모바일 영향 없음) */
@@ -34,6 +37,8 @@ body {
   max-width: var(--frame-max);
   margin: 0 auto;
   position: relative;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
 }
 
 /* 🎯 강화 아이템 체크박스 줄 정리 */
@@ -5203,6 +5208,24 @@ html, body {
   to{
     background-position: 40px 60px, 70px 90px;
   }
+}
+
+
+/* 📱 모바일 터치 최적화 세트 */
+button,
+.actionBtn,
+.dock-btn,
+.map-icon-btn,
+.left-icon-btn,
+.inventory-slot,
+.questRowText,
+.userListName,
+.rank-user,
+#weaponImage,
+#fieldBg,
+#bossImage {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
 }
 
 </style>
@@ -33552,27 +33575,39 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 })();
 </script>
 
-  <script>
+
+<script>
+/* 📱 더블탭 확대 차단 + 탭 반응 최적화 */
 (function () {
   let lastTouchEnd = 0;
+  let lastTouchX = 0;
+  let lastTouchY = 0;
 
   document.addEventListener('touchend', function (e) {
-    // 두 손가락 이상 제스처는 막지 않음 (핀치 줌 허용)
-    if (e.touches && e.touches.length > 1) return;
-    if (e.changedTouches && e.changedTouches.length > 1) return;
+    if ((e.touches && e.touches.length > 1) || (e.changedTouches && e.changedTouches.length > 1)) {
+      return;
+    }
 
+    const touch = e.changedTouches && e.changedTouches[0];
     const now = Date.now();
     const delta = now - lastTouchEnd;
 
-    // 300ms 이내의 빠른 연속 단일 탭만 차단
-    if (delta > 0 && delta < 300) {
-      e.preventDefault();
+    if (touch) {
+      const dx = Math.abs(touch.clientX - lastTouchX);
+      const dy = Math.abs(touch.clientY - lastTouchY);
+
+      if (delta > 0 && delta < 320 && dx < 28 && dy < 28) {
+        e.preventDefault();
+      }
+
+      lastTouchX = touch.clientX;
+      lastTouchY = touch.clientY;
     }
 
     lastTouchEnd = now;
   }, { passive: false });
 })();
 </script>
-  
+
 </body>
 </html>
