@@ -8330,6 +8330,7 @@ let isUserDataLoaded = false; // ✅ 유저 데이터 로드 완료 플래그(�
 let isSwitchingAccount = false; // ✅ 로그인/자동로그인 전환 중 저장/입력 차단
 let loginTransitionStartTime = 0;
 let loadingLockHideTimer = null;
+let loginTransitionCompleteTimer = null;
 
 let attendanceCount = 0;
 let lastAttendanceDate = "";
@@ -18592,7 +18593,9 @@ function setDisplay(id, displayValue) {
 
 
 function showLoadingLock(message = "데이터 불러오는중 ..."){
-  const overlay = document.getElementById("loadingLockOverlay");
+  const overlay = (typeof ensureLoadingLockOverlay === "function")
+    ? ensureLoadingLockOverlay()
+    : document.getElementById("loadingLockOverlay");
   const textEl = document.getElementById("loadingLockText");
   if (textEl) textEl.textContent = message;
   if (!overlay) return;
@@ -18604,7 +18607,6 @@ function showLoadingLock(message = "데이터 불러오는중 ..."){
 
   overlay.classList.remove("fade-out");
   overlay.style.display = "flex";
-
   requestAnimationFrame(() => {
     overlay.classList.add("show");
   });
@@ -18636,6 +18638,10 @@ function hideLoadingLock(immediate = false){
 }
 
 function beginLoginTransition(message = "데이터 불러오는중 ..."){
+  if (loginTransitionCompleteTimer) {
+    clearTimeout(loginTransitionCompleteTimer);
+    loginTransitionCompleteTimer = null;
+  }
   isSwitchingAccount = true;
   isUserDataLoaded = false;
   loginTransitionStartTime = Date.now();
@@ -18643,29 +18649,34 @@ function beginLoginTransition(message = "데이터 불러오는중 ..."){
 }
 
 function endLoginTransition(){
-  const MIN_DURATION = 1500; // 1.5초 보장
+  const MIN_DURATION = 1500;
   const elapsed = Date.now() - Number(loginTransitionStartTime || 0);
   const remain = Math.max(0, MIN_DURATION - elapsed);
 
-  if (loadingLockHideTimer) {
-    clearTimeout(loadingLockHideTimer);
-    loadingLockHideTimer = null;
+  if (loginTransitionCompleteTimer) {
+    clearTimeout(loginTransitionCompleteTimer);
+    loginTransitionCompleteTimer = null;
   }
 
-  loadingLockHideTimer = setTimeout(() => {
+  loginTransitionCompleteTimer = setTimeout(() => {
     isUserDataLoaded = true;
     isSwitchingAccount = false;
+    loginTransitionCompleteTimer = null;
     hideLoadingLock(false);
   }, remain);
 }
 
 function abortLoginTransition(){
-  isSwitchingAccount = false;
-  isUserDataLoaded = false;
+  if (loginTransitionCompleteTimer) {
+    clearTimeout(loginTransitionCompleteTimer);
+    loginTransitionCompleteTimer = null;
+  }
   if (loadingLockHideTimer) {
     clearTimeout(loadingLockHideTimer);
     loadingLockHideTimer = null;
   }
+  isSwitchingAccount = false;
+  isUserDataLoaded = false;
   hideLoadingLock(true);
 }
 
@@ -19290,8 +19301,14 @@ function save(options = {}) {
   const mySessionId = String(currentSessionId || "");
 
   if (!saveRef || !saveUid) return Promise.resolve(false);
-  if (isSwitchingAccount) return Promise.resolve(false);
-  if (!isUserDataLoaded) return Promise.resolve(false);
+  if (isSwitchingAccount) {
+    console.warn("save() 차단: isSwitchingAccount=true", { userId: saveUid, isUserDataLoaded });
+    return Promise.resolve(false);
+  }
+  if (!isUserDataLoaded) {
+    console.warn("save() 차단: isUserDataLoaded=false", { userId: saveUid, isSwitchingAccount });
+    return Promise.resolve(false);
+  }
   if (isLoginContextStale(saveGen, saveUid)) return Promise.resolve(false);
 
   const updateData = {
