@@ -20321,7 +20321,7 @@ function openBossApplyList() {
     else nextAt = 0;
     if (!Number.isFinite(nextAt)) nextAt = 0;
 
-    const remainMs = Math.max(0, nextAt - Date.now());
+    const remainMs = Math.max(0, nextAt - getBossClockNow());
     const cooldownTxt = formatHMS(remainMs);
     const canApplyBySword = (Number(sword || 0) >= def.minSword);
     const canApplyByCooldown = (remainMs <= 0);
@@ -20688,7 +20688,7 @@ function claimBossReward(){
     if (!cur.members || !cur.members[userId]) return;
     if (!cur.claimed) cur.claimed = {};
     if (cur.claimed[userId]) return;
-    cur.claimed[userId] = Date.now();
+    cur.claimed[userId] = getBossClockNow();
     return cur;
   }, (err, committed, snap) => {
     if (err || !committed) {
@@ -23028,7 +23028,7 @@ function refreshBossApplyPopupCountdown() {
 
   nodes.forEach(el => {
     const nextAt = Number(el.getAttribute('data-next-at') || 0);
-    const remainMs = Math.max(0, nextAt - Date.now());
+    const remainMs = Math.max(0, nextAt - getBossClockNow());
     el.textContent = formatHMS(remainMs);
 
     const bossId = String(el.getAttribute('data-boss-apply-remain') || '');
@@ -23080,6 +23080,26 @@ const BOSS_RUNS_ACTIVE_REF = db.ref("bossRunsActive");
 const BOSS_RUNS_CLOSED_REF = db.ref("bossRunsClosed");
 const BOSS_COOLDOWN_REF    = db.ref("bossCooldown");
 
+let bossServerTimeOffsetMs = 0;
+let bossServerClockBound = false;
+function getBossClockNow(){
+  const offset = Number(bossServerTimeOffsetMs || 0);
+  return Date.now() + (Number.isFinite(offset) ? offset : 0);
+}
+function bindBossServerClock(){
+  if (bossServerClockBound) return;
+  bossServerClockBound = true;
+  try {
+    db.ref('.info/serverTimeOffset').on('value', (snap) => {
+      const next = Number(snap.val() || 0);
+      bossServerTimeOffsetMs = Number.isFinite(next) ? next : 0;
+    });
+  } catch(e) {
+    console.warn('boss server clock bind failed', e);
+    bossServerClockBound = false;
+  }
+}
+
 // 메모리 캐시(렌더용)
 let bossRunsActiveCache = {};   // { bossId: runObj }
 let bossRunsClosedCache = {};   // { bossId: { runKey: runObj } }
@@ -23092,7 +23112,10 @@ function resetBossRunsSubscription(){
   try { BOSS_RUNS_ACTIVE_REF.off(); } catch(e){}
   try { BOSS_RUNS_CLOSED_REF.off(); } catch(e){}
   try { BOSS_COOLDOWN_REF.off(); } catch(e){}
+  try { db.ref('.info/serverTimeOffset').off(); } catch(e){}
 
+  bossServerClockBound = false;
+  bossServerTimeOffsetMs = 0;
   bossRunsUnsubscribed = true;
   bossRunsActiveCache = {};
   bossRunsClosedCache = {};
@@ -23144,12 +23167,12 @@ function maybeWarnBossRun24h(bossId, run, mapName, bossTitle, bossName){
     const ends = Number(cur.endsAt || 0);
     if (!ends) return;
 
-    const left = ends - Date.now();
+    const left = ends - getBossClockNow();
     if (left <= 0 || left > warnMs) return;      // 아직 24h 구간 아니면 패스
     if (cur.warn24hAnnounced) return;            // 이미 경고했으면 패스
 
     cur.warn24hAnnounced = true;
-    cur.warn24hAnnouncedAt = Date.now();
+    cur.warn24hAnnouncedAt = getBossClockNow();
     return cur;
   }, (err, committed) => {
     if (err || !committed) return;
@@ -23183,13 +23206,13 @@ function startBossRunWatchdog(){
 
       maybeWarnBossRun24h(bossId, run, mapName, bossTitle, bossName);
             // ✅ (핵심) 제한시간 만료 시: 실패로 확정 + 결과로그/쿨다운도 보장
-      if (Number(run?.endsAt || 0) > 0 && Date.now() >= Number(run.endsAt || 0) && String(run.status || "") === "active") {
+      if (Number(run?.endsAt || 0) > 0 && getBossClockNow() >= Number(run.endsAt || 0) && String(run.status || "") === "active") {
         const runRef = db.ref(`bossRunsActive/${bossId}`);
         runRef.transaction((cur) => {
           if (!cur || String(cur.status || "") !== "active") return;
-          if (Date.now() < Number(cur.endsAt || 0)) return;
+          if (getBossClockNow() < Number(cur.endsAt || 0)) return;
           cur.status = "failed";
-          cur.failedAt = Date.now();
+          cur.failedAt = getBossClockNow();
           return cur;
         });
       }
@@ -23205,11 +23228,11 @@ function startBossRunWatchdog(){
           if (s !== "cleared" && s !== "failed") return;
           if (cur.cooldownFixed) return;
           cur.cooldownFixed = true;
-          cur.cooldownFixedAt = Date.now();
+          cur.cooldownFixedAt = getBossClockNow();
           return cur;
         }, (err, committed) => {
           if (err || !committed) return;
-          const nextAt = Date.now() + 24 * 60 * 60 * 1000;
+          const nextAt = getBossClockNow() + 24 * 60 * 60 * 1000;
           db.ref(`bossCooldown/${bossId}`).set({ nextAt });
         });
 
@@ -23220,7 +23243,7 @@ function startBossRunWatchdog(){
           if (s !== "cleared" && s !== "failed") return;
           if (cur.resultAnnounced) return;
           cur.resultAnnounced = true;
-          cur.resultAnnouncedAt = Date.now();
+          cur.resultAnnouncedAt = getBossClockNow();
           return cur;
         }, (err, committed) => {
           if (err || !committed) return;
@@ -23288,7 +23311,7 @@ function renderAdventureGuildBossRuns() {
     const isNew = !seen[seenKey];
     const newMark = isNew ? `<span class="guild-alert-inline">!</span>` : ``;
 
-    const remainMs = Math.max(0, Number(run.endsAt || 0) - Date.now());
+    const remainMs = Math.max(0, Number(run.endsAt || 0) - getBossClockNow());
 
     maybeWarnBossRun24h(bossId, run, mapName, bossTitle, bossName);
     
@@ -23297,10 +23320,10 @@ if (Number(run.endsAt || 0) > 0 && Date.now() >= Number(run.endsAt || 0) && Stri
   const runRef = db.ref(`bossRunsActive/${bossId}`); // ✅ 현재 렌더중인 bossId 사용
   runRef.transaction((cur) => {
     if (!cur || String(cur.status || "") !== "active") return;
-    if (Date.now() < Number(cur.endsAt || 0)) return;
+    if (getBossClockNow() < Number(cur.endsAt || 0)) return;
 
     cur.status = "failed";
-    cur.failedAt = Date.now();
+    cur.failedAt = getBossClockNow();
     return cur;
   });
 }
@@ -23407,8 +23430,32 @@ function resolveMyBossRun(opts = {}){
     }
   }
 
-  // ✅ closed 런은 현재 바인딩된 런만 복구 대상으로 본다.
-  // 전역 closed 스캔까지 허용하면, 직전 보스전이 새 토벌보다 우선 복구되는 경우가 생긴다.
+  if (includeClosed && bossRunsClosedReadable) {
+    const pendingClosed = [];
+    Object.entries(bossRunsClosedCache || {}).forEach(([bid, runs]) => {
+      Object.entries(runs || {}).forEach(([rk, run]) => {
+        if (!isMyPendingBossRun(run)) return;
+        pendingClosed.push({
+          bossId: String(bid),
+          runKey: String(rk || (run && run.logKey) || ""),
+          run
+        });
+      });
+    });
+
+    pendingClosed.sort((a, b) => {
+      const at = Number(a.run && (a.run.archivedAt || a.run.clearedAt || a.run.failedAt || a.run.createdAt || 0));
+      const bt = Number(b.run && (b.run.archivedAt || b.run.clearedAt || b.run.failedAt || b.run.createdAt || 0));
+      return bt - at;
+    });
+
+    const picked = pendingClosed[0];
+    if (picked && picked.bossId && picked.run) {
+      const pickedKey = String(picked.run.logKey || picked.runKey || "");
+      if (pickedKey) setActiveBossBinding(picked.bossId, pickedKey);
+      return { bossId: picked.bossId, run: picked.run, source: "closed" };
+    }
+  }
 
   if (curId || curKey) {
     autoClearStaleBossBinding({ includeClosed });
@@ -23422,7 +23469,7 @@ function archiveBossRunIfNeeded(bossId, run){
   return ref.once("value").then((snap) => {
     if (snap.exists()) return;
     const payload = JSON.parse(JSON.stringify(run));
-    payload.archivedAt = Date.now();
+    payload.archivedAt = getBossClockNow();
     return ref.set(payload);
   });
 }
@@ -23435,6 +23482,7 @@ function repairGuardianRunsOnLoad(cache){
 function ensureBossRunsSubscription() {
   if (bossRunsUnsubscribed === false) return;
 
+  bindBossServerClock();
   bossRunsUnsubscribed = false;
   BOSS_RUNS_ACTIVE_REF.on("value", (snap) => {
     bossRunsActiveCache = snap.val() || {};
@@ -23701,7 +23749,7 @@ function writeBossBattleLog(bossId, msg, opt) {
   const tone = opt && opt.tone ? String(opt.tone) : "";
 
   db.ref(getBossBattleLogPath(bossId)).push({
-    t: Date.now(),
+    t: getBossClockNow(),
     msg: text,
     tone
   });
@@ -24337,7 +24385,7 @@ function renderBossBattle(){
   if (mapEl) mapEl.textContent = mapName;
   if (nameEl) nameEl.textContent = `${bossTitle} - ${bossName}`;
 
-  const remainMs = Math.max(0, Number(run.endsAt || 0) - Date.now());
+  const remainMs = Math.max(0, Number(run.endsAt || 0) - getBossClockNow());
   maybeWarnBossRun24h(bossId, run, mapName, bossTitle, bossName);
   const remainEl = document.getElementById("bossBattleRemain");
   if (remainEl) remainEl.textContent = formatHMS(remainMs);
@@ -24638,13 +24686,13 @@ if (prevSt !== st) {
     if (cur.cooldownFixed) return;
 
     cur.cooldownFixed = true;
-    cur.cooldownFixedAt = Date.now();
+    cur.cooldownFixedAt = getBossClockNow();
     return cur;
   }, (err, committed) => {
     if (err || !committed) return;
 
     // ✅ 쿨다운 경로 기록(보스별 nextAt)
-    const nextAt = Date.now() + 24 * 60 * 60 * 1000;
+    const nextAt = getBossClockNow() + 24 * 60 * 60 * 1000;
     db.ref(`bossCooldown/${bossId}`).set({ nextAt });
   });
 })();
@@ -24662,7 +24710,7 @@ if (prevSt !== st) {
 
     if (cur.resultAnnounced) return;
     cur.resultAnnounced = true;
-    cur.resultAnnouncedAt = Date.now();
+    cur.resultAnnouncedAt = getBossClockNow();
     return cur;
   }, (err, committed) => {
     if (err || !committed) return;
@@ -25493,7 +25541,7 @@ function joinBossRun(bossId) {
     return {
       uid: userId,
       nick: getNickSafe(),
-      joinedAt: Date.now(),
+      joinedAt: getBossClockNow(),
       dmg: 0,
       titleId: String(equippedTitle || ""),
       weaponType: String(weaponType || "sword"),
@@ -25626,7 +25674,7 @@ function createBossRun(bossId, options = {}) {
 
         gold = Math.max(0, localGold - needGold);
 
-        const now = Date.now();
+        const now = getBossClockNow();
         const endsAt = now + def.durationHours * 60 * 60 * 1000;
         const newRun = {
           bossId: def.id,
@@ -25701,7 +25749,7 @@ function createBossRun(bossId, options = {}) {
   else if (typeof nextAtRaw === "string") nextAt = Number(nextAtRaw);
   if (!Number.isFinite(nextAt)) nextAt = 0;
 
-  const remainMs = Math.max(0, nextAt - Date.now());
+  const remainMs = Math.max(0, nextAt - getBossClockNow());
   if (remainMs > 0) {
     showNpcMessage(`아직 다시 토벌을 신청할 수 없습니다.<br><br>⏳ 신청 가능까지: <b>${formatHMS(remainMs)}</b>`, LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
     return;
@@ -30357,7 +30405,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
             return;
           }
           const runRef = db.ref(`bossRunsActive/${bossId}`);
-          const now = Date.now();
+          const now = getBossClockNow();
           const endsAt = now + Number(def.durationHours || 72) * 60 * 60 * 1000;
           runRef.transaction((cur) => {
             if (cur && String(cur.status || '') === 'active') return;
@@ -30443,7 +30491,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
           }
         }
 
-        const remainMs = Math.max(0, nextAt - Date.now());
+        const remainMs = Math.max(0, nextAt - getBossClockNow());
         if (!usePriorityTicket && remainMs > 0) {
           if (!Number(cd.nextAt || 0)) {
             cooldownRef.set({ nextAt });
@@ -30487,7 +30535,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
 
       if (mapEl) mapEl.textContent = def.mapName || '망령왕의 죽음세계';
       if (bgEl && def.bgImg) bgEl.src = def.bgImg;
-      if (remainEl) remainEl.textContent = formatHMS(Math.max(0, Number(run.endsAt || 0) - Date.now()));
+      if (remainEl) remainEl.textContent = formatHMS(Math.max(0, Number(run.endsAt || 0) - getBossClockNow()));
 
       const max = getHuntStaminaMax();
       const today = getTodayDateString();
@@ -30579,7 +30627,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
           if (s !== 'cleared' && s !== 'failed') return;
           if (cur.resultAnnounced) return;
           cur.resultAnnounced = true;
-          cur.resultAnnouncedAt = Date.now();
+          cur.resultAnnouncedAt = getBossClockNow();
           return cur;
         }, (err, committed) => {
           if (err || !committed) return;
@@ -31113,7 +31161,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
           }
 
           const runRef = db.ref(`bossRunsActive/${bossId}`);
-          const now = Date.now();
+          const now = getBossClockNow();
           const endsAt = now + Number(def.durationHours || 72) * 60 * 60 * 1000;
           const runKey = 'run_' + now;
           const newRun = {
@@ -31197,7 +31245,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
             if (Number(cd.nextAt || 0) !== nextAt) cooldownRef.set({ nextAt });
           }
         }
-        const remainMs = Math.max(0, nextAt - Date.now());
+        const remainMs = Math.max(0, nextAt - getBossClockNow());
         if (!usePriorityTicket && remainMs > 0) {
           if (!Number(cd.nextAt || 0)) cooldownRef.set({ nextAt });
           showNpcMessage(`아직 다시 토벌을 신청할 수 없습니다.<br><br>⏳ 신청 가능까지: <b>${formatHMS(remainMs)}</b>`, LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
