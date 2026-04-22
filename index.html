@@ -18593,9 +18593,7 @@ function setDisplay(id, displayValue) {
 
 
 function showLoadingLock(message = "데이터 불러오는중 ..."){
-  const overlay = (typeof ensureLoadingLockOverlay === "function")
-    ? ensureLoadingLockOverlay()
-    : document.getElementById("loadingLockOverlay");
+  const overlay = document.getElementById("loadingLockOverlay");
   const textEl = document.getElementById("loadingLockText");
   if (textEl) textEl.textContent = message;
   if (!overlay) return;
@@ -18607,6 +18605,7 @@ function showLoadingLock(message = "데이터 불러오는중 ..."){
 
   overlay.classList.remove("fade-out");
   overlay.style.display = "flex";
+
   requestAnimationFrame(() => {
     overlay.classList.add("show");
   });
@@ -18649,7 +18648,7 @@ function beginLoginTransition(message = "데이터 불러오는중 ..."){
 }
 
 function endLoginTransition(){
-  const MIN_DURATION = 1500;
+  const MIN_DURATION = 1500; // 1.5초 보장
   const elapsed = Date.now() - Number(loginTransitionStartTime || 0);
   const remain = Math.max(0, MIN_DURATION - elapsed);
 
@@ -18671,12 +18670,12 @@ function abortLoginTransition(){
     clearTimeout(loginTransitionCompleteTimer);
     loginTransitionCompleteTimer = null;
   }
+  isSwitchingAccount = false;
+  isUserDataLoaded = false;
   if (loadingLockHideTimer) {
     clearTimeout(loadingLockHideTimer);
     loadingLockHideTimer = null;
   }
-  isSwitchingAccount = false;
-  isUserDataLoaded = false;
   hideLoadingLock(true);
 }
 
@@ -19301,6 +19300,19 @@ function save(options = {}) {
   const mySessionId = String(currentSessionId || "");
 
   if (!saveRef || !saveUid) return Promise.resolve(false);
+
+  // 🔧 로딩 완료 후 전환 플래그만 남는 경우 자동 복구
+  if (isSwitchingAccount && isUserDataLoaded) {
+    const elapsedSinceTransition = Date.now() - Number(loginTransitionStartTime || 0);
+    if (elapsedSinceTransition >= 1200) {
+      console.warn("save() 자동 복구: stale isSwitchingAccount 해제", {
+        userId: saveUid,
+        elapsedSinceTransition
+      });
+      isSwitchingAccount = false;
+    }
+  }
+
   if (isSwitchingAccount) {
     console.warn("save() 차단: isSwitchingAccount=true", { userId: saveUid, isUserDataLoaded });
     return Promise.resolve(false);
@@ -21253,6 +21265,8 @@ setDisplay("workbenchDockUI", "flex");
     // 🔐 자동로그인으로 들어온 경우에도 이 탭이 세션을 가져가도록
     startSession();
     ensureBossRunsSubscription();  // ✅ 로그인 직후에도 토벌 구독/복구 시작
+
+    endLoginTransition();
 
 // 🏷️ 칭호 자동 지급(자동로그인 로드 직후)
 const titleChanged = checkAndGrantTitles();
