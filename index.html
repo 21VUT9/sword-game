@@ -25338,6 +25338,9 @@ function playEpicHitFx(){
 
 function attackBossByClick(ev){
   const bossId = String(activeBossId || "");
+  if (bossId === "guardian_knight" && typeof window.attackGuardianKnightBossByClick === "function") {
+    return window.attackGuardianKnightBossByClick(ev);
+  }
   const run = (bossRunsActiveCache || {})[bossId];
   if (!bossId || !run || run.status !== "active") return;
 
@@ -30959,18 +30962,13 @@ function ensureBossCooldownResetByRun(bossId, runLike){
       const shieldMode = String(cur.shieldMode || '');
 
       if (shieldHp > 0) {
-        // 보호막이 있을 때는 보호막에 10% 데미지를 주고, 보호막이 파괴되면 그 공격부터 정상 데미지로 체력을 깎음
+        // 보호막이 있을 때는 10% 데미지만 보호막에 적용하고 HP에는 넘기지 않는다.
         const shieldDamage = Math.max(1, Math.floor(dmg * 0.1));
         const toShield = Math.min(shieldHp, shieldDamage);
         shieldHp -= toShield;
         cur.shieldHp = shieldHp;
         applied = toShield; // 기록용 데미지 (보호막에 적용된 실제 데미지)
 
-        // 보호막이 파괴되었으면 그 공격부터 정상 데미지 적용
-        if (Number(cur.shieldHp || 0) <= 0) {
-          hp = Math.max(0, hp - dmg);
-          applied = dmg;
-        }
       } else {
         // 보호막이 없을 때는 정상 데미지로 체력을 깎음
         hp = Math.max(0, hp - applied);
@@ -34204,7 +34202,12 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     suppressClickUntil = now + 420;
 
     try {
-      attackBossByClick(ev || { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 });
+      const attackEv = ev || { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 };
+      if (String(activeBossId || "") === "guardian_knight" && typeof window.attackGuardianKnightBossByClick === "function") {
+        window.attackGuardianKnightBossByClick(attackEv);
+      } else {
+        attackBossByClick(attackEv);
+      }
       return true;
     } catch (err) {
       console.warn("fast boss tap 실패", err);
