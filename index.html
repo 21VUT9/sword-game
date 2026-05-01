@@ -9434,13 +9434,14 @@ function openScrollShopQtyStep(){
   if (scrollShopPendingQty < 1) scrollShopPendingQty = 1;
 
   const currencyLabel =
+    item.priceType === "gold" ? "골드" :
     item.priceType === "starShard" ? "별조각" :
     item.priceType === "honor" ? "명예메달" :
     item.priceType === "downProtect" ? "파괴방지주문서" : "";
 
   const totalCost = Number(item.price || 0) * Number(scrollShopPendingQty || 0);
 
-  // 버튼(1/5/20/MAX)
+  // 버튼(1/5/20/100/MAX)
   const mkBtn = (n, label) => {
     const disabled = (n > maxBuy);
     const active = (scrollShopPendingQty === n);
@@ -9488,6 +9489,7 @@ function openScrollShopQtyStep(){
       ${mkBtn(1, "1")}
       ${mkBtn(5, "5")}
       ${mkBtn(20, "20")}
+      ${["engraveNormalScroll","engraveAdvancedScroll"].includes(item.id) ? mkBtn(100, "100") : ""}
       ${maxBtnHtml}
     </div>
 
