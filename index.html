@@ -8247,8 +8247,47 @@ function markWeaponCodexRangeSeen(type, fromLevel, toLevel, shouldSave){
 }
 
 function backfillWeaponCodexFromCurrent(){
-  if (!weaponType || Number(sword || 0) < 1) return false;
-  return markWeaponCodexRangeSeen(weaponType, 1, sword, false);
+  let changed = false;
+  if (weaponType && Number(sword || 0) >= 1) {
+    changed = markWeaponCodexRangeSeen(weaponType, 1, sword, false) || changed;
+  }
+  changed = backfillWeaponCodexFromThirtyRecords() || changed;
+  return changed;
+}
+
+function backfillWeaponCodexFromThirtyRecords(){
+  let changed = false;
+  const counts = (weapon30Counts && typeof weapon30Counts === "object") ? weapon30Counts : {};
+  Object.keys(counts).forEach((type) => {
+    if (Number(counts[type] || 0) > 0) {
+      changed = markWeaponCodexRangeSeen(type, 1, 30, false) || changed;
+    }
+  });
+
+  if (hofWeaponTypeAt30) {
+    changed = markWeaponCodexRangeSeen(hofWeaponTypeAt30, 1, 30, false) || changed;
+  }
+
+  return changed;
+}
+
+function syncWeaponCodexFromHallOfFame(){
+  if (!userId || !userRef || !db) return;
+  db.ref("hallOfFame")
+    .orderByChild("id")
+    .equalTo(userId)
+    .once("value")
+    .then((snap) => {
+      if (!snap.exists()) return;
+      let changed = false;
+      snap.forEach((child) => {
+        const rec = child.val() || {};
+        const wt = rec.weaponType || "sword";
+        changed = markWeaponCodexRangeSeen(wt, 1, 30, false) || changed;
+      });
+      if (changed && typeof save === "function") save();
+    })
+    .catch((e) => console.warn("명예의전당 도감 동기화 실패", e));
 }
 
 function isWeaponCodexUnlocked(type, level){
@@ -19522,6 +19561,7 @@ function login() {
     // 🏷️ 칭호 자동 지급(로그인 로드 직후)
     const titleChanged = checkAndGrantTitles();
     if((titleChanged || codexBackfilled) && !isLoginContextStale(attemptGen, loginUid)) save();
+    syncWeaponCodexFromHallOfFame();
   }).catch(err => {
     if (isLoginContextStale(attemptGen, loginUid)) return;
     abortLoginTransition();
@@ -21647,6 +21687,7 @@ setDisplay("workbenchDockUI", "flex");
 // 🏷️ 칭호 자동 지급(자동로그인 로드 직후)
 const titleChanged = checkAndGrantTitles();
 if (titleChanged || codexBackfilled) save();
+syncWeaponCodexFromHallOfFame();
     
     update();
     updateAttendanceBadge();
