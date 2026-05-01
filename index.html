@@ -30940,8 +30940,8 @@ function ensureBossCooldownResetByRun(bossId, runLike){
     const shieldModeNow = String(run.shieldMode || '');
     let displayDmg = dmg;
     if (!result.isMiss && shieldHpNow > 0) {
-      const blocked = (shieldModeNow === 'physical' && !isMagic) || (shieldModeNow === 'magic' && isMagic);
-      if (blocked) displayDmg = Math.max(1, Math.floor(dmg * 0.1));
+      // 보호막이 있을 때는 무조건 10% 데미지 표시
+      displayDmg = Math.max(1, Math.floor(dmg * 0.1));
     }
 
     spawnBossHitEffectAt(ev.clientX, ev.clientY, kind, isMagic);
@@ -30957,14 +30957,20 @@ function ensureBossCooldownResetByRun(bossId, runLike){
       let hp = Math.max(0, Number(cur.hp || 0));
       let shieldHp = Math.max(0, Number(cur.shieldHp || 0));
       const shieldMode = String(cur.shieldMode || '');
-      const blocked = shieldHp > 0 && ((shieldMode === 'physical' && !isMagic) || (shieldMode === 'magic' && isMagic));
 
-      if (blocked) {
-        // 보호막이 있을 때는 보호막에만 10% 데미지를 주고, 체력에는 데미지를 주지 않음
+      if (shieldHp > 0) {
+        // 보호막이 있을 때는 보호막에 10% 데미지를 주고, 보호막이 파괴되면 그 공격부터 정상 데미지로 체력을 깎음
         const shieldDamage = Math.max(1, Math.floor(dmg * 0.1));
-        shieldHp = Math.max(0, shieldHp - shieldDamage);
+        const toShield = Math.min(shieldHp, shieldDamage);
+        shieldHp -= toShield;
         cur.shieldHp = shieldHp;
-        applied = shieldDamage; // 기록용 데미지 (보호막에 적용된 데미지)
+        applied = toShield; // 기록용 데미지 (보호막에 적용된 실제 데미지)
+
+        // 보호막이 파괴되었으면 그 공격부터 정상 데미지 적용
+        if (Number(cur.shieldHp || 0) <= 0) {
+          hp = Math.max(0, hp - dmg);
+          applied = dmg;
+        }
       } else {
         // 보호막이 없을 때는 정상 데미지로 체력을 깎음
         hp = Math.max(0, hp - applied);
