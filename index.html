@@ -726,6 +726,205 @@ body {
   background: rgba(255,255,255,0.10);
 }
 
+.weapon-codex-overlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:99999;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,0.62);
+}
+.weapon-codex-panel{
+  width:min(760px, 94vw);
+  height:min(560px, 86vh);
+  display:grid;
+  grid-template-columns:128px 1fr;
+  background:#21170f;
+  border:2px solid rgba(221,174,92,0.48);
+  border-radius:10px;
+  box-shadow:0 18px 50px rgba(0,0,0,0.62);
+  color:#fff4db;
+  overflow:hidden;
+}
+.weapon-codex-tabs{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  padding:18px 0 18px 10px;
+  background:linear-gradient(180deg,#2b1c12,#17100b);
+  border-right:1px solid rgba(221,174,92,0.32);
+  overflow-y:auto;
+}
+.weapon-codex-tab{
+  position:relative;
+  height:42px;
+  margin:0;
+  padding:0 10px;
+  border:1px solid rgba(221,174,92,0.28);
+  border-right:0;
+  border-radius:8px 0 0 8px;
+  background:#342314;
+  color:#d7c6a3;
+  font-size:13px;
+  font-weight:800;
+  text-align:left;
+  cursor:pointer;
+  box-sizing:border-box;
+}
+.weapon-codex-tab.active{
+  background:#dca54d;
+  color:#1b1008;
+  border-color:#ffd27a;
+  box-shadow:0 0 16px rgba(255,194,91,0.22);
+}
+.weapon-codex-main{
+  display:grid;
+  grid-template-rows:auto 1fr auto;
+  min-width:0;
+  padding:18px 18px 14px;
+  background:radial-gradient(circle at 50% 22%, rgba(255,220,140,0.10), transparent 46%), #1b1510;
+}
+.weapon-codex-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  min-height:34px;
+}
+.weapon-codex-title{
+  font-size:18px;
+  font-weight:900;
+  color:#ffe1a1;
+}
+.weapon-codex-close{
+  width:34px;
+  height:34px;
+  margin:0;
+  padding:0;
+  border:1px solid rgba(255,255,255,0.16);
+  border-radius:6px;
+  background:#35251a;
+  color:#fff4db;
+  font-size:20px;
+  line-height:1;
+  cursor:pointer;
+}
+.weapon-codex-page{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  min-height:0;
+  text-align:center;
+}
+.weapon-codex-img-wrap{
+  position:relative;
+  width:min(300px, 70%);
+  max-width:70%;
+  aspect-ratio:1 / 1;
+  flex:0 0 auto;
+  display:block;
+  border-radius:8px;
+  background:rgba(255,255,255,0.045);
+  border:1px solid rgba(255,255,255,0.10);
+  box-sizing:border-box;
+  overflow:hidden;
+}
+.weapon-codex-img{
+  position:absolute;
+  inset:10%;
+  display:block;
+  width:80% !important;
+  height:80% !important;
+  max-width:none !important;
+  max-height:none !important;
+  aspect-ratio:1 / 1;
+  object-fit:contain !important;
+  object-position:center center;
+  filter:grayscale(1) blur(1.4px) brightness(0.54) contrast(1.08);
+  opacity:0.72;
+}
+.weapon-codex-img.unlocked{
+  filter:none;
+  opacity:1;
+}
+.weapon-codex-level{
+  margin-top:14px;
+  font-size:20px;
+  font-weight:900;
+  color:#ffd27a;
+}
+.weapon-codex-name{
+  margin-top:5px;
+  max-width:92%;
+  font-size:18px;
+  font-weight:900;
+  color:#fff4db;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.weapon-codex-desc{
+  margin-top:8px;
+  max-width:82%;
+  min-height:36px;
+  color:#cdbb97;
+  font-size:13px;
+  line-height:1.45;
+  white-space:pre-line;
+}
+.weapon-codex-locked .weapon-codex-name,
+.weapon-codex-locked .weapon-codex-desc{
+  color:#8f8678;
+}
+.weapon-codex-nav{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:16px;
+  min-height:44px;
+}
+.weapon-codex-nav button{
+  width:46px;
+  height:36px;
+  margin:0;
+  padding:0;
+  border:1px solid rgba(221,174,92,0.38);
+  border-radius:6px;
+  background:#35251a;
+  color:#ffe1a1;
+  font-size:18px;
+  font-weight:900;
+  cursor:pointer;
+}
+.weapon-codex-nav button:disabled{
+  opacity:0.35;
+  cursor:default;
+}
+.weapon-codex-counter{
+  min-width:72px;
+  color:#d4c2a0;
+  font-size:13px;
+  font-weight:800;
+}
+
+@media (max-width: 560px){
+  .weapon-codex-panel{
+    grid-template-columns:96px 1fr;
+    height:min(560px, 90vh);
+  }
+  .weapon-codex-tabs{ padding-left:7px; }
+  .weapon-codex-tab{
+    height:38px;
+    padding:0 7px;
+    font-size:12px;
+  }
+  .weapon-codex-main{ padding:14px 12px 12px; }
+  .weapon-codex-name{ font-size:15px; }
+  .weapon-codex-desc{ max-width:94%; }
+}
+
 /* 🎮 게임설정 토글 버튼 활성화 */
 #global30NoticeToggleBtn.active{
   background:#ffd54f !important;
@@ -5717,6 +5916,7 @@ a, button, [role="button"], .actionBtn, .dock-btn, .map-field, .inventory-slot {
   <button type="button" class="hm-item" onclick="logout(); closeHamburgerMenu();">로그아웃</button>
   <div class="hm-item" onclick="openSoundSetting()">소리설정</div>
   <div class="hm-item" onclick="openGameSetting()">게임설정</div>
+  <div class="hm-item" onclick="openWeaponCodex()">도감</div>
 
 </div>
 
@@ -5774,6 +5974,27 @@ a, button, [role="button"], .actionBtn, .dock-btn, .map-field, .inventory-slot {
 
     <div style="display:flex; gap:10px; margin-top:14px;">
       <button onclick="closeGameSetting()" style="flex:1; padding:10px 0; border-radius:10px; border:0; background:#333; color:#fff; font-weight:700;">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 📖 무기 도감 오버레이 -->
+<div id="weaponCodexOverlay"
+     class="weapon-codex-overlay"
+     onclick="if(event.target===this) closeWeaponCodex();">
+  <div class="weapon-codex-panel" onclick="event.stopPropagation()">
+    <div id="weaponCodexTabs" class="weapon-codex-tabs"></div>
+    <div class="weapon-codex-main">
+      <div class="weapon-codex-head">
+        <div id="weaponCodexTitle" class="weapon-codex-title">무기 도감</div>
+        <button type="button" class="weapon-codex-close" onclick="closeWeaponCodex()" aria-label="닫기">×</button>
+      </div>
+      <div id="weaponCodexPage" class="weapon-codex-page"></div>
+      <div class="weapon-codex-nav">
+        <button type="button" id="weaponCodexPrevBtn" onclick="moveWeaponCodexPage(-1)" aria-label="이전">◀</button>
+        <div id="weaponCodexCounter" class="weapon-codex-counter">1 / 30</div>
+        <button type="button" id="weaponCodexNextBtn" onclick="moveWeaponCodexPage(1)" aria-label="다음">▶</button>
+      </div>
     </div>
   </div>
 </div>
@@ -7971,6 +8192,138 @@ function getWeaponInfo(level, type) {
   return WEAPON_INFO[lv] || WEAPON_INFO[0];
 }
 
+const WEAPON_CODEX_TYPES = [
+  { key:"sword", label:"검" },
+  { key:"spear", label:"창" },
+  { key:"axe", label:"도끼" },
+  { key:"bow", label:"활" },
+  { key:"staff", label:"스태프" },
+  { key:"dagger", label:"단검" },
+  { key:"gauntlet", label:"건틀릿" },
+  { key:"scythe", label:"사이드" },
+  { key:"magitech", label:"마법공학" }
+];
+
+let weaponCodexTab = "sword";
+let weaponCodexPage = 1;
+
+function normalizeWeaponCodexSeen(src){
+  const out = {};
+  WEAPON_CODEX_TYPES.forEach(({key}) => {
+    const raw = src && typeof src === "object" ? src[key] : null;
+    out[key] = {};
+    if (raw && typeof raw === "object") {
+      Object.keys(raw).forEach((lv) => {
+        const n = Math.max(1, Math.min(30, Number(lv || 0)));
+        if (n >= 1 && n <= 30 && raw[lv]) out[key][n] = true;
+      });
+    }
+  });
+  return out;
+}
+
+function markWeaponCodexSeen(type, level, shouldSave){
+  const t = String(type || weaponType || "sword");
+  const lv = Math.max(1, Math.min(30, Number(level || 0)));
+  if (!WEAPON_CODEX_TYPES.some(w => w.key === t) || lv < 1) return false;
+
+  weaponCodexSeen = normalizeWeaponCodexSeen(weaponCodexSeen);
+  if (weaponCodexSeen[t][lv]) return false;
+
+  weaponCodexSeen[t][lv] = true;
+  if (shouldSave && typeof save === "function") save();
+  return true;
+}
+
+function markWeaponCodexRangeSeen(type, fromLevel, toLevel, shouldSave){
+  const start = Math.max(1, Math.min(30, Number(fromLevel || 0)));
+  const end = Math.max(1, Math.min(30, Number(toLevel || 0)));
+  let changed = false;
+  for (let lv = Math.min(start, end); lv <= Math.max(start, end); lv++) {
+    changed = markWeaponCodexSeen(type, lv, false) || changed;
+  }
+  if (changed && shouldSave && typeof save === "function") save();
+  return changed;
+}
+
+function backfillWeaponCodexFromCurrent(){
+  if (!weaponType || Number(sword || 0) < 1) return false;
+  return markWeaponCodexRangeSeen(weaponType, 1, sword, false);
+}
+
+function isWeaponCodexUnlocked(type, level){
+  const t = String(type || "sword");
+  const lv = Math.max(1, Math.min(30, Number(level || 0)));
+  return !!(weaponCodexSeen && weaponCodexSeen[t] && weaponCodexSeen[t][lv]);
+}
+
+function getWeaponCodexLabel(type){
+  return (WEAPON_CODEX_TYPES.find(w => w.key === type) || WEAPON_CODEX_TYPES[0]).label;
+}
+
+function openWeaponCodex(){
+  closeHamburgerMenu();
+  weaponCodexSeen = normalizeWeaponCodexSeen(weaponCodexSeen);
+  backfillWeaponCodexFromCurrent();
+  weaponCodexTab = WEAPON_CODEX_TYPES.some(w => w.key === weaponCodexTab) ? weaponCodexTab : "sword";
+  weaponCodexPage = Math.max(1, Math.min(30, Number(weaponCodexPage || 1)));
+  renderWeaponCodex();
+  const ov = document.getElementById("weaponCodexOverlay");
+  if (ov) ov.style.display = "flex";
+}
+
+function closeWeaponCodex(){
+  const ov = document.getElementById("weaponCodexOverlay");
+  if (ov) ov.style.display = "none";
+}
+
+function setWeaponCodexTab(type){
+  weaponCodexTab = String(type || "sword");
+  weaponCodexPage = 1;
+  renderWeaponCodex();
+}
+
+function moveWeaponCodexPage(delta){
+  weaponCodexPage = Math.max(1, Math.min(30, Number(weaponCodexPage || 1) + Number(delta || 0)));
+  renderWeaponCodex();
+}
+
+function renderWeaponCodex(){
+  const tabs = document.getElementById("weaponCodexTabs");
+  const title = document.getElementById("weaponCodexTitle");
+  const pageBox = document.getElementById("weaponCodexPage");
+  const counter = document.getElementById("weaponCodexCounter");
+  const prevBtn = document.getElementById("weaponCodexPrevBtn");
+  const nextBtn = document.getElementById("weaponCodexNextBtn");
+  if (!tabs || !pageBox) return;
+
+  weaponCodexSeen = normalizeWeaponCodexSeen(weaponCodexSeen);
+  tabs.innerHTML = WEAPON_CODEX_TYPES.map(({key, label}) => {
+    const active = key === weaponCodexTab ? " active" : "";
+    return `<button type="button" class="weapon-codex-tab${active}" onclick="setWeaponCodexTab('${key}')">${label}</button>`;
+  }).join("");
+
+  const lv = Math.max(1, Math.min(30, Number(weaponCodexPage || 1)));
+  const info = getWeaponInfo(lv, weaponCodexTab);
+  const unlocked = isWeaponCodexUnlocked(weaponCodexTab, lv);
+
+  if (title) title.textContent = `${getWeaponCodexLabel(weaponCodexTab)} 도감`;
+  pageBox.classList.toggle("weapon-codex-locked", !unlocked);
+  const typeImgClass = `weapon-codex-img-${weaponCodexTab}`;
+  pageBox.innerHTML = `
+    <div class="weapon-codex-img-wrap">
+      <img class="weapon-codex-img ${typeImgClass} ${unlocked ? "unlocked" : ""}" src="${info.img}" alt="${info.name}">
+    </div>
+    <div class="weapon-codex-level">+${lv}강</div>
+    <div class="weapon-codex-name">${unlocked ? info.name : "미발견 무기"}</div>
+    <div class="weapon-codex-desc">${unlocked ? info.desc : "아직 이 강화 단계의 흔적을 남기지 않았다."}</div>
+  `;
+
+  if (counter) counter.textContent = `${lv} / 30`;
+  if (prevBtn) prevBtn.disabled = lv <= 1;
+  if (nextBtn) nextBtn.disabled = lv >= 30;
+}
+
 // 0강에서 처음 무기가 생길 때, 타입(검/창/도끼) 랜덤 확정
 // 0강에서 처음 무기가 생길 때, 타입(검/창/도끼) 랜덤 확정
 function getPassiveMaxLevelByType(type){
@@ -8353,6 +8706,7 @@ let rankingBattleLastRewardWeekKey = "";  // 마지막으로 처리한 랭킹전
 let duelUpdated = 0;          // 이번 주 결투 포인트가 마지막으로 바뀐 시각
 let duelLastWeekUpdated = 0;  // 지난주 결투 포인트 최종 기록 시각  
 let weaponType = null; 
+let weaponCodexSeen = {};
 // null: 아직 미배정(0강) / "sword": 검 / "spear": 창 / "axe": 도끼 / "bow": 활 / "staff": 스태프
 // ✅ 각인 프리셋(1~3)
 // - engravePresets[engravePresetIdx] 가 "현재 적용 프리셋"이고
@@ -10023,6 +10377,7 @@ activeBossId = "";
 weaponType   = null;
 maxSwordLevel = 0;
 destroyCount  = 0;
+weaponCodexSeen = {};
   
   attendanceCount    = 0;
   lastAttendanceDate = "";
@@ -17408,6 +17763,7 @@ if (questState["forge_tutorial_01"] === QUEST_STATE.ACTIVE) {
 
       // 🔹 0강 → 15강으로 점프했다면 여기서 검/창 랜덤 확정
   ensureWeaponTypeAfterUpgrade(before, sword);
+  markWeaponCodexRangeSeen(weaponType || "sword", 1, sword, false);
     
     rollPowerForCurrentSword();
 
@@ -17449,6 +17805,7 @@ if (wantScroll21) {
 
     // 🔹 0강 → 21강으로 점프했다면 여기서 검/창 랜덤 확정
   ensureWeaponTypeAfterUpgrade(before, sword);
+  markWeaponCodexRangeSeen(weaponType || "sword", 1, sword, false);
   
   rollPowerForCurrentSword();
 
@@ -17591,6 +17948,7 @@ if (useSuper) {
   
   // 🔹 0강 → 1강 이상으로 처음 올라갔으면 여기서 타입 확정
       ensureWeaponTypeAfterUpgrade(before, sword);
+      markWeaponCodexRangeSeen(weaponType || "sword", before + 1, sword, false);
 
   // ✅ 승부사: 21강부터 “주문서 없이” 24강 도달
 if (gamblerRunActive && gamblerRunNoScroll && before < 24 && sword >= 24) {
@@ -18781,6 +19139,7 @@ function resetLocalStateForAccountSwitch(){
   reach30Count = 0;
   weapon30Counts = {};
   weaponLocks = {};
+  weaponCodexSeen = {};
   hofDeadline = 0;
   hofAchievedAt = 0;
   hofWeaponTypeAt30 = "";
@@ -18908,6 +19267,7 @@ function login() {
       reach30Count = Number(data.reach30Count || 0);
       weapon30Counts = data.weapon30Counts || {};
     weaponLocks = normalizeWeaponLocks(data.weaponLocks);
+      weaponCodexSeen = normalizeWeaponCodexSeen(data.weaponCodexSeen);
       hofDeadline = Number(data.hofDeadline || 0);
       hofAchievedAt = Number(data.hofAchievedAt || 0);
       hofWeaponTypeAt30 = data.hofWeaponTypeAt30 || "";
@@ -18971,6 +19331,8 @@ function login() {
           weaponType = null;
         }
       }
+
+      const codexBackfilled = backfillWeaponCodexFromCurrent();
 
       // ⭐ 이 시점의 강화값을 기준으로 기록
       lastSavedSwordForUpdated = sword;
@@ -19159,7 +19521,7 @@ function login() {
 
     // 🏷️ 칭호 자동 지급(로그인 로드 직후)
     const titleChanged = checkAndGrantTitles();
-    if(titleChanged && !isLoginContextStale(attemptGen, loginUid)) save();
+    if((titleChanged || codexBackfilled) && !isLoginContextStale(attemptGen, loginUid)) save();
   }).catch(err => {
     if (isLoginContextStale(attemptGen, loginUid)) return;
     abortLoginTransition();
@@ -19419,6 +19781,7 @@ function save(options = {}) {
     reach30Count: reach30Count,
     weapon30Counts: weapon30Counts,
     weaponLocks: normalizeWeaponLocks(weaponLocks),
+    weaponCodexSeen: normalizeWeaponCodexSeen(weaponCodexSeen),
     hofDeadline: Number(hofDeadline || 0),
     hofAchievedAt: Number(hofAchievedAt || 0),
     hofWeaponTypeAt30: hofWeaponTypeAt30 || "",
@@ -19846,6 +20209,7 @@ function toggleHamburgerMenu(ev){
 document.addEventListener("click", () => closeHamburgerMenu());
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeHamburgerMenu();
+  if (e.key === "Escape") closeWeaponCodex();
 });
 
 // 메뉴 내부 클릭은 버블 막기(바깥 클릭 닫힘 방지)
@@ -21066,6 +21430,7 @@ if (equippedTitle && equippedTitle.includes("${")) equippedTitle = "";
     reach30Count = Number(data.reach30Count || 0);
     weapon30Counts = data.weapon30Counts || {};
     weaponLocks = normalizeWeaponLocks(data.weaponLocks);
+    weaponCodexSeen = normalizeWeaponCodexSeen(data.weaponCodexSeen);
     hofDeadline = Number(data.hofDeadline || 0);
     hofAchievedAt = Number(data.hofAchievedAt || 0);
     hofWeaponTypeAt30 = data.hofWeaponTypeAt30 || "";
@@ -21126,6 +21491,7 @@ ensureEngravePresetShape();
       weaponType = null;
     }
   }
+  const codexBackfilled = backfillWeaponCodexFromCurrent();
     
     // ⭐ 자동로그인 시에도 초기화
     lastSavedSwordForUpdated = sword;
@@ -21280,7 +21646,7 @@ setDisplay("workbenchDockUI", "flex");
 
 // 🏷️ 칭호 자동 지급(자동로그인 로드 직후)
 const titleChanged = checkAndGrantTitles();
-if (titleChanged) save();
+if (titleChanged || codexBackfilled) save();
     
     update();
     updateAttendanceBadge();
@@ -24254,13 +24620,35 @@ myLines.push(`• 치명타 데미지: <b>+${Math.round((0.20 + Number(critDmgBo
   function formatBossHpShort(v){
   v = Math.max(0, Number(v || 0));
 
-  // 1억 이상이면 "억" 단위로 2자리 소수
-  if (v >= 100000000) {
-    const n = v / 100000000;
-    const fixed = n.toFixed(2);              // "3059.78"
-    const parts = fixed.split(".");
-    const intPart = Number(parts[0]).toLocaleString("ko-KR");
-    return `${intPart}.${parts[1]}억`;
+  const EOK = 100000000;
+  const JO = 1000000000000;
+  const trimFixed = (n) => {
+    const fixed = Number(n || 0).toFixed(2);
+    return fixed.replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
+  };
+  const formatEokBelowJo = (eok) => {
+    const whole = Math.floor(eok);
+    const decimal = trimFixed(eok).split(".")[1] || "";
+    const decimalText = decimal ? `.${decimal}` : "";
+    return `${whole.toLocaleString("ko-KR")}${decimalText}억`;
+  };
+
+  if (v >= JO) {
+    const jo = Math.floor(v / JO);
+    const eok = (v - jo * JO) / EOK;
+    const parts = [`${jo.toLocaleString("ko-KR")}조`];
+    if (eok >= 0.01) {
+      parts.push(formatEokBelowJo(eok));
+    }
+    return parts.join(" ");
+  }
+
+  if (v >= EOK) {
+    const n = v / EOK;
+    const fixed = trimFixed(n);
+    const [intPart, decimalPart] = fixed.split(".");
+    const formattedInt = Number(intPart).toLocaleString("ko-KR");
+    return `${formattedInt}${decimalPart ? "." + decimalPart : ""}억`;
   }
 
   // 그 아래는 기존 포맷(너 게임 포맷 유지)
