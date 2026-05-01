@@ -2885,7 +2885,7 @@ hr.section-divider{
 .titlePanel{
   position: relative;
   width: min(860px, 92vw);
-  height: min(560px, 84vh);
+  height: min(700px, 90vh);
   border-radius: 16px;
   padding: 14px;                 /* ✅ padding-bottom 고정값 제거 */
   background: rgba(10,10,10,0.88);
@@ -8472,7 +8472,11 @@ const TITLE_COLLECTION_REWARDS = [
   { count: 20, label: "파괴방지 주문서 1개", grant: () => { itemProtect = Number(itemProtect || 0) + 1; } },
   { count: 30, label: "파괴방지 주문서 2개", grant: () => { itemProtect = Number(itemProtect || 0) + 2; } },
   { count: 40, label: "슈퍼강화 주문서 1개", grant: () => { itemSuper = Number(itemSuper || 0) + 1; } },
-  { count: 50, label: "토벌우선신청권 1개", grant: () => { itemBossPriority = Number(itemBossPriority || 0) + 1; } }
+  { count: 50, label: "토벌우선신청권 1개", grant: () => { itemBossPriority = Number(itemBossPriority || 0) + 1; } },
+  { count: 55, label: "파괴방지 주문서 1개", grant: () => { itemProtect = Number(itemProtect || 0) + 1; } },
+  { count: 60, label: "슈퍼강화 주문서 1개", grant: () => { itemSuper = Number(itemSuper || 0) + 1; } },
+  { count: 65, label: "파괴방지 주문서 1개", grant: () => { itemProtect = Number(itemProtect || 0) + 1; } },
+  { count: 70, label: "파괴방지 주문서 1개", grant: () => { itemProtect = Number(itemProtect || 0) + 1; } }
 ];
 let lastSeenGlobal30EventId = 0;  // 마지막으로 본 +30 글로벌 이벤트 ID
 let aweUsedGlobal30EventId = 0;   // 마지막으로 ‘경외하기’를 사용한 +30 이벤트 ID (1인 1회)
@@ -12776,6 +12780,10 @@ const CUMULATIVE_ATTENDANCE_REWARDS = [
   { days:20, rewardText:"슈퍼강화주문서 1개", reward:{ type:"itemSuper", count:1 } },
   { days:30, rewardText:"파괴방지주문서 3개", reward:{ type:"itemProtect", count:3 } },
   { days:50, rewardText:"슈퍼강화주문서 3개", reward:{ type:"itemSuper", count:3 } },
+  { days:55, rewardText:"파괴방지주문서 1개", reward:{ type:"itemProtect", count:1 } },
+  { days:60, rewardText:"슈퍼강화주문서 1개", reward:{ type:"itemSuper", count:1 } },
+  { days:65, rewardText:"파괴방지주문서 1개", reward:{ type:"itemProtect", count:1 } },
+  { days:70, rewardText:"파괴방지주문서 1개", reward:{ type:"itemProtect", count:1 } },
   { days:100, rewardText:"보스토벌신청우선권 2개", reward:{ type:"itemBossPriority", count:2 } },
   { days:150, rewardText:"파괴방지주문서 10개", reward:{ type:"itemProtect", count:10 } },
   { days:200, rewardText:"파괴방지주문서 20개", reward:{ type:"itemProtect", count:20 } },
@@ -17566,10 +17574,15 @@ spawnWeaponShards(18);
 // ✅ 슈퍼강화 성공일 때만 카운트/칭호 지급 (슈퍼스타)
 if (useSuper) {
   superSuccessCount = Number(superSuccessCount || 0) + 1;
+  superSuccessStreak = Number(superSuccessStreak || 0) + 1;
 
   // 1회 달성 즉시 칭호 지급
   if (superSuccessCount >= 1) {
     if (grantTitleOnceNoSave("superstar")) save(); // 최초 획득 시만 저장
+  }
+  // 연속 4회 슈퍼강화 성공 시 우주대스타 칭호 즉시 지급
+  if (superSuccessStreak >= 4) {
+    if (grantTitleOnceNoSave("super_chain4")) save();
   }
 }
 
