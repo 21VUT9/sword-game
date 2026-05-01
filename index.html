@@ -30958,15 +30958,15 @@ function ensureBossCooldownResetByRun(bossId, runLike){
       let shieldHp = Math.max(0, Number(cur.shieldHp || 0));
       const shieldMode = String(cur.shieldMode || '');
       const blocked = shieldHp > 0 && ((shieldMode === 'physical' && !isMagic) || (shieldMode === 'magic' && isMagic));
-      if (blocked) applied = Math.max(1, Math.floor(applied * 0.1));
 
-      if (shieldHp > 0) {
-        const toShield = Math.min(shieldHp, applied);
-        shieldHp -= toShield;
+      if (blocked) {
+        // 보호막이 있을 때는 보호막에만 10% 데미지를 주고, 체력에는 데미지를 주지 않음
+        const shieldDamage = Math.max(1, Math.floor(dmg * 0.1));
+        shieldHp = Math.max(0, shieldHp - shieldDamage);
         cur.shieldHp = shieldHp;
-        const left = applied - toShield;
-        if (left > 0) hp = Math.max(0, hp - left);
+        applied = shieldDamage; // 기록용 데미지 (보호막에 적용된 데미지)
       } else {
+        // 보호막이 없을 때는 정상 데미지로 체력을 깎음
         hp = Math.max(0, hp - applied);
       }
 
