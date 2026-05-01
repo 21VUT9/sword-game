@@ -5291,6 +5291,8 @@ html, body {
 .rune-process-btn{margin-top:12px; padding:11px 22px; font-size:15px; font-weight:900; border-radius:12px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.08); color:#fff; cursor:pointer;}
 .rune-process-btn:disabled{opacity:0.38; cursor:default;}
 .rune-process-note{margin-top:10px; font-size:12px; line-height:1.55; color:#aeb4bf; text-align:center; white-space:pre-line; min-height:18px;}
+.rune-process-effect{margin-top:8px; padding:7px 10px; min-width:168px; max-width:230px; border-radius:10px; border:1px solid rgba(140,210,255,0.18); background:rgba(140,210,255,0.07); color:#dcecff; font-size:12px; line-height:1.45; text-align:center;}
+.rune-process-effect b{color:#8cd2ff;}
 .rune-process-quote{margin-top:8px; font-size:13px; line-height:1.6; color:#eef2f6; text-align:center; min-height:42px; max-width:220px;}
 .rune-bottom-head{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;}
 .rune-bottom-title{font-size:15px; font-weight:900; color:#f3f3f3;}
@@ -27412,7 +27414,11 @@ function getRuneStoneIcon(kind){ return safeRuneImg(getRuneDef(kind).stoneImg); 
 function getRuneMarkIcon(kind){ return safeRuneImg(getRuneDef(kind).runeImg); }
 function getActiveRuneSlots(){ return normalizeRunePresets(runePresets)[Number(runePresetIdx||0)] || Array(9).fill(null); }
 function getAllActiveEquippedRuneUids(){ return getActiveRuneSlots().filter(Boolean); }
-function isRuneEquipped(uid){ return getAllActiveEquippedRuneUids().includes(String(uid)); }
+function getAllPresetEquippedRuneUids(){
+  return normalizeRunePresets(runePresets).flat().filter(Boolean).map(uid => String(uid));
+}
+function isRuneEquippedInActivePreset(uid){ return getAllActiveEquippedRuneUids().includes(String(uid)); }
+function isRuneEquipped(uid){ return getAllPresetEquippedRuneUids().includes(String(uid)); }
 function clearRuneNewFlags(){
   let changed = false;
   runeInventory.forEach(r => { if (r.isNew){ r.isNew = false; changed = true; } });
@@ -27566,7 +27572,12 @@ function renderRuneTopArea(){
   const top = document.getElementById('runeTopArea'); if (!top) return;
   if (runeTab === 'equip') { top.innerHTML = buildRuneEquipTopHtml(); bindRuneEquipTop(); return; }
   const mode = runeTab;
-  const selected = runeTab === 'appraise' ? (runeSelectedStoneIndex >= 0 ? { stone:true } : null) : getRuneItemByUid(runeSelectedTopUid || runeSelectedUid);
+  let selected = runeTab === 'appraise' ? (runeSelectedStoneIndex >= 0 ? { stone:true } : null) : getRuneItemByUid(runeSelectedTopUid || runeSelectedUid);
+  if ((mode === 'upgrade' || mode === 'dismantle') && selected && isRuneEquipped(selected.uid)) {
+    runeSelectedUid = '';
+    runeSelectedTopUid = '';
+    selected = null;
+  }
   const quote = getVerdiaLine(mode);
   let note = '';
   if (mode === 'upgrade'){
@@ -27589,6 +27600,7 @@ function renderRuneTopArea(){
         </div>
         <div class="rune-process-main">
           <div id="runeProcessBox" class="rune-process-box ${selected ? 'active' : ''}">${buildRuneProcessBoxInner()}</div>
+          ${mode==='upgrade' && selected ? `<div class="rune-process-effect"><b>현재 효과</b><br>${getRuneEffectText(selected)}</div>` : ''}
           <button id="runeProcessBtn" class="rune-process-btn" type="button" ${isRuneProcessEnabled() ? '' : 'disabled'}>${mode==='upgrade'?'강화하기':(mode==='dismantle'?'분해하기':'감정하기')}</button>
           ${note ? `<div class="rune-process-note">${note}</div>` : ''}
           ${mode==='dismantle' ? `<label class="rune-sub-option"><input id="runeBulkDismantleChk" type="checkbox" ${runeBulkDismantle ? 'checked' : ''}> 일괄분해 <span class="rune-sub-option-note">(강화가 진행된 룬석은 제외)</span></label>` : ''}
@@ -27617,6 +27629,7 @@ function isRuneProcessEnabled(){
   if (runeTab === 'appraise') return runeSelectedStoneIndex >= 0 && gold >= RUNE_APPRAISAL_COST && runeInventory.length < RUNE_STORAGE_LIMIT;
   const item = getRuneItemByUid(runeSelectedTopUid || runeSelectedUid);
   if (!item) return false;
+  if (isRuneEquipped(item.uid)) return false;
   if (runeTab === 'upgrade'){
     const meta = RUNE_UPGRADE_TABLE[Number(item.level||1)];
     return !!meta && Number(itemEssence||0) >= meta.essence;
@@ -27744,7 +27757,7 @@ function showRuneInfoCard(payload, rect){
   img.src = payload.mode === 'equipped' ? getRuneMarkIcon(item.kind) : getRuneStoneIcon(item.kind);
   img.onerror = function(){ this.onerror=null; this.src=RUNE_IMAGE_FALLBACK; };
   const action = document.getElementById('runeInfoActionBtn');
-  const equippedFromInventory = payload.mode === 'inventory' && isRuneEquipped(payload.uid);
+  const equippedFromInventory = payload.mode === 'inventory' && isRuneEquippedInActivePreset(payload.uid);
   action.textContent = (payload.mode === 'equipped' || equippedFromInventory) ? '해제' : '장착';
   action.onclick = () => {
     resetRuneVerdiaExpression();
@@ -27828,6 +27841,7 @@ function renderRuneStoneInventory(area){
 }
 function attemptRuneUpgrade(){
   const item = getRuneItemByUid(runeSelectedTopUid || runeSelectedUid); if (!item) return;
+  if (isRuneEquipped(item.uid)) { showNpcMessage('프리셋에 장착된 룬은 강화할 수 없습니다.', null, true, ''); renderRuneOverlay(); return; }
   const meta = RUNE_UPGRADE_TABLE[Number(item.level||1)];
   if (!meta) { showNpcMessage('이미 최대 강화 단계입니다.', null, true, ''); return; }
   if (Number(itemEssence||0) < meta.essence){ showNpcMessage('마력의정수가 부족합니다.', null, true, ''); return; }
@@ -27891,7 +27905,8 @@ function attemptRuneUpgrade(){
 }
 function getRuneDismantleTargets(){
   if (runeBulkDismantle){ return runeInventory.filter(it => !isRuneEquipped(it.uid) && Number(it.level||1) === 1); }
-  const item = getRuneItemByUid(runeSelectedTopUid || runeSelectedUid); return item ? [item] : [];
+  const item = getRuneItemByUid(runeSelectedTopUid || runeSelectedUid);
+  return (item && !isRuneEquipped(item.uid)) ? [item] : [];
 }
 function getRuneDismantleEssence(item){
   const lv = Number(item && item.level || 1);
