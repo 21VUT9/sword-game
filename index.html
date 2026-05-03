@@ -27859,7 +27859,13 @@ function buildRuneSlotsHtml(){
   }).join('');
 }
 function bindRuneEquipTop(){
-  document.querySelectorAll('[data-rune-preset]').forEach(btn => btn.onclick = () => { runePresetIdx = Number(btn.dataset.runePreset || 0); runePendingEquipUid=''; save(); renderRuneOverlay(); });
+  document.querySelectorAll('[data-rune-preset]').forEach(btn => btn.onclick = () => {
+    runePresetIdx = Number(btn.dataset.runePreset || 0);
+    runePendingEquipUid = '';
+    save();
+    syncEquippedRuneDisplaysImmediate();
+    renderRuneOverlay();
+  });
   document.querySelectorAll('[data-rune-slot]').forEach(btn => btn.onclick = () => handleRuneSlotClick(Number(btn.dataset.runeSlot || 0), btn));
 }
 function getRuneSlotPositions(){
