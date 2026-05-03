@@ -10346,6 +10346,10 @@ function readLocalSaveBackup(uid){
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return null;
+    if (parsed.pending !== true) {
+      localStorage.removeItem(getLocalSaveBackupKey(uid));
+      return null;
+    }
     if (String(parsed.uid || "") !== String(uid || "")) return null;
     if (!parsed.data || typeof parsed.data !== "object") return null;
     parsed.saveVersion = Number(parsed.saveVersion || parsed.data.saveVersion || 0);
@@ -10362,12 +10366,23 @@ function writeLocalSaveBackup(uid, data){
       uid: String(uid),
       saveVersion: Number(data.saveVersion || 0),
       savedAt: Date.now(),
+      pending: true,
       data: data
     };
     localStorage.setItem(getLocalSaveBackupKey(uid), JSON.stringify(payload));
   } catch(e) {
     console.warn("local save backup failed", e);
   }
+}
+
+function clearLocalSaveBackup(uid, saveVersion){
+  try {
+    const backup = readLocalSaveBackup(uid);
+    if (!backup) return;
+    if (saveVersion == null || Number(backup.saveVersion || 0) <= Number(saveVersion || 0)) {
+      localStorage.removeItem(getLocalSaveBackupKey(uid));
+    }
+  } catch(e) {}
 }
 
 function applyNewerLocalSaveBackup(uid, serverData){
@@ -19955,6 +19970,7 @@ function save(options = {}) {
       if (sword !== lastSavedSwordForUpdated) {
         lastSavedSwordForUpdated = sword;
       }
+      clearLocalSaveBackup(saveUid, nextSaveVersion);
       return true;
     }).catch((e) => {
       console.warn("save() fast 실패", e);
@@ -20003,6 +20019,7 @@ function save(options = {}) {
       if (sword !== lastSavedSwordForUpdated) {
         lastSavedSwordForUpdated = sword;
       }
+      clearLocalSaveBackup(saveUid, nextSaveVersion);
       resolve(true);
     });
   });
