@@ -8736,6 +8736,8 @@ let currentSessionId = null;   // 🔐 이 브라우저 탭의 세션 ID
 // 🔐 현재 클라이언트가 로드한 최신 저장 버전
 let currentSaveVersion = 0;
 let pendingLocalSaveRestore = false;
+let activeSaveRequestCount = 0;
+let hasUnconfirmedLocalSave = false;
 let staleSessionReloadPending = false;
 let logoutInProgress = false;
 let duelPointWeekKey = "";           // 현재 내가 플레이 중인 주(월요일 기준)
@@ -10403,6 +10405,18 @@ function applyNewerLocalSaveBackup(uid, serverData){
   return serverData || {};
 }
 
+function markSaveRequestStarted(){
+  activeSaveRequestCount = Math.max(0, Number(activeSaveRequestCount || 0)) + 1;
+  hasUnconfirmedLocalSave = true;
+}
+
+function markSaveRequestFinished(success){
+  activeSaveRequestCount = Math.max(0, Number(activeSaveRequestCount || 0) - 1);
+  if (success && activeSaveRequestCount <= 0) {
+    hasUnconfirmedLocalSave = false;
+  }
+}
+
 function showStaleDataReloadPopup(){
   if (staleSessionReloadPending) return;
   staleSessionReloadPending = true;
@@ -10905,6 +10919,7 @@ window.addEventListener("focus", () => {
 function flushSaveBeforeBackground(){
   if (!userId || !userRef || !isUserDataLoaded || isSwitchingAccount) return;
   if (typeof save !== "function") return;
+  if (!hasUnconfirmedLocalSave && activeSaveRequestCount <= 0) return;
 
   try {
     Promise.resolve(save({
@@ -19281,6 +19296,8 @@ function resetLocalStateForAccountSwitch(){
   lastSavedSwordForUpdated = 0;
   currentSaveVersion = 0;
   pendingLocalSaveRestore = false;
+  activeSaveRequestCount = 0;
+  hasUnconfirmedLocalSave = false;
 }
 
 function login() {
@@ -19964,6 +19981,7 @@ function save(options = {}) {
   currentSaveVersion = nextSaveVersion;
   updateData.saveVersion = nextSaveVersion;
   writeLocalSaveBackup(saveUid, updateData);
+  markSaveRequestStarted();
 
   if (fastSave) {
     return saveRef.update(updateData).then(() => {
@@ -19971,9 +19989,11 @@ function save(options = {}) {
         lastSavedSwordForUpdated = sword;
       }
       clearLocalSaveBackup(saveUid, nextSaveVersion);
+      markSaveRequestFinished(true);
       return true;
     }).catch((e) => {
       console.warn("save() fast 실패", e);
+      markSaveRequestFinished(false);
       return false;
     });
   }
@@ -19999,6 +20019,7 @@ function save(options = {}) {
     }, (e, committed) => {
       if (e) {
         console.warn("save() 실패", e);
+        markSaveRequestFinished(false);
         resolve(false);
         return;
       }
@@ -20007,11 +20028,20 @@ function save(options = {}) {
         if (!suppressConflictPopup && typeof showStaleDataReloadPopup === "function") {
           showStaleDataReloadPopup();
         }
+        markSaveRequestFinished(false);
         resolve(false);
         return;
       }
 
-      if (!committed || olderThanServer) {
+      if (olderThanServer) {
+        clearLocalSaveBackup(saveUid, nextSaveVersion);
+        markSaveRequestFinished(true);
+        resolve(false);
+        return;
+      }
+
+      if (!committed) {
+        markSaveRequestFinished(false);
         resolve(false);
         return;
       }
@@ -20020,6 +20050,7 @@ function save(options = {}) {
         lastSavedSwordForUpdated = sword;
       }
       clearLocalSaveBackup(saveUid, nextSaveVersion);
+      markSaveRequestFinished(true);
       resolve(true);
     });
   });
