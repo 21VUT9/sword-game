@@ -8734,6 +8734,8 @@ let maxSwordLevel = 0;   // 계정 전체 최고 강화 기록
 let destroyCount  = 0;   // 계정 전체 누적 파괴 횟수
 let currentSessionId = null;   // 🔐 이 브라우저 탭의 세션 ID
 // 🔐 현재 클라이언트가 로드한 최신 저장 버전
+let currentSaveVersion = 0;
+let pendingLocalSaveRestore = false;
 let staleSessionReloadPending = false;
 let logoutInProgress = false;
 let duelPointWeekKey = "";           // 현재 내가 플레이 중인 주(월요일 기준)
@@ -10332,6 +10334,58 @@ function hideDuelBattleOverlay() {
 function getDataVersionValue(data){
   if (!data || typeof data !== "object") return 0;
   return Math.max(Number(data.saveVersion || 0), Number(data.updated || 0));
+}
+
+function getLocalSaveBackupKey(uid){
+  return "swordGameSaveBackup:" + String(uid || "");
+}
+
+function readLocalSaveBackup(uid){
+  try {
+    const raw = localStorage.getItem(getLocalSaveBackupKey(uid));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    if (String(parsed.uid || "") !== String(uid || "")) return null;
+    if (!parsed.data || typeof parsed.data !== "object") return null;
+    parsed.saveVersion = Number(parsed.saveVersion || parsed.data.saveVersion || 0);
+    return parsed.saveVersion > 0 ? parsed : null;
+  } catch(e) {
+    return null;
+  }
+}
+
+function writeLocalSaveBackup(uid, data){
+  try {
+    if (!uid || !data || typeof data !== "object") return;
+    const payload = {
+      uid: String(uid),
+      saveVersion: Number(data.saveVersion || 0),
+      savedAt: Date.now(),
+      data: data
+    };
+    localStorage.setItem(getLocalSaveBackupKey(uid), JSON.stringify(payload));
+  } catch(e) {
+    console.warn("local save backup failed", e);
+  }
+}
+
+function applyNewerLocalSaveBackup(uid, serverData){
+  pendingLocalSaveRestore = false;
+  const backup = readLocalSaveBackup(uid);
+  const serverVersion = getDataVersionValue(serverData);
+
+  if (backup && Number(backup.saveVersion || 0) > serverVersion) {
+    pendingLocalSaveRestore = true;
+    console.warn("newer local save backup restored", {
+      uid: String(uid || ""),
+      serverVersion,
+      localVersion: Number(backup.saveVersion || 0)
+    });
+    return Object.assign({}, serverData || {}, backup.data || {});
+  }
+
+  return serverData || {};
 }
 
 function showStaleDataReloadPopup(){
@@ -19210,6 +19264,8 @@ function resetLocalStateForAccountSwitch(){
   aweUsedGlobal30EventId = 0;
   staleSessionReloadPending = false;
   lastSavedSwordForUpdated = 0;
+  currentSaveVersion = 0;
+  pendingLocalSaveRestore = false;
 }
 
 function login() {
@@ -19282,7 +19338,8 @@ function login() {
       return;
     } else {
       // ⭐ 기존 계정 로그인 시
-      const data = s.val();
+      const data = applyNewerLocalSaveBackup(loginUid, s.val() || {});
+      currentSaveVersion = getDataVersionValue(data);
 
       // 🔐 이미 다른 곳에서 접속 중이면: 시스템 alert 대신 "접속끊기" 팝업
       // 🔐 이미 다른 곳에서 접속 중이면: "살아있는" 다른 세션만 막기
@@ -19580,6 +19637,10 @@ function login() {
     loadRanking();
 
     endLoginTransition();
+    if (pendingLocalSaveRestore && !isLoginContextStale(attemptGen, loginUid)) {
+      save({ suppressConflictPopup: true, force: true });
+      pendingLocalSaveRestore = false;
+    }
 
     // 🏷️ 칭호/도감 후처리는 로그인 성공 여부와 분리
     try {
@@ -19741,6 +19802,7 @@ return;
 function save(options = {}) {
   const suppressConflictPopup = !!options.suppressConflictPopup;
   const fastSave = !!options.fast;
+  const forceSave = !!options.force;
   const saveRef = userRef;
   const saveUid = String(userId || "");
   const saveGen = loginGeneration;
@@ -19760,11 +19822,11 @@ function save(options = {}) {
     }
   }
 
-  if (isSwitchingAccount) {
+  if (isSwitchingAccount && !forceSave) {
     console.warn("save() 차단: isSwitchingAccount=true", { userId: saveUid, isUserDataLoaded });
     return Promise.resolve(false);
   }
-  if (!isUserDataLoaded) {
+  if (!isUserDataLoaded && !forceSave) {
     console.warn("save() 차단: isUserDataLoaded=false", { userId: saveUid, isSwitchingAccount });
     return Promise.resolve(false);
   }
@@ -19879,6 +19941,15 @@ function save(options = {}) {
 
   if (isLoginContextStale(saveGen, saveUid)) return Promise.resolve(false);
 
+  if (!updateData.updated) {
+    updateData.updated = now;
+  }
+
+  const nextSaveVersion = Math.max(Number(currentSaveVersion || 0) + 1, now);
+  currentSaveVersion = nextSaveVersion;
+  updateData.saveVersion = nextSaveVersion;
+  writeLocalSaveBackup(saveUid, updateData);
+
   if (fastSave) {
     return saveRef.update(updateData).then(() => {
       if (sword !== lastSavedSwordForUpdated) {
@@ -19891,33 +19962,49 @@ function save(options = {}) {
     });
   }
 
-  return saveRef.once("value").then((snap) => {
-    if (isLoginContextStale(saveGen, saveUid)) return false;
+  return new Promise((resolve) => {
+    let sessionMismatch = false;
+    let olderThanServer = false;
 
-    const dbData = snap.val() || {};
-    const dbSessionId = String(dbData.sessionId || "");
-    const sessionMismatch = !!(dbSessionId && mySessionId && dbSessionId !== mySessionId);
+    saveRef.transaction((cur) => {
+      if (isLoginContextStale(saveGen, saveUid)) return;
 
-    if (sessionMismatch) {
-      if (!suppressConflictPopup && typeof showStaleDataReloadPopup === "function") {
-        showStaleDataReloadPopup();
+      const dbData = cur || {};
+      const dbSessionId = String(dbData.sessionId || "");
+      sessionMismatch = !!(dbSessionId && mySessionId && dbSessionId !== mySessionId);
+
+      if (sessionMismatch) return;
+      if (Number(dbData.saveVersion || 0) > nextSaveVersion) {
+        olderThanServer = true;
+        return;
       }
-      return false;
-    }
 
-    if (!updateData.updated) {
-      updateData.updated = now;
-    }
+      return Object.assign({}, dbData, updateData);
+    }, (e, committed) => {
+      if (e) {
+        console.warn("save() 실패", e);
+        resolve(false);
+        return;
+      }
 
-    return saveRef.update(updateData).then(() => {
+      if (sessionMismatch) {
+        if (!suppressConflictPopup && typeof showStaleDataReloadPopup === "function") {
+          showStaleDataReloadPopup();
+        }
+        resolve(false);
+        return;
+      }
+
+      if (!committed || olderThanServer) {
+        resolve(false);
+        return;
+      }
+
       if (sword !== lastSavedSwordForUpdated) {
         lastSavedSwordForUpdated = sword;
       }
-      return true;
+      resolve(true);
     });
-  }).catch((e) => {
-    console.warn("save() 실패", e);
-    return false;
   });
 }
 
@@ -21479,7 +21566,8 @@ window.questState = questState;
       return;
     }
 
-    const data = s.val();
+    const data = applyNewerLocalSaveBackup(savedId, s.val() || {});
+    currentSaveVersion = getDataVersionValue(data);
 
         // 🔐 이미 다른 곳에서 접속 중이면: 자동로그인도 팝업으로 처리
 // 🔐 자동로그인도 동일 규칙 적용
@@ -21730,6 +21818,10 @@ setDisplay("workbenchDockUI", "flex");
     ensureBossRunsSubscription();  // ✅ 로그인 직후에도 토벌 구독/복구 시작
 
     endLoginTransition();
+    if (pendingLocalSaveRestore && !isLoginContextStale(attemptGen, savedId)) {
+      save({ suppressConflictPopup: true, force: true });
+      pendingLocalSaveRestore = false;
+    }
 
 // 🏷️ 칭호 자동 지급(자동로그인 로드 직후)
 try {
