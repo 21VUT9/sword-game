@@ -10814,6 +10814,7 @@ function resumeBgmIfNeeded(){
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     pauseAllSounds();
+    flushSaveBeforeBackground();
   } else {
     resumeBgmIfNeeded();
   }
@@ -10824,9 +10825,27 @@ window.addEventListener("blur", () => {
   pauseAllSounds();
 });
 
+window.addEventListener("pagehide", () => {
+  flushSaveBeforeBackground();
+});
+
 window.addEventListener("focus", () => {
   resumeBgmIfNeeded();
 });
+
+function flushSaveBeforeBackground(){
+  if (!userId || !userRef || !isUserDataLoaded || isSwitchingAccount) return;
+  if (typeof save !== "function") return;
+
+  try {
+    Promise.resolve(save({
+      suppressConflictPopup: true,
+      fast: true
+    })).catch(() => false);
+  } catch(e) {
+    console.warn("background save failed", e);
+  }
+}
 
   function isInFulgurantForge(){
   return Number(currentField) === FORGE_FIELD_ID;
@@ -19562,12 +19581,23 @@ function login() {
 
     endLoginTransition();
 
-    // 🏷️ 칭호 자동 지급(로그인 로드 직후)
-    const titleChanged = checkAndGrantTitles();
-    if((titleChanged || codexBackfilled) && !isLoginContextStale(attemptGen, loginUid)) save();
-    syncWeaponCodexFromHallOfFame();
+    // 🏷️ 칭호/도감 후처리는 로그인 성공 여부와 분리
+    try {
+      const titleChanged = checkAndGrantTitles();
+      if((titleChanged || codexBackfilled) && !isLoginContextStale(attemptGen, loginUid)) save();
+      syncWeaponCodexFromHallOfFame();
+    } catch(e) {
+      console.warn("login post-process failed", e);
+    }
   }).catch(err => {
     if (isLoginContextStale(attemptGen, loginUid)) return;
+    const gameScreen = document.getElementById("gameScreen");
+    const alreadyInGame = !!(gameScreen && gameScreen.style.display !== "none");
+    if (alreadyInGame && String(userId || "") === String(loginUid)) {
+      console.warn("login succeeded but a post-login task failed", err);
+      endLoginTransition();
+      return;
+    }
     abortLoginTransition();
     console.error(err);
     alert("로그인 중 오류가 발생했습니다.");
@@ -19710,6 +19740,7 @@ return;
 
 function save(options = {}) {
   const suppressConflictPopup = !!options.suppressConflictPopup;
+  const fastSave = !!options.fast;
   const saveRef = userRef;
   const saveUid = String(userId || "");
   const saveGen = loginGeneration;
@@ -19847,6 +19878,18 @@ function save(options = {}) {
   }
 
   if (isLoginContextStale(saveGen, saveUid)) return Promise.resolve(false);
+
+  if (fastSave) {
+    return saveRef.update(updateData).then(() => {
+      if (sword !== lastSavedSwordForUpdated) {
+        lastSavedSwordForUpdated = sword;
+      }
+      return true;
+    }).catch((e) => {
+      console.warn("save() fast 실패", e);
+      return false;
+    });
+  }
 
   return saveRef.once("value").then((snap) => {
     if (isLoginContextStale(saveGen, saveUid)) return false;
@@ -21689,9 +21732,13 @@ setDisplay("workbenchDockUI", "flex");
     endLoginTransition();
 
 // 🏷️ 칭호 자동 지급(자동로그인 로드 직후)
+try {
 const titleChanged = checkAndGrantTitles();
 if (titleChanged || codexBackfilled) save();
 syncWeaponCodexFromHallOfFame();
+} catch(e) {
+  console.warn("auto-login post-process failed", e);
+}
     
     update();
     updateAttendanceBadge();
