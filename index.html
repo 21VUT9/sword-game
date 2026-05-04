@@ -5311,6 +5311,11 @@ html, body {
 .rune-item.equipped{border-color:#ffd56a; box-shadow:0 0 16px rgba(255,213,106,0.18);} 
 .rune-badge{position:absolute; display:flex; align-items:center; justify-content:center; min-width:20px; height:20px; padding:0 6px; border-radius:999px; font-size:11px; font-weight:900; box-shadow:0 2px 6px rgba(0,0,0,0.35);} 
 .rune-badge.e{top:5px; right:5px; background:#ffd54f; color:#1b1400;} 
+.rune-equip-badges{position:absolute; top:5px; right:5px; display:flex; gap:3px; z-index:2;}
+.rune-equip-badges .rune-badge{position:static; min-width:23px; height:20px; padding:0 5px; font-size:10px; line-height:1;}
+.rune-badge.e1{background:#ffd54f; color:#1b1400;}
+.rune-badge.e2{background:#ff7ad9; color:#240018;}
+.rune-badge.e3{background:#7fdcff; color:#001924;}
 .rune-badge.new{left:5px; top:5px; background:#ff4d4d; color:#fff;} 
 .rune-badge.lv{left:5px; bottom:5px; background:transparent; color:#fff; box-shadow:none; padding:0; min-width:auto; height:auto; font-size:16.5px; line-height:1; text-shadow:0 1px 5px rgba(0,0,0,0.8);} 
 .rune-kind-label{position:absolute; bottom:5px; right:6px; font-size:11px; color:#bcc6d7; font-weight:800; text-shadow:0 1px 3px rgba(0,0,0,0.8);} 
@@ -9001,6 +9006,13 @@ function getHuntStaminaMax() {
   return base + Math.max(0, plus);
 }
 
+function getHuntStaminaRemaining(){
+  recalcHuntStamina();
+  const max = getHuntStaminaMax();
+  const remain = Math.max(0, Math.min(max, Number(huntStamina || 0)));
+  return { remain, max };
+}
+
 // 🆕 25강 이상 강화 경고 안내 표시 여부 (세션 기준 1회)
 let hasSeen25Warning = false;
 let ignoreNextUpgradeWarning = false;
@@ -9098,11 +9110,7 @@ function updateHuntUI() {
   const huntInfoEl = document.getElementById("huntInfo");
   if (!huntBtnEl || !huntInfoEl) return;
 
-  // 매번 부를 때마다 스태미나 재계산
-  recalcHuntStamina();
-
-  const max = getHuntStaminaMax();
-  const remaining = Math.min(max, Number(huntStamina || 0));
+  const { remain: remaining, max } = getHuntStaminaRemaining();
 
   huntBtnEl.textContent = ` 사냥 (${remaining}/${max})`;
 
@@ -19053,10 +19061,11 @@ if (
   const beforeStamina = huntStamina;
   huntStamina = Math.max(0, huntStamina - 1);
   // 참고용 카운트 (오늘 사용한 횟수)
-  huntCountToday = Math.max(0, 20 - huntStamina);
+  const maxStamina = getHuntStaminaMax();
+  huntCountToday = Math.max(0, maxStamina - huntStamina);
 
-  // 🔁 20/20 → 19/20으로 처음 줄어드는 순간부터 20분 카운트 시작
-  if (beforeStamina === 20 && huntStamina === 19) {
+  // 🔁 max/max → (max-1)/max로 처음 줄어드는 순간부터 회복 카운트 시작
+  if (beforeStamina === maxStamina && huntStamina === maxStamina - 1) {
     lastStaminaUpdate = Date.now();
   }
 
@@ -23341,11 +23350,8 @@ const LEON_LINES = [
 ];
 
 function getHuntRemainTextForToday(){
-  const today = getTodayDateString(); // 이미 update()에서도 쓰는 함수
-  let used = 0;
-  if (lastHuntDate === today) used = Number(huntCountToday || 0);
-  const remain = Math.max(0, 20 - used);
-  return `오늘 남은 사냥횟수: ${remain} / 20`;
+  const { remain, max } = getHuntStaminaRemaining();
+  return `오늘 남은 사냥횟수: ${remain} / ${max}`;
 }
 
 function setLeonLine(){
@@ -25031,17 +25037,7 @@ function renderBossBattle(){
 const huntRemainEl = document.getElementById("bossBattleHuntRemain");
 const headHunt = document.getElementById("bossBattleHeaderHuntRemain");
 
-// ✅ 최대 사냥횟수(스태프 30강 패시브 포함)
-const max = getHuntStaminaMax();
-
-const today = getTodayDateString();
-let used = 0;
-if (lastHuntDate === today) used = Number(huntCountToday || 0);
-
-// 안전장치: used가 max보다 커지지 않게
-used = Math.max(0, Math.min(max, used));
-
-const remain = Math.max(0, max - used);
+const { remain, max } = getHuntStaminaRemaining();
 
 if (huntRemainEl) huntRemainEl.textContent = `사냥횟수: ${remain}/${max}`;
   const mySt = (typeof getPlayerFinalCombatStats === "function") ? (getPlayerFinalCombatStats() || {}) : {};
@@ -27606,6 +27602,14 @@ function getAllActiveEquippedRuneUids(){ return getActiveRuneSlots().filter(Bool
 function getAllPresetEquippedRuneUids(){
   return normalizeRunePresets(runePresets).flat().filter(Boolean).map(uid => String(uid));
 }
+function getRuneEquippedPresetIndexes(uid){
+  const target = String(uid || '');
+  if (!target) return [];
+  return normalizeRunePresets(runePresets).reduce((indexes, slots, idx) => {
+    if ((Array.isArray(slots) ? slots : []).some(v => String(v || '') === target)) indexes.push(idx);
+    return indexes;
+  }, []);
+}
 function isRuneEquippedInActivePreset(uid){ return getAllActiveEquippedRuneUids().includes(String(uid)); }
 function isRuneEquipped(uid){ return getAllPresetEquippedRuneUids().includes(String(uid)); }
 function clearRuneNewFlags(){
@@ -28004,7 +28008,10 @@ function makeRuneItemCell(item, opts={}){
   const selected = opts.selected ? ' selected' : '';
   const equipped = isRuneEquipped(item.uid) ? ' equipped' : '';
   const newBadge = item.isNew ? '<span class="rune-badge new">NEW</span>' : '';
-  const eBadge = isRuneEquipped(item.uid) ? '<span class="rune-badge e">E</span>' : '';
+  const equippedPresetIndexes = getRuneEquippedPresetIndexes(item.uid);
+  const eBadge = equippedPresetIndexes.length
+    ? `<span class="rune-equip-badges">${equippedPresetIndexes.map(i => `<span class="rune-badge e${i + 1}">E${i + 1}</span>`).join('')}</span>`
+    : '';
   const lvBadge = Number(item.level||1) >= 2 ? `<span class="rune-badge lv">+${Number(item.level)}</span>` : '';
   return `<button type="button" class="rune-item${selected}${equipped}" data-rune-uid="${item.uid}">${newBadge}${eBadge}${lvBadge}<img src="${getRuneStoneIcon(item.kind)}" alt="" onerror="this.onerror=null;this.src='${RUNE_IMAGE_FALLBACK}';"><span class="rune-kind-label">${def.name.replace(' 룬','')}</span></button>`;
 }
@@ -31189,12 +31196,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
       if (bgEl && def.bgImg) bgEl.src = def.bgImg;
       if (remainEl) remainEl.textContent = formatHMS(Math.max(0, Number(run.endsAt || 0) - getBossClockNow()));
 
-      const max = getHuntStaminaMax();
-      const today = getTodayDateString();
-      let used = 0;
-      if (lastHuntDate === today) used = Number(huntCountToday || 0);
-      used = Math.max(0, Math.min(max, used));
-      const remain = Math.max(0, max - used);
+      const { remain, max } = getHuntStaminaRemaining();
       if (huntRemainEl) huntRemainEl.textContent = `사냥횟수: ${remain}/${max}`;
       const mySt = (typeof getPlayerFinalCombatStats === 'function') ? (getPlayerFinalCombatStats() || {}) : {};
       const minusMin = Number(mySt.huntRechargeMinusMin || 0);
