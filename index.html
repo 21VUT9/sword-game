@@ -23830,6 +23830,7 @@ function startBossRunWatchdog(){
           if (getBossClockNow() < Number(cur.endsAt || 0)) return;
           cur.status = "failed";
           cur.failedAt = getBossClockNow();
+          if (String(bossId || "") === "wraith_king") cur.failReason = "timeout";
           return cur;
         });
       }
@@ -23941,6 +23942,7 @@ if (Number(run.endsAt || 0) > 0 && Date.now() >= Number(run.endsAt || 0) && Stri
 
     cur.status = "failed";
     cur.failedAt = getBossClockNow();
+    if (String(bossId || "") === "wraith_king") cur.failReason = "timeout";
     return cur;
   });
 }
@@ -25922,6 +25924,9 @@ requestAnimationFrame(() => {
 
   // ✅ (추가) 보스 자체 흔들림/번쩍/스파크(클래스 토글)
 function playBossHitFx(){
+  if (typeof window.playCommonBossAttackShake === "function") {
+    window.playCommonBossAttackShake(false);
+  }
   const wrap = document.getElementById("bossBattleBossWrap");
   const img  = document.getElementById("bossBattleBossImg");
   if (!wrap || !img) return;
@@ -34949,7 +34954,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   const WRAITH_BOSS_ID = "wraith_king";
   const RODERICK_MAX_HP = 5300000000000;
   const KING_MAX_HP = 124540000000000;
-  const CURSE_MAX_HP = 21310000000000;
+  const CURSE_MAX_HP = 28600000000000;
   const LEGION_MAX_HP = 8400000000000;
   const APPLY_COST = 300000000000;
   const DAY_MS = 24 * 60 * 60 * 1000;
@@ -35038,7 +35043,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       @keyframes wraithGuardPanelIn{0%{opacity:0; transform:translateY(8px) scale(.985);}22%{opacity:1; transform:translateY(0) scale(1);}84%{opacity:1; transform:translateY(0) scale(1);}100%{opacity:0; transform:translateY(-3px) scale(1.01);}}
       .wraith-fail-panel{position:fixed; inset:0; z-index:1000000; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.78); color:#fff; text-align:center;}
       .wraith-fail-panel .box{padding:26px 34px; border:1px solid rgba(255,255,255,.18); background:rgba(10,10,14,.92); min-width:260px;}
-      .wraith-fail-panel .title{font-size:32px; font-weight:900; margin-bottom:20px;}
+      .wraith-fail-panel .title{font-size:32px; font-weight:900; margin-bottom:8px;}
+      .wraith-fail-panel .reason{font-size:13px; font-weight:800; color:rgba(255,255,255,.66); margin-bottom:20px; letter-spacing:0;}
       .wraith-fail-panel button{padding:10px 20px; border-radius:10px; font-weight:900; opacity:.72;}
       .wraith-fail-panel button:hover{opacity:.9;}
       .wraith-video{position:absolute; inset:0; z-index:55; background:#000; display:flex; align-items:center; justify-content:center;}
@@ -35076,7 +35082,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       const panel = document.createElement("div");
       panel.id = "wraithFailPanel";
       panel.className = "wraith-fail-panel";
-      panel.innerHTML = `<div class="box"><div class="title">토벌실패</div><button id="wraithFailOkBtn" type="button" style="display:none;">퇴장</button></div>`;
+      panel.innerHTML = `<div class="box"><div class="title">토벌실패</div><div id="wraithFailReasonText" class="reason">체력 소진으로 인한 실패</div><button id="wraithFailOkBtn" type="button" style="display:none;">퇴장</button></div>`;
       document.body.appendChild(panel);
       document.getElementById("wraithFailOkBtn").onclick = function(){
         exitWraithFailedRaid();
@@ -35546,6 +35552,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         if (alive) return;
         cur.status = "failed";
         cur.failedAt = now();
+        cur.failReason = "hp";
         cur.cooldownFixed = true;
         cur.cooldownFixedAt = now();
         return cur;
@@ -36000,7 +36007,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       checks.forEach(([field]) => { seen[field] = Number(m[field] || 0); });
       seen.__initialized = 1;
       try { localStorage.setItem(key, JSON.stringify(seen)); } catch(e){}
-      if (Number(m.hp || 0) <= 0) showWraithFailPanel();
+      if (Number(m.hp || 0) <= 0) showWraithFailPanel("hp");
       return;
     }
     checks.forEach(([field, text, kind, ms, shake]) => {
@@ -36027,7 +36034,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       }
     });
     try { localStorage.setItem(key, JSON.stringify(seen)); } catch(e){}
-    if (Number(m.hp || 0) <= 0) showWraithFailPanel();
+    if (Number(m.hp || 0) <= 0) showWraithFailPanel("hp");
   }
 
   function reduceRoderickDrawStamina(run){
@@ -36109,10 +36116,21 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     });
   }
 
-  function showWraithFailPanel(){
+  function getWraithFailReasonText(run, reason){
+    const r = String(reason || (run && run.failReason) || "");
+    if (r === "timeout") return "토벌 시간초과로 인한 실패";
+    if (r === "hp") return "체력 소진으로 인한 실패";
+    if (run && String(run.status || "") === "failed" && now() >= Number(run.endsAt || 0)) return "토벌 시간초과로 인한 실패";
+    return "체력 소진으로 인한 실패";
+  }
+
+  function showWraithFailPanel(reason){
     ensureWraithDom();
+    const run = getRun();
     const panel = document.getElementById("wraithFailPanel");
     const btn = document.getElementById("wraithFailOkBtn");
+    const reasonEl = document.getElementById("wraithFailReasonText");
+    if (reasonEl) reasonEl.textContent = getWraithFailReasonText(run, reason);
     if (!panel || panel.style.display === "flex") return;
     panel.style.display = "flex";
     if (btn) {
@@ -36402,7 +36420,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         rewardBtn.onclick = function(){ giveUpBossRun(); };
       }
       if (lineMainEl) lineMainEl.textContent = "발테리온 왕실의 문이 다시 닫힙니다.";
-      if (lineSubEl) lineSubEl.textContent = "";
+      if (lineSubEl) lineSubEl.textContent = getWraithFailReasonText(run);
     } else {
       if (banner) banner.style.display = "none";
       if (rewardBtn) {
@@ -36904,6 +36922,12 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       .boss-action-btn.guard{background-image:url("images/ui/defenc_but.png");}
       .boss-action-btn.guard::after{content:"[A]"; position:absolute; left:50%; bottom:17px; transform:translateX(-50%); z-index:3; color:rgba(255,255,255,.68); font-size:20px; font-weight:900; letter-spacing:0; text-shadow:0 2px 5px rgba(0,0,0,.75); pointer-events:none;}
       .boss-action-btn.attack::after{content:"[S]"; position:absolute; left:50%; bottom:17px; transform:translateX(-50%); z-index:3; color:rgba(255,255,255,.68); font-size:20px; font-weight:900; letter-spacing:0; text-shadow:0 2px 5px rgba(0,0,0,.75); pointer-events:none;}
+      @keyframes bossCommonHitShake{0%,100%{transform:translate(0,0);}25%{transform:translate(-2px,1px);}50%{transform:translate(2px,-1px);}75%{transform:translate(-1px,0);}}
+      @keyframes bossCommonHitShakeCrit{0%,100%{transform:translate(0,0);}20%{transform:translate(-3px,1px);}40%{transform:translate(3px,-1px);}60%{transform:translate(-2px,1px);}80%{transform:translate(2px,0);}}
+      #bossBattleOverlay.boss-hit-shake{animation:bossCommonHitShake .18s linear 1;}
+      #bossBattleOverlay.boss-hit-shake-crit{animation:bossCommonHitShakeCrit .22s linear 1;}
+      #bossBattleOverlay.wraith-hit-shake{animation:bossCommonHitShake .18s linear 1;}
+      #bossBattleOverlay.wraith-hit-shake-crit{animation:bossCommonHitShakeCrit .22s linear 1;}
     `;
     document.head.appendChild(st);
   }
@@ -36986,6 +37010,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function renderCommonBossActionDock(){
     const dock = ensureCommonBossActionDock();
     if (!dock) return;
+    syncCommonBossImageClick();
     if (!isCommonBossActionActive()) {
       dock.style.display = "none";
       return;
@@ -36994,14 +37019,38 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     positionCommonBossActionDock();
   }
 
-  function triggerCommonBossAttack(useCooldown){
+  function syncCommonBossImageClick(){
+    if (String(activeBossId || "") === "wraith_king") return;
+    const bossImg = document.getElementById("bossBattleBossImg");
+    if (!bossImg) return;
+    if (!isCommonBossActionActive()) {
+      bossImg.onclick = null;
+      return;
+    }
+    bossImg.style.pointerEvents = "auto";
+    bossImg.style.cursor = "pointer";
+    bossImg.onclick = function(ev){
+      triggerCommonBossAttack(true, ev || getCommonBossHitPoint());
+    };
+  }
+
+  function playCommonBossAttackShake(isCritical){
+    const el = document.getElementById("bossBattleOverlay");
+    if (!el) return;
+    el.classList.remove("boss-hit-shake", "boss-hit-shake-crit");
+    void el.offsetWidth;
+    el.classList.add(isCritical ? "boss-hit-shake-crit" : "boss-hit-shake");
+    setTimeout(() => el.classList.remove("boss-hit-shake", "boss-hit-shake-crit"), 260);
+  }
+
+  function triggerCommonBossAttack(useCooldown, ev){
     if (!isCommonBossActionActive()) return false;
     const btn = document.getElementById("bossAttackBtn");
     const t = Date.now();
     if (useCooldown && t - commonBossActionLastAttackAt < 300) return false;
     commonBossActionLastAttackAt = t;
     if (useCooldown) startCommonBossButtonCooldown(btn, 300);
-    const pt = getCommonBossHitPoint();
+    const pt = (ev && Number.isFinite(ev.clientX) && Number.isFinite(ev.clientY)) ? ev : getCommonBossHitPoint();
     try {
       attackBossByClick({ clientX:pt.clientX, clientY:pt.clientY });
       return true;
@@ -37058,6 +37107,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
   window.addEventListener("resize", positionCommonBossActionDock);
   window.renderCommonBossActionDock = renderCommonBossActionDock;
+  window.triggerCommonBossAttack = triggerCommonBossAttack;
+  window.playCommonBossAttackShake = playCommonBossAttackShake;
 })();
 
 /* ⚡ 모바일 보스전/랭킹전 연타 가속 */
@@ -37088,6 +37139,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
     try {
       const attackEv = ev || { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 };
+      if (String(activeBossId || "") !== "wraith_king" && typeof window.triggerCommonBossAttack === "function") {
+        window.triggerCommonBossAttack(true, attackEv);
+        return true;
+      }
       if (String(activeBossId || "") === "guardian_knight" && typeof window.attackGuardianKnightBossByClick === "function") {
         window.attackGuardianKnightBossByClick(attackEv);
       } else if (String(activeBossId || "") === "wraith_king" && typeof window.attackWraithKingBossByClick === "function") {
