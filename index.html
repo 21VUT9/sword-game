@@ -25860,7 +25860,7 @@ function spawnBossDamageFloatAt(clientX, clientY, valueOrText, kind){
   el.style.top  = pos.y + "px";
   el.style.transform = "translate(-50%, -50%)";
   el.style.pointerEvents = "none";
-  el.style.zIndex = "30";
+  el.style.zIndex = "90";
   el.style.fontWeight = "900";
   el.style.whiteSpace = "nowrap";
   el.style.textShadow = "0 0 10px rgba(0,0,0,0.85)";
@@ -26093,10 +26093,17 @@ let displayDmg = dmg;
   }
 }
 
-playBossHitFx(); // ✅ 보스 흔들림/번쩍/스파크
+const useWeaponMeleeFx = !result.isMiss
+  && typeof window.shouldUseWeaponMeleeHitFx === "function"
+  && window.shouldUseWeaponMeleeHitFx()
+  && typeof window.spawnWeaponMeleeHitEffect === "function";
 
 // 타격 이미지
-spawnBossHitEffectAt(ev.clientX, ev.clientY, kind, isMagic);
+if (useWeaponMeleeFx) {
+  window.spawnWeaponMeleeHitEffect(ev.clientX, ev.clientY, result.isCrit);
+} else {
+  spawnBossHitEffectAt(ev.clientX, ev.clientY, kind, isMagic);
+}
 
 // 타격 숫자/미스
 if (result.isMiss) {
@@ -26106,7 +26113,7 @@ if (result.isMiss) {
 }
 
 // ✅ MISS가 아닐 때만 보스 피격(흔들림/플래시) 연출
-if (!result.isMiss) playBossHitFx();
+if (!result.isMiss && !useWeaponMeleeFx) playBossHitFx();
 
   // 서버 반영(트랜잭션)
   if (dmg <= 0) return; // ✅ MISS면 사냥포인트만 소모되고 HP/기여도는 증가하지 않음
@@ -29848,12 +29855,20 @@ attackBossByClick = function(ev){
   const cx = (ev && Number.isFinite(ev.clientX)) ? ev.clientX : (window.innerWidth / 2);
   const cy = (ev && Number.isFinite(ev.clientY)) ? ev.clientY : (window.innerHeight / 2);
 
-  if (typeof spawnBossHitEffectAt === "function") spawnBossHitEffectAt(cx, cy, kind, isMagic);
+  const useWeaponMeleeFx = !result.isMiss
+    && typeof window.shouldUseWeaponMeleeHitFx === "function"
+    && window.shouldUseWeaponMeleeHitFx()
+    && typeof window.spawnWeaponMeleeHitEffect === "function";
+  if (useWeaponMeleeFx) {
+    window.spawnWeaponMeleeHitEffect(cx, cy, result.isCrit);
+  } else if (typeof spawnBossHitEffectAt === "function") {
+    spawnBossHitEffectAt(cx, cy, kind, isMagic);
+  }
   if (typeof spawnBossDamageFloatAt === "function") {
     if (result.isMiss) spawnBossDamageFloatAt(cx, cy, "MISS", "miss");
     else spawnBossDamageFloatAt(cx, cy, dmg, result.isCrit ? "crit" : "hit");
   }
-  if (!result.isMiss && typeof playBossHitFx === "function") playBossHitFx();
+  if (!result.isMiss && !useWeaponMeleeFx && typeof playBossHitFx === "function") playBossHitFx();
 
   if (dmg > 0) {
     run.myDamage = Number(run.myDamage || 0) + dmg;
@@ -31691,10 +31706,18 @@ function ensureBossCooldownResetByRun(bossId, runLike){
       displayDmg = Math.max(1, Math.floor(dmg * 0.1));
     }
 
-    spawnBossHitEffectAt(ev.clientX, ev.clientY, kind, isMagic);
+    const useWeaponMeleeFx = !result.isMiss
+      && typeof window.shouldUseWeaponMeleeHitFx === "function"
+      && window.shouldUseWeaponMeleeHitFx()
+      && typeof window.spawnWeaponMeleeHitEffect === "function";
+    if (useWeaponMeleeFx) {
+      window.spawnWeaponMeleeHitEffect(ev.clientX, ev.clientY, result.isCrit);
+    } else {
+      spawnBossHitEffectAt(ev.clientX, ev.clientY, kind, isMagic);
+    }
     if (result.isMiss) spawnBossDamageFloatAt(ev.clientX, ev.clientY, 'MISS', 'miss');
     else spawnBossDamageFloatAt(ev.clientX, ev.clientY, displayDmg, result.isCrit ? 'crit' : 'hit');
-    if (!result.isMiss) playBossHitFx();
+    if (!result.isMiss && !useWeaponMeleeFx) playBossHitFx();
     if (dmg <= 0) return;
 
     const runRef = db.ref(`bossRunsActive/${bossId}`);
@@ -35023,6 +35046,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       @keyframes wraithRedPulse{from{filter:drop-shadow(0 0 8px rgba(255,0,0,.45));}to{filter:drop-shadow(0 0 26px rgba(255,0,0,1));}}
       @keyframes wraithShake{0%,100%{transform:translateX(0);}20%{transform:translateX(-7px);}40%{transform:translateX(7px);}60%{transform:translateX(-5px);}80%{transform:translateX(5px);}}
       #bossBattleOverlay.wraith-shake{animation:wraithShake .38s linear 1;}
+      @keyframes wraithHitShake{0%,100%{transform:translate(0,0);}25%{transform:translate(-2px,1px);}50%{transform:translate(2px,-1px);}75%{transform:translate(-1px,0);}}
+      @keyframes wraithHitShakeCrit{0%,100%{transform:translate(0,0);}20%{transform:translate(-3px,1px);}40%{transform:translate(3px,-1px);}60%{transform:translate(-2px,1px);}80%{transform:translate(2px,0);}}
+      #bossBattleOverlay.wraith-hit-shake{animation:wraithHitShake .18s linear 1;}
+      #bossBattleOverlay.wraith-hit-shake-crit{animation:wraithHitShakeCrit .22s linear 1;}
     `;
     document.head.appendChild(st);
   }
@@ -35244,6 +35271,202 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       clientY: rect.top + rect.height * (0.26 + Math.random() * 0.50)
     };
   }
+
+  const WRAITH_MELEE_FX_WEAPONS = new Set(["sword", "spear", "axe", "dagger", "scythe"]);
+  const WRAITH_MELEE_SPRITES = {
+    slash: [
+      { key:"wraithSlash1", src:"images/effects/slash-1.png", frameW:128, frameH:128, cols:5, total:10 },
+      { key:"wraithSlash2", src:"images/effects/slash-2.png", frameW:128, frameH:128, cols:5, total:10 },
+      { key:"wraithSlash3", src:"images/effects/slash-3.png", frameW:128, frameH:128, cols:5, total:10 }
+    ],
+    slashCri: [
+      { key:"wraithSlashCri1", src:"images/effects/slash-cri-1.png", frameW:128, frameH:128, cols:5, total:10 },
+      { key:"wraithSlashCri2", src:"images/effects/slash-cri-2.png", frameW:128, frameH:128, cols:5, total:10 },
+      { key:"wraithSlashCri3", src:"images/effects/slash-cri-3.png", frameW:128, frameH:128, cols:5, total:10 }
+    ],
+    spark: [
+      { key:"wraithSpark1", src:"images/effects/slash-spark-1.png", frameW:64, frameH:64, cols:8, total:8 },
+      { key:"wraithSpark2", src:"images/effects/slash-spark-2.png", frameW:64, frameH:64, cols:8, total:8 },
+      { key:"wraithSpark3", src:"images/effects/slash-spark-3.png", frameW:64, frameH:64, cols:8, total:8 }
+    ],
+    sparkCri: [
+      { key:"wraithSparkCri1", src:"images/effects/slash-spark-cri-1.png", frameW:64, frameH:64, cols:8, total:8 },
+      { key:"wraithSparkCri2", src:"images/effects/slash-spark-cri-2.png", frameW:64, frameH:64, cols:8, total:8 },
+      { key:"wraithSparkCri3", src:"images/effects/slash-spark-cri-3.png", frameW:64, frameH:64, cols:8, total:8 }
+    ]
+  };
+  const wraithMeleeImages = {};
+  const wraithMeleeEffects = [];
+  let wraithMeleeRaf = 0;
+  let wraithMeleeCombo = 0;
+  let wraithMeleeLastAt = 0;
+  let wraithMeleeShake = 0;
+
+  function shouldUseWraithMeleeHitFx(){
+    return WRAITH_MELEE_FX_WEAPONS.has(String(weaponType || "sword"));
+  }
+
+  function randWraithFx(min, max){ return Math.random() * (max - min) + min; }
+
+  function getWraithMeleeImage(def){
+    if (!wraithMeleeImages[def.key]) {
+      const img = new Image();
+      img.src = def.src;
+      wraithMeleeImages[def.key] = img;
+    }
+    return wraithMeleeImages[def.key];
+  }
+
+  function getWraithMeleeCanvas(){
+    const layer = document.getElementById("bossFxLayer");
+    if (!layer) return null;
+    let canvas = document.getElementById("wraithMeleeHitCanvas");
+    if (!canvas) {
+      canvas = document.createElement("canvas");
+      canvas.id = "wraithMeleeHitCanvas";
+      canvas.style.position = "absolute";
+      canvas.style.inset = "0";
+      canvas.style.width = "100%";
+      canvas.style.height = "100%";
+      canvas.style.pointerEvents = "none";
+      canvas.style.zIndex = "80";
+      canvas.style.display = "none";
+      layer.appendChild(canvas);
+    }
+    return canvas;
+  }
+
+  function playWraithMeleeScreenShake(isCritical){
+    const el = document.getElementById("bossBattleOverlay");
+    if (!el) return;
+    el.classList.remove("wraith-hit-shake", "wraith-hit-shake-crit");
+    void el.offsetWidth;
+    el.classList.add(isCritical ? "wraith-hit-shake-crit" : "wraith-hit-shake");
+    setTimeout(() => el.classList.remove("wraith-hit-shake", "wraith-hit-shake-crit"), 260);
+  }
+
+  function resizeWraithMeleeCanvas(canvas){
+    const layer = document.getElementById("bossFxLayer");
+    const rect = layer && layer.getBoundingClientRect ? layer.getBoundingClientRect() : null;
+    if (!rect || rect.width <= 0 || rect.height <= 0) return null;
+    const dpr = window.devicePixelRatio || 1;
+    const w = Math.max(1, Math.floor(rect.width * dpr));
+    const h = Math.max(1, Math.floor(rect.height * dpr));
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+    const ctx = canvas.getContext("2d");
+    if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { rect, ctx };
+  }
+
+  function pushWraithMeleeSprite(def, opt){
+    wraithMeleeEffects.push(Object.assign({
+      def, x:0, y:0, frame:0, frameSpeed:1, scale:1, rotation:0,
+      alpha:1, fade:0, blend:"source-over", delay:0
+    }, opt || {}));
+  }
+
+  function drawWraithMeleeEffect(ctx, e){
+    if (e.delay > 0) {
+      e.delay -= 16.67;
+      return false;
+    }
+    const img = getWraithMeleeImage(e.def);
+    if (!img.complete || !img.naturalWidth) return false;
+    const frameIndex = Math.floor(e.frame);
+    if (frameIndex >= e.def.total) return true;
+    const sx = (frameIndex % e.def.cols) * e.def.frameW;
+    const sy = Math.floor(frameIndex / e.def.cols) * e.def.frameH;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, e.alpha);
+    ctx.globalCompositeOperation = e.blend;
+    ctx.translate(e.x, e.y);
+    ctx.rotate(e.rotation);
+    ctx.scale(e.scale, e.scale);
+    ctx.drawImage(img, sx, sy, e.def.frameW, e.def.frameH, -e.def.frameW / 2, -e.def.frameH / 2, e.def.frameW, e.def.frameH);
+    ctx.restore();
+    e.alpha -= e.fade;
+    e.frame += e.frameSpeed;
+    return e.alpha <= 0 || e.frame >= e.def.total;
+  }
+
+  function tickWraithMeleeFx(){
+    const canvas = getWraithMeleeCanvas();
+    const sized = canvas && resizeWraithMeleeCanvas(canvas);
+    if (!canvas || !sized || !sized.ctx) {
+      wraithMeleeRaf = 0;
+      return;
+    }
+    const ctx = sized.ctx;
+    ctx.clearRect(0, 0, sized.rect.width, sized.rect.height);
+    const sx = wraithMeleeShake > 0 ? randWraithFx(-wraithMeleeShake, wraithMeleeShake) : 0;
+    const sy = wraithMeleeShake > 0 ? randWraithFx(-wraithMeleeShake, wraithMeleeShake) : 0;
+    wraithMeleeShake *= 0.82;
+    if (wraithMeleeShake < 0.15) wraithMeleeShake = 0;
+    ctx.save();
+    ctx.translate(sx, sy);
+    for (let i = wraithMeleeEffects.length - 1; i >= 0; i--) {
+      if (drawWraithMeleeEffect(ctx, wraithMeleeEffects[i])) wraithMeleeEffects.splice(i, 1);
+    }
+    ctx.restore();
+    if (wraithMeleeEffects.length) {
+      canvas.style.display = "block";
+      wraithMeleeRaf = requestAnimationFrame(tickWraithMeleeFx);
+    } else {
+      canvas.style.display = "none";
+      wraithMeleeRaf = 0;
+    }
+  }
+
+  function spawnWraithMeleeHitEffect(clientX, clientY, isCritical){
+    const canvas = getWraithMeleeCanvas();
+    const sized = canvas && resizeWraithMeleeCanvas(canvas);
+    if (!canvas || !sized) return false;
+    const t = performance.now();
+    if (t - wraithMeleeLastAt >= 500) wraithMeleeCombo = 0;
+    else wraithMeleeCombo = (wraithMeleeCombo + 1) % 3;
+    wraithMeleeLastAt = t;
+    const combo = wraithMeleeCombo;
+    const x = clientX - sized.rect.left;
+    const y = clientY - sized.rect.top;
+    const slashDef = isCritical ? WRAITH_MELEE_SPRITES.slashCri[combo] : WRAITH_MELEE_SPRITES.slash[combo];
+    const sparkDef = isCritical ? WRAITH_MELEE_SPRITES.sparkCri[combo] : WRAITH_MELEE_SPRITES.spark[combo];
+    const fxScale = 1.5;
+    wraithMeleeShake = Math.max(wraithMeleeShake, isCritical ? 11 : 6);
+    playWraithMeleeScreenShake(isCritical);
+    pushWraithMeleeSprite(slashDef, {
+      x:x + randWraithFx(-12, 12), y:y + randWraithFx(-10, 10),
+      scale:(isCritical ? randWraithFx(2.15, 2.45) : randWraithFx(1.85, 2.1)) * fxScale,
+      rotation:[0, -0.35, 0.35][combo] + randWraithFx(-0.12, 0.12),
+      frameSpeed:0.33, blend:isCritical ? "lighter" : "source-over"
+    });
+    pushWraithMeleeSprite(slashDef, {
+      x:x + randWraithFx(-18, 18), y:y + randWraithFx(-18, 18),
+      scale:(isCritical ? randWraithFx(2.3, 2.65) : randWraithFx(2.0, 2.25)) * fxScale,
+      rotation:[0, -0.35, 0.35][combo] + randWraithFx(-0.16, 0.16),
+      frameSpeed:0.33, alpha:0.32, fade:0.028, blend:"lighter", delay:30
+    });
+    const sparkCount = isCritical ? 5 : 3;
+    for (let i = 0; i < sparkCount; i++) {
+      pushWraithMeleeSprite(sparkDef, {
+        x:x + randWraithFx(-55, 55), y:y + randWraithFx(-45, 45),
+        scale:(isCritical ? randWraithFx(1.55, 2.35) : randWraithFx(1.15, 1.75)) * fxScale,
+        rotation:randWraithFx(-Math.PI, Math.PI),
+        frameSpeed:randWraithFx(0.5, 0.8),
+        alpha:isCritical ? 0.95 : 0.8,
+        blend:"lighter",
+        delay:i * 18
+      });
+    }
+    canvas.style.display = "block";
+    if (!wraithMeleeRaf) wraithMeleeRaf = requestAnimationFrame(tickWraithMeleeFx);
+    return true;
+  }
+
+  window.shouldUseWeaponMeleeHitFx = shouldUseWraithMeleeHitFx;
+  window.spawnWeaponMeleeHitEffect = spawnWraithMeleeHitEffect;
 
   function playWraithParryCounterFx(dmg){
     const pt = getRandomBossHitClientPoint();
@@ -35960,9 +36183,14 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     if (getPhase(run) === "king" && ((counterType === "magic" && isMagic) || (counterType === "phys" && !isMagic))) {
       healMode = true;
     }
-    spawnBossHitEffectAt(clientX, clientY, result.isCrit ? "crit" : "hit", isMagic);
+    const useMeleeFx = shouldUseWraithMeleeHitFx();
+    if (useMeleeFx) {
+      spawnWraithMeleeHitEffect(clientX, clientY, result.isCrit);
+    } else {
+      spawnBossHitEffectAt(clientX, clientY, result.isCrit ? "crit" : "hit", isMagic);
+    }
     spawnBossDamageFloatAt(clientX, clientY, healMode ? `+${fmtHp(dmg)}` : dmg, healMode ? "heal" : (result.isCrit ? "crit" : "hit"));
-    playBossHitFx();
+    if (!useMeleeFx) playBossHitFx();
 
     db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
       if (!cur || String(cur.status || "") !== "active" || !cur.members || !cur.members[userId]) return;
@@ -36631,6 +36859,13 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const wrap = document.getElementById("bossBattleBossWrap");
     if (wrap) wrap.classList.remove("wraith-mode", "wraith-evade", "wraith-red-glow", "wraith-counter-phys", "wraith-counter-magic", "wraith-curse");
     removeWraithSpriteSheet();
+    if (wraithMeleeRaf) {
+      try { cancelAnimationFrame(wraithMeleeRaf); } catch(e){}
+      wraithMeleeRaf = 0;
+    }
+    wraithMeleeEffects.length = 0;
+    document.getElementById("bossBattleOverlay")?.classList.remove("wraith-hit-shake", "wraith-hit-shake-crit");
+    document.getElementById("wraithMeleeHitCanvas")?.remove();
     document.getElementById("wraithSlashWarning")?.remove();
     document.getElementById("wraithSlashQte")?.remove();
     return __origCloseBossBattleWraith.apply(this, arguments);
@@ -36649,6 +36884,180 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     }
   }, true);
   window.addEventListener("resize", positionWraithActionDock);
+})();
+
+/* 공용 보스전/랭킹전 A/S 액션 버튼 */
+(function(){
+  let commonBossActionLastAttackAt = 0;
+
+  function injectCommonBossActionStyle(){
+    if (document.getElementById("commonBossActionStyle")) return;
+    const st = document.createElement("style");
+    st.id = "commonBossActionStyle";
+    st.textContent = `
+      .boss-action-dock{position:fixed; z-index:20000; display:none; align-items:center; gap:10px; pointer-events:auto;}
+      .boss-action-btn{width:104px; height:104px; border:0; border-radius:50%; padding:0; background:transparent center/contain no-repeat; position:relative; color:transparent; overflow:hidden; cursor:pointer; filter:drop-shadow(0 4px 8px rgba(0,0,0,.8));}
+      .boss-action-btn span{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0);}
+      .boss-action-btn.is-cooling{filter:grayscale(.85) brightness(.58); cursor:default;}
+      .boss-action-btn.is-cooling::before{content:""; position:absolute; inset:0; border-radius:50%; background:conic-gradient(rgba(255,213,79,.55) var(--cool,0deg), rgba(0,0,0,.52) 0deg); clip-path:circle(50% at 50% 50%);}
+      .boss-action-btn.attack{background-image:url("images/ui/attack_but.png");}
+      .boss-action-btn.guard{background-image:url("images/ui/defenc_but.png");}
+      .boss-action-btn.guard::after{content:"[A]"; position:absolute; left:50%; bottom:17px; transform:translateX(-50%); z-index:3; color:rgba(255,255,255,.68); font-size:20px; font-weight:900; letter-spacing:0; text-shadow:0 2px 5px rgba(0,0,0,.75); pointer-events:none;}
+      .boss-action-btn.attack::after{content:"[S]"; position:absolute; left:50%; bottom:17px; transform:translateX(-50%); z-index:3; color:rgba(255,255,255,.68); font-size:20px; font-weight:900; letter-spacing:0; text-shadow:0 2px 5px rgba(0,0,0,.75); pointer-events:none;}
+    `;
+    document.head.appendChild(st);
+  }
+
+  function isBossOverlayVisible(){
+    const ov = document.getElementById("bossBattleOverlay");
+    return !!(ov && ov.style.display !== "none");
+  }
+
+  function getCommonBossHitPoint(){
+    const bossImg = document.getElementById("bossBattleBossImg");
+    const rect = bossImg && bossImg.getBoundingClientRect();
+    if (!rect || !rect.width || !rect.height) {
+      return { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 };
+    }
+    return {
+      clientX: rect.left + rect.width * (0.28 + Math.random() * 0.44),
+      clientY: rect.top + rect.height * (0.26 + Math.random() * 0.50)
+    };
+  }
+
+  function isCommonBossActionActive(){
+    if (!isBossOverlayVisible()) return false;
+    if (String(activeBossId || "") === "wraith_king") return false;
+    if (typeof isRankingBattleMode !== "undefined" && isRankingBattleMode) {
+      return !!(rankingBattleRun && String(rankingBattleRun.status || "") === "active");
+    }
+    const ctx = (typeof resolveMyBossRun === "function") ? resolveMyBossRun({ includeClosed:false }) : null;
+    const run = (ctx && ctx.run) || ((bossRunsActiveCache || {})[String(activeBossId || "")]);
+    return !!(run && String(run.status || "") === "active");
+  }
+
+  function startCommonBossButtonCooldown(btn, ms){
+    if (!btn) return;
+    const startedAt = Date.now();
+    btn.dataset.lastAt = String(startedAt);
+    btn.classList.add("is-cooling");
+    const timer = setInterval(() => {
+      const p = Math.min(1, (Date.now() - startedAt) / Math.max(1, ms));
+      btn.style.setProperty("--cool", `${Math.floor(p * 360)}deg`);
+      if (p >= 1) {
+        clearInterval(timer);
+        btn.classList.remove("is-cooling");
+        btn.style.removeProperty("--cool");
+      }
+    }, 30);
+  }
+
+  function ensureCommonBossActionDock(){
+    injectCommonBossActionStyle();
+    let dock = document.getElementById("bossActionDock");
+    if (!dock) {
+      dock = document.createElement("div");
+      dock.id = "bossActionDock";
+      dock.className = "boss-action-dock";
+      dock.innerHTML = `
+        <button id="bossGuardBtn" class="boss-action-btn guard" type="button" aria-label="방어 A"><span>방어 A</span></button>
+        <button id="bossAttackBtn" class="boss-action-btn attack" type="button" aria-label="공격 S"><span>공격 S</span></button>
+      `;
+      document.body.appendChild(dock);
+    }
+    const guard = document.getElementById("bossGuardBtn");
+    const attack = document.getElementById("bossAttackBtn");
+    if (guard) guard.onclick = () => triggerCommonBossGuard();
+    if (attack) attack.onclick = () => triggerCommonBossAttack(true);
+    return dock;
+  }
+
+  function positionCommonBossActionDock(){
+    const dock = document.getElementById("bossActionDock");
+    const overlay = document.getElementById("bossBattleOverlay");
+    const panel = overlay && overlay.firstElementChild;
+    if (!dock || !panel) return;
+    const rect = panel.getBoundingClientRect();
+    const gap = 8;
+    dock.style.left = `${Math.max(8, Math.round(rect.left))}px`;
+    dock.style.top = `${Math.min(window.innerHeight - dock.offsetHeight - 8, Math.round(rect.bottom + gap))}px`;
+  }
+
+  function renderCommonBossActionDock(){
+    const dock = ensureCommonBossActionDock();
+    if (!dock) return;
+    if (!isCommonBossActionActive()) {
+      dock.style.display = "none";
+      return;
+    }
+    dock.style.display = "flex";
+    positionCommonBossActionDock();
+  }
+
+  function triggerCommonBossAttack(useCooldown){
+    if (!isCommonBossActionActive()) return false;
+    const btn = document.getElementById("bossAttackBtn");
+    const t = Date.now();
+    if (useCooldown && t - commonBossActionLastAttackAt < 300) return false;
+    commonBossActionLastAttackAt = t;
+    if (useCooldown) startCommonBossButtonCooldown(btn, 300);
+    const pt = getCommonBossHitPoint();
+    try {
+      attackBossByClick({ clientX:pt.clientX, clientY:pt.clientY });
+      return true;
+    } catch(e) {
+      console.warn("common boss action attack failed", e);
+      return false;
+    }
+  }
+
+  function triggerCommonBossGuard(){
+    if (!isCommonBossActionActive()) return false;
+    const btn = document.getElementById("bossGuardBtn");
+    const t = Date.now();
+    const last = Number(btn && btn.dataset.lastAt || 0);
+    if (t - last < 3000) return false;
+    try {
+      if (typeof playSfx === "function") playSfx("sounds/shield_on.mp3", 0.95);
+      else {
+        const a = new Audio("sounds/shield_on.mp3");
+        a.volume = 0.95;
+        const p = a.play();
+        if (p && p.catch) p.catch(()=>{});
+      }
+    } catch(e) {}
+    startCommonBossButtonCooldown(btn, 3000);
+    return true;
+  }
+
+  const __origRenderBossBattleCommonAction = renderBossBattle;
+  renderBossBattle = function(){
+    const out = __origRenderBossBattleCommonAction.apply(this, arguments);
+    renderCommonBossActionDock();
+    return out;
+  };
+
+  const __origCloseBossBattleCommonAction = closeBossBattle;
+  closeBossBattle = function(){
+    const dock = document.getElementById("bossActionDock");
+    if (dock) dock.style.display = "none";
+    return __origCloseBossBattleCommonAction.apply(this, arguments);
+  };
+
+  document.addEventListener("keydown", function(e){
+    if (!isCommonBossActionActive()) return;
+    const key = String(e.key || "").toLowerCase();
+    if (key === "s") {
+      e.preventDefault();
+      triggerCommonBossAttack(true);
+    } else if (key === "a") {
+      e.preventDefault();
+      triggerCommonBossGuard();
+    }
+  }, true);
+
+  window.addEventListener("resize", positionCommonBossActionDock);
+  window.renderCommonBossActionDock = renderCommonBossActionDock;
 })();
 
 /* ⚡ 모바일 보스전/랭킹전 연타 가속 */
