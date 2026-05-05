@@ -9263,10 +9263,10 @@ const scrollShopItems = [
 // 📦 쿠폰 코드 보상 목록 (원하는 대로 코드/보상 수정)
 const couponRewards = {
   // 1
-  "LEVIATHAN": {
+  "MORTHEIM": {
     type: "itemProtect",
-    count: 5,
-    desc: "파괴방지 주문서 5개를 획득했습니다."
+    count: 10,
+    desc: "파괴방지 주문서 10개를 획득했습니다."
   },
 
   // 파괴방지 주문서 1개
@@ -35849,6 +35849,9 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     updates[`bossRunsActive/${WRAITH_BOSS_ID}/eliminated/${userId}`] = {
       uid: userId,
       nick: myNick,
+      hp: 0,
+      maxHp: Math.max(1, Number(myMember && myMember.maxHp || 1)),
+      dmg: Number(myMember && myMember.dmg || 0),
       reason: "hp_zero",
       at: now()
     };
@@ -35861,7 +35864,15 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
           delete bossRunsActiveCache[WRAITH_BOSS_ID].members[userId];
           if (String(run.leaderUid || "") === String(userId || "")) bossRunsActiveCache[WRAITH_BOSS_ID].leaderUid = "";
           if (!bossRunsActiveCache[WRAITH_BOSS_ID].eliminated) bossRunsActiveCache[WRAITH_BOSS_ID].eliminated = {};
-          bossRunsActiveCache[WRAITH_BOSS_ID].eliminated[userId] = { uid:userId, nick:myNick, reason:"hp_zero", at:now() };
+          bossRunsActiveCache[WRAITH_BOSS_ID].eliminated[userId] = {
+            uid:userId,
+            nick:myNick,
+            hp:0,
+            maxHp:Math.max(1, Number(myMember && myMember.maxHp || 1)),
+            dmg:Number(myMember && myMember.dmg || 0),
+            reason:"hp_zero",
+            at:now()
+          };
         }
       } catch(e){}
       try { writeBossBattleLog(WRAITH_BOSS_ID, `${myNick}님이 토벌실패로 퇴장했습니다.`); } catch(e){}
@@ -36054,6 +36065,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const nameEl = document.getElementById("bossBattleBossName");
     const remainEl = document.getElementById("bossBattleRemain");
     const partyEl = document.getElementById("bossBattlePartyList");
+    const partyTitleEl = partyEl && partyEl.previousElementSibling;
     const lineMainEl = document.getElementById("bossBattleBossLineMain");
     const lineSubEl = document.getElementById("bossBattleBossLineSub");
     const banner = document.getElementById("bossBattleResultBanner");
@@ -36139,7 +36151,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     renderWraithGateMessage(run);
     maybePlayWraithIntro(run);
 
-    if (partyEl) renderWraithParty(run, partyEl);
+    if (partyEl) renderWraithParty(run, partyEl, partyTitleEl);
     ensureBossBattleLogsSubscription(WRAITH_BOSS_ID);
     renderBossBattleLogs();
 
@@ -36318,23 +36330,49 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     setTimeout(() => { if (document.body.contains(wrap)) done(); }, 45000);
   }
 
-  function renderWraithParty(run, partyEl){
+  function renderWraithParty(run, partyEl, titleEl){
     const members = run.members || {};
-    const arr = Object.values(members).map(m => ({
+    const eliminated = run.eliminated || {};
+    const activeRows = Object.values(members).map(m => ({
       uid: String(m.uid || ""),
       nick: String(m.nick || m.uid || "???"),
       hp: Math.max(0, Number(m.hp || 0)),
       maxHp: Math.max(1, Number(m.maxHp || 1)),
       dmg: Number(m.dmg || 0),
-      isMe: String(m.uid || "") === String(userId || "")
-    })).sort((a,b) => (b.isMe ? 1 : 0) - (a.isMe ? 1 : 0) || b.hp - a.hp);
+      isMe: String(m.uid || "") === String(userId || ""),
+      eliminated: false,
+      at: Number(m.joinedAt || 0)
+    }));
+    const seen = {};
+    activeRows.forEach(m => { if (m.uid) seen[m.uid] = true; });
+    const eliminatedRows = Object.values(eliminated)
+      .filter(m => m && !seen[String(m.uid || "")])
+      .map(m => ({
+        uid: String(m.uid || ""),
+        nick: String(m.nick || m.uid || "???"),
+        hp: 0,
+        maxHp: Math.max(1, Number(m.maxHp || m.hpMax || 1)),
+        dmg: Number(m.dmg || 0),
+        isMe: String(m.uid || "") === String(userId || ""),
+        eliminated: true,
+        at: Number(m.at || 0)
+      }));
+    const arr = activeRows.concat(eliminatedRows)
+      .sort((a,b) => Number(a.eliminated) - Number(b.eliminated) || (b.isMe ? 1 : 0) - (a.isMe ? 1 : 0) || b.hp - a.hp || a.at - b.at);
+    if (titleEl) {
+      const activeCount = activeRows.length;
+      const totalCount = arr.length;
+      titleEl.textContent = `토벌대 진행상황 (${activeCount}명/${totalCount}명)`;
+    }
     partyEl.style.maxHeight = "210px";
     partyEl.style.overflowY = "auto";
     partyEl.innerHTML = arr.map(m => {
       const pct = Math.max(0, Math.min(100, m.hp / m.maxHp * 100));
+      const rowOpacity = m.eliminated ? ".58" : "1";
+      const nameSuffix = m.eliminated ? ` <span style="color:#888;">(퇴장)</span>` : "";
       return `
-        <div class="wraith-hp-row">
-          <div class="wraith-hp-name"><span>${m.isMe ? "내 정보 · " : ""}${m.nick}</span><span style="color:#aaa;">누적 ${fmtHp(m.dmg)}</span></div>
+        <div class="wraith-hp-row" style="opacity:${rowOpacity};">
+          <div class="wraith-hp-name"><span>${m.isMe ? "내 정보 · " : ""}${m.nick}${nameSuffix}</span><span style="color:#aaa;">누적 ${fmtHp(m.dmg)}</span></div>
           <div class="wraith-hp-bar">
             <div class="wraith-hp-fill" style="width:${pct}%"></div>
             <div class="wraith-hp-text">${m.hp} / ${m.maxHp}</div>
