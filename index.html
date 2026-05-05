@@ -21291,6 +21291,7 @@ function claimBossReward(){
     const st = String(cur.status || "");
     if (st !== "cleared") return;
     if (!cur.members || !cur.members[userId]) return;
+    if (String(bossId || "") === "wraith_king" && Number(cur.members[userId].hp || 0) <= 0) return;
     if (!cur.claimed) cur.claimed = {};
     if (cur.claimed[userId]) return;
     cur.claimed[userId] = getBossClockNow();
@@ -21373,6 +21374,7 @@ function claimBossReward(){
     itemBossPriority = Number(itemBossPriority || 0) + (rw.itemBossPriority || 0);
     itemEngraveNormal = Number(itemEngraveNormal || 0) + (rw.itemEngraveNormal || 0);
     itemEngraveAdvanced = Number(itemEngraveAdvanced || 0) + (rw.itemEngraveAdvanced || 0);
+    gold = Number(gold || 0) + Number(rw.gold || 0);
 
     const bossRuneStoneGain = Number(rw.unidentifiedRuneStones || 0);
     let bossRuneStoneReceived = 0;
@@ -21423,6 +21425,7 @@ function claimBossReward(){
     if (rw.itemBossPriority) lines.push(`보스토벌신청우선권 ${rw.itemBossPriority}개`);
     if (rw.itemEngraveNormal) lines.push(`일반각인의 주문서 ${rw.itemEngraveNormal}개`);
     if (rw.itemEngraveAdvanced) lines.push(`고급각인의 주문서 ${rw.itemEngraveAdvanced}개`);
+    if (rw.gold) lines.push(`골드 ${formatGold(Number(rw.gold || 0))}`);
     if (bossRuneStoneReceived) lines.push(`미확인 룬석 ${bossRuneStoneReceived}개`);
     if (bossRuneStoneGain > bossRuneStoneReceived) lines.push(`미확인 룬석 공간 부족 ${bossRuneStoneGain - bossRuneStoneReceived}개`);
 
@@ -24326,6 +24329,91 @@ function renderBossBattleLogs() {
     return;
   }
 
+  const dynamicBossCtx = (typeof resolveMyBossRun === "function") ? resolveMyBossRun({ includeClosed: false }) : null;
+  const dynamicBossId = String((dynamicBossCtx && dynamicBossCtx.bossId) || activeBossId || "");
+  const dynamicRun = dynamicBossCtx && dynamicBossCtx.run;
+  const getDynamicLogMeta = (log) => {
+    let text = String((log && log.msg) || "");
+    let expiredSkill = false;
+    const phaseNow = String(dynamicRun && dynamicRun.wraithPhase || "");
+    const isAfterRoderick = dynamicBossId === "wraith_king" && ["king","legion","curse"].includes(phaseNow);
+    const isRoderickLog =
+      text.includes("침묵의 기사가") ||
+      text.includes("침묵의기사가") ||
+      text.includes("로데릭") ||
+      text.includes("[회피]") ||
+      text.includes("[발도]");
+    if (dynamicBossId === "wraith_king" && text.includes("[회피]")) {
+      const startedAt = Number(log && log.t || 0);
+      const until = startedAt > 0
+        ? startedAt + 20 * 60 * 1000
+        : Number(dynamicRun && dynamicRun.roderickEvadeUntil || 0);
+      const remainMs = Math.max(0, until - getBossClockNow());
+      if (remainMs > 0) {
+        const total = Math.max(0, Math.ceil(remainMs / 1000));
+        const mm = String(Math.floor(total / 60)).padStart(2, "0");
+        const ss = String(total % 60).padStart(2, "0");
+        text = text.replace(/\(회피율 상승\s*:\s*40%\s*\/\s*\d{1,2}:\d{2}\)/, `(회피율 상승 : 40% / ${mm}:${ss})`);
+      } else {
+        expiredSkill = true;
+        text = text.replace(/\(회피율 상승\s*:\s*40%\s*\/\s*\d{1,2}:\d{2}\)/, "(회피율 상승 : 40%)");
+      }
+    }
+    if (isAfterRoderick && isRoderickLog) {
+      expiredSkill = true;
+      text = text
+        .replace(/\(회피율 상승\s*:\s*40%\s*\/\s*\d{1,2}:\d{2}\)/, "(회피율 상승 : 40%)")
+        .replace(/\s*\(방어 가능\s*:\s*\d{1,2}:\d{2}\)/, "");
+    }
+    if (dynamicBossId === "wraith_king" && !expiredSkill) {
+      const startedAt = Number(log && log.t || 0);
+      const clockNow = getBossClockNow();
+      let until = 0;
+      if (text.includes("[발도]")) {
+        until = startedAt + 3 * 60 * 1000;
+      } else if (text.includes("[참격]")) {
+        until = startedAt + 8 * 1000;
+      } else if (text.includes("[군단]")) {
+        until = startedAt + 65 * 1000;
+        const legionClearedAt = Number(dynamicRun && dynamicRun.legionClearedAt || 0);
+        if (legionClearedAt > startedAt) until = Math.min(until, legionClearedAt);
+      } else if (text.includes("[반격]")) {
+        const announceAt = Number(dynamicRun && dynamicRun.counterAnnounceAt || 0);
+        const counterUntil = Number(dynamicRun && dynamicRun.counterUntil || 0);
+        until = (announceAt && Math.abs(announceAt - startedAt) < 15000 && counterUntil)
+          ? counterUntil
+          : startedAt + 10 * 1000;
+      } else if (text.includes("[불사의 저주]")) {
+        until = startedAt + 2 * 60 * 1000;
+      }
+      if (until > 0) {
+        const remainMs = Math.max(0, until - clockNow);
+        if (remainMs <= 0) {
+          expiredSkill = true;
+          text = text
+            .replace(/\s*\(방어 가능\s*:\s*\d{1,2}:\d{2}\)/, "")
+            .replace(/\s*\(1:00\)/, "")
+            .replace(/\s*\(2:00\)/, "")
+            .replace(/\s*\(\d{1,2}:\d{2}\)/, "");
+        } else if (text.includes("[발도]") || text.includes("[군단]") || text.includes("[불사의 저주]")) {
+          const total = Math.max(0, Math.ceil(remainMs / 1000));
+          const mm = String(Math.floor(total / 60)).padStart(1, "0");
+          const ss = String(total % 60).padStart(2, "0");
+          if (text.includes("[발도]")) {
+            if (/\(방어 가능\s*:\s*\d{1,2}:\d{2}\)/.test(text)) {
+              text = text.replace(/\(방어 가능\s*:\s*\d{1,2}:\d{2}\)/, `(방어 가능 : ${mm}:${ss})`);
+            } else {
+              text += ` (방어 가능 : ${mm}:${ss})`;
+            }
+          } else {
+            text = text.replace(/\(\d{1,2}:\d{2}\)/, `(${mm}:${ss})`);
+          }
+        }
+      }
+    }
+    return { text, expiredSkill };
+  };
+
   el.innerHTML = arr.map(x => {
     const t = x.t ? formatTime(x.t) : "";
     const esc = (s) => String(s || "")
@@ -24335,12 +24423,17 @@ function renderBossBattleLogs() {
   .replace(/"/g, "&quot;")
   .replace(/'/g, "&#39;");
 
-const msgHtml = esc(x.msg).replace(/\n/g, "<br>");
+const dynamicMeta = getDynamicLogMeta(x);
+const msgHtml = esc(dynamicMeta.text).replace(/\n/g, "<br>");
 const tone = String(x.tone || "");
 
 let safeMsg = msgHtml;
-if (tone === "yellow") {
+if (dynamicMeta.expiredSkill) {
+  safeMsg = `<span style="color:#777; font-weight:700;">${msgHtml}</span>`;
+} else if (tone === "yellow") {
   safeMsg = `<span style="color:#ffd54f; font-weight:900;">${msgHtml}</span>`;
+} else if (tone === "cyan") {
+  safeMsg = `<span style="color:#7fdcff; font-weight:900;">${msgHtml}</span>`;
 }
     return `
       <div style="margin-bottom:6px; font-size:12px; line-height:1.35;">
@@ -25783,10 +25876,20 @@ function spawnBossDamageFloatAt(clientX, clientY, valueOrText, kind){
   const v = (typeof valueOrText === "number") ? formatDamageKoUnits(valueOrText) : String(valueOrText);
 
   // ✅ 치명타면 느낌표 + 더 크게 + 빨간색 강조
-  if (kind === "crit") {
+  if (kind === "heal") {
+    el.textContent = v;
+    el.style.color = "#57b7ff";
+    el.style.fontSize = "22px";
+    el.style.textShadow = "0 0 10px rgba(24,118,255,0.95), 0 0 18px rgba(0,0,0,0.85)";
+  } else if (kind === "crit") {
     el.textContent = v + "!";
     el.style.color = "#ff3b3b";
     el.style.fontSize = "24px";
+  } else if (kind === "taken") {
+    el.textContent = `-${v}`;
+    el.style.color = "#ff4242";
+    el.style.fontSize = "26px";
+    el.style.textShadow = "0 0 10px rgba(255,30,30,0.95), 0 0 20px rgba(0,0,0,0.9)";
   } else {
     el.textContent = v;
     el.style.color = "#ffd700";
@@ -34816,6 +34919,1700 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
 
 <script>
+/* =========================
+   Wraith King main boss
+   ========================= */
+(function(){
+  const WRAITH_BOSS_ID = "wraith_king";
+  const RODERICK_MAX_HP = 5300000000000;
+  const KING_MAX_HP = 124540000000000;
+  const CURSE_MAX_HP = 21310000000000;
+  const LEGION_MAX_HP = 8400000000000;
+  const APPLY_COST = 300000000000;
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const MINUTE = 60 * 1000;
+  const SECOND = 1000;
+  const WRAITH_KING_LINES = [
+    "그 마녀는… 나에게 영원을 주었다 … 끝나지 않는 고통의 형태로 …",
+    "이 땅의 모든 것은… 나와 함께 멈췄다 … 숨도… 죽음도 …",
+    "인간은… 결국 죽음을 원한다 … 그것이 없으면… 견딜 수 없으니까 …",
+    "나는 … 발테리온 왕국의 가장 완벽한 왕이다..."
+  ];
+
+  const IMG = {
+    gateClosed: "images/bossmaps/boss_wraith_gate_closed.png",
+    gateOpen: "images/bossmaps/boss_wraith_gate_open.png",
+    knightIdle: "images/bosses/wraith_knight_silence_idle.png",
+    knightDown: "images/bosses/wraith_knight_silence_down.png",
+    kingIdle: "images/bosses/wraith_king_idle.png",
+    kingDown: "images/bosses/wraith_king_down.png",
+    kingSlashTelegraph: "images/bosses/wraith_king_slash_telegraph.png",
+    kingSlashSheet: "images/bosses/wraith_king_slash_sheet.png",
+    kingSummonTelegraph: "images/bosses/wraith_king_summon_telegraph.png",
+    kingSummonSheet: "images/bosses/wraith_king_summon_sheet.png",
+    kingCounter: "images/bosses/wraith_king_counter.png",
+    legion: "images/bosses/legion of wraith_king.png"
+  };
+
+  function injectWraithStyle(){
+    if (document.getElementById("wraithBossStyle")) return;
+    const st = document.createElement("style");
+    st.id = "wraithBossStyle";
+    st.textContent = `
+      .wraith-action-dock{position:fixed; left:0; top:0; z-index:99999; display:none; gap:10px; align-items:center;}
+      .wraith-action-btn{width:124px; height:124px; border:0; border-radius:50%; background:transparent center/contain no-repeat; color:#fff; font-weight:900; cursor:pointer; filter:drop-shadow(0 8px 18px rgba(0,0,0,.55)); position:relative; overflow:hidden; clip-path:circle(50% at 50% 50%);}
+      .wraith-action-btn span{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
+      .wraith-action-btn.is-cooling{filter:grayscale(.85) brightness(.58); cursor:default;}
+      .wraith-action-btn.is-cooling::before{content:""; position:absolute; inset:0; border-radius:50%; background:conic-gradient(rgba(255,213,79,.55) var(--cool,0deg), rgba(0,0,0,.52) 0deg); clip-path:circle(50% at 50% 50%);}
+      .wraith-action-btn.attack{background-image:url("images/ui/attack_but.png");}
+      .wraith-action-btn.guard{background-image:url("images/ui/defenc_but.png");}
+      .wraith-action-btn.guard::after{content:"[A]"; position:absolute; left:50%; bottom:17px; transform:translateX(-50%); z-index:3; color:rgba(255,255,255,.68); font-size:20px; font-weight:900; letter-spacing:0; text-shadow:0 2px 5px rgba(0,0,0,.75); pointer-events:none;}
+      .wraith-action-btn.attack::after{content:"[S]"; position:absolute; left:50%; bottom:17px; transform:translateX(-50%); z-index:3; color:rgba(255,255,255,.68); font-size:20px; font-weight:900; letter-spacing:0; text-shadow:0 2px 5px rgba(0,0,0,.75); pointer-events:none;}
+      .wraith-hp-row{padding:7px 0; border-bottom:1px solid #242424;}
+      .wraith-hp-name{display:flex; justify-content:space-between; gap:8px; margin-bottom:5px; font-size:12px;}
+      .wraith-hp-bar{height:18px; position:relative; background:#251010; border:1px solid rgba(255,255,255,.12); overflow:hidden;}
+      .wraith-hp-fill{position:absolute; inset:0 auto 0 0; background:linear-gradient(90deg,#b91424,#ff4d4d); width:100%;}
+      .wraith-hp-text{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:900; color:#fff; text-shadow:0 1px 3px #000;}
+      #bossBattleBossWrap.wraith-evade #bossBattleBossImg{filter:drop-shadow(0 0 22px rgba(255,154,46,.95)) drop-shadow(0 0 10px rgba(255,213,95,.72)) !important; opacity:1 !important; animation:none !important;}
+      #bossBattleBossWrap.wraith-evade::after{display:none !important; opacity:0 !important; animation:none !important;}
+      #bossBattleBossWrap.wraith-red-glow #bossBattleBossImg{filter:drop-shadow(0 0 20px rgba(255,0,0,.95)); animation:wraithRedPulse .55s infinite alternate;}
+      #bossBattleBossWrap.wraith-counter-phys #bossBattleBossImg{filter:drop-shadow(0 0 22px rgba(255,54,54,.95));}
+      #bossBattleBossWrap.wraith-counter-magic #bossBattleBossImg{filter:drop-shadow(0 0 22px rgba(80,160,255,.95));}
+      #bossBattleBossWrap.wraith-curse #bossBattleBossImg{filter:drop-shadow(0 0 24px rgba(120,255,120,.95));}
+      #bossBattleBossWrap.wraith-mode #bossBattleBossShadow{display:none !important;}
+      #bossBattleOverlay.wraith-active #bossBattleFadeOverlay{display:none !important; opacity:0 !important;}
+      #bossBattleOverlay.wraith-active #bossBattleBg{opacity:1 !important; filter:none !important; transition:none !important;}
+      .wraith-vignette::after{display:none !important; content:none !important;}
+      .wraith-sprite-canvas{position:absolute; left:50%; top:52%; width:min(840px,110.4%); height:auto; aspect-ratio:1/1; transform:translate(-50%,-55%); z-index:38; pointer-events:none; image-rendering:auto; filter:drop-shadow(0 0 18px rgba(255,255,255,.18));}
+      .wraith-sprite-canvas.slash{top:57%; width:min(1092px,143.52%); transform:translate(-50%,-50%);}
+      .wraith-sprite-canvas.summon{top:57%; width:min(1008px,132.48%); transform:translate(-50%,-50%);}
+      .wraith-center-msg{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:45; width:max-content; max-width:94%; padding:18px 22px; border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.68); color:#fff; text-align:center; font-weight:900; line-height:1.6; white-space:nowrap; box-shadow:0 14px 28px rgba(0,0,0,.45);}
+      .wraith-qte{position:absolute; left:50%; top:62%; transform:translateX(-50%); z-index:46; width:min(440px,82%); height:28px; border:1px solid rgba(255,255,255,.28); background:rgba(0,0,0,.7);}
+      .wraith-qte-label{position:absolute; left:50%; bottom:calc(100% + 7px); transform:translateX(-50%); color:rgba(255,255,255,.62); font-size:15px; font-weight:900; text-shadow:0 2px 6px rgba(0,0,0,.8); pointer-events:none; white-space:nowrap;}
+      .wraith-qte-safe{position:absolute; left:33.333%; width:33.333%; top:0; bottom:0; background:rgba(100,220,255,.32);}
+      .wraith-qte-parry{position:absolute; left:47.5%; width:5%; top:0; bottom:0; background:rgba(255,213,79,.5);}
+      .wraith-qte-dot{position:absolute; top:50%; left:0%; width:22px; height:22px; border-radius:50%; transform:translate(-50%,-50%); background:#fff; box-shadow:0 0 14px rgba(255,255,255,.85); will-change:left;}
+      .wraith-qte-dot.is-moving{animation:wraithQteDotMove var(--qte-duration,3s) linear forwards;}
+      @keyframes wraithQteDotMove{from{left:0%;}to{left:100%;}}
+      .wraith-slash-warning{position:absolute; inset:0; z-index:44; pointer-events:none; display:flex; align-items:center; justify-content:center; overflow:hidden;}
+      .wraith-slash-warning::before{content:""; position:absolute; inset:0; background:repeating-linear-gradient(135deg, rgba(255,40,40,.13) 0 16px, rgba(0,0,0,0) 16px 32px); animation:wraithWarnSweep .55s linear infinite;}
+      .wraith-slash-warning span{position:relative; padding:10px 18px; border:1px solid rgba(255,80,80,.7); background:rgba(0,0,0,.58); color:#ffdddd; font-weight:900; font-size:24px; text-shadow:0 2px 8px #000; letter-spacing:0;}
+      @keyframes wraithWarnSweep{from{transform:translateX(-24px);}to{transform:translateX(24px);}}
+      .wraith-screen-flash{position:fixed; inset:0; z-index:999999; pointer-events:none; display:flex; align-items:center; justify-content:center; font-size:34px; font-weight:900; color:#fff; text-shadow:0 2px 8px #000; opacity:0; transition:opacity .18s ease;}
+      .wraith-screen-flash.show{opacity:1;}
+      .wraith-screen-flash.red{background:rgba(180,0,0,.45);}
+      .wraith-screen-flash.black{background:rgba(0,0,0,.78);}
+      .wraith-screen-flash.dark{background:rgba(0,0,0,.62); transition:opacity 5s ease;}
+      .wraith-screen-flash.guard-success{background:radial-gradient(circle at center, rgba(70,145,255,.18) 0%, rgba(20,55,100,.24) 26%, rgba(0,0,0,.55) 68%, rgba(0,0,0,.72) 100%); transition:opacity .22s ease;}
+      .wraith-screen-flash.guard-fail{background:radial-gradient(circle at center, rgba(255,45,45,.22) 0%, rgba(120,10,10,.28) 28%, rgba(0,0,0,.58) 70%, rgba(0,0,0,.76) 100%); transition:opacity .22s ease;}
+      .wraith-guard-success-box{width:min(92vw,780px); text-align:center; animation:wraithGuardPanelIn 1.55s cubic-bezier(.16,.84,.28,1) forwards;}
+      .wraith-guard-success-line{height:1px; width:min(82vw,660px); margin:0 auto; background:linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(120,195,255,.72) 22%, rgba(255,255,255,.96) 50%, rgba(120,195,255,.72) 78%, rgba(255,255,255,0) 100%); box-shadow:0 0 10px rgba(120,200,255,.5), 0 0 24px rgba(120,200,255,.25);}
+      .wraith-guard-success-title{margin:18px 0 10px; font-size:clamp(28px,4vw,46px); font-weight:900; color:#f5fbff; text-shadow:0 0 10px rgba(140,210,255,.95),0 0 24px rgba(140,210,255,.5),0 0 46px rgba(80,160,255,.24);}
+      .wraith-guard-success-sub{font-size:clamp(12px,1.8vw,16px); color:#d6eaff; opacity:.9; text-shadow:0 0 10px rgba(100,165,255,.25);}
+      .wraith-screen-flash.guard-fail .wraith-guard-success-line{background:linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,90,90,.74) 22%, rgba(255,235,235,.96) 50%, rgba(255,90,90,.74) 78%, rgba(255,255,255,0) 100%); box-shadow:0 0 10px rgba(255,90,90,.58),0 0 26px rgba(255,30,30,.28);}
+      .wraith-screen-flash.guard-fail .wraith-guard-success-title{color:#fff5f5; text-shadow:0 0 10px rgba(255,90,90,.95),0 0 24px rgba(255,60,60,.55),0 0 48px rgba(255,0,0,.28);}
+      .wraith-screen-flash.guard-fail .wraith-guard-success-sub{color:#ffd6d6; text-shadow:0 0 10px rgba(255,70,70,.3);}
+      @keyframes wraithGuardPanelIn{0%{opacity:0; transform:translateY(8px) scale(.985);}22%{opacity:1; transform:translateY(0) scale(1);}84%{opacity:1; transform:translateY(0) scale(1);}100%{opacity:0; transform:translateY(-3px) scale(1.01);}}
+      .wraith-fail-panel{position:fixed; inset:0; z-index:1000000; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.78); color:#fff; text-align:center;}
+      .wraith-fail-panel .box{padding:26px 34px; border:1px solid rgba(255,255,255,.18); background:rgba(10,10,14,.92); min-width:260px;}
+      .wraith-fail-panel .title{font-size:32px; font-weight:900; margin-bottom:20px;}
+      .wraith-fail-panel button{padding:10px 20px; border-radius:10px; font-weight:900; opacity:.72;}
+      .wraith-fail-panel button:hover{opacity:.9;}
+      .wraith-video{position:absolute; inset:0; z-index:55; background:#000; display:flex; align-items:center; justify-content:center;}
+      .wraith-video video{width:100%; height:100%; object-fit:cover;}
+      @keyframes wraithRedPulse{from{filter:drop-shadow(0 0 8px rgba(255,0,0,.45));}to{filter:drop-shadow(0 0 26px rgba(255,0,0,1));}}
+      @keyframes wraithShake{0%,100%{transform:translateX(0);}20%{transform:translateX(-7px);}40%{transform:translateX(7px);}60%{transform:translateX(-5px);}80%{transform:translateX(5px);}}
+      #bossBattleOverlay.wraith-shake{animation:wraithShake .38s linear 1;}
+    `;
+    document.head.appendChild(st);
+  }
+
+  function ensureWraithDom(){
+    injectWraithStyle();
+    if (!document.getElementById("wraithActionDock")) {
+      const dock = document.createElement("div");
+      dock.id = "wraithActionDock";
+      dock.className = "wraith-action-dock";
+      dock.innerHTML = `
+        <button id="wraithGuardBtn" class="wraith-action-btn guard" type="button" aria-label="방어 A"><span>방어 A</span></button>
+        <button id="wraithAttackBtn" class="wraith-action-btn attack" type="button" aria-label="공격 S"><span>공격 S</span></button>
+      `;
+      document.body.appendChild(dock);
+    }
+    if (!document.getElementById("wraithScreenFlash")) {
+      const flash = document.createElement("div");
+      flash.id = "wraithScreenFlash";
+      flash.className = "wraith-screen-flash";
+      document.body.appendChild(flash);
+    }
+    if (!document.getElementById("wraithFailPanel")) {
+      const panel = document.createElement("div");
+      panel.id = "wraithFailPanel";
+      panel.className = "wraith-fail-panel";
+      panel.innerHTML = `<div class="box"><div class="title">토벌실패</div><button id="wraithFailOkBtn" type="button" style="display:none;">퇴장</button></div>`;
+      document.body.appendChild(panel);
+      document.getElementById("wraithFailOkBtn").onclick = function(){
+        exitWraithFailedRaid();
+      };
+    }
+    const guard = document.getElementById("wraithGuardBtn");
+    const attack = document.getElementById("wraithAttackBtn");
+    if (guard) guard.onclick = () => wraithGuard();
+    if (attack) attack.onclick = (ev) => wraithAttack(ev);
+  }
+
+  function fmtHp(v){ return typeof formatBossHpShort === "function" ? formatBossHpShort(Number(v || 0)) : Number(v || 0).toLocaleString("ko-KR"); }
+  function now(){ return typeof getBossClockNow === "function" ? getBossClockNow() : Date.now(); }
+  function isBossBattleOverlayOpen(){
+    const ov = document.getElementById("bossBattleOverlay");
+    return !!(ov && ov.style.display !== "none" && ov.style.display !== "");
+  }
+  function isWraithActive(){ return String(activeBossId || "") === WRAITH_BOSS_ID && isBossBattleOverlayOpen(); }
+  function getRun(){ return (bossRunsActiveCache || {})[WRAITH_BOSS_ID] || null; }
+  function getPhase(run){ return String((run && run.wraithPhase) || "knight"); }
+  function myMaxHp(){ return Math.max(1, Number(typeof getHuntStaminaMax === "function" ? getHuntStaminaMax() : 20) * 100); }
+  function isMagicWeaponType(t){ t = String(t || weaponType || "sword"); return ["staff","gauntlet","magitech","scythe"].includes(t); }
+  function isMyDead(run){ const m = run && run.members && run.members[userId]; return !!(m && Number(m.hp || 0) <= 0); }
+  function attackAllowed(run){
+    if (!run || String(run.status || "") !== "active") return false;
+    if (!isBossBattleOverlayOpen()) return false;
+    if (isMyDead(run)) return false;
+    if (document.getElementById("wraithIntroVideo")) return false;
+    const phase = getPhase(run);
+    return phase === "knight" || phase === "king" || phase === "legion" || phase === "curse";
+  }
+  function phaseName(run){
+    const p = getPhase(run);
+    if (p === "knight" || p === "gate") return "침묵의 기사 로데릭";
+    if (p === "legion") return "망령군단";
+    return "모르트헤임 발테리온";
+  }
+  function currentMaxHp(run){
+    const p = getPhase(run);
+    if (p === "knight" || p === "gate") return RODERICK_MAX_HP;
+    if (p === "legion") return Math.max(1, Number(run.legionMaxHp || LEGION_MAX_HP));
+    if (p === "curse") return Math.max(1, Number(run.curseMaxHp || CURSE_MAX_HP));
+    return KING_MAX_HP;
+  }
+  function currentHp(run){
+    const p = getPhase(run);
+    if (p === "legion") return Number(run.legionHp || 0);
+    if (p === "curse") return Number(run.curseHp || 0);
+    return Number(run.hp || 0);
+  }
+
+  function ensureWraithBossDef(){
+    if (typeof BOSS_FIELD_MAP === "object" && BOSS_FIELD_MAP) BOSS_FIELD_MAP[WRAITH_BOSS_ID] = 6;
+    if (typeof BOSS_SPRITES === "object" && BOSS_SPRITES) {
+      BOSS_SPRITES[WRAITH_BOSS_ID] = { alive: IMG.knightIdle, dead: IMG.kingDown, failed: IMG.kingIdle };
+    }
+    if (Array.isArray(BOSS_DEFS) && !BOSS_DEFS.some(b => String(b.id) === WRAITH_BOSS_ID)) {
+      BOSS_DEFS.push({
+        id: WRAITH_BOSS_ID,
+        mapName: "망령왕의 죽음세계",
+        bossTitle: "망령왕",
+        bossName: "모르트헤임 발테리온",
+        desc: "저주받은 발테리온왕국의 왕실, 그 앞을 지키는 기사단장 로데릭.",
+        minSword: 25,
+        applyCostGold: APPLY_COST,
+        durationHours: 24,
+        maxHp: RODERICK_MAX_HP,
+        bgImg: IMG.gateClosed,
+        imgIdle: IMG.knightIdle,
+        imgDead: IMG.kingDown,
+        lines: [
+          "침묵의 기사 로데릭은 발테리온 왕국의 마지막 기사단장입니다.",
+          "그의 기억과 의지는 이미 사라졌습니다.\n남아있는 것은 단 하나의 명령뿐입니다.",
+          "이 문을 통과한 자는 존재하지 않습니다.\n그는 지금도 그 자리를 지키고 있습니다.",
+          "발테리온 최강의 기사단장이었습니다.\n지금은 이름조차 잊혀진 존재가 되었습니다."
+        ],
+        deadLine: "망령왕 모르트헤임의 불사가 끝났습니다.",
+        deadSubLine: "발테리온 왕국의 저주 — 기록 종료",
+        failLine: "망령왕의 죽음세계는 다시 닫혔습니다.",
+        logSuccess: "망령왕 모르트헤임의 불사의 저주가 무너졌습니다!",
+        logFail: "발테리온 왕실의 문이 다시 닫혔습니다…"
+      });
+    }
+  }
+  ensureWraithBossDef();
+
+  function updateMyHpShape(run){
+    if (!run || !userId || !run.members || !run.members[userId]) return;
+    const m = run.members[userId];
+    const max = myMaxHp();
+    if (Number(m.maxHp || 0) === max && Number.isFinite(Number(m.hp))) return;
+    db.ref(`bossRunsActive/${WRAITH_BOSS_ID}/members/${userId}`).transaction((cur) => {
+      if (!cur) return cur;
+      const oldMax = Math.max(1, Number(cur.maxHp || max));
+      const oldHp = Number.isFinite(Number(cur.hp)) ? Number(cur.hp) : max;
+      cur.maxHp = max;
+      cur.hp = Math.max(0, Math.min(max, Math.round(oldHp * max / oldMax)));
+      return cur;
+    });
+  }
+
+  function refreshWraithHuntHeader(){
+    const headHunt = document.getElementById("bossBattleHeaderHuntRemain");
+    if (!headHunt || typeof getHuntStaminaRemaining !== "function") return;
+    const { remain, max } = getHuntStaminaRemaining();
+    const mySt = (typeof getPlayerFinalCombatStats === "function") ? (getPlayerFinalCombatStats() || {}) : {};
+    const minusMin = Number(mySt.huntRechargeMinusMin || 0);
+    const extra = (minusMin > 0) ? ` | 충전 -${minusMin}분` : "";
+    headHunt.textContent = `(사냥횟수 ${remain} / ${max}${extra})`;
+  }
+
+  function syncLocalHuntFromUserData(data){
+    if (!data || String(data.uid || userId || "") !== String(userId || "")) return;
+    huntStamina = Math.max(0, Number(data.huntStamina || 0));
+    huntCountToday = Math.max(0, Number(data.huntCountToday || 0));
+    try { if (typeof updateHuntUI === "function") updateHuntUI(); } catch(e){}
+    try { if (typeof update === "function") update(); } catch(e){}
+    refreshWraithHuntHeader();
+  }
+
+  function positionWraithActionDock(){
+    const dock = document.getElementById("wraithActionDock");
+    const overlay = document.getElementById("bossBattleOverlay");
+    const panel = overlay && overlay.firstElementChild;
+    if (!dock || !panel) return;
+    const rect = panel.getBoundingClientRect();
+    const gap = 8;
+    const left = Math.max(8, Math.round(rect.left));
+    const top = Math.min(window.innerHeight - dock.offsetHeight - 8, Math.round(rect.bottom + gap));
+    dock.style.left = `${left}px`;
+    dock.style.top = `${Math.max(8, top)}px`;
+  }
+
+  function playWraithGuardSfx(){
+    try {
+      if (typeof playSfx === "function") {
+        playSfx("sounds/shield_on.mp3", 0.95);
+      } else {
+        const a = new Audio("sounds/shield_on.mp3");
+        a.volume = 0.95;
+        const p = a.play();
+        if (p && p.catch) p.catch(()=>{});
+      }
+    } catch(e){}
+  }
+
+  function playWraithSlashSfx(){
+    try {
+      if (typeof playSfx === "function") {
+        playSfx("sounds/boss_wraith_king_slash.mp3", 0.95);
+      } else {
+        const a = new Audio("sounds/boss_wraith_king_slash.mp3");
+        a.volume = 0.95;
+        const p = a.play();
+        if (p && p.catch) p.catch(()=>{});
+      }
+    } catch(e){}
+  }
+
+  function startWraithButtonCooldown(btn, ms){
+    if (!btn) return;
+    const startedAt = Date.now();
+    btn.dataset.lastAt = String(startedAt);
+    btn.classList.add("is-cooling");
+    const timer = setInterval(() => {
+      const p = Math.min(1, (Date.now() - startedAt) / Math.max(1, ms));
+      btn.style.setProperty("--cool", `${Math.floor(p * 360)}deg`);
+      if (p >= 1) {
+        clearInterval(timer);
+        btn.classList.remove("is-cooling");
+        btn.style.removeProperty("--cool");
+      }
+    }, 30);
+  }
+
+  function freezeWraithSlashQte(pct){
+    const dot = document.querySelector("#wraithSlashQte .wraith-qte-dot");
+    if (!dot) return;
+    dot.classList.remove("is-moving");
+    dot.style.animation = "none";
+    dot.style.left = `${Math.max(0, Math.min(1, pct)) * 100}%`;
+  }
+
+  function getRandomBossHitClientPoint(){
+    const bossImg = document.getElementById("bossBattleBossImg");
+    const rect = bossImg && bossImg.getBoundingClientRect();
+    if (!rect || !rect.width || !rect.height) {
+      return { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 };
+    }
+    return {
+      clientX: rect.left + rect.width * (0.28 + Math.random() * 0.44),
+      clientY: rect.top + rect.height * (0.26 + Math.random() * 0.50)
+    };
+  }
+
+  function playWraithParryCounterFx(dmg){
+    const pt = getRandomBossHitClientPoint();
+    const isMagic = isMagicWeaponType();
+    try { spawnBossHitEffectAt(pt.clientX, pt.clientY, "crit", isMagic); } catch(e){}
+    try { spawnBossDamageFloatAt(pt.clientX, pt.clientY, Number(dmg || 0), "crit"); } catch(e){}
+    try { playBossHitFx(); } catch(e){}
+  }
+
+  function getWraithSlashQteVisualPct(){
+    const qte = document.getElementById("wraithSlashQte");
+    const dot = qte && qte.querySelector(".wraith-qte-dot");
+    if (!qte || !dot) return null;
+    const qteRect = qte.getBoundingClientRect();
+    const dotRect = dot.getBoundingClientRect();
+    if (!qteRect.width) return null;
+    const dotCenterX = dotRect.left + dotRect.width / 2;
+    return Math.max(0, Math.min(1, (dotCenterX - qteRect.left) / qteRect.width));
+  }
+
+  function getLocalWraithQteStart(seq){
+    const key = `wraithSlashQteStart_${String(seq || "")}`;
+    return Number(window[key] || 0);
+  }
+
+  function setLocalWraithQteStart(seq, t){
+    const key = `wraithSlashQteStart_${String(seq || "")}`;
+    window[key] = Number(t || Date.now());
+  }
+
+  function writeOnce(run, key, msg, opt){
+    if (!run || run[key]) return;
+    db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
+      if (!cur || cur[key]) return;
+      cur[key] = now();
+      return cur;
+    }, (err, committed) => {
+      if (!err && committed) writeBossBattleLog(WRAITH_BOSS_ID, msg, opt || {});
+    });
+  }
+
+  function getWraithLeaderNick(run){
+    const members = (run && run.members) || {};
+    const leaderUid = String(run && run.leaderUid || "");
+    return String(
+      (leaderUid && members[leaderUid] && members[leaderUid].nick) ||
+      run && run.leaderNick ||
+      "토벌대장"
+    );
+  }
+
+  function writeWraithMainClearLogOnce(run){
+    if (!run || run.mainClearLogAt) return;
+    db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
+      if (!cur || String(cur.status || "") !== "cleared" || cur.mainClearLogAt) return;
+      cur.mainClearLogAt = now();
+      return cur;
+    }, (err, committed, snap) => {
+      if (err || !committed || !snap || !snap.val) return;
+      const cur = snap.val() || {};
+      const leader = getWraithLeaderNick(cur);
+      try {
+        writeLog(`${leader}님의 토벌대가 망령왕의 죽음세계의 주인 망령왕 모르트헤임을 토벌하는데 성공하였습니다. 죽음을 잃어버린 왕국이 무너지며, 멈춰 있던 왕국의 시간이 다시 흐릅니다!`, false);
+      } catch(e){}
+    });
+  }
+
+  function maybeHandleWraithSkills(run){
+    if (!run || String(run.status || "") !== "active") return;
+    const t = now();
+    const phase = getPhase(run);
+    const memberList = Object.values(run.members || {});
+    if (memberList.length > 0 && memberList.every(m => Number(m && m.hp || 0) <= 0)) {
+      db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
+        if (!cur || String(cur.status || "") !== "active") return;
+        const alive = Object.values(cur.members || {}).some(m => Number(m && m.hp || 0) > 0);
+        if (alive) return;
+        cur.status = "failed";
+        cur.failedAt = now();
+        cur.cooldownFixed = true;
+        cur.cooldownFixedAt = now();
+        return cur;
+      }, (err, committed, snap) => {
+        if (!err && committed && snap && snap.val) {
+          ensureBossCooldownResetByRun(WRAITH_BOSS_ID, snap.val());
+          writeBossBattleLog(WRAITH_BOSS_ID, "모든 토벌대원이 쓰러져 토벌에 실패했습니다.", { tone:"yellow" });
+          try { writeLog("모든 토벌대원이 쓰러져 망령왕 토벌에 실패했습니다.", false); } catch(e){}
+        }
+      });
+      return;
+    }
+    if (isMyDead(run)) return;
+
+    if (phase === "gate") {
+      if (t >= Number(run.gateOpenAt || 0)) {
+        db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
+          if (!cur || String(cur.status || "") !== "active" || String(cur.wraithPhase || "") !== "gate") return;
+          if (now() < Number(cur.gateOpenAt || 0)) return;
+          cur.wraithPhase = "king";
+          cur.bossTitle = "망령왕";
+          cur.bossName = "모르트헤임 발테리온";
+          cur.maxHp = KING_MAX_HP;
+          cur.hp = KING_MAX_HP;
+          cur.endsAt = now() + 15 * MINUTE;
+          cur.kingStartedAt = now();
+          cur.nextSlashCheckAt = now() + 10 * SECOND;
+          cur.nextSummonCheckAt = now() + 2 * MINUTE;
+          cur.nextCounterCheckAt = now() + 45 * SECOND;
+          return cur;
+        }, (err, committed) => {
+          if (!err && committed) writeBossBattleLog(WRAITH_BOSS_ID, "발테리온 왕실의 문이 열리고, 망령왕 모르트헤임이 모습을 드러냅니다.", { tone:"yellow" });
+        });
+      }
+      return;
+    }
+
+    if (phase === "curse") {
+      if (t >= Number(run.curseEndsAt || 0) && Number(run.curseHp || 0) > 0) {
+        db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
+          if (!cur || String(cur.status || "") !== "active" || String(cur.wraithPhase || "") !== "curse") return;
+          if (Number(cur.curseHp || 0) <= 0) return;
+          if (now() < Number(cur.curseEndsAt || 0)) return;
+          cur.wraithPhase = "king";
+          cur.hp = Math.floor(KING_MAX_HP * 0.5);
+          cur.curseHp = 0;
+          cur.curseMaxHp = 0;
+          cur.curseRevivedAt = now();
+          return cur;
+        }, (err, committed) => {
+          if (!err && committed) writeBossBattleLog(WRAITH_BOSS_ID, "부활 저지에 실패했습니다. 망령왕이 체력 50%로 다시 일어섭니다.", { tone:"yellow" });
+        });
+      }
+      return;
+    }
+
+    if (phase === "knight") {
+      const startCheckDue = !run.roderickStartSkillChecked;
+      const evadeDue = t >= Number(run.nextRoderickEvadeCheckAt || 0);
+      const drawDue = t >= Number(run.nextRoderickDrawCheckAt || 0) && !run.roderickDrawResolveAt;
+      if (startCheckDue || evadeDue || drawDue || (run.roderickDrawResolveAt && t >= Number(run.roderickDrawResolveAt))) {
+        db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
+          if (!cur || String(cur.status || "") !== "active" || String(cur.wraithPhase || "") !== "knight") return;
+          const n = now();
+          if (!cur.roderickStartSkillChecked) {
+            cur.roderickStartSkillChecked = true;
+            cur.nextRoderickEvadeCheckAt = n + 30 * MINUTE;
+            if (Math.random() < 0.5) {
+              cur.roderickEvadeUntil = n + 20 * MINUTE;
+              cur.roderickEvadeAnnounceAt = n;
+            }
+          }
+          if (n >= Number(cur.nextRoderickEvadeCheckAt || 0)) {
+            cur.nextRoderickEvadeCheckAt = n + 30 * MINUTE;
+            if (Math.random() < 0.6) {
+              cur.roderickEvadeUntil = n + 20 * MINUTE;
+              cur.roderickEvadeAnnounceAt = n;
+            }
+          }
+          if (!cur.roderickDrawResolveAt && n >= Number(cur.nextRoderickDrawCheckAt || (Number(cur.createdAt || n) + 30 * MINUTE))) {
+            cur.nextRoderickDrawCheckAt = n + 30 * MINUTE;
+            if (Math.random() < 0.3) {
+              cur.roderickDrawCastAt = n;
+              cur.roderickDrawResolveAt = n + 3 * MINUTE;
+              cur.roderickDrawSeq = Number(cur.roderickDrawSeq || 0) + 1;
+              cur.roderickDrawResolved = false;
+            }
+          }
+          if (cur.roderickDrawResolveAt && !cur.roderickDrawResolved && n >= Number(cur.roderickDrawResolveAt || 0)) {
+            cur.roderickDrawResolved = true;
+            const members = cur.members || {};
+            Object.keys(members).forEach(uid => {
+              const m = members[uid] || {};
+              if (Number(m.guardedDrawSeq || 0) === Number(cur.roderickDrawSeq || 0)) {
+                m.lastGuardSuccessAt = n;
+              } else {
+                m.lastGuardFailAt = n;
+              }
+              members[uid] = m;
+            });
+            cur.members = members;
+          }
+          return cur;
+        }, (err, committed, snap) => {
+          if (err || !committed || !snap || !snap.val) return;
+          const cur = snap.val() || {};
+          if (Math.abs(Number(cur.roderickEvadeAnnounceAt || 0) - t) < 15000) {
+            writeBossBattleLog(WRAITH_BOSS_ID, "침묵의 기사가 [회피]를 사용합니다. (회피율 상승 : 40% / 20:00)", { tone:"yellow" });
+          }
+          if (Math.abs(Number(cur.roderickDrawCastAt || 0) - t) < 15000) {
+            writeBossBattleLog(WRAITH_BOSS_ID, "침묵의기사가 [발도]를 합니다. 공격에 대비하십시오. (피격시 사냥횟수 5감소) (방어 가능 : 3:00)", { tone:"yellow" });
+          }
+          if (cur.roderickDrawResolved && Math.abs(Number(cur.roderickDrawResolveAt || 0) - t) < 15000) {
+            reduceRoderickDrawStamina(cur);
+          }
+        });
+      }
+      return;
+    }
+
+    if (phase !== "king" && phase !== "legion") return;
+    if (phase === "legion") {
+      if (t >= Number(run.legionEndsAt || 0) && Number(run.legionHp || 0) > 0) {
+        db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
+          if (!cur || String(cur.status || "") !== "active" || String(cur.wraithPhase || "") !== "legion") return;
+          if (Number(cur.legionHp || 0) <= 0 || now() < Number(cur.legionEndsAt || 0)) return;
+          const members = cur.members || {};
+          Object.keys(members).forEach(uid => {
+            const m = members[uid] || {};
+            const maxHp = Math.max(0, Number(m.maxHp || m.hp || 0));
+            const dmg = Math.floor(maxHp * 0.5);
+            m.hp = Math.max(0, Number(m.hp || 0) - dmg);
+            m.lastSummonFailAt = now();
+            members[uid] = m;
+          });
+          cur.members = members;
+          cur.wraithPhase = "king";
+          cur.legionHp = 0;
+          cur.summonFailAt = now();
+          return cur;
+        }, (err, committed) => {
+          if (!err && committed) writeBossBattleLog(WRAITH_BOSS_ID, "망령왕의 즉사 주술을 막지 못했습니다. 모든 토벌대원의 체력이 50% 감소합니다.", { tone:"yellow" });
+        });
+      }
+      return;
+    }
+
+    const busy = run.slashActive || run.summonPending || getPhase(run) === "legion" || getPhase(run) === "curse";
+    if (!busy && t >= Number(run.nextSlashCheckAt || 0)) {
+      db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
+        if (!cur || String(cur.status || "") !== "active" || String(cur.wraithPhase || "") !== "king") return;
+        const n = now();
+        if (n < Number(cur.nextSlashCheckAt || 0)) return;
+        cur.nextSlashCheckAt = n + 10 * SECOND;
+        if (Math.random() < 0.3) {
+              cur.slashActive = true;
+              cur.slashCastAt = n;
+              cur.slashQteStartAt = n + 5 * SECOND;
+              cur.slashResolveAt = n + 6000;
+          cur.slashSeq = Number(cur.slashSeq || 0) + 1;
+          cur.slashResolved = false;
+        }
+        return cur;
+      }, (err, committed, snap) => {
+        if (!err && committed && snap && snap.val && (snap.val() || {}).slashActive) {
+          writeBossBattleLog(WRAITH_BOSS_ID, "망령왕이 [참격]을 사용합니다. 공격에 대비하십시오.", { tone:"yellow" });
+        }
+      });
+      return;
+    }
+    if (run.slashActive && !run.slashResolved && t >= Number(run.slashResolveAt || 0)) {
+      resolveSlash(run);
+      return;
+    }
+    if (!busy && t >= Number(run.nextSummonCheckAt || 0)) {
+      db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
+        if (!cur || String(cur.status || "") !== "active" || String(cur.wraithPhase || "") !== "king") return;
+        const n = now();
+        if (n < Number(cur.nextSummonCheckAt || 0)) return;
+        cur.nextSummonCheckAt = n + 2 * MINUTE;
+        if (Math.random() < 0.6) {
+          cur.summonPending = true;
+          cur.summonCastAt = n;
+          cur.summonSpawnAt = n + 5 * SECOND;
+        }
+        return cur;
+      }, (err, committed, snap) => {
+        if (!err && committed && snap && snap.val && (snap.val() || {}).summonPending) {
+          writeBossBattleLog(WRAITH_BOSS_ID, "망령왕이 즉사의 주술을 사용하기위해 [군단]을 소환합니다. 1분내 처치하여 주술을 막아야 합니다. (1:00)", { tone:"yellow" });
+        }
+      });
+      return;
+    }
+    if (run.summonPending && t >= Number(run.summonSpawnAt || 0)) {
+      db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
+        if (!cur || String(cur.status || "") !== "active" || !cur.summonPending) return;
+        if (now() < Number(cur.summonSpawnAt || 0)) return;
+        cur.wraithPhase = "legion";
+        cur.summonPending = false;
+        cur.legionHp = LEGION_MAX_HP;
+        cur.legionMaxHp = LEGION_MAX_HP;
+        cur.legionEndsAt = now() + MINUTE;
+        return cur;
+      });
+      return;
+    }
+    if (!busy && t >= Number(run.nextCounterCheckAt || 0)) {
+      db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
+        if (!cur || String(cur.status || "") !== "active" || String(cur.wraithPhase || "") !== "king") return;
+        const n = now();
+        if (n < Number(cur.nextCounterCheckAt || 0)) return;
+        cur.nextCounterCheckAt = n + 45 * SECOND;
+        if (Math.random() < 0.3) {
+          cur.counterType = Math.random() < 0.5 ? "phys" : "magic";
+          cur.counterUntil = n + (7 + Math.floor(Math.random() * 9)) * SECOND;
+          cur.counterAnnounceAt = n;
+        }
+        return cur;
+      }, (err, committed, snap) => {
+        if (!err && committed && snap && snap.val) {
+          const cur = snap.val() || {};
+          if (Math.abs(Number(cur.counterAnnounceAt || 0) - t) < 15000) {
+            writeBossBattleLog(WRAITH_BOSS_ID, cur.counterType === "magic"
+              ? "망령왕이 [반격] 자세를 취합니다. 마법 공격에 주의하십시오."
+              : "망령왕이 [반격] 자세를 취합니다. 물리 공격에 주의하십시오.", { tone:"yellow" });
+          }
+        }
+      });
+    }
+  }
+
+  function resolveSlash(run){
+    db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
+      if (!cur || String(cur.status || "") !== "active" || !cur.slashActive || cur.slashResolved) return;
+      if (now() < Number(cur.slashResolveAt || 0)) return;
+      cur.slashResolved = true;
+      cur.slashActive = false;
+      cur.slashHitAt = now();
+      const seq = Number(cur.slashSeq || 0);
+      const members = cur.members || {};
+      Object.keys(members).forEach(uid => {
+        const m = members[uid] || {};
+        if (Number(m.hp || 0) <= 0) {
+          members[uid] = m;
+          return;
+        }
+        const guard = Number(m.slashGuardSeq || 0) === seq;
+        const parry = Number(m.slashParrySeq || 0) === seq;
+        if (parry) {
+          const reflect = Math.max(0, Number(m.lastParryDamage || 0));
+          cur.hp = Math.max(0, Number(cur.hp || 0) - reflect);
+          m.dmg = Number(m.dmg || 0) + reflect;
+          m.lastParrySuccessAt = now();
+        } else if (guard) {
+          m.lastGuardSuccessAt = now();
+        } else {
+          const avoidChance = Math.max(0, Number(m.ignoreEvadeAtJoin || 0)) / 2;
+          if (Math.random() >= avoidChance) {
+            const dmg = 500 + Math.floor(Math.random() * 201);
+            m.hp = Math.max(0, Number(m.hp || 0) - dmg);
+            m.lastGuardFailAt = now();
+            m.lastGuardFailDamage = dmg;
+          } else {
+            m.lastGuardSuccessAt = now();
+          }
+        }
+        members[uid] = m;
+      });
+      cur.members = members;
+      return cur;
+    }, (err, committed, snap) => {
+      if (!err && committed && snap && snap.val) {
+        const cur = snap.val() || {};
+        const seq = Number(cur.slashSeq || 0);
+        Object.values(cur.members || {}).forEach(m => {
+          if (Number(m.slashParrySeq || 0) === seq && Number(m.lastParryDamage || 0) > 0) {
+            writeBossBattleLog(WRAITH_BOSS_ID, `${m.nick || m.uid}님이 망령왕의 참격에 패링을 성공했습니다. (${fmtHp(m.lastParryDamage)} 데미지 반격)`, { tone:"cyan" });
+            if (String(m.uid || "") === String(userId || "")) playWraithParryCounterFx(Number(m.lastParryDamage || 0));
+          }
+        });
+      }
+    });
+  }
+
+  function showScreenFlash(text, kind, ms){
+    ensureWraithDom();
+    const el = document.getElementById("wraithScreenFlash");
+    if (!el) return;
+    el.className = `wraith-screen-flash ${kind || ""} show`;
+    if (kind === "guard-success" || kind === "guard-fail") {
+      const isFail = kind === "guard-fail";
+      el.innerHTML = `
+        <div class="wraith-guard-success-box">
+          <div class="wraith-guard-success-line"></div>
+          <div class="wraith-guard-success-title">${text || (isFail ? "방어실패" : "방어성공")}</div>
+          <div class="wraith-guard-success-sub">${isFail ? "공격에 피격되었습니다" : "공격을 막아냈습니다"}</div>
+          <div class="wraith-guard-success-line"></div>
+        </div>`;
+    } else {
+      el.textContent = text || "";
+    }
+    setTimeout(() => { el.classList.remove("show"); }, ms || 900);
+  }
+
+  function showWraithTakenDamageNumber(dmg){
+    const n = Math.max(0, Number(dmg || 0));
+    if (!n) return;
+    const el = document.createElement("div");
+    el.textContent = `-${formatDamageKoUnits(n)}`;
+    el.style.position = "fixed";
+    el.style.left = `${46 + Math.random() * 8}%`;
+    el.style.top = `${43 + Math.random() * 10}%`;
+    el.style.transform = "translate(-50%, -50%) scale(.96)";
+    el.style.zIndex = "1000001";
+    el.style.pointerEvents = "none";
+    el.style.color = "#ff3333";
+    el.style.fontSize = "30px";
+    el.style.fontWeight = "900";
+    el.style.whiteSpace = "nowrap";
+    el.style.textShadow = "0 0 10px rgba(255,30,30,.95),0 0 24px rgba(0,0,0,.95)";
+    el.style.opacity = "0";
+    el.style.transition = "opacity 180ms ease, transform 180ms ease";
+    document.body.appendChild(el);
+    requestAnimationFrame(() => {
+      el.style.opacity = "1";
+      el.style.transform = "translate(-50%, -50%) scale(1.08)";
+    });
+    setTimeout(() => {
+      el.style.transition = "opacity 900ms ease, transform 900ms ease";
+      el.style.opacity = "0";
+      el.style.transform = "translate(-50%, -62%) scale(1)";
+    }, 900);
+    setTimeout(() => el.remove(), 1900);
+  }
+
+  const wraithSpriteImages = {};
+  const WRAITH_SPRITE_FRAME_W = 500;
+  const WRAITH_SPRITE_FRAME_H = 500;
+  const WRAITH_SPRITE_CANVAS_SIZE = 750;
+  const WRAITH_SPRITE_FPS = 18;
+
+  function getWraithSpriteImage(src){
+    if (!wraithSpriteImages[src]) {
+      const img = new Image();
+      img.src = src;
+      wraithSpriteImages[src] = img;
+    }
+    return wraithSpriteImages[src];
+  }
+
+  function removeWraithSpriteSheet(){
+    const old = document.getElementById("wraithSpriteCanvas");
+    if (old && old.dataset.raf) {
+      try { cancelAnimationFrame(Number(old.dataset.raf)); } catch(e){}
+    }
+    if (old) old.remove();
+    const bossImg = document.getElementById("bossBattleBossImg");
+    if (bossImg && bossImg.dataset.hiddenBySprite === "1") {
+      bossImg.style.visibility = "";
+      delete bossImg.dataset.hiddenBySprite;
+    }
+  }
+
+  function renderWraithSpriteSheet(run){
+    const layer = document.getElementById("bossFxLayer");
+    if (!layer) return;
+    const t = now();
+    const slashAt = Number(run && run.slashHitAt || 0);
+    const summonAt = Number(run && run.summonFailAt || 0);
+    let cfg = null;
+    const slashDuration = 5000;
+    const summonDuration = 5000;
+    if (slashAt && t - slashAt >= 0 && t - slashAt < slashDuration) {
+      cfg = { key:`slash_${slashAt}`, type:"slash", src:IMG.kingSlashSheet, startedAt:slashAt, duration:slashDuration, cols:9, rows:7, frames:57 };
+    } else if (summonAt && t - summonAt >= 0 && t - summonAt < summonDuration) {
+      cfg = { key:`summon_${summonAt}`, type:"summon", src:IMG.kingSummonSheet, startedAt:summonAt, duration:summonDuration, cols:9, rows:6, frames:54 };
+    }
+    if (!cfg) { removeWraithSpriteSheet(); return; }
+
+    let canvas = document.getElementById("wraithSpriteCanvas");
+    if (!canvas || canvas.dataset.key !== cfg.key) {
+      removeWraithSpriteSheet();
+      canvas = document.createElement("canvas");
+      canvas.id = "wraithSpriteCanvas";
+      canvas.className = `wraith-sprite-canvas ${cfg.type || ""}`;
+      canvas.width = WRAITH_SPRITE_CANVAS_SIZE;
+      canvas.height = WRAITH_SPRITE_CANVAS_SIZE;
+      canvas.dataset.key = cfg.key;
+      layer.appendChild(canvas);
+      if (cfg.type === "slash") playWraithSlashSfx();
+    }
+
+    const sprite = getWraithSpriteImage(cfg.src);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const bossImg = document.getElementById("bossBattleBossImg");
+
+    const drawFrame = (frame) => {
+      const col = frame % cfg.cols;
+      const row = Math.floor(frame / cfg.cols);
+      ctx.clearRect(0, 0, WRAITH_SPRITE_CANVAS_SIZE, WRAITH_SPRITE_CANVAS_SIZE);
+      ctx.drawImage(
+        sprite,
+        col * WRAITH_SPRITE_FRAME_W,
+        row * WRAITH_SPRITE_FRAME_H,
+        WRAITH_SPRITE_FRAME_W,
+        WRAITH_SPRITE_FRAME_H,
+        0,
+        0,
+        WRAITH_SPRITE_CANVAS_SIZE,
+        WRAITH_SPRITE_CANVAS_SIZE
+      );
+    };
+
+    const draw = () => {
+      if (!document.body.contains(canvas)) return;
+      if (!sprite.complete || !sprite.naturalWidth) {
+        canvas.dataset.raf = String(requestAnimationFrame(draw));
+        return;
+      }
+      if (bossImg) {
+        bossImg.style.visibility = "hidden";
+        bossImg.dataset.hiddenBySprite = "1";
+      }
+      const elapsed = Math.max(0, Math.min(cfg.duration, now() - cfg.startedAt));
+      const frameDuration = cfg.duration / Math.max(1, cfg.frames);
+      const frame = Math.min(cfg.frames - 1, Math.floor(elapsed / frameDuration));
+      drawFrame(frame);
+      if (elapsed >= cfg.duration) {
+        removeWraithSpriteSheet();
+        return;
+      }
+      canvas.dataset.raf = String(requestAnimationFrame(draw));
+    };
+    if (!canvas.dataset.raf) canvas.dataset.raf = String(requestAnimationFrame(draw));
+  }
+
+  function updateLocalFeedback(run){
+    if (!run || !run.members || !run.members[userId]) return;
+    const m = run.members[userId];
+    if (String(m.uid || userId || "") !== String(userId || "")) return;
+    const key = `wraithFeedback_${String(run.logKey || "")}_${String(userId || "")}`;
+    let seen = {};
+    try { seen = JSON.parse(localStorage.getItem(key) || "{}") || {}; } catch(e){ seen = {}; }
+    const checks = [
+      ["lastGuardFailAt","방어실패","guard-fail",1550,true],
+      ["lastGuardSuccessAt","방어성공","guard-success",1550,false],
+      ["lastSummonFailAt","", "dark",1800,false],
+      ["lastParrySuccessAt","패링성공","guard-success",1550,false]
+    ];
+    if (seen.__initialized !== 1) {
+      checks.forEach(([field]) => { seen[field] = Number(m[field] || 0); });
+      seen.__initialized = 1;
+      try { localStorage.setItem(key, JSON.stringify(seen)); } catch(e){}
+      if (Number(m.hp || 0) <= 0) showWraithFailPanel();
+      return;
+    }
+    checks.forEach(([field, text, kind, ms, shake]) => {
+      const v = Number(m[field] || 0);
+      if (!v || seen[field] === v) return;
+      seen[field] = v;
+      if (shake) {
+        const shakeEl = document.getElementById("bossBattleOverlay") || document.body;
+        shakeEl.classList.remove("wraith-shake");
+        void shakeEl.offsetWidth;
+        shakeEl.classList.add("wraith-shake");
+        setTimeout(() => shakeEl.classList.remove("wraith-shake"), 500);
+      }
+      showScreenFlash(text, kind, ms);
+      if (field === "lastGuardFailAt") {
+        const dmg = Number(m.lastGuardFailDamage || 0);
+        if (dmg > 0) {
+          showWraithTakenDamageNumber(dmg);
+          try {
+            const pt = getRandomBossHitClientPoint();
+            spawnBossDamageFloatAt(pt.clientX, pt.clientY, dmg, "taken");
+          } catch(e){}
+        }
+      }
+    });
+    try { localStorage.setItem(key, JSON.stringify(seen)); } catch(e){}
+    if (Number(m.hp || 0) <= 0) showWraithFailPanel();
+  }
+
+  function reduceRoderickDrawStamina(run){
+    const seq = Number(run && run.roderickDrawSeq || 0);
+    Object.values((run && run.members) || {}).forEach(m => {
+      if (!m || String(m.uid || "") === "" || Number(m.guardedDrawSeq || 0) === seq) return;
+      db.ref(`users/${m.uid}`).transaction((cur) => {
+        if (!cur) return cur;
+        if (Number(cur.lastRoderickDrawLossSeq || 0) === seq) return cur;
+        const before = Math.max(0, Number(cur.huntStamina || 0));
+        const minus = Math.min(5, before);
+        cur.huntStamina = Math.max(0, before - minus);
+        cur.huntCountToday = Math.max(0, Number(cur.huntCountToday || 0) + minus);
+        cur.lastRoderickDrawLossSeq = seq;
+        return cur;
+      }, (err, committed, snap) => {
+        if (!err && committed && String(m.uid || "") === String(userId || "") && snap && snap.val) {
+          syncLocalHuntFromUserData(snap.val() || {});
+        }
+      });
+    });
+  }
+
+  function exitWraithFailedRaid(){
+    const run = getRun();
+    const panel = document.getElementById("wraithFailPanel");
+    const btn = document.getElementById("wraithFailOkBtn");
+    if (btn) btn.disabled = true;
+    if (!run || !userId) {
+      if (panel) panel.style.display = "none";
+      closeBossBattle();
+      return;
+    }
+    const myMember = run.members && run.members[userId];
+    if (String(run.status || "") === "active" && myMember && Number(myMember.hp || 0) > 0) {
+      if (btn) btn.disabled = false;
+      return;
+    }
+    const myNick = myMember && myMember.nick ? myMember.nick : String(userId || "???");
+    const updates = {};
+    updates[`bossRunsActive/${WRAITH_BOSS_ID}/members/${userId}`] = null;
+    updates[`bossRunsActive/${WRAITH_BOSS_ID}/eliminated/${userId}`] = {
+      uid: userId,
+      nick: myNick,
+      reason: "hp_zero",
+      at: now()
+    };
+    if (String(run.leaderUid || "") === String(userId || "")) {
+      updates[`bossRunsActive/${WRAITH_BOSS_ID}/leaderUid`] = "";
+    }
+    db.ref().update(updates).then(() => {
+      try {
+        if (bossRunsActiveCache && bossRunsActiveCache[WRAITH_BOSS_ID] && bossRunsActiveCache[WRAITH_BOSS_ID].members) {
+          delete bossRunsActiveCache[WRAITH_BOSS_ID].members[userId];
+          if (String(run.leaderUid || "") === String(userId || "")) bossRunsActiveCache[WRAITH_BOSS_ID].leaderUid = "";
+          if (!bossRunsActiveCache[WRAITH_BOSS_ID].eliminated) bossRunsActiveCache[WRAITH_BOSS_ID].eliminated = {};
+          bossRunsActiveCache[WRAITH_BOSS_ID].eliminated[userId] = { uid:userId, nick:myNick, reason:"hp_zero", at:now() };
+        }
+      } catch(e){}
+      try { writeBossBattleLog(WRAITH_BOSS_ID, `${myNick}님이 토벌실패로 퇴장했습니다.`); } catch(e){}
+      try { clearActiveBossBinding(); } catch(e){}
+      if (panel) panel.style.display = "none";
+      closeBossBattle();
+      try { update(); } catch(e){}
+    }).catch((err) => {
+      console.error(err);
+      if (btn) btn.disabled = false;
+    });
+  }
+
+  function showWraithFailPanel(){
+    ensureWraithDom();
+    const panel = document.getElementById("wraithFailPanel");
+    const btn = document.getElementById("wraithFailOkBtn");
+    if (!panel || panel.style.display === "flex") return;
+    panel.style.display = "flex";
+    if (btn) {
+      btn.style.display = "none";
+      setTimeout(() => { btn.style.display = "inline-block"; }, 5000);
+    }
+  }
+
+  function wraithGuard(){
+    const run = getRun();
+    if (!attackAllowed(run)) return;
+    const btn = document.getElementById("wraithGuardBtn");
+    const last = Number(btn && btn.dataset.lastAt || 0);
+    const t = Date.now();
+    if (t - last < 3000) return;
+    playWraithGuardSfx();
+    startWraithButtonCooldown(btn, 3000);
+    const phase = getPhase(run);
+    db.ref(`bossRunsActive/${WRAITH_BOSS_ID}/members/${userId}`).transaction((m) => {
+      if (!m) return m;
+      if (phase === "knight" && run.roderickDrawResolveAt && now() < Number(run.roderickDrawResolveAt || 0)) {
+        m.guardedDrawSeq = Number(run.roderickDrawSeq || 0);
+      }
+      if (phase === "king" && run.slashActive) {
+        const visualPct = getWraithSlashQteVisualPct();
+        const localQteStart = getLocalWraithQteStart(run.slashSeq);
+        const qteStart = localQteStart || Number(run.slashQteStartAt || run.slashCastAt || now());
+        if (visualPct == null && Date.now() < qteStart) return m;
+        const elapsed = Math.max(0, Date.now() - qteStart);
+        const qteDuration = Math.max(1, Number(run.slashResolveAt || now()) - qteStart);
+        const pct = visualPct == null ? (elapsed / qteDuration) : visualPct;
+        freezeWraithSlashQte(pct);
+        if (pct >= 1/3 && pct <= 2/3) m.slashGuardSeq = Number(run.slashSeq || 0);
+        if (pct >= 19/40 && pct <= 21/40) {
+          m.slashParrySeq = Number(run.slashSeq || 0);
+          const base = Number(getPlayerFinalCombatStats().mainPower || 0) * Number(getBossPowerMultiplier(WRAITH_BOSS_ID, Number(sword || 0)) || 1);
+          m.lastParryDamage = Math.floor(base * 5);
+        }
+      }
+      return m;
+    });
+  }
+
+  function wraithAttack(ev){
+    const run = getRun();
+    if (!attackAllowed(run)) return;
+    const t = Date.now();
+    if (t - Number(window.__wraithLastAttackAt || 0) < 300) return;
+    const phaseNow = getPhase(run);
+    if (phaseNow === "knight" && !consumeHuntPointForBoss()) {
+      showNpcMessage("오늘 남은 사냥횟수가 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+      return;
+    }
+    window.__wraithLastAttackAt = t;
+    startWraithButtonCooldown(document.getElementById("wraithAttackBtn"), 300);
+    const result = calcBossAttackResult(WRAITH_BOSS_ID);
+    const isMagic = isMagicWeaponType();
+    const clientX = ev && Number.isFinite(ev.clientX) ? ev.clientX : window.innerWidth / 2;
+    const clientY = ev && Number.isFinite(ev.clientY) ? ev.clientY : window.innerHeight / 2;
+    try { playBossAttackSfx(result, isMagic); } catch(e){}
+    if (result.isMiss) {
+      spawnBossDamageFloatAt(clientX, clientY, "MISS", "miss");
+      return;
+    }
+    let dmg = Number(result.damage || 0);
+    let healMode = false;
+    const counterType = (now() < Number(run.counterUntil || 0)) ? String(run.counterType || "") : "";
+    if (getPhase(run) === "king" && ((counterType === "magic" && isMagic) || (counterType === "phys" && !isMagic))) {
+      healMode = true;
+    }
+    spawnBossHitEffectAt(clientX, clientY, result.isCrit ? "crit" : "hit", isMagic);
+    spawnBossDamageFloatAt(clientX, clientY, healMode ? `+${fmtHp(dmg)}` : dmg, healMode ? "heal" : (result.isCrit ? "crit" : "hit"));
+    playBossHitFx();
+
+    db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
+      if (!cur || String(cur.status || "") !== "active" || !cur.members || !cur.members[userId]) return;
+      const phase = String(cur.wraithPhase || "knight");
+      const m = cur.members[userId];
+      if (Number(m.hp || 0) <= 0) return;
+      if (healMode) {
+        cur.hp = Math.min(KING_MAX_HP, Number(cur.hp || 0) + dmg);
+        const counterDmg = 100 + Math.floor(Math.random() * 101);
+        m.hp = Math.max(0, Number(m.hp || 0) - counterDmg);
+      } else if (phase === "legion") {
+        cur.legionHp = Math.max(0, Number(cur.legionHp || 0) - dmg);
+        m.dmg = Number(m.dmg || 0) + dmg;
+        if (cur.legionHp <= 0) {
+          cur.wraithPhase = "king";
+          cur.legionHp = 0;
+          cur.legionClearedAt = now();
+        }
+      } else if (phase === "curse") {
+        cur.curseHp = Math.max(0, Number(cur.curseHp || 0) - dmg);
+        m.dmg = Number(m.dmg || 0) + dmg;
+        if (cur.curseHp <= 0) {
+          cur.status = "cleared";
+          cur.clearedAt = now();
+          cur.cooldownFixed = true;
+          cur.cooldownFixedAt = now();
+          cur.lastHitUid = userId;
+          cur.hp = 0;
+          cur.curseHp = 0;
+          chooseWraithSpecialRewards(cur);
+        }
+      } else {
+        cur.hp = Math.max(0, Number(cur.hp || 0) - dmg);
+        m.dmg = Number(m.dmg || 0) + dmg;
+        if (cur.hp <= 0) {
+          cur.lastHitUid = userId;
+          if (phase === "knight") {
+            cur.wraithPhase = "gate";
+            cur.hp = 0;
+            cur.knightDownAt = now();
+            cur.gateOpenAt = now() + 60 * SECOND;
+          } else if (phase === "king") {
+            cur.wraithPhase = "curse";
+            cur.hp = 0;
+            cur.curseHp = CURSE_MAX_HP;
+            cur.curseMaxHp = CURSE_MAX_HP;
+            cur.curseStartedAt = now();
+            cur.curseEndsAt = now() + 2 * MINUTE;
+          }
+        }
+      }
+      cur.members[userId] = m;
+      cur.lastAttackAt = now();
+      return cur;
+    }, (err, committed, snap) => {
+      if (err || !committed || !snap || !snap.val) return;
+      const cur = snap.val() || {};
+      if (cur.legionClearedAt && Math.abs(Number(cur.legionClearedAt || 0) - now()) < 15000) {
+        writeOnce(cur, "legionClearLogAt", "군단을 처치하고 망령왕의 주술을 막는데 성공하였습니다.", { tone:"yellow" });
+      }
+      if (String(cur.wraithPhase || "") === "gate") {
+        writeOnce(cur, "knightDownLogAt", "침묵의 기사 로데릭이 무릎을 꿇습니다. 발테리온 왕실의 문이 서서히 열립니다.", { tone:"yellow" });
+      }
+      if (String(cur.wraithPhase || "") === "curse") {
+        writeOnce(cur, "curseLogAt", "망령왕의 생명력은 모두 소진되었으나, [불사의 저주]로 인해 망령왕이 다시 부활합니다. 부활을 저지 하십시오. (2:00)", { tone:"yellow" });
+      }
+      if (String(cur.status || "") === "cleared") {
+        ensureBossCooldownResetByRun(WRAITH_BOSS_ID, cur);
+        writeWraithMainClearLogOnce(cur);
+      }
+    });
+  }
+  window.attackWraithKingBossByClick = wraithAttack;
+  window.guardWraithKingBoss = wraithGuard;
+
+  function chooseWraithSpecialRewards(cur){
+    const members = cur.members || {};
+    const arr = Object.keys(members).map(uid => ({ uid, dmg:Number(members[uid] && members[uid].dmg || 0) })).sort((a,b)=>b.dmg-a.dmg);
+    if (arr[0]) cur.topDamageUid = arr[0].uid;
+    const uids = arr.map(x => x.uid);
+    if (uids.length >= 5 && Math.random() < 0.5) cur.priorityWinnerUid = uids[Math.floor(Math.random() * uids.length)];
+  }
+
+  function renderWraithBattle(){
+    ensureWraithDom();
+    const run = getRun();
+    if (!run) return;
+    if (typeof setTwinBossMode === "function") setTwinBossMode(false);
+    updateMyHpShape(run);
+    refreshWraithHuntHeader();
+    maybeHandleWraithSkills(run);
+    updateLocalFeedback(run);
+
+    const phase = getPhase(run);
+    const st = String(run.status || "active");
+    const bgEl = document.getElementById("bossBattleBg");
+    const imgEl = document.getElementById("bossBattleBossImg");
+    const wrap = document.getElementById("bossBattleBossWrap");
+    const mapEl = document.getElementById("bossBattleMapName");
+    const nameEl = document.getElementById("bossBattleBossName");
+    const remainEl = document.getElementById("bossBattleRemain");
+    const partyEl = document.getElementById("bossBattlePartyList");
+    const lineMainEl = document.getElementById("bossBattleBossLineMain");
+    const lineSubEl = document.getElementById("bossBattleBossLineSub");
+    const banner = document.getElementById("bossBattleResultBanner");
+    const bannerText = document.getElementById("bossBattleResultText");
+    const rewardBtn = document.getElementById("bossBattleRewardBtn");
+    const dock = document.getElementById("wraithActionDock");
+    const attackBtn = document.getElementById("wraithAttackBtn");
+    const overlay = document.getElementById("bossBattleOverlay");
+    const fade = document.getElementById("bossBattleFadeOverlay");
+    const hpFill = document.getElementById("bossHpFillWrap");
+    const hpFillImg = document.getElementById("bossHpFillImg");
+    const hpText = document.getElementById("bossHpText");
+    const shieldFill = document.getElementById("bossShieldFillWrap");
+    const shieldText = document.getElementById("bossShieldText");
+    const field = bgEl ? bgEl.parentElement : null;
+    if (overlay) overlay.classList.add("wraith-active");
+    if (fade) {
+      fade.style.opacity = "0";
+      fade.style.display = "none";
+    }
+    if (mapEl) mapEl.textContent = "망령왕의 죽음세계";
+    if (nameEl) nameEl.textContent = phaseName(run);
+    if (remainEl) remainEl.textContent = formatHMS(Math.max(0, Number(run.endsAt || 0) - now()));
+    if (bgEl) {
+      const bgSrc = (phase === "knight" || phase === "gate") ? IMG.gateClosed : IMG.gateOpen;
+      if (bgEl.getAttribute("src") !== bgSrc) bgEl.src = bgSrc;
+    }
+    if (imgEl) {
+      let src = IMG.kingIdle;
+      if (phase === "knight") src = IMG.knightIdle;
+      else if (phase === "gate") src = IMG.knightDown;
+      else if (phase === "legion") src = IMG.legion;
+      else if (phase === "curse" || st === "cleared") src = IMG.kingDown;
+      else if (run.slashActive) src = IMG.kingSlashTelegraph;
+      else if (run.summonPending) src = IMG.kingSummonTelegraph;
+      else if (now() < Number(run.counterUntil || 0)) src = IMG.kingCounter;
+      if (imgEl.getAttribute("src") !== src) imgEl.src = src;
+      imgEl.onclick = wraithAttack;
+      imgEl.style.pointerEvents = attackAllowed(run) ? "auto" : "none";
+    }
+    if (wrap) {
+      wrap.classList.add("wraith-mode");
+      const isRoderickEvading = phase === "knight" && now() < Number(run.roderickEvadeUntil || 0);
+      if (isRoderickEvading) {
+        wrap.classList.remove("hit", "hit-spark");
+        if (imgEl) imgEl.classList.remove("hit-flash");
+      }
+      wrap.classList.toggle("wraith-evade", isRoderickEvading);
+      wrap.classList.toggle("wraith-red-glow", Boolean(run.roderickDrawResolveAt && now() < Number(run.roderickDrawResolveAt || 0)));
+      wrap.classList.toggle("wraith-counter-phys", now() < Number(run.counterUntil || 0) && String(run.counterType || "") === "phys");
+      wrap.classList.toggle("wraith-counter-magic", now() < Number(run.counterUntil || 0) && String(run.counterType || "") === "magic");
+      wrap.classList.toggle("wraith-curse", phase === "curse");
+    }
+    if (field) field.classList.remove("wraith-vignette");
+    if (dock) {
+      dock.style.display = (st === "active") ? "flex" : "none";
+      if (st === "active") positionWraithActionDock();
+    }
+    if (attackBtn) attackBtn.style.display = (phase === "knight" || phase === "king" || phase === "legion" || phase === "curse") ? "block" : "none";
+
+    const hp = currentHp(run), max = currentMaxHp(run);
+    if (hpFill) hpFill.style.width = `${Math.max(0, Math.min(100, hp / max * 100))}%`;
+    if (hpFillImg) {
+      hpFillImg.style.filter = (phase === "curse")
+        ? "grayscale(1) brightness(2.8) contrast(0.9) drop-shadow(0 0 8px rgba(255,255,255,.72))"
+        : "";
+      hpFillImg.style.opacity = (phase === "curse") ? "0.98" : "";
+    }
+    if (hpText) hpText.textContent = `${fmtHp(hp)} / ${fmtHp(max)}`;
+    if (shieldFill) {
+      if (phase === "curse") {
+        shieldFill.style.display = "none";
+        shieldFill.style.width = "0%";
+      } else {
+        shieldFill.style.display = "";
+        shieldFill.style.width = "0%";
+      }
+    }
+    if (shieldText) shieldText.style.display = "none";
+    renderWraithQte(run);
+    renderWraithSlashWarning(run);
+    renderWraithSpriteSheet(run);
+    renderWraithGateMessage(run);
+    maybePlayWraithIntro(run);
+
+    if (partyEl) renderWraithParty(run, partyEl);
+    ensureBossBattleLogsSubscription(WRAITH_BOSS_ID);
+    renderBossBattleLogs();
+
+    if (st === "cleared") {
+      if (banner) banner.style.display = "block";
+      if (bannerText) { bannerText.textContent = "토벌 성공"; bannerText.style.color = "#37ff63"; }
+      if (rewardBtn) {
+        rewardBtn.style.display = isMyDead(run) ? "none" : "block";
+        rewardBtn.innerHTML = "🎁 보상수령";
+        rewardBtn.onclick = function(){ openBossRewardOverlay(); };
+      }
+      if (lineMainEl) lineMainEl.textContent = "망령왕 모르트헤임의 불사의 저주가 끝났습니다.";
+      if (lineSubEl) lineSubEl.textContent = "침묵하던 왕실에 마지막 죽음이 내려앉습니다.";
+    } else if (st === "failed") {
+      if (banner) banner.style.display = "block";
+      if (bannerText) { bannerText.textContent = "토벌 실패"; bannerText.style.color = "#ff4c4c"; }
+      if (rewardBtn) {
+        rewardBtn.style.display = "block";
+        rewardBtn.innerHTML = "🚪 포기하기";
+        rewardBtn.onclick = function(){ giveUpBossRun(); };
+      }
+      if (lineMainEl) lineMainEl.textContent = "발테리온 왕실의 문이 다시 닫힙니다.";
+      if (lineSubEl) lineSubEl.textContent = "";
+    } else {
+      if (banner) banner.style.display = "none";
+      if (rewardBtn) {
+        rewardBtn.style.display = "none";
+        rewardBtn.onclick = function(){ openBossRewardOverlay(); };
+      }
+      renderWraithLines(run, lineMainEl, lineSubEl);
+    }
+  }
+
+  function renderWraithLines(run, main, sub){
+    const phase = getPhase(run);
+    if (!main || !sub) return;
+    if (phase === "gate") {
+      main.textContent = "발테리온 왕실의 문이 서서히 열립니다.";
+      sub.textContent = `${formatHMS(Math.max(0, Number(run.gateOpenAt || 0) - now()))} 후 보스방에 진입합니다.`;
+      return;
+    }
+    if (phase === "curse") {
+      main.textContent = "망령왕의 [불사의 저주]가 하얀 생명력을 다시 채웁니다.";
+      sub.textContent = `부활 저지까지 ${formatHMS(Math.max(0, Number(run.curseEndsAt || 0) - now()))}`;
+      return;
+    }
+    if (phase === "legion") {
+      main.textContent = "망령군단을 처치하여 즉사의 주술을 막아야 합니다.";
+      sub.textContent = `남은 시간 ${formatHMS(Math.max(0, Number(run.legionEndsAt || 0) - now()))}`;
+      return;
+    }
+    if (run.slashActive) {
+      main.textContent = "망령왕이 [참격]을 준비합니다.";
+      sub.textContent = "막대의 중앙 구간에서 방어하면 성공, 정중앙에서는 패링됩니다.";
+      return;
+    }
+    if (run.summonPending) {
+      main.textContent = "망령왕이 [군단]을 불러내고 있습니다.";
+      sub.textContent = "주술이 완성되기 전에 소환체를 끊어야 합니다.";
+      return;
+    }
+    if (now() < Number(run.counterUntil || 0)) {
+      main.textContent = String(run.counterType || "") === "magic" ? "마법 반격 자세입니다. 주문력 공격에 주의하십시오." : "물리 반격 자세입니다. 공격력 무기에 주의하십시오.";
+      sub.textContent = `남은 시간 ${formatHMS(Math.max(0, Number(run.counterUntil || 0) - now()))}`;
+      return;
+    }
+    const lines = (phase === "king")
+      ? WRAITH_KING_LINES
+      : ((BOSS_DEFS.find(b => b.id === WRAITH_BOSS_ID) || {}).lines || []);
+    const lineKey = `${phase}:${String(run && run.logKey || "")}`;
+    if (main.dataset.wraithLineKey !== lineKey || !main.textContent || Math.random() < 0.08) {
+      main.dataset.wraithLineKey = lineKey;
+      main.textContent = lines[Math.floor(Math.random() * lines.length)] || "";
+    }
+    sub.textContent = "";
+  }
+
+  function renderWraithQte(run){
+    const layer = document.getElementById("bossFxLayer");
+    if (!layer) return;
+    let qte = document.getElementById("wraithSlashQte");
+    const qteStartAt = Number(run.slashQteStartAt || run.slashCastAt || 0);
+    const active = getPhase(run) === "king" && run.slashActive && now() >= qteStartAt && now() < Number(run.slashResolveAt || 0);
+    if (!active) { if (qte) qte.remove(); return; }
+    const seq = String(run.slashSeq || "");
+    if (qte && qte.dataset.seq !== seq) qte.remove();
+    qte = document.getElementById("wraithSlashQte");
+    if (!qte) {
+      qte = document.createElement("div");
+      qte.id = "wraithSlashQte";
+      qte.className = "wraith-qte";
+      qte.dataset.seq = seq;
+      qte.innerHTML = `<div class="wraith-qte-label">[방어 (A)]</div><div class="wraith-qte-safe"></div><div class="wraith-qte-parry"></div><div class="wraith-qte-dot"></div>`;
+      layer.appendChild(qte);
+      const visualStart = Date.now();
+      setLocalWraithQteStart(seq, visualStart);
+      const duration = Math.max(120, Number(run.slashResolveAt || now()) - now());
+      const dot = qte.querySelector(".wraith-qte-dot");
+      if (dot) {
+        dot.classList.remove("is-moving");
+        dot.style.animation = "";
+        dot.style.animationDelay = "";
+        dot.style.left = "0%";
+        dot.style.setProperty("--qte-duration", `${duration}ms`);
+        void dot.offsetWidth;
+        dot.classList.add("is-moving");
+      }
+    }
+  }
+
+  function renderWraithSlashWarning(run){
+    const layer = document.getElementById("bossFxLayer");
+    if (!layer) return;
+    let warning = document.getElementById("wraithSlashWarning");
+    const qteStartAt = Number(run && (run.slashQteStartAt || run.slashCastAt) || 0);
+    const active = getPhase(run) === "king" && run.slashActive && qteStartAt && now() < qteStartAt;
+    if (!active) { if (warning) warning.remove(); return; }
+    if (!warning) {
+      warning = document.createElement("div");
+      warning.id = "wraithSlashWarning";
+      warning.className = "wraith-slash-warning";
+      warning.innerHTML = "<span>참격 경고</span>";
+      layer.appendChild(warning);
+    }
+    if (!warning.dataset.qteTimer) {
+      const delay = Math.max(0, qteStartAt - now());
+      warning.dataset.qteTimer = "1";
+      setTimeout(() => {
+        const latest = getRun();
+        if (latest && getPhase(latest) === "king" && latest.slashActive) renderWraithBattle();
+      }, delay);
+    }
+  }
+
+  function renderWraithGateMessage(run){
+    const layer = document.getElementById("bossFxLayer");
+    if (!layer) return;
+    let msg = document.getElementById("wraithGateMsg");
+    if (getPhase(run) !== "gate") { if (msg) msg.remove(); return; }
+    if (!msg) {
+      msg = document.createElement("div");
+      msg.id = "wraithGateMsg";
+      msg.className = "wraith-center-msg";
+      layer.appendChild(msg);
+    }
+    msg.innerHTML = `발테리온 왕실의 문이 서서히 열립니다.<br>${Math.ceil(Math.max(0, Number(run.gateOpenAt || 0) - now()) / 1000)}초 후 보스방에 진입합니다.`;
+  }
+
+  function maybePlayWraithIntro(run){
+    if (getPhase(run) !== "king") return;
+    const key = `wraithIntroSeen_${String(run.logKey || "")}`;
+    try { if (localStorage.getItem(key) === "1") return; } catch(e){}
+    const layer = document.getElementById("bossFxLayer");
+    if (!layer || document.getElementById("wraithIntroVideo")) return;
+    const wrap = document.createElement("div");
+    wrap.id = "wraithIntroVideo";
+    wrap.className = "wraith-video";
+    wrap.innerHTML = `
+      <video autoplay playsinline controls>
+        <source src="images/video/boss_wraith_king_intro_cinematic.mp4" type="video/mp4">
+        <source src="video/boss_wraith_king_intro_cinematic.mp4" type="video/mp4">
+      </video>
+    `;
+    layer.appendChild(wrap);
+    const v = wrap.querySelector("video");
+    const done = () => {
+      try { localStorage.setItem(key, "1"); } catch(e){}
+      wrap.remove();
+    };
+    if (v) {
+      v.onended = done;
+      v.onerror = done;
+      const p = v.play && v.play();
+      if (p && p.catch) p.catch(() => { v.muted = true; v.play().catch(()=>{}); });
+    }
+    setTimeout(() => { if (document.body.contains(wrap)) done(); }, 45000);
+  }
+
+  function renderWraithParty(run, partyEl){
+    const members = run.members || {};
+    const arr = Object.values(members).map(m => ({
+      uid: String(m.uid || ""),
+      nick: String(m.nick || m.uid || "???"),
+      hp: Math.max(0, Number(m.hp || 0)),
+      maxHp: Math.max(1, Number(m.maxHp || 1)),
+      dmg: Number(m.dmg || 0),
+      isMe: String(m.uid || "") === String(userId || "")
+    })).sort((a,b) => (b.isMe ? 1 : 0) - (a.isMe ? 1 : 0) || b.hp - a.hp);
+    partyEl.style.maxHeight = "210px";
+    partyEl.style.overflowY = "auto";
+    partyEl.innerHTML = arr.map(m => {
+      const pct = Math.max(0, Math.min(100, m.hp / m.maxHp * 100));
+      return `
+        <div class="wraith-hp-row">
+          <div class="wraith-hp-name"><span>${m.isMe ? "내 정보 · " : ""}${m.nick}</span><span style="color:#aaa;">누적 ${fmtHp(m.dmg)}</span></div>
+          <div class="wraith-hp-bar">
+            <div class="wraith-hp-fill" style="width:${pct}%"></div>
+            <div class="wraith-hp-text">${m.hp} / ${m.maxHp}</div>
+          </div>
+        </div>`;
+    }).join("") || `<div style="color:#777;">참여자가 없습니다.</div>`;
+  }
+
+  const __origStats = getBossBattleStats;
+  getBossBattleStats = function(bossId){
+    if (String(bossId || "") === WRAITH_BOSS_ID) {
+      const run = getRun();
+      const phase = getPhase(run);
+      if (phase === "knight" || phase === "gate") {
+        return { evade: now() < Number(run && run.roderickEvadeUntil || 0) ? 0.40 : 0.20, physDef:0.20, magicRes:0.20 };
+      }
+      if (phase === "legion") return { evade:0, physDef:0.10, magicRes:0.10 };
+      return { evade:0.25, physDef:0.30, magicRes:0.30 };
+    }
+    return __origStats.apply(this, arguments);
+  };
+
+  const __origPower = getBossPowerMultiplier;
+  getBossPowerMultiplier = function(bossId, swordLv){
+    if (String(bossId || "") === WRAITH_BOSS_ID && typeof getGuardianPowerMultiplier === "function") {
+      return getGuardianPowerMultiplier(swordLv);
+    }
+    if (String(bossId || "") === WRAITH_BOSS_ID) {
+      const table = {25:0.70,26:0.50,27:0.30,28:0.20,29:0.15,30:0.10};
+      return table[Number(swordLv || 0)] || 1;
+    }
+    return __origPower.apply(this, arguments);
+  };
+
+  const wraithExt = {
+    type: "wraith_king",
+    powerMultiplier(swordLv){ return getBossPowerMultiplier(WRAITH_BOSS_ID, swordLv); },
+    openHelp(){
+      showNpcMessage(`
+        <div style="font-size:13px; line-height:1.7; text-align:left;">
+          <b>침묵의 기사 로데릭</b><br>HP 5조 3천억 / 회피 20% / 방어 20% / 제한 24시간<br><br>
+          <b>모르트헤임 발테리온</b><br>HP 124조 5400억 / 회피 25% / 방어 30% / 제한 15분<br><br>
+          로데릭 처치 후 60초 뒤 왕실의 문이 열리고 망령왕전으로 전환됩니다.
+        </div>`, LEON_IMG.focus, true, "보스정보");
+    },
+    openRewards(){
+      showNpcMessage(`
+        <b>망령왕 토벌 보상</b><br><br>
+        전원 확정보상 : 1천억골드, 미확인룬석 3개, 마력의정수 1000개, 파괴방지주문서 10개<br>
+        딜량 1등 : 3천억골드, 미확인룬석 2개, 파괴방지주문서 5개, 마력의정수 700개<br>
+        토벌대장 : 슈퍼강화주문서 3개, 마력의정수 500개, 미확인룬석 21개<br>
+        막타 : 슈퍼강화주문서 1개, 미확인룬석 2개<br>
+        5인 이상 성공 시 50% 확률로 1명 보스토벌우선신청권 1개
+      `, LEON_IMG.reward, true, "보상");
+    },
+    rewardByPct(bossId, pct, isLeader){
+      const reward = {
+        gold: 100000000000,
+        itemProtect: 10,
+        itemDownProtect: 0,
+        itemScroll21: 0,
+        itemScroll15: 0,
+        itemEssence: 1000,
+        itemSuper: 0,
+        itemBossPriority: 0,
+        itemEngraveNormal: 0,
+        itemEngraveAdvanced: 0,
+        unidentifiedRuneStones: 3
+      };
+      const ctx = resolveMyBossRun({ includeClosed:true });
+      const run = (ctx && String(ctx.bossId || "") === WRAITH_BOSS_ID) ? ctx.run : getRun();
+      if (run) {
+        if (String(run.topDamageUid || "") === String(userId || "")) {
+          reward.gold += 300000000000;
+          reward.unidentifiedRuneStones += 2;
+          reward.itemProtect += 5;
+          reward.itemEssence += 700;
+        }
+        if (String(run.lastHitUid || "") === String(userId || "")) {
+          reward.itemSuper += 1;
+          reward.unidentifiedRuneStones += 2;
+        }
+        if (String(run.priorityWinnerUid || "") === String(userId || "")) {
+          reward.itemBossPriority += 1;
+        }
+      }
+      if (isLeader) {
+        reward.itemSuper += 3;
+        reward.itemEssence += 500;
+        reward.unidentifiedRuneStones += 21;
+      }
+      return reward;
+    },
+    createRun(bossId, options = {}){
+      const def = BOSS_DEFS.find(b => String(b.id) === WRAITH_BOSS_ID);
+      if (!def) return;
+      const usePriorityTicket = !!(options && options.usePriorityTicket);
+      const curCtx = resolveMyBossRun({ includeClosed: true });
+      if (curCtx && curCtx.run && isMyPendingBossRun(curCtx.run)) {
+        showNpcMessage("이미 처리해야 할 보스전이 있습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+        return;
+      }
+      if (Number(sword || 0) < 25) {
+        showNpcMessage("조건이 부족합니다. (필요: +25강)", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+        return;
+      }
+      if (usePriorityTicket && Number(itemBossPriority || 0) <= 0) {
+        showNpcMessage("보스토벌우선신청권이 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+        return;
+      }
+      const start = () => {
+        const localGold = Number(gold || 0);
+        if (localGold < APPLY_COST) {
+          showNpcMessage(`골드가 부족합니다. (필요: ${formatGold(APPLY_COST)} 골드)`, LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+          return;
+        }
+        const userGoldRef = db.ref(`users/${userId}/gold`);
+        const charge = new Promise((resolve) => {
+          userGoldRef.transaction((g) => {
+            const serverGold = Math.max(Number(g || 0), localGold);
+            if (serverGold < APPLY_COST) return;
+            return serverGold - APPLY_COST;
+          }, (err, committed) => resolve({ err, committed }));
+        });
+        charge.then(({err, committed}) => {
+          if (err || !committed) {
+            showNpcMessage("골드가 부족하거나 서버 처리 중 오류가 발생했습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+            return;
+          }
+          const runRef = db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`);
+          const t = now();
+          const max = myMaxHp();
+          const myStats = getPlayerFinalCombatStats();
+          const newRun = {
+            bossId: WRAITH_BOSS_ID,
+            mapName: "망령왕의 죽음세계",
+            bossTitle: "침묵의 기사",
+            bossName: "로데릭",
+            status: "active",
+            logKey: "run_" + t,
+            createdAt: t,
+            endsAt: t + DAY_MS,
+            wraithPhase: "knight",
+            maxHp: RODERICK_MAX_HP,
+            hp: RODERICK_MAX_HP,
+            roderickStartSkillChecked: false,
+            nextRoderickEvadeCheckAt: t,
+            nextRoderickDrawCheckAt: t + 30 * MINUTE,
+            leaderUid: userId,
+            leaderNick: getNickSafe(),
+            members: {
+              [userId]: {
+                uid: userId,
+                nick: getNickSafe(),
+                joinedAt: t,
+                dmg: 0,
+                hp: max,
+                maxHp: max,
+                ignoreEvadeAtJoin: Number(myStats.ignoreEvade || 0),
+                titleId: String(equippedTitle || ""),
+                weaponType: String(weaponType || "sword"),
+                weaponLv: Number(sword || 0)
+              }
+            },
+            lastAttackAt: 0
+          };
+          runRef.transaction((cur) => {
+            if (cur && String(cur.status || "") === "active") return;
+            return newRun;
+          }, (err2, committed2) => {
+            if (err2 || !committed2) {
+              userGoldRef.transaction(g => Number(g || 0) + APPLY_COST);
+              showNpcMessage("이미 진행중인 토벌이 있습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+              return;
+            }
+            gold = Math.max(0, localGold - APPLY_COST);
+            if (usePriorityTicket) itemBossPriority = Math.max(0, Number(itemBossPriority || 0) - 1);
+            setActiveBossBinding(WRAITH_BOSS_ID, newRun.logKey);
+            save();
+            writeBossBattleLog(WRAITH_BOSS_ID, `토벌대가 결성되었습니다. (대장: ${getNickSafe()})`);
+            showNpcMessage("토벌이 시작됐다.<br>망령왕의 죽음세계에서 침묵의 기사 로데릭이 왕실의 문을 지키고 있다.", LEON_IMG.apply, true, "길드마스터 – 레온하르트 발렌");
+          });
+        });
+      };
+      const cd = (bossCooldownCache || {})[WRAITH_BOSS_ID] || {};
+      const remain = Math.max(0, Number(cd.nextAt || 0) - now());
+      if (!usePriorityTicket && remain > 0) {
+        showNpcMessage(`아직 다시 토벌을 신청할 수 없습니다.<br><br>신청 가능까지: <b>${formatHMS(remain)}</b>`, LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+        return;
+      }
+      start();
+    },
+    renderBattle: renderWraithBattle
+  };
+  registerBossRuntimeExtension(WRAITH_BOSS_ID, wraithExt);
+
+  function isWraithJoinClosedAfterKing(run){
+    if (!run || String(run.status || "") !== "active") return false;
+    return ["king", "legion", "curse"].includes(String(run.wraithPhase || ""));
+  }
+
+  function showWraithJoinClosedMessage(){
+    showNpcMessage("신비로운 마법의 기운에 의해 토벌에 참여하지 못합니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+  }
+
+  const __origJoinBossRunConfirm = joinBossRunConfirm;
+  joinBossRunConfirm = function(bossId){
+    if (String(bossId || "") === WRAITH_BOSS_ID) {
+      const run = (bossRunsActiveCache || {})[WRAITH_BOSS_ID];
+      const alreadyMember = !!(run && run.members && run.members[userId]);
+      if (!alreadyMember && isWraithJoinClosedAfterKing(run)) {
+        showWraithJoinClosedMessage();
+        return;
+      }
+    }
+    return __origJoinBossRunConfirm.apply(this, arguments);
+  };
+
+  const __origJoinBossRun = joinBossRun;
+  joinBossRun = function(bossId){
+    if (String(bossId || "") === WRAITH_BOSS_ID) {
+      const run = (bossRunsActiveCache || {})[WRAITH_BOSS_ID];
+      if (run && run.eliminated && run.eliminated[userId]) {
+        closeNpcPopup();
+        showNpcMessage("이미 해당 토벌에서 쓰러져 재입장할 수 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+        return;
+      }
+      const alreadyMember = !!(run && run.members && run.members[userId]);
+      if (!alreadyMember && isWraithJoinClosedAfterKing(run)) {
+        closeNpcPopup();
+        showWraithJoinClosedMessage();
+        return;
+      }
+    }
+    const out = __origJoinBossRun.apply(this, arguments);
+    if (String(bossId || "") === WRAITH_BOSS_ID) {
+      setTimeout(() => {
+        const run = getRun();
+        if (!run || !userId || !(run.members && run.members[userId])) return;
+        updateMyHpShape(run);
+      }, 600);
+    }
+    return out;
+  };
+
+  const __origCloseBossBattleWraith = closeBossBattle;
+  closeBossBattle = function(){
+    const dock = document.getElementById("wraithActionDock");
+    if (dock) dock.style.display = "none";
+    const panel = document.getElementById("wraithFailPanel");
+    if (panel) panel.style.display = "none";
+    const overlay = document.getElementById("bossBattleOverlay");
+    if (overlay) overlay.classList.remove("wraith-active");
+    const fade = document.getElementById("bossBattleFadeOverlay");
+    if (fade) fade.style.display = "";
+    const wrap = document.getElementById("bossBattleBossWrap");
+    if (wrap) wrap.classList.remove("wraith-mode", "wraith-evade", "wraith-red-glow", "wraith-counter-phys", "wraith-counter-magic", "wraith-curse");
+    removeWraithSpriteSheet();
+    document.getElementById("wraithSlashWarning")?.remove();
+    document.getElementById("wraithSlashQte")?.remove();
+    return __origCloseBossBattleWraith.apply(this, arguments);
+  };
+
+  document.addEventListener("keydown", function(e){
+    if (!isWraithActive()) return;
+    const panel = document.getElementById("wraithFailPanel");
+    if (panel && panel.style.display === "flex") return;
+    if (String(e.key || "").toLowerCase() === "a") {
+      e.preventDefault();
+      wraithGuard();
+    } else if (String(e.key || "").toLowerCase() === "s") {
+      e.preventDefault();
+      wraithAttack(getRandomBossHitClientPoint());
+    }
+  }, true);
+  window.addEventListener("resize", positionWraithActionDock);
+})();
+
 /* ⚡ 모바일 보스전/랭킹전 연타 가속 */
 (function(){
   let lastFastAttackAt = 0;
@@ -34846,6 +36643,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       const attackEv = ev || { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 };
       if (String(activeBossId || "") === "guardian_knight" && typeof window.attackGuardianKnightBossByClick === "function") {
         window.attackGuardianKnightBossByClick(attackEv);
+      } else if (String(activeBossId || "") === "wraith_king" && typeof window.attackWraithKingBossByClick === "function") {
+        window.attackWraithKingBossByClick(attackEv);
       } else {
         attackBossByClick(attackEv);
       }
