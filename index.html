@@ -29608,6 +29608,7 @@ function openRankingBattle(){
 function closeRankingBattleOverlayOnly(){
   const ov = document.getElementById("bossBattleOverlay");
   if (ov) ov.style.display = "none";
+  if (typeof window.hideAllBossActionDocks === "function") window.hideAllBossActionDocks();
   restoreBossBattleOverlayUi();
   document.getElementById("bossBattleBossImg")?.classList.remove("boss-breathe");
   document.getElementById("bossBattleBossShadow")?.classList.remove("boss-breathe-shadow");
@@ -36955,6 +36956,17 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     return !!(ov && ov.style.display !== "none");
   }
 
+  function hideAllBossActionDocks(){
+    const commonDock = document.getElementById("bossActionDock");
+    if (commonDock) commonDock.style.display = "none";
+    const wraithDock = document.getElementById("wraithActionDock");
+    if (wraithDock) wraithDock.style.display = "none";
+    if (!isBossOverlayVisible()) {
+      const bossImg = document.getElementById("bossBattleBossImg");
+      if (bossImg) bossImg.onclick = null;
+    }
+  }
+
   function getCommonBossHitPoint(){
     const bossImg = document.getElementById("bossBattleBossImg");
     const rect = bossImg && bossImg.getBoundingClientRect();
@@ -37031,6 +37043,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     syncCommonBossImageClick();
     if (!isCommonBossActionActive()) {
       dock.style.display = "none";
+      if (!isBossOverlayVisible()) hideAllBossActionDocks();
       return;
     }
     dock.style.display = "flex";
@@ -37106,8 +37119,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
   const __origCloseBossBattleCommonAction = closeBossBattle;
   closeBossBattle = function(){
-    const dock = document.getElementById("bossActionDock");
-    if (dock) dock.style.display = "none";
+    hideAllBossActionDocks();
     return __origCloseBossBattleCommonAction.apply(this, arguments);
   };
 
@@ -37128,6 +37140,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   window.triggerCommonBossAttack = triggerCommonBossAttack;
   window.triggerCommonBossGuard = triggerCommonBossGuard;
   window.playCommonBossAttackShake = playCommonBossAttackShake;
+  window.hideAllBossActionDocks = hideAllBossActionDocks;
+  setInterval(() => {
+    if (!isBossOverlayVisible()) hideAllBossActionDocks();
+  }, 500);
 })();
 
 /* ⚡ 보스전/랭킹전 A/S 버튼 즉시 연속 터치 */
