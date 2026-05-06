@@ -25550,6 +25550,20 @@ function getBossPowerMultiplier(bossId, swordLv){
   return 1;
 }
 
+function isBossMagicWeaponTypeForBattle(t){
+  const wt = String(t || (typeof weaponType !== "undefined" ? weaponType : "") || "sword");
+  return wt === "staff" || wt === "gauntlet" || wt === "magitech" || wt === "scythe";
+}
+
+function getBossBattleWeaponType(){
+  try {
+    const st = (typeof getPlayerFinalCombatStats === "function") ? getPlayerFinalCombatStats() : null;
+    return String((st && st.weaponType) || weaponType || "sword");
+  } catch(e) {
+    return String(weaponType || "sword");
+  }
+}
+
 function getBossWeaponProfile(){
   // weaponType은 너 코드에서 이미 쓰고 있는 전역 값(예: "sword","spear","axe","bow","staff")을 그대로 사용
   const t = String(weaponType || "sword");
@@ -25732,8 +25746,8 @@ function calcBossAttackResult(bossId){
   // ✅ 보스전 기본 데미지 = (내 절대 메인스탯) * (보스 보정)
   let dmg = Number(my.mainPower || 0) * powerMul;
 
-  // ✅ 서리여왕 전용: 주문력 무기(스태프) 10% 상승
-  if (bossId === "frost_queen" && (my.weaponType === "staff" || my.weaponType === "gauntlet" || my.weaponType === "magitech")) {
+  // ✅ 서리여왕 전용: 주문력 무기 10% 상승
+  if (bossId === "frost_queen" && isBossMagicWeaponTypeForBattle(my.weaponType)) {
   dmg = dmg * 1.10;
 }
 
@@ -26079,7 +26093,8 @@ const result = calcBossAttackResult(bossId);
 const dmg = Number(result.damage || 0);
 
 // ✅ (신규 FX) 보스 화면 내부 전용 레이어에 이펙트/숫자 생성
-const isMagic = (weaponType === "staff" || weaponType === "gauntlet" || weaponType === "magitech" || weaponType === "scythe");
+const currentBossWeaponType = getBossBattleWeaponType();
+const isMagic = isBossMagicWeaponTypeForBattle(currentBossWeaponType);
 const kind = result.isMiss ? "miss" : (result.isCrit ? "crit" : "hit");
 
 // ✅ 보스 타격음
@@ -26091,9 +26106,8 @@ let displayDmg = dmg;
   const isFrostQueen = (bossId === "frost_queen");
   const shieldHpNow  = Math.max(0, Number(run?.shieldHp || 0));
   const shieldMaxNow = Math.max(0, Number(run?.shieldMax || 0));
-  const isStaff = (String(weaponType || "") === "staff");
 
-  if (!result.isMiss && isFrostQueen && shieldMaxNow > 0 && shieldHpNow > 0 && !isStaff) {
+  if (!result.isMiss && isFrostQueen && shieldMaxNow > 0 && shieldHpNow > 0 && !isMagic) {
     displayDmg = 1;
   }
 }
@@ -26149,7 +26163,7 @@ if (isFrostQueen && shieldMax0 > 0 && shieldHp0 > 0) {
 }
 
 if (isFrostQueen && shieldMax0 > 0 && shieldHp0 > 0) {
-  const isMagic = (String(weaponType || "") === "staff" || String(weaponType || "") === "gauntlet" || String(weaponType || "") === "magitech" || String(weaponType || "") === "scythe");
+  const isMagic = isBossMagicWeaponTypeForBattle(currentBossWeaponType);
 
   if (!isMagic) {
     // 공격력 무기: 데미지 1만 들어감(실드에도 영향 X, HP도 영향 X)
@@ -29849,7 +29863,7 @@ attackBossByClick = function(ev){
 
   const result = calcBossAttackResult(RANKING_BATTLE_BOSS_ID);
   const dmg = Number(result.damage || 0);
-  const isMagic = (weaponType === "staff" || weaponType === "gauntlet" || weaponType === "magitech" || weaponType === "scythe");
+  const isMagic = isBossMagicWeaponTypeForBattle(getBossBattleWeaponType());
   const kind = result.isMiss ? "miss" : (result.isCrit ? "crit" : "hit");
 
   // ✅ 랭킹전도 보스전과 동일한 타격음 사용
@@ -30637,8 +30651,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
   }
 
   function twinBossIsMagicWeapon(){
-    const t = String(weaponType || 'sword');
-    return (t === 'staff' || t === 'gauntlet' || t === 'magitech' || t === 'scythe');
+    return isBossMagicWeaponTypeForBattle(getBossBattleWeaponType());
   }
 
   function getTwinBossState(run, key){
@@ -31550,8 +31563,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
   const GUARDIAN_CHAIN_MINUS = 5;
 
   function guardianIsMagicWeapon(){
-    const t = String(weaponType || 'sword');
-    return (t === 'staff' || t === 'gauntlet' || t === 'magitech' || t === 'scythe');
+    return isBossMagicWeaponTypeForBattle(getBossBattleWeaponType());
   }
 
   function getGuardianPowerMultiplier(swordLv){
@@ -31706,8 +31718,9 @@ function ensureBossCooldownResetByRun(bossId, runLike){
     const shieldHpNow = Math.max(0, Number(run.shieldHp || 0));
     const shieldModeNow = String(run.shieldMode || '');
     let displayDmg = dmg;
-    if (!result.isMiss && shieldHpNow > 0) {
-      // 보호막이 있을 때는 무조건 10% 데미지 표시
+    const shieldMatchesWeaponNow = (shieldModeNow === 'magic' && isMagic) || (shieldModeNow === 'physical' && !isMagic);
+    if (!result.isMiss && shieldHpNow > 0 && shieldMatchesWeaponNow) {
+      // 보호막 타입과 공격 타입이 맞을 때만 10% 데미지 표시
       displayDmg = Math.max(1, Math.floor(dmg * 0.1));
     }
 
@@ -31734,13 +31747,18 @@ function ensureBossCooldownResetByRun(bossId, runLike){
       const shieldMode = String(cur.shieldMode || '');
 
       if (shieldHp > 0) {
-        // 보호막이 있을 때는 10% 데미지만 보호막에 적용하고 HP에는 넘기지 않는다.
-        const shieldDamage = Math.max(1, Math.floor(dmg * 0.1));
-        const toShield = Math.min(shieldHp, shieldDamage);
-        shieldHp -= toShield;
-        cur.shieldHp = shieldHp;
-        applied = toShield; // 기록용 데미지 (보호막에 적용된 실제 데미지)
-
+        const shieldMatchesWeapon = (shieldMode === 'magic' && isMagic) || (shieldMode === 'physical' && !isMagic);
+        if (shieldMatchesWeapon) {
+          // 보호막 타입과 공격 타입이 맞을 때만 10% 데미지만 보호막에 적용하고 HP에는 넘기지 않는다.
+          const shieldDamage = Math.max(1, Math.floor(dmg * 0.1));
+          const toShield = Math.min(shieldHp, shieldDamage);
+          shieldHp -= toShield;
+          cur.shieldHp = shieldHp;
+          applied = toShield; // 기록용 데미지 (보호막에 적용된 실제 데미지)
+        } else {
+          // 반대 타입 공격은 보호막에 막히지 않고 본체에 정상 적용된다.
+          hp = Math.max(0, hp - applied);
+        }
       } else {
         // 보호막이 없을 때는 정상 데미지로 체력을 깎음
         hp = Math.max(0, hp - applied);
@@ -37108,7 +37126,91 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   window.addEventListener("resize", positionCommonBossActionDock);
   window.renderCommonBossActionDock = renderCommonBossActionDock;
   window.triggerCommonBossAttack = triggerCommonBossAttack;
+  window.triggerCommonBossGuard = triggerCommonBossGuard;
   window.playCommonBossAttackShake = playCommonBossAttackShake;
+})();
+
+/* ⚡ 보스전/랭킹전 A/S 버튼 즉시 연속 터치 */
+(function(){
+  let suppressActionButtonClickUntil = 0;
+  let lastActionButtonPressAt = 0;
+
+  function isActionButtonTarget(target){
+    return !!(target && target.closest && target.closest("#bossAttackBtn,#bossGuardBtn,#wraithAttackBtn,#wraithGuardBtn"));
+  }
+
+  function getActionButtonBossHitPoint(){
+    const bossImg = document.getElementById("bossBattleBossImg");
+    const rect = bossImg && bossImg.getBoundingClientRect();
+    if (!rect || !rect.width || !rect.height) {
+      return { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 };
+    }
+    return {
+      clientX: rect.left + rect.width * (0.28 + Math.random() * 0.44),
+      clientY: rect.top + rect.height * (0.26 + Math.random() * 0.50)
+    };
+  }
+
+  function runActionButton(btn, ev){
+    if (!btn) return false;
+    const id = String(btn.id || "");
+    if (id === "bossAttackBtn" && typeof window.triggerCommonBossAttack === "function") {
+      return window.triggerCommonBossAttack(true, getActionButtonBossHitPoint());
+    }
+    if (id === "bossGuardBtn" && typeof window.triggerCommonBossGuard === "function") {
+      return window.triggerCommonBossGuard();
+    }
+    if (id === "wraithAttackBtn" && typeof window.attackWraithKingBossByClick === "function") {
+      return window.attackWraithKingBossByClick(getActionButtonBossHitPoint());
+    }
+    if (id === "wraithGuardBtn" && typeof window.guardWraithKingBoss === "function") {
+      return window.guardWraithKingBoss();
+    }
+    return false;
+  }
+
+  function handleActionButtonPress(e){
+    const btn = e.target && e.target.closest && e.target.closest("#bossAttackBtn,#bossGuardBtn,#wraithAttackBtn,#wraithGuardBtn");
+    if (!btn) return;
+    if (btn.disabled) return;
+    const nowAt = Date.now();
+    if (nowAt - lastActionButtonPressAt < 22) return;
+    lastActionButtonPressAt = nowAt;
+    e.preventDefault();
+    e.stopPropagation();
+    suppressActionButtonClickUntil = nowAt + 450;
+    runActionButton(btn, {
+      clientX: Number.isFinite(e.clientX) ? e.clientX : window.innerWidth / 2,
+      clientY: Number.isFinite(e.clientY) ? e.clientY : window.innerHeight / 2
+    });
+  }
+
+  document.addEventListener("pointerdown", function(e){
+    if (!isActionButtonTarget(e.target)) return;
+    if (e.pointerType === "touch" || e.pointerType === "pen" || e.pointerType === "mouse") {
+      handleActionButtonPress(e);
+    }
+  }, { passive:false, capture:true });
+
+  document.addEventListener("touchstart", function(e){
+    if (!isActionButtonTarget(e.target)) return;
+    const touch = e.changedTouches && e.changedTouches[0];
+    handleActionButtonPress({
+      target:e.target,
+      clientX: touch && Number.isFinite(touch.clientX) ? touch.clientX : window.innerWidth / 2,
+      clientY: touch && Number.isFinite(touch.clientY) ? touch.clientY : window.innerHeight / 2,
+      preventDefault(){ e.preventDefault(); },
+      stopPropagation(){ e.stopPropagation(); }
+    });
+  }, { passive:false, capture:true });
+
+  document.addEventListener("click", function(e){
+    if (!isActionButtonTarget(e.target)) return;
+    if (Date.now() < suppressActionButtonClickUntil) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, { passive:false, capture:true });
 })();
 
 /* ⚡ 모바일 보스전/랭킹전 연타 가속 */
