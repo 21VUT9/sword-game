@@ -35119,7 +35119,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const ov = document.getElementById("bossBattleOverlay");
     return !!(ov && ov.style.display !== "none" && ov.style.display !== "");
   }
-  function isWraithActive(){ return String(activeBossId || "") === WRAITH_BOSS_ID && isBossBattleOverlayOpen(); }
+  function isWraithActive(){
+    if (typeof isRankingBattleMode !== "undefined" && isRankingBattleMode) return false;
+    return String(activeBossId || "") === WRAITH_BOSS_ID && isBossBattleOverlayOpen();
+  }
   function getRun(){ return (bossRunsActiveCache || {})[WRAITH_BOSS_ID] || null; }
   function getPhase(run){ return String((run && run.wraithPhase) || "knight"); }
   function myMaxHp(){ return Math.max(1, Number(typeof getHuntStaminaMax === "function" ? getHuntStaminaMax() : 20) * 100); }
@@ -35298,6 +35301,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   const WRAITH_MELEE_FX_WEAPONS = new Set(["sword", "spear", "axe", "dagger", "scythe"]);
+  const WRAITH_SHOOT_FX_WEAPONS = new Set(["bow", "magitech"]);
   const WRAITH_MELEE_SPRITES = {
     slash: [
       { key:"wraithSlash1", src:"images/effects/slash-1.png", frameW:128, frameH:128, cols:5, total:10 },
@@ -35320,6 +35324,28 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       { key:"wraithSparkCri3", src:"images/effects/slash-spark-cri-3.png", frameW:64, frameH:64, cols:8, total:8 }
     ]
   };
+  const WRAITH_SHOOT_SPRITES = {
+    slash: [
+      { key:"wraithShoot1", src:"images/effects/shoot-1.png", frameW:128, frameH:128, cols:4, total:16 },
+      { key:"wraithShoot2", src:"images/effects/shoot-2.png", frameW:128, frameH:128, cols:4, total:16 },
+      { key:"wraithShoot3", src:"images/effects/shoot-3.png", frameW:128, frameH:128, cols:4, total:16 }
+    ],
+    slashCri: [
+      { key:"wraithShootCri1", src:"images/effects/shoot-cri-1.png", frameW:128, frameH:128, cols:4, total:16 },
+      { key:"wraithShootCri2", src:"images/effects/shoot-cri-2.png", frameW:128, frameH:128, cols:4, total:16 },
+      { key:"wraithShootCri3", src:"images/effects/shoot-cri-3.png", frameW:128, frameH:128, cols:4, total:16 }
+    ],
+    spark: [
+      { key:"wraithShootSpark1", src:"images/effects/shoot-spark-1.png", frameW:64, frameH:64, cols:8, total:8 },
+      { key:"wraithShootSpark2", src:"images/effects/shoot-spark-2.png", frameW:64, frameH:64, cols:8, total:8 },
+      { key:"wraithShootSpark3", src:"images/effects/shoot-spark-3.png", frameW:64, frameH:64, cols:8, total:8 }
+    ],
+    sparkCri: [
+      { key:"wraithShootSparkCri1", src:"images/effects/shoot-spark-cri-1.png", frameW:64, frameH:64, cols:8, total:8 },
+      { key:"wraithShootSparkCri2", src:"images/effects/shoot-spark-cri-2.png", frameW:64, frameH:64, cols:8, total:8 },
+      { key:"wraithShootSparkCri3", src:"images/effects/shoot-spark-cri-3.png", frameW:64, frameH:64, cols:8, total:8 }
+    ]
+  };
   const wraithMeleeImages = {};
   const wraithMeleeEffects = [];
   let wraithMeleeRaf = 0;
@@ -35328,7 +35354,12 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   let wraithMeleeShake = 0;
 
   function shouldUseWraithMeleeHitFx(){
-    return WRAITH_MELEE_FX_WEAPONS.has(String(weaponType || "sword"));
+    const t = String(weaponType || "sword");
+    return WRAITH_MELEE_FX_WEAPONS.has(t) || WRAITH_SHOOT_FX_WEAPONS.has(t);
+  }
+
+  function getWraithWeaponHitSpriteSet(){
+    return WRAITH_SHOOT_FX_WEAPONS.has(String(weaponType || "sword")) ? WRAITH_SHOOT_SPRITES : WRAITH_MELEE_SPRITES;
   }
 
   function randWraithFx(min, max){ return Math.random() * (max - min) + min; }
@@ -35456,20 +35487,22 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const combo = wraithMeleeCombo;
     const x = clientX - sized.rect.left;
     const y = clientY - sized.rect.top;
-    const slashDef = isCritical ? WRAITH_MELEE_SPRITES.slashCri[combo] : WRAITH_MELEE_SPRITES.slash[combo];
-    const sparkDef = isCritical ? WRAITH_MELEE_SPRITES.sparkCri[combo] : WRAITH_MELEE_SPRITES.spark[combo];
+    const spriteSet = getWraithWeaponHitSpriteSet();
+    const slashDef = isCritical ? spriteSet.slashCri[combo] : spriteSet.slash[combo];
+    const sparkDef = isCritical ? spriteSet.sparkCri[combo] : spriteSet.spark[combo];
     const fxScale = 1.5;
-    wraithMeleeShake = Math.max(wraithMeleeShake, isCritical ? 11 : 6);
+    const normalScaleMul = isCritical ? 1 : 0.6;
+    wraithMeleeShake = Math.max(wraithMeleeShake, isCritical ? 15 : 6);
     playWraithMeleeScreenShake(isCritical);
     pushWraithMeleeSprite(slashDef, {
       x:x + randWraithFx(-12, 12), y:y + randWraithFx(-10, 10),
-      scale:(isCritical ? randWraithFx(2.15, 2.45) : randWraithFx(1.85, 2.1)) * fxScale,
+      scale:(isCritical ? randWraithFx(2.15, 2.45) : randWraithFx(1.85, 2.1)) * fxScale * normalScaleMul,
       rotation:[0, -0.35, 0.35][combo] + randWraithFx(-0.12, 0.12),
       frameSpeed:0.33, blend:isCritical ? "lighter" : "source-over"
     });
     pushWraithMeleeSprite(slashDef, {
       x:x + randWraithFx(-18, 18), y:y + randWraithFx(-18, 18),
-      scale:(isCritical ? randWraithFx(2.3, 2.65) : randWraithFx(2.0, 2.25)) * fxScale,
+      scale:(isCritical ? randWraithFx(2.3, 2.65) : randWraithFx(2.0, 2.25)) * fxScale * normalScaleMul,
       rotation:[0, -0.35, 0.35][combo] + randWraithFx(-0.16, 0.16),
       frameSpeed:0.33, alpha:0.32, fade:0.028, blend:"lighter", delay:30
     });
@@ -35477,7 +35510,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     for (let i = 0; i < sparkCount; i++) {
       pushWraithMeleeSprite(sparkDef, {
         x:x + randWraithFx(-55, 55), y:y + randWraithFx(-45, 45),
-        scale:(isCritical ? randWraithFx(1.55, 2.35) : randWraithFx(1.15, 1.75)) * fxScale,
+        scale:(isCritical ? randWraithFx(1.55, 2.35) : randWraithFx(1.15, 1.75)) * fxScale * normalScaleMul,
         rotation:randWraithFx(-Math.PI, Math.PI),
         frameSpeed:randWraithFx(0.5, 0.8),
         alpha:isCritical ? 0.95 : 0.8,
@@ -36942,7 +36975,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       .boss-action-btn.guard::after{content:"[A]"; position:absolute; left:50%; bottom:17px; transform:translateX(-50%); z-index:3; color:rgba(255,255,255,.68); font-size:20px; font-weight:900; letter-spacing:0; text-shadow:0 2px 5px rgba(0,0,0,.75); pointer-events:none;}
       .boss-action-btn.attack::after{content:"[S]"; position:absolute; left:50%; bottom:17px; transform:translateX(-50%); z-index:3; color:rgba(255,255,255,.68); font-size:20px; font-weight:900; letter-spacing:0; text-shadow:0 2px 5px rgba(0,0,0,.75); pointer-events:none;}
       @keyframes bossCommonHitShake{0%,100%{transform:translate(0,0);}25%{transform:translate(-2px,1px);}50%{transform:translate(2px,-1px);}75%{transform:translate(-1px,0);}}
-      @keyframes bossCommonHitShakeCrit{0%,100%{transform:translate(0,0);}20%{transform:translate(-3px,1px);}40%{transform:translate(3px,-1px);}60%{transform:translate(-2px,1px);}80%{transform:translate(2px,0);}}
+      @keyframes bossCommonHitShakeCrit{0%,100%{transform:translate(0,0);}20%{transform:translate(-5px,2px);}40%{transform:translate(5px,-2px);}60%{transform:translate(-4px,2px);}80%{transform:translate(4px,-1px);}}
       #bossBattleOverlay.boss-hit-shake{animation:bossCommonHitShake .18s linear 1;}
       #bossBattleOverlay.boss-hit-shake-crit{animation:bossCommonHitShakeCrit .22s linear 1;}
       #bossBattleOverlay.wraith-hit-shake{animation:bossCommonHitShake .18s linear 1;}
@@ -36981,10 +37014,11 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
   function isCommonBossActionActive(){
     if (!isBossOverlayVisible()) return false;
-    if (String(activeBossId || "") === "wraith_king") return false;
     if (typeof isRankingBattleMode !== "undefined" && isRankingBattleMode) {
       return !!(rankingBattleRun && String(rankingBattleRun.status || "") === "active");
     }
+    if (String(activeBossId || "") === "wraith_king") return false;
+    if (String(activeBossId || "") === "dawn_twin_knights") return false;
     const ctx = (typeof resolveMyBossRun === "function") ? resolveMyBossRun({ includeClosed:false }) : null;
     const run = (ctx && ctx.run) || ((bossRunsActiveCache || {})[String(activeBossId || "")]);
     return !!(run && String(run.status || "") === "active");
@@ -37051,7 +37085,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function syncCommonBossImageClick(){
-    if (String(activeBossId || "") === "wraith_king") return;
+    if (!(typeof isRankingBattleMode !== "undefined" && isRankingBattleMode) && String(activeBossId || "") === "wraith_king") return;
     const bossImg = document.getElementById("bossBattleBossImg");
     if (!bossImg) return;
     if (!isCommonBossActionActive()) {
@@ -37257,6 +37291,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
     try {
       const attackEv = ev || { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 };
+      if (typeof isRankingBattleMode !== "undefined" && isRankingBattleMode) {
+        attackBossByClick(attackEv);
+        return true;
+      }
       if (String(activeBossId || "") !== "wraith_king" && typeof window.triggerCommonBossAttack === "function") {
         window.triggerCommonBossAttack(true, attackEv);
         return true;
