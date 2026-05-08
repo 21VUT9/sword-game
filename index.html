@@ -5270,6 +5270,17 @@ html, body {
 .rune-slot.large .rune-slot-mark{transform:scale(2);}
 .rune-slot.small .rune-slot-mark{transform:scale(10);}
 .rune-slot .rune-slot-num{display:none !important;}
+.rune-slot-level{
+  position:absolute;
+  z-index:12;
+  pointer-events:none;
+  font-size:10px;
+  line-height:1;
+  font-weight:900;
+  color:#fff7c9;
+  text-shadow:0 1px 4px rgba(0,0,0,0.95), 0 0 6px rgba(255,220,120,0.45);
+}
+.rune-slot-level.large{font-size:11px;}
 .rune-preset-bar{position:absolute; left:0; top:0; display:flex; gap:6px; margin:0; z-index:3;}
 .rune-preset-btn{margin:0; padding:4px 8px; font-size:11px; font-weight:800; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:rgba(255,255,255,0.05); color:#ddd; cursor:pointer;}
 .rune-preset-btn.active{background:rgba(255,213,79,0.14); border-color:rgba(255,213,79,0.44); color:#ffd54f;}
@@ -20993,7 +21004,13 @@ function openBossRewardOverlay(){
   const run = ctx && ctx.run;
 
   if (!bossId || !run) {
-    showNpcMessage("집계할 토벌 정보가 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+    fetchBoundClosedBossRunOnce().then((fallbackCtx) => {
+      if (fallbackCtx && fallbackCtx.run) {
+        openBossRewardOverlay();
+        return;
+      }
+      showNpcMessage("집계할 토벌 정보가 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+    });
     return;
   }
 
@@ -24003,6 +24020,11 @@ function autoClearStaleBossBinding(opts = {}){
   }
 
   if (!stillValid) {
+    const activeRun = curId ? ((bossRunsActiveCache || {})[curId] || null) : null;
+    const activeKey = String(activeRun && activeRun.logKey || "");
+    if (includeClosed && curId && curKey && activeRun && activeKey && activeKey !== curKey) {
+      return false;
+    }
     clearActiveBossBinding();
     return true;
   }
@@ -24013,6 +24035,26 @@ function getClosedBossRun(bossId, runKey){
   runKey = String(runKey || "");
   if (!bossId || !runKey) return null;
   return (((bossRunsClosedCache || {})[bossId] || {})[runKey]) || null;
+}
+function fetchBoundClosedBossRunOnce(){
+  const bossId = String(activeBossId || "");
+  const runKey = String(activeBossRunKey || getStoredActiveBossRunKey() || "");
+  if (!bossId || !runKey) return Promise.resolve(null);
+
+  const cached = getClosedBossRun(bossId, runKey);
+  if (cached) return Promise.resolve({ bossId, runKey, run: cached, source: "closed" });
+
+  return db.ref(`bossRunsClosed/${bossId}/${runKey}`).once("value").then((snap) => {
+    const run = snap && snap.val ? snap.val() : null;
+    if (!run || !isMyPendingBossRun(run)) return null;
+    bossRunsClosedCache = bossRunsClosedCache || {};
+    bossRunsClosedCache[bossId] = bossRunsClosedCache[bossId] || {};
+    bossRunsClosedCache[bossId][runKey] = run;
+    return { bossId, runKey, run, source: "closed" };
+  }).catch((err) => {
+    console.warn("closed boss run fetch failed", err);
+    return null;
+  });
 }
 function isMyPendingBossRun(run){
   if (!run || !run.members || !run.members[userId]) return false;
@@ -24469,15 +24511,21 @@ function openBossBattle(){
   const bossId = String((ctx && ctx.bossId) || "");
   const run = ctx && ctx.run;
   if (!bossId || !run || !["active","cleared","failed"].includes(String(run.status || ""))) {
-  showNpcMessage("참여중인 보스전이 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+  fetchBoundClosedBossRunOnce().then((fallbackCtx) => {
+    if (fallbackCtx && fallbackCtx.run && ["cleared","failed"].includes(String(fallbackCtx.run.status || ""))) {
+      openBossBattle();
+      return;
+    }
+    showNpcMessage("참여중인 보스전이 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+  });
   return;
 }
 
   // 멤버 체크
   if (!(run.members && run.members[userId])) {
-    showNpcMessage("토벌대에 참여한 기록이 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
-    return;
-  }
+  showNpcMessage("참여중인 보스전이 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
+  return;
+}
 
   const ov = document.getElementById("bossBattleOverlay");
   if (!ov) return;
@@ -24504,7 +24552,13 @@ function openBossBattle(){
   const run = ctx && ctx.run;
 
   if (!bossId || !run || !["active","cleared","failed"].includes(String(run.status || ""))) {
-    showSimpleMessage("현재 참여중인 보스전이 없습니다", "보스전");
+    fetchBoundClosedBossRunOnce().then((fallbackCtx) => {
+      if (fallbackCtx && fallbackCtx.run && ["cleared","failed"].includes(String(fallbackCtx.run.status || ""))) {
+        onBossBattleIconClick();
+        return;
+      }
+      showSimpleMessage("현재 참여중인 보스전이 없습니다", "보스전");
+    });
     return;
   }
 
@@ -25691,10 +25745,11 @@ function getPlayerFinalCombatStats(){
   const swordMainPct = lv.sword * 0.10;
   const captainMainPct = (lv.magitech >= 1) ? 0.30 : 0.00; // ✅ 캡틴의 혼(마법공학 30강 1회라도) = 30% 상승
   const scytheMainPct = lv.scythe * 0.10;
+  const honorStarMainPct = Math.max(0, Number(reach30Count || 0)) * 0.01;
   const isMagicMain = (wp.t === "staff" || wp.t === "gauntlet" || wp.t === "magitech" || wp.t === "scythe");
   const engrMainPct = isMagicMain ? engrSpellPct : engrAtkPct;
   const runeMainPct = isMagicMain ? Number(rune.pctSpell || 0) : Number(rune.pctAttack || 0);
-  const totalMainPct = swordMainPct + captainMainPct + scytheMainPct + engrMainPct + runeMainPct;
+  const totalMainPct = swordMainPct + captainMainPct + scytheMainPct + honorStarMainPct + engrMainPct + runeMainPct;
   const runeFlatMain = isMagicMain ? Number(rune.flatSpell || 0) : Number(rune.flatAttack || 0);
   const mainPower = Math.floor((rawPower * wp.coef * (1 + totalMainPct)) + runeFlatMain);
 
@@ -25710,6 +25765,7 @@ function getPlayerFinalCombatStats(){
     weaponTypeKor: weaponTypeKor(wp.t),
     dmgLabel: wp.dmgLabel,      // "공격력" or "주문력"
     mainPower,
+    mainPowerPct: totalMainPct,
     penetration,
     ignoreEvade,
     critRate,
@@ -27987,8 +28043,14 @@ function buildRuneSlotsHtml(){
     if (runePendingEquipUid && unlocked) classes.push('selectable');
     if (runePendingEquipUid && unlocked) classes.push('active-pick');
     const showPlus = unlocked || unlockableNext;
-    const inner = item ? `<img class="rune-slot-mark" src="${getRuneMarkIcon(item.kind)}" alt="" onerror="this.onerror=null;this.src='${RUNE_IMAGE_FALLBACK}';">` : `<span class="rune-slot-plus">${showPlus ? '+' : ''}</span>`;
-    return `<button type="button" class="${classes.join(' ')}" data-rune-slot="${idx}" style="left:${pos.left}px; top:${pos.top}px;">${inner}</button>`;
+    const size = pos.large ? 86 : 66;
+    const lvX = Math.round(pos.left + (size / 2) - 17);
+    const lvY = Math.round(pos.top - (size / 2) + 16);
+    const levelBadge = item ? `<span class="rune-slot-level ${large}" style="left:${lvX}px; top:${lvY}px;">+${Number(item.level || 1)}</span>` : '';
+    const inner = item
+      ? `<img class="rune-slot-mark" src="${getRuneMarkIcon(item.kind)}" alt="" onerror="this.onerror=null;this.src='${RUNE_IMAGE_FALLBACK}';">`
+      : `<span class="rune-slot-plus">${showPlus ? '+' : ''}</span>`;
+    return `<button type="button" class="${classes.join(' ')}" data-rune-slot="${idx}" style="left:${pos.left}px; top:${pos.top}px;">${inner}</button>${levelBadge}`;
   }).join('');
 }
 function bindRuneEquipTop(){
@@ -28458,6 +28520,11 @@ if (invBtn) {
 
   const atkEl = document.getElementById("statAtk");
   if (atkEl) atkEl.textContent = formatNumberFullKR(my.mainPower);
+
+  const mainPctEl = document.getElementById("statMainPct");
+  if (mainPctEl) {
+    mainPctEl.textContent = `(${my.dmgLabel} + ${Math.round(Number(my.mainPowerPct || 0) * 100)}%)`;
+  }
 
   // (B) 무기 표시(UX)
   const wLine = document.getElementById("statWeaponLine"); // 있으면 사용
@@ -33164,7 +33231,7 @@ setTimeout(() => {
     left:50%;
     transform:translate(-50%,-50%);
     width:860px;
-    height:520px;
+    height:min(640px, calc(100% - 40px));
     position:relative;
     background:#0b0b0b;
     border:1px solid rgba(255,255,255,0.15);
@@ -33211,7 +33278,8 @@ setTimeout(() => {
 
 <!-- 메인 스탯(공격력/주문력) -->
 <div style="font-size:21px;font-weight:900;margin-bottom:18px;">
-  ⚔ <span id="statMainLabel">공격력</span> <span id="statAtk">0</span>
+  <div>⚔ <span id="statMainLabel">공격력</span> <span id="statAtk">0</span></div>
+  <div id="statMainPct" style="margin-top:4px; padding-left:24px; font-size:12px; font-weight:700; color:rgba(255,255,255,0.58); line-height:1.2;">(공격력 + 0%)</div>
 </div>
 
       <div class="stat-line">관통력 <span id="statPen">0%</span></div>
@@ -33253,6 +33321,9 @@ setTimeout(() => {
 <div style="width:50%; padding:24px; display:flex; flex-direction:column; height:100%; min-height:0;">
   <div style="font-size:18px;font-weight:900;margin-bottom:12px;">
     패시브 스킬
+  </div>
+  <div style="margin-top:-6px; margin-bottom:10px; font-size:11px; color:rgba(255,255,255,0.48); line-height:1.25;">
+    (★x1 = 공/주 +1%)
   </div>
 
   <!-- 리스트 들어갈 자리 -->
