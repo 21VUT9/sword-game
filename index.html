@@ -35632,7 +35632,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
           cur.endsAt = now() + 15 * MINUTE;
           cur.kingStartedAt = now();
           cur.nextSlashCheckAt = now() + 10 * SECOND;
-          cur.nextSummonCheckAt = now() + 2 * MINUTE;
+          cur.nextSummonCheckAt = now() + 100 * SECOND;
           cur.nextCounterCheckAt = now() + 45 * SECOND;
           return cur;
         }, (err, committed) => {
@@ -35784,7 +35784,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         if (!cur || String(cur.status || "") !== "active" || String(cur.wraithPhase || "") !== "king") return;
         const n = now();
         if (n < Number(cur.nextSummonCheckAt || 0)) return;
-        cur.nextSummonCheckAt = n + 2 * MINUTE;
+        cur.nextSummonCheckAt = n + 100 * SECOND;
         if (Math.random() < 0.6) {
           cur.summonPending = true;
           cur.summonCastAt = n;
@@ -35817,7 +35817,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         const n = now();
         if (n < Number(cur.nextCounterCheckAt || 0)) return;
         cur.nextCounterCheckAt = n + 45 * SECOND;
-        if (Math.random() < 0.3) {
+        if (Math.random() < 0.35) {
           cur.counterType = Math.random() < 0.5 ? "phys" : "magic";
           cur.counterUntil = n + (7 + Math.floor(Math.random() * 9)) * SECOND;
           cur.counterAnnounceAt = n;
@@ -36721,7 +36721,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         <b>망령왕 토벌 보상</b><br><br>
         전원 확정보상 : 1천억골드, 미확인룬석 3개, 마력의정수 1000개, 파괴방지주문서 10개<br>
         딜량 1등 : 3천억골드, 미확인룬석 2개, 파괴방지주문서 5개, 마력의정수 700개<br>
-        토벌대장 : 슈퍼강화주문서 3개, 마력의정수 500개, 미확인룬석 21개<br>
+        토벌대장 : 슈퍼강화주문서 3개, 마력의정수 500개, 미확인룬석 2개<br>
         막타 : 슈퍼강화주문서 1개, 미확인룬석 2개<br>
         5인 이상 성공 시 50% 확률로 1명 보스토벌우선신청권 1개
       `, LEON_IMG.reward, true, "보상");
@@ -36760,7 +36760,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       if (isLeader) {
         reward.itemSuper += 3;
         reward.itemEssence += 500;
-        reward.unidentifiedRuneStones += 21;
+        reward.unidentifiedRuneStones += 2;
       }
       return reward;
     },
