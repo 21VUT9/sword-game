@@ -25751,7 +25751,7 @@ function getPlayerFinalCombatStats(){
   const runeMainPct = isMagicMain ? Number(rune.pctSpell || 0) : Number(rune.pctAttack || 0);
   const totalMainPct = swordMainPct + captainMainPct + scytheMainPct + honorStarMainPct + engrMainPct + runeMainPct;
   const runeFlatMain = isMagicMain ? Number(rune.flatSpell || 0) : Number(rune.flatAttack || 0);
-  const mainPower = Math.floor((rawPower * wp.coef * (1 + totalMainPct)) + runeFlatMain);
+  const mainPower = Math.floor(((rawPower * wp.coef) + runeFlatMain) * (1 + totalMainPct));
 
   // 2) 서브 스탯(0%여도 표기 대상)
   const penetration   = Number(wp.ignoreDef || 0) + (lv.spear * 0.10) + (lv.gauntlet * 0.10) + engrPen + Number(rune.penetration || 0);
