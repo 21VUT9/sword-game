@@ -1415,7 +1415,35 @@ button {
   min-height:0;
 }
 
-.passive-panel #passiveSkillList{
+.skill-tab-bar{
+  display:flex;
+  gap:8px;
+  margin-bottom:10px;
+}
+
+.skill-tab-btn{
+  flex:1 1 0;
+  height:34px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,0.14);
+  background:rgba(255,255,255,0.05);
+  color:#aaa;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:13px;
+  font-weight:900;
+  line-height:1;
+  cursor:pointer;
+}
+
+.skill-tab-btn.active{
+  border-color:rgba(255,213,79,0.48);
+  background:rgba(255,213,79,0.16);
+  color:#ffd54f;
+}
+
+.skill-tab-panel{
   flex:1 1 auto;
   min-height:0;
   max-height: calc(100vh - 220px);
@@ -1423,10 +1451,134 @@ button {
   padding-right: 6px;
 }
   
-#passiveSkillList{
+#passiveSkillList,
+#activeSkillList{
   max-height: calc(100vh - 220px);
   overflow-y: auto;
   padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,213,79,0.38) rgba(255,255,255,0.06);
+}
+
+#passiveSkillList::-webkit-scrollbar,
+#activeSkillList::-webkit-scrollbar{
+  width:8px;
+}
+
+#passiveSkillList::-webkit-scrollbar-track,
+#activeSkillList::-webkit-scrollbar-track{
+  background:rgba(255,255,255,0.05);
+  border-radius:999px;
+}
+
+#passiveSkillList::-webkit-scrollbar-thumb,
+#activeSkillList::-webkit-scrollbar-thumb{
+  background:linear-gradient(180deg, rgba(255,213,79,0.72), rgba(255,138,76,0.48));
+  border:2px solid rgba(15,15,15,0.92);
+  border-radius:999px;
+}
+
+#passiveSkillList::-webkit-scrollbar-thumb:hover,
+#activeSkillList::-webkit-scrollbar-thumb:hover{
+  background:linear-gradient(180deg, rgba(255,226,118,0.90), rgba(255,158,92,0.66));
+}
+
+.active-skill-empty{
+  padding:16px 12px;
+  border:1px dashed rgba(255,255,255,0.14);
+  border-radius:10px;
+  background:rgba(255,255,255,0.03);
+  color:rgba(255,255,255,0.52);
+  font-size:12px;
+  line-height:1.5;
+}
+
+.active-skill-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 0;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+}
+
+.active-skill-path{
+  flex:0 0 74px;
+  min-width:74px;
+  color:#eaeaea;
+  font-size:12px;
+  font-weight:900;
+  line-height:1.2;
+  text-align:left;
+}
+
+.active-skill-slots{
+  display:flex;
+  gap:10px;
+  flex:1 1 auto;
+  justify-content:flex-start;
+  min-width:0;
+}
+
+.active-skill-slot{
+  position:relative;
+  min-width:66px;
+  height:50px;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  cursor:pointer;
+}
+
+.active-skill-slot.locked{
+  cursor:not-allowed;
+}
+
+.active-skill-slot img{
+  width:42px;
+  height:42px;
+  object-fit:contain;
+  filter:grayscale(1) saturate(0) brightness(0.72);
+  opacity:0.78;
+}
+
+.active-skill-slot.locked img{
+  filter:grayscale(1) saturate(0) brightness(0.38);
+  opacity:0.42;
+}
+
+.active-skill-slot.locked::after{
+  content:"🔒";
+  position:absolute;
+  left:18px;
+  top:50%;
+  transform:translate(-50%, -50%);
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:rgba(0,0,0,0.68);
+  color:#f2f2f2;
+  font-size:13px;
+  line-height:1;
+  box-shadow:0 0 0 1px rgba(255,255,255,0.16);
+}
+
+.active-skill-lv{
+  color:rgba(255,255,255,0.62);
+  font-size:10px;
+  font-weight:900;
+  line-height:1;
+}
+
+.active-skill-slot.locked .active-skill-lv{
+  color:rgba(255,255,255,0.34);
 }
 
 .toast-destroy {
@@ -28427,6 +28579,39 @@ if (invBtn) {
   });
 }
 
+let skillBookTab = "passive";
+
+function setSkillBookTab(tab){
+  skillBookTab = (tab === "active") ? "active" : "passive";
+
+  const passiveOn = skillBookTab === "passive";
+  const passiveTab = document.getElementById("skillTabPassive");
+  const activeTab = document.getElementById("skillTabActive");
+  const passiveList = document.getElementById("passiveSkillList");
+  const activeList = document.getElementById("activeSkillList");
+  const passiveHint = document.getElementById("passiveSkillHint");
+  const activeHint = document.getElementById("activeSkillHint");
+  const passiveFooter = document.getElementById("passiveSkillFooter");
+  const activeFooter = document.getElementById("activeSkillFooter");
+
+  if (passiveTab) passiveTab.classList.toggle("active", passiveOn);
+  if (activeTab) activeTab.classList.toggle("active", !passiveOn);
+  if (passiveList) passiveList.style.display = passiveOn ? "block" : "none";
+  if (activeList) activeList.style.display = passiveOn ? "none" : "block";
+  if (passiveHint) passiveHint.style.display = passiveOn ? "block" : "none";
+  if (activeHint) activeHint.style.display = passiveOn ? "none" : "block";
+  if (passiveFooter) passiveFooter.style.display = passiveOn ? "block" : "none";
+  if (activeFooter) activeFooter.style.display = passiveOn ? "none" : "block";
+}
+
+function showActiveSkillNotImplemented(){
+  if (typeof showNpcMessage === "function") {
+    showNpcMessage("미구현 기능입니다", null, true, "");
+    return;
+  }
+  alert("미구현 기능입니다");
+}
+
   function openStatOverlay(){
   const el = document.getElementById("statOverlay");
   if (!el) return;
@@ -28647,6 +28832,45 @@ if (invBtn) {
 
     listEl.innerHTML = items.join("");
   }
+
+  const activeListEl = document.getElementById("activeSkillList");
+  if (activeListEl) {
+    const activePaths = [
+      { type:"sword", name:"검사의 길" },
+      { type:"spear", name:"전사의 길" },
+      { type:"axe", name:"바이킹의 길" },
+      { type:"bow", name:"사냥꾼의 길" },
+      { type:"staff", name:"마법사의 길" },
+      { type:"dagger", name:"어쌔신의 길" },
+      { type:"gauntlet", name:"파이터의 길" },
+      { type:"scythe", name:"수확자의 길" },
+      { type:"magitech", name:"캡틴의 길" }
+    ];
+    const unlockAt = [1, 3, 5];
+
+    activeListEl.innerHTML = activePaths.map(({ type, name }) => {
+      const clearCount = Number(counts[type] || 0);
+      return `
+      <div class="active-skill-row">
+        <div class="active-skill-path">${name}</div>
+        <div class="active-skill-slots">
+          ${[1, 2, 3].map((idx) => {
+            const need = unlockAt[idx - 1];
+            const locked = clearCount < need;
+            return `
+            <button class="active-skill-slot ${locked ? "locked" : ""}" type="button" onclick="showActiveSkillNotImplemented()" title="${name} ${idx}번 스킬${locked ? ` - ${need}번째 30강 달성 시 개방` : ""}" ${locked ? "aria-disabled=\"true\"" : ""}>
+              <img src="images/skills/skill-block.png" alt="">
+              <span class="active-skill-lv">LV0</span>
+            </button>
+          `;
+          }).join("")}
+        </div>
+      </div>
+    `;
+    }).join("");
+  }
+
+  setSkillBookTab(skillBookTab);
 
   el.style.display = "block";
 
@@ -33317,20 +33541,31 @@ setTimeout(() => {
 </div>
     </div>
 
-    <!-- 우측 (2단계 패시브 영역) -->
+    <!-- 우측 (2단계 스킬 영역) -->
 <div style="width:50%; padding:24px; display:flex; flex-direction:column; height:100%; min-height:0;">
   <div style="font-size:18px;font-weight:900;margin-bottom:12px;">
-    패시브 스킬
+    스킬
   </div>
-  <div style="margin-top:-6px; margin-bottom:10px; font-size:11px; color:rgba(255,255,255,0.48); line-height:1.25;">
+  <div class="skill-tab-bar">
+    <button id="skillTabPassive" class="skill-tab-btn active" type="button" onclick="setSkillBookTab('passive')">패시브 스킬</button>
+    <button id="skillTabActive" class="skill-tab-btn" type="button" onclick="setSkillBookTab('active')">액티브 스킬</button>
+  </div>
+  <div id="passiveSkillHint" style="margin-top:-4px; margin-bottom:10px; font-size:11px; color:rgba(255,255,255,0.48); line-height:1.25;">
     (★x1 = 공/주 +1%)
+  </div>
+  <div id="activeSkillHint" style="display:none; margin-top:-4px; margin-bottom:10px; font-size:11px; color:rgba(255,255,255,0.48); line-height:1.25;">
+    아이콘을 클릭하면 해당스킬을 관리할 수 있습니다.
   </div>
 
   <!-- 리스트 들어갈 자리 -->
-  <div id="passiveSkillList" style="flex:1 1 auto; min-height:0; overflow-y:auto; padding-right:6px;"></div>
+  <div id="passiveSkillList" class="skill-tab-panel"></div>
+  <div id="activeSkillList" class="skill-tab-panel" style="display:none;"></div>
 
-  <div style="margin-top:12px; font-size:12px; color:#777; line-height:1.4;">
+  <div id="passiveSkillFooter" style="margin-top:12px; font-size:12px; color:#777; line-height:1.4;">
     • 획득조건: 무기 +30 달성 시 LV1
+  </div>
+  <div id="activeSkillFooter" style="display:none; margin-top:12px; font-size:12px; color:#777; line-height:1.4;">
+    • 해금조건: +30 달성 1/3/5회차에 1/2/3번 스킬 해금 예정
   </div>
 </div>
 
@@ -35050,6 +35285,9 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   const DAY_MS = 24 * 60 * 60 * 1000;
   const MINUTE = 60 * 1000;
   const SECOND = 1000;
+  const WRAITH_SLASH_WARNING_MS = 5 * SECOND;
+  const WRAITH_SLASH_QTE_MS = 1 * SECOND;
+  const WRAITH_SLASH_RESOLVE_GRACE_MS = 2000;
   const WRAITH_KING_LINES = [
     "그 마녀는… 나에게 영원을 주었다 … 끝나지 않는 고통의 형태로 …",
     "이 땅의 모든 것은… 나와 함께 멈췄다 … 숨도… 죽음도 …",
@@ -35143,9 +35381,9 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       @keyframes wraithShake{0%,100%{transform:translateX(0);}20%{transform:translateX(-7px);}40%{transform:translateX(7px);}60%{transform:translateX(-5px);}80%{transform:translateX(5px);}}
       #bossBattleOverlay.wraith-shake{animation:wraithShake .38s linear 1;}
       @keyframes wraithHitShake{0%,100%{transform:translate(0,0);}25%{transform:translate(-2px,1px);}50%{transform:translate(2px,-1px);}75%{transform:translate(-1px,0);}}
-      @keyframes wraithHitShakeCrit{0%,100%{transform:translate(0,0);}20%{transform:translate(-3px,1px);}40%{transform:translate(3px,-1px);}60%{transform:translate(-2px,1px);}80%{transform:translate(2px,0);}}
+      @keyframes wraithHitShakeCrit{0%,100%{transform:translate(0,0);}25%{transform:translate(-2px,1px);}50%{transform:translate(2px,-1px);}75%{transform:translate(-1px,0);}}
       #bossBattleOverlay.wraith-hit-shake{animation:wraithHitShake .18s linear 1;}
-      #bossBattleOverlay.wraith-hit-shake-crit{animation:wraithHitShakeCrit .22s linear 1;}
+      #bossBattleOverlay.wraith-hit-shake-crit{animation:wraithHitShakeCrit .18s linear 1;}
     `;
     document.head.appendChild(st);
   }
@@ -35620,7 +35858,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const setScaleMul = isCritical ? Number(spriteSet.criticalScaleMul || 1) : Number(spriteSet.normalScaleMul || 1);
     const fxScale = 1.5 * Number(spriteSet.scaleMul || 1) * setScaleMul;
     const normalScaleMul = isCritical ? 1 : 0.6;
-    wraithMeleeShake = Math.max(wraithMeleeShake, isCritical ? 15 : 6);
+    wraithMeleeShake = Math.max(wraithMeleeShake, 6);
     playWraithMeleeScreenShake(isCritical);
     pushWraithMeleeSprite(slashDef, {
       x:x + randWraithFx(-12, 12), y:y + randWraithFx(-10, 10),
@@ -35890,8 +36128,9 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         if (Math.random() < 0.3) {
               cur.slashActive = true;
               cur.slashCastAt = n;
-              cur.slashQteStartAt = n + 5 * SECOND;
-              cur.slashResolveAt = n + 6000;
+              cur.slashQteStartAt = n + WRAITH_SLASH_WARNING_MS;
+              cur.slashQteEndAt = n + WRAITH_SLASH_WARNING_MS + WRAITH_SLASH_QTE_MS;
+              cur.slashResolveAt = n + WRAITH_SLASH_WARNING_MS + WRAITH_SLASH_QTE_MS + WRAITH_SLASH_RESOLVE_GRACE_MS;
           cur.slashSeq = Number(cur.slashSeq || 0) + 1;
           cur.slashResolved = false;
         }
@@ -36322,13 +36561,20 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function wraithGuard(){
     const run = getRun();
     if (!attackAllowed(run)) return;
+    const phase = getPhase(run);
+    const t = Date.now();
+    if (phase === "knight" && !(run.roderickDrawResolveAt && t < Number(run.roderickDrawResolveAt || 0))) return;
+    if (phase === "king") {
+      const qteStartAt = Number(run.slashQteStartAt || run.slashCastAt || 0);
+      const localQteStart = getLocalWraithQteStart(run.slashSeq);
+      const effectiveQteEnd = (localQteStart || qteStartAt) + WRAITH_SLASH_QTE_MS;
+      if (!run.slashActive || !qteStartAt || t < qteStartAt || !localQteStart || t > effectiveQteEnd) return;
+    }
     const btn = document.getElementById("wraithGuardBtn");
     const last = Number(btn && btn.dataset.lastAt || 0);
-    const t = Date.now();
     if (t - last < 3000) return;
     playWraithGuardSfx();
     startWraithButtonCooldown(btn, 3000);
-    const phase = getPhase(run);
     db.ref(`bossRunsActive/${WRAITH_BOSS_ID}/members/${userId}`).transaction((m) => {
       if (!m) return m;
       if (phase === "knight" && run.roderickDrawResolveAt && now() < Number(run.roderickDrawResolveAt || 0)) {
@@ -36340,7 +36586,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         const qteStart = localQteStart || Number(run.slashQteStartAt || run.slashCastAt || now());
         if (visualPct == null && Date.now() < qteStart) return m;
         const elapsed = Math.max(0, Date.now() - qteStart);
-        const qteDuration = Math.max(1, Number(run.slashResolveAt || now()) - qteStart);
+        const qteDuration = localQteStart ? WRAITH_SLASH_QTE_MS : Math.max(1, Number(run.slashQteEndAt || run.slashResolveAt || now()) - qteStart);
         const pct = visualPct == null ? (elapsed / qteDuration) : visualPct;
         freezeWraithSlashQte(pct);
         if (pct >= 1/3 && pct <= 2/3) m.slashGuardSeq = Number(run.slashSeq || 0);
@@ -36660,7 +36906,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     if (!layer) return;
     let qte = document.getElementById("wraithSlashQte");
     const qteStartAt = Number(run.slashQteStartAt || run.slashCastAt || 0);
-    const active = getPhase(run) === "king" && run.slashActive && now() >= qteStartAt && now() < Number(run.slashResolveAt || 0);
+    const qteEndAt = Number(run.slashQteEndAt || run.slashResolveAt || 0);
+    const active = getPhase(run) === "king" && run.slashActive && now() >= qteStartAt && now() < qteEndAt;
     if (!active) { if (qte) qte.remove(); return; }
     const seq = String(run.slashSeq || "");
     if (qte && qte.dataset.seq !== seq) qte.remove();
@@ -36674,7 +36921,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       layer.appendChild(qte);
       const visualStart = Date.now();
       setLocalWraithQteStart(seq, visualStart);
-      const duration = Math.max(120, Number(run.slashResolveAt || now()) - now());
+      const duration = WRAITH_SLASH_QTE_MS;
       const dot = qte.querySelector(".wraith-qte-dot");
       if (dot) {
         dot.classList.remove("is-moving");
@@ -37103,11 +37350,11 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       .boss-action-btn.guard::after{content:"[A]"; position:absolute; left:50%; bottom:17px; transform:translateX(-50%); z-index:3; color:rgba(255,255,255,.68); font-size:20px; font-weight:900; letter-spacing:0; text-shadow:0 2px 5px rgba(0,0,0,.75); pointer-events:none;}
       .boss-action-btn.attack::after{content:"[S]"; position:absolute; left:50%; bottom:17px; transform:translateX(-50%); z-index:3; color:rgba(255,255,255,.68); font-size:20px; font-weight:900; letter-spacing:0; text-shadow:0 2px 5px rgba(0,0,0,.75); pointer-events:none;}
       @keyframes bossCommonHitShake{0%,100%{transform:translate(0,0);}25%{transform:translate(-2px,1px);}50%{transform:translate(2px,-1px);}75%{transform:translate(-1px,0);}}
-      @keyframes bossCommonHitShakeCrit{0%,100%{transform:translate(0,0);}20%{transform:translate(-5px,2px);}40%{transform:translate(5px,-2px);}60%{transform:translate(-4px,2px);}80%{transform:translate(4px,-1px);}}
+      @keyframes bossCommonHitShakeCrit{0%,100%{transform:translate(0,0);}25%{transform:translate(-2px,1px);}50%{transform:translate(2px,-1px);}75%{transform:translate(-1px,0);}}
       #bossBattleOverlay.boss-hit-shake{animation:bossCommonHitShake .18s linear 1;}
-      #bossBattleOverlay.boss-hit-shake-crit{animation:bossCommonHitShakeCrit .22s linear 1;}
+      #bossBattleOverlay.boss-hit-shake-crit{animation:bossCommonHitShakeCrit .18s linear 1;}
       #bossBattleOverlay.wraith-hit-shake{animation:bossCommonHitShake .18s linear 1;}
-      #bossBattleOverlay.wraith-hit-shake-crit{animation:bossCommonHitShakeCrit .22s linear 1;}
+      #bossBattleOverlay.wraith-hit-shake-crit{animation:bossCommonHitShakeCrit .18s linear 1;}
     `;
     document.head.appendChild(st);
   }
