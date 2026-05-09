@@ -35374,6 +35374,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   const WRAITH_MELEE_FX_WEAPONS = new Set(["sword", "spear", "axe", "dagger", "scythe"]);
   const WRAITH_SHOOT_FX_WEAPONS = new Set(["bow", "magitech"]);
   const WRAITH_MAGIC_FX_WEAPONS = new Set(["staff"]);
+  const WRAITH_PUNCH_FX_WEAPONS = new Set(["gauntlet"]);
   const WRAITH_MELEE_SPRITES = {
     slash: [
       { key:"wraithSlash1", src:"images/effects/slash-1.png", frameW:128, frameH:128, cols:5, total:10 },
@@ -35438,9 +35439,34 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       { key:"wraithMagicSpark3", src:"images/effects/magic-spark-3.png", frameW:64, frameH:64, cols:8, total:8 }
     ],
     sparkCri: [
-      { key:"wraithMagicSparkCri1", src:"images/effects/magic-spark--cri-1.png", frameW:64, frameH:64, cols:8, total:8 },
-      { key:"wraithMagicSparkCri2", src:"images/effects/magic-spark--cri-2.png", frameW:64, frameH:64, cols:8, total:8 },
-      { key:"wraithMagicSparkCri3", src:"images/effects/magic-spark--cri-3.png", frameW:64, frameH:64, cols:8, total:8 }
+      { key:"wraithMagicSparkCri1", src:"images/effects/magic-spark-cri-1.png", frameW:64, frameH:64, cols:8, total:8 },
+      { key:"wraithMagicSparkCri2", src:"images/effects/magic-spark-cri-2.png", frameW:64, frameH:64, cols:8, total:8 },
+      { key:"wraithMagicSparkCri3", src:"images/effects/magic-spark-cri-3.png", frameW:64, frameH:64, cols:8, total:8 }
+    ]
+  };
+  const WRAITH_PUNCH_SPRITES = {
+    scaleMul: 2,
+    normalScaleMul: 0.7,
+    criticalScaleMul: 0.5,
+    slash: [
+      { key:"wraithPunch1", src:"images/effects/punch-1.png", frameW:64, frameH:64, cols:12, total:12 },
+      { key:"wraithPunch2", src:"images/effects/punch-2.png", frameW:64, frameH:64, cols:12, total:12 },
+      { key:"wraithPunch3", src:"images/effects/punch-3.png", frameW:64, frameH:64, cols:12, total:12 }
+    ],
+    slashCri: [
+      { key:"wraithPunchCri1", src:"images/effects/punch-cri-1.png", frameW:64, frameH:64, cols:12, total:12 },
+      { key:"wraithPunchCri2", src:"images/effects/punch-cri-2.png", frameW:64, frameH:64, cols:12, total:12 },
+      { key:"wraithPunchCri3", src:"images/effects/punch-cri-3.png", frameW:64, frameH:64, cols:12, total:12 }
+    ],
+    spark: [
+      { key:"wraithPunchSpark1", src:"images/effects/punch-spark-1.png", frameW:64, frameH:64, cols:8, total:8 },
+      { key:"wraithPunchSpark2", src:"images/effects/punch-spark-2.png", frameW:64, frameH:64, cols:8, total:8 },
+      { key:"wraithPunchSpark3", src:"images/effects/punch-spark-3.png", frameW:64, frameH:64, cols:8, total:8 }
+    ],
+    sparkCri: [
+      { key:"wraithPunchSparkCri1", src:"images/effects/punch-spark-cri-1.png", frameW:64, frameH:64, cols:8, total:8 },
+      { key:"wraithPunchSparkCri2", src:"images/effects/punch-spark-cri-2.png", frameW:64, frameH:64, cols:8, total:8 },
+      { key:"wraithPunchSparkCri3", src:"images/effects/punch-spark-cri-3.png", frameW:64, frameH:64, cols:8, total:8 }
     ]
   };
   const wraithMeleeImages = {};
@@ -35452,11 +35478,12 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
   function shouldUseWraithMeleeHitFx(){
     const t = String(weaponType || "sword");
-    return WRAITH_MELEE_FX_WEAPONS.has(t) || WRAITH_SHOOT_FX_WEAPONS.has(t) || WRAITH_MAGIC_FX_WEAPONS.has(t);
+    return WRAITH_MELEE_FX_WEAPONS.has(t) || WRAITH_SHOOT_FX_WEAPONS.has(t) || WRAITH_MAGIC_FX_WEAPONS.has(t) || WRAITH_PUNCH_FX_WEAPONS.has(t);
   }
 
   function getWraithWeaponHitSpriteSet(){
     const t = String(weaponType || "sword");
+    if (WRAITH_PUNCH_FX_WEAPONS.has(t)) return WRAITH_PUNCH_SPRITES;
     if (WRAITH_MAGIC_FX_WEAPONS.has(t)) return WRAITH_MAGIC_SPRITES;
     if (WRAITH_SHOOT_FX_WEAPONS.has(t)) return WRAITH_SHOOT_SPRITES;
     return WRAITH_MELEE_SPRITES;
