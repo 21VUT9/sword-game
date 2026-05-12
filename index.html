@@ -1193,6 +1193,30 @@ button {
   background:linear-gradient(180deg, rgba(255,226,118,0.90), rgba(255,158,92,0.66));
 }
 
+#hallOfFameList{
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,213,79,0.38) rgba(255,255,255,0.06);
+}
+
+#hallOfFameList::-webkit-scrollbar{
+  width:8px;
+}
+
+#hallOfFameList::-webkit-scrollbar-track{
+  background:rgba(255,255,255,0.05);
+  border-radius:999px;
+}
+
+#hallOfFameList::-webkit-scrollbar-thumb{
+  background:linear-gradient(180deg, rgba(255,213,79,0.72), rgba(255,138,76,0.48));
+  border:2px solid rgba(15,15,15,0.92);
+  border-radius:999px;
+}
+
+#hallOfFameList::-webkit-scrollbar-thumb:hover{
+  background:linear-gradient(180deg, rgba(255,226,118,0.90), rgba(255,158,92,0.66));
+}
+
 .online-user-row{
   display:flex;
   align-items:center;
@@ -36787,35 +36811,37 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const run = getRun();
     if (!attackAllowed(run)) return;
     const phase = getPhase(run);
-    const t = Date.now();
+    const localT = Date.now();
+    const serverT = now();
     let shouldRecordGuard = false;
     if (phase === "knight") {
-      shouldRecordGuard = !!(run.roderickDrawResolveAt && t < Number(run.roderickDrawResolveAt || 0));
+      shouldRecordGuard = !!(run.roderickDrawResolveAt && serverT < Number(run.roderickDrawResolveAt || 0));
       if (!shouldRecordGuard) return;
     }
     if (phase === "king") {
       const qteStartAt = Number(run.slashQteStartAt || run.slashCastAt || 0);
       const localQteStart = getLocalWraithQteStart(run.slashSeq);
       const serverQteEnd = Number(run.slashQteEndAt || run.slashResolveAt || 0);
-      const effectiveQteEnd = localQteStart
-        ? localQteStart + WRAITH_SLASH_QTE_MS
-        : (serverQteEnd || (qteStartAt + WRAITH_SLASH_QTE_MS));
-      shouldRecordGuard = !!(run.slashActive && qteStartAt && t >= qteStartAt && t <= effectiveQteEnd);
+      const activeByLocalQte = !!(localQteStart && localT >= localQteStart && localT <= localQteStart + WRAITH_SLASH_QTE_MS);
+      const activeByServerQte = !!(qteStartAt && serverT >= qteStartAt && serverT <= (serverQteEnd || (qteStartAt + WRAITH_SLASH_QTE_MS)));
+      shouldRecordGuard = !!(run.slashActive && (activeByLocalQte || activeByServerQte));
     }
+    if (!shouldRecordGuard) return;
     const btn = document.getElementById("wraithGuardBtn");
     const last = Number(btn && btn.dataset.lastAt || 0);
-    if (t - last < 3000) return;
-    playWraithGuardSfx();
-    startWraithButtonCooldown(btn, 3000);
-    if (!shouldRecordGuard) return;
+    if (localT - last < 3000) return;
     let localSlashGuard = false;
     let localSlashParry = false;
     let localParryDamage = 0;
     if (phase === "king" && run.slashActive) {
-      const visualPct = getWraithSlashQteVisualPct();
+      let visualPct = getWraithSlashQteVisualPct();
+      if (visualPct == null) {
+        renderWraithQte(run);
+        visualPct = getWraithSlashQteVisualPct();
+      }
       const localQteStart = getLocalWraithQteStart(run.slashSeq);
       const qteStart = localQteStart || Number(run.slashQteStartAt || run.slashCastAt || now());
-      const elapsed = Math.max(0, Date.now() - qteStart);
+      const elapsed = Math.max(0, (localQteStart ? localT : serverT) - qteStart);
       const qteDuration = localQteStart ? WRAITH_SLASH_QTE_MS : Math.max(1, Number(run.slashQteEndAt || run.slashResolveAt || now()) - qteStart);
       const pct = visualPct == null ? (elapsed / qteDuration) : visualPct;
       freezeWraithSlashQte(pct);
@@ -36826,6 +36852,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         localParryDamage = Math.floor(base * 5);
       }
     }
+    playWraithGuardSfx();
+    startWraithButtonCooldown(btn, 3000);
     db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
       if (!cur || String(cur.status || "") !== "active" || !cur.members || !cur.members[userId]) return;
       const curPhase = String(cur.wraithPhase || "knight");
@@ -37229,24 +37257,35 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     wrap.id = "wraithIntroVideo";
     wrap.className = "wraith-video";
     wrap.innerHTML = `
-      <video autoplay playsinline controls>
-        <source src="images/video/boss_wraith_king_intro_cinematic.mp4" type="video/mp4">
+      <video autoplay playsinline controls preload="auto">
         <source src="video/boss_wraith_king_intro_cinematic.mp4" type="video/mp4">
       </video>
     `;
     layer.appendChild(wrap);
     const v = wrap.querySelector("video");
-    const done = () => {
-      try { localStorage.setItem(key, "1"); } catch(e){}
+    let playbackStarted = false;
+    const done = (markSeen) => {
+      if (markSeen) {
+        try { localStorage.setItem(key, "1"); } catch(e){}
+      }
       wrap.remove();
     };
     if (v) {
-      v.onended = done;
-      v.onerror = done;
+      v.onplay = () => { playbackStarted = true; };
+      v.onended = () => done(true);
+      v.onerror = () => done(false);
       const p = v.play && v.play();
-      if (p && p.catch) p.catch(() => { v.muted = true; v.play().catch(()=>{}); });
+      if (p && p.catch) {
+        p.catch(() => {
+          v.muted = true;
+          const retry = v.play && v.play();
+          if (retry && retry.catch) retry.catch(()=>{});
+        });
+      }
     }
-    setTimeout(() => { if (document.body.contains(wrap)) done(); }, 45000);
+    setTimeout(() => {
+      if (document.body.contains(wrap)) done(playbackStarted || Number(v && v.currentTime || 0) > 0);
+    }, 45000);
   }
 
   function renderWraithParty(run, partyEl, titleEl){
