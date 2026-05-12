@@ -477,21 +477,6 @@ body {
   color: #ffd700;          /* 색상만 강조 */
 }
 
-/* 🧷 랭킹 닉네임 클릭 시 뜨는 작은 메뉴 */
-#rankProfileMenu {
-  position: absolute;
-  display: none;
-  background: rgba(0,0,0,0.95);
-  border: 1px solid #555;
-  border-radius: 6px;
-  padding: 4px 6px;
-  z-index: 1500;
-}
-#rankProfileMenu button {
-  font-size: 13px;
-  padding: 4px 8px;
-}
-
   /* 📌 공지 NEW 뱃지 */
 .badge-new {
   display: inline-block;
@@ -6047,11 +6032,6 @@ a, button, [role="button"], .actionBtn, .dock-btn, .map-field, .inventory-slot {
   </div>
 </div>
 
-  <!-- 🧷 랭킹 닉네임 클릭 시 뜨는 작은 메뉴 -->
-<div id="rankProfileMenu">
-  <button id="rankProfileViewBtn">👁 프로필 보기</button>
-</div>
-
 <!-- 📢 업데이트 공지 팝업 -->
 <div id="updateNoticeOverlay" onclick="closeUpdateNoticePopup()">
   <div class="update-notice-box" onclick="event.stopPropagation()">
@@ -6904,6 +6884,8 @@ box-sizing: border-box;">
 </button>
 
         <button onclick="handleRandomMatchFromArena()"
+                onkeydown="if(event.key==='Enter'){event.preventDefault();event.stopPropagation();return false;}"
+                onkeyup="if(event.key==='Enter'){event.preventDefault();event.stopPropagation();return false;}"
                 style="display:block; padding:6px 10px; font-size:14px; width:180px;">
           🎲 랜덤매칭
         </button>
@@ -9077,6 +9059,29 @@ function cleanupSessionBindings(){
     try { activeSessionWatchRef.off(); } catch(e) {}
     activeSessionWatchRef = null;
   }
+  if (rankingUsersRefreshTimer) {
+    clearInterval(rankingUsersRefreshTimer);
+    rankingUsersRefreshTimer = null;
+  }
+  if (onlinePresenceRefreshTimer) {
+    clearInterval(onlinePresenceRefreshTimer);
+    onlinePresenceRefreshTimer = null;
+  }
+  if (onlinePresenceRef && onlinePresenceOnValue) {
+    try { onlinePresenceRef.off("value", onlinePresenceOnValue); } catch(e) {}
+  }
+  onlinePresenceRef = null;
+  onlinePresenceOnValue = null;
+  rankingUsersCacheBound = false;
+  try {
+    if (rankingAllTimeListenRef && rankingAllTimeOnValue) rankingAllTimeListenRef.off("value", rankingAllTimeOnValue);
+    if (rankingWeeklyListenRef && rankingWeeklyOnValue) rankingWeeklyListenRef.off("value", rankingWeeklyOnValue);
+  } catch(e) {}
+  rankingAllTimeListenRef = null;
+  rankingAllTimeOnValue = null;
+  rankingWeeklyListenRef = null;
+  rankingWeeklyOnValue = null;
+  rankingBattleLoaded = false;
 }
 
 // 🧭 사냥터 이동 중인지 여부
@@ -19830,6 +19835,8 @@ function login() {
     }
 
     update();
+    updateAttendanceBadge();
+    startAttendanceResetTimer();
     showTutorialIfFirstTime();
     loadHallOfFame();
     startHonorHallTimers();
@@ -22045,6 +22052,7 @@ setDisplay("workbenchDockUI", "flex");
     // 🔐 자동로그인으로 들어온 경우에도 이 탭이 세션을 가져가도록
     startSession();
     ensureBossRunsSubscription();  // ✅ 로그인 직후에도 토벌 구독/복구 시작
+    loadRanking();
 
     endLoginTransition();
     if (pendingLocalSaveRestore && !isLoginContextStale(attemptGen, savedId)) {
@@ -22318,76 +22326,7 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 });
 
-  // 🧷 랭킹 닉네임 → "프로필 보기" 메뉴 → 프로필 팝업
-let lastRankProfileUserId = null;
-
-(function initRankingProfileMenu() {
-  const rankingEl = document.getElementById("ranking");
-  const menuEl    = document.getElementById("rankProfileMenu");
-  const viewBtn   = document.getElementById("rankProfileViewBtn");
-  const overlay   = document.getElementById("otherProfileOverlay");
-  const closeBtn  = document.getElementById("otherProfileCloseBtn");
-
-  // 1) 랭킹 영역에서 닉네임 클릭 시 작은 메뉴를 "터치한 자리"에 표시
-  if (rankingEl && menuEl) {
-    rankingEl.addEventListener("click", function(e) {
-      const userSpan = e.target.closest(".rank-user");
-      if (!userSpan) return;
-
-      const uid = userSpan.dataset.userId;
-      if (!uid) return;
-      lastRankProfileUserId = uid;
-
-      const x = e.pageX;
-      const y = e.pageY;
-
-      menuEl.style.left   = x + "px";
-      menuEl.style.top    = y + "px";
-      menuEl.style.display = "block";
-
-      e.stopPropagation();
-    });
-  }
-
-  // 2) "프로필 보기" 버튼 클릭 시 팝업 열기
-  if (viewBtn && menuEl) {
-    viewBtn.addEventListener("click", function(e) {
-      playUiClick();
-      e.stopPropagation();
-      if (!lastRankProfileUserId) return;
-      menuEl.style.display = "none";
-      openOtherUserProfilePopup(lastRankProfileUserId);
-    });
-  }
-
-  // 3) 화면 다른 곳 클릭하면 작은 메뉴 닫기
-  document.addEventListener("click", function(e) {
-    if (!menuEl || menuEl.style.display !== "block") return;
-
-    // 메뉴 내부 or 닉네임 다시 클릭이면 유지
-    if (e.target.closest("#rankProfileMenu")) return;
-    if (e.target.closest(".rank-user")) return;
-
-    menuEl.style.display = "none";
-  });
-
-  // 4) 팝업 바깥(어두운 배경) 클릭하면 닫기
-  if (overlay) {
-    overlay.addEventListener("click", function(e) {
-      if (e.target === overlay) {
-        closeOtherUserProfilePopup();
-      }
-    });
-  }
-
-  // 5) 닫기 버튼
-  if (closeBtn) {
-    closeBtn.addEventListener("click", function(e) {
-      e.stopPropagation();
-      closeOtherUserProfilePopup();
-    });
-  }
-})();
+  // 🧷 랭킹 닉네임은 inline onclick으로 프로필을 바로 엽니다.
   
 /* 랭킹 */
 function getRankingSnapshotTitleHtml(snap){
@@ -22425,6 +22364,15 @@ let mainRankingTab = "alltime";
 let rankingAllTimeCache = [];
 let rankingWeeklyCache = [];
 let rankingUsersCacheBound = false;
+let rankingUsersRefreshTimer = null;
+let onlinePresenceRefreshTimer = null;
+let onlinePresenceRef = null;
+let onlinePresenceOnValue = null;
+let rankingBattleLoaded = false;
+let rankingAllTimeListenRef = null;
+let rankingAllTimeOnValue = null;
+let rankingWeeklyListenRef = null;
+let rankingWeeklyOnValue = null;
 
 function setMainRankingTab(mode){
   mainRankingTab = (["weekly", "upgrade"].includes(mode)) ? mode : "alltime";
@@ -22532,36 +22480,112 @@ function renderMainRanking(){
   myRankEl.innerHTML = `내 랭킹: <b>${idx + 1}위</b> (${coloredLevel(Number(mine.weaponLv || 0))}, ${label}: ${formatDamageKoUnits(Number(mine.damage || 0))})`;
 }
 
+function normalizePublicUserRow(uid, d){
+  d = d || {};
+  return {
+    id: uid,
+    sword: Number(d.sword || 0),
+    updated: Number(d.updated || 0),
+    power: Number(d.power || 0),
+    duelWin: Number(d.duelWin || 0),
+    duelLose: Number(d.duelLose || 0),
+    weaponType: d.weaponType || "sword",
+    equippedTitle: d.equippedTitle || "",
+    reach30Count: Number(d.reach30Count || 0),
+    sessionId: d.sessionId || "",
+    sessionUpdatedAt: Number(d.sessionUpdatedAt || 0)
+  };
+}
+
+function setAllUsersCacheRows(rows){
+  const arr = Array.isArray(rows) ? rows.slice() : [];
+  arr.sort((a, b) => {
+    if (Number(b.sword || 0) !== Number(a.sword || 0)) return Number(b.sword || 0) - Number(a.sword || 0);
+    return Number(a.updated || 0) - Number(b.updated || 0);
+  });
+  allUsersCache = arr;
+  refreshUserListOverlayIfOpen();
+  renderOnlineUsersPanel();
+  if (mainRankingTab === "upgrade") renderMainRanking();
+}
+
+function loadUsersCacheOnce(){
+  return db.ref("users").once("value", s => {
+    const arr = [];
+    s.forEach(c => {
+      arr.push(normalizePublicUserRow(c.key, c.val() || {}));
+    });
+    setAllUsersCacheRows(arr);
+  }).catch(err => {
+    console.warn("users cache load failed", err);
+  });
+}
+
+function mergeOnlinePresenceRows(rows){
+  const byId = {};
+  (allUsersCache || []).forEach(u => { if (u && u.id) byId[String(u.id)] = Object.assign({}, u); });
+  const seen = new Set();
+
+  (rows || []).forEach(u => {
+    if (!u || !u.id) return;
+    const id = String(u.id);
+    seen.add(id);
+    byId[id] = Object.assign({}, byId[id] || {}, u);
+  });
+
+  Object.keys(byId).forEach(id => {
+    if (seen.has(id)) return;
+    const last = Number(byId[id].sessionUpdatedAt || 0);
+    if (last && Date.now() - last > 90000) {
+      byId[id].sessionId = "";
+      byId[id].sessionUpdatedAt = 0;
+    }
+  });
+
+  if (userId && currentSessionId) {
+    const id = String(userId);
+    byId[id] = Object.assign({}, byId[id] || {}, {
+      id,
+      sword: Number(sword || 0),
+      updated: Number(lastSavedSwordForUpdated || 0),
+      power: Number(power || 0),
+      duelWin: Number(duelWin || 0),
+      duelLose: Number(duelLose || 0),
+      weaponType: weaponType || "sword",
+      equippedTitle: equippedTitle || "",
+      reach30Count: Number(reach30Count || 0),
+      sessionId: currentSessionId,
+      sessionUpdatedAt: Date.now()
+    });
+  }
+
+  setAllUsersCacheRows(Object.values(byId));
+}
+
+function rebindOnlinePresenceListener(){
+  if (onlinePresenceRef && onlinePresenceOnValue) {
+    try { onlinePresenceRef.off("value", onlinePresenceOnValue); } catch(e) {}
+  }
+
+  const threshold = Date.now() - 90000;
+  onlinePresenceRef = db.ref("users").orderByChild("sessionUpdatedAt").startAt(threshold);
+  onlinePresenceOnValue = (s) => {
+    const arr = [];
+    s.forEach(c => {
+      arr.push(normalizePublicUserRow(c.key, c.val() || {}));
+    });
+    mergeOnlinePresenceRows(arr);
+  };
+  onlinePresenceRef.on("value", onlinePresenceOnValue);
+}
+
 function bindRankingUsersCache(){
   if (rankingUsersCacheBound) return;
   rankingUsersCacheBound = true;
-  db.ref("users").on("value", s => {
-    const arr = [];
-    s.forEach(c => {
-      const d = c.val() || {};
-      arr.push({
-        id: c.key,
-        sword: Number(d.sword || 0),
-        updated: Number(d.updated || 0),
-        power: Number(d.power || 0),
-        duelWin: Number(d.duelWin || 0),
-        duelLose: Number(d.duelLose || 0),
-        weaponType: d.weaponType || "sword",
-        equippedTitle: d.equippedTitle || "",
-        reach30Count: Number(d.reach30Count || 0),
-        sessionId: d.sessionId || "",
-        sessionUpdatedAt: Number(d.sessionUpdatedAt || 0)
-      });
-    });
-    arr.sort((a, b) => {
-      if (Number(b.sword || 0) !== Number(a.sword || 0)) return Number(b.sword || 0) - Number(a.sword || 0);
-      return Number(a.updated || 0) - Number(b.updated || 0);
-    });
-    allUsersCache = arr.slice();
-    refreshUserListOverlayIfOpen();
-    renderOnlineUsersPanel();
-    if (mainRankingTab === "upgrade") renderMainRanking();
-  });
+  loadUsersCacheOnce();
+  rebindOnlinePresenceListener();
+  rankingUsersRefreshTimer = setInterval(loadUsersCacheOnce, 60000);
+  onlinePresenceRefreshTimer = setInterval(rebindOnlinePresenceListener, 30000);
 }
 
 var RANKING_BATTLE_WEEKLY_REF = null;
@@ -22597,8 +22621,14 @@ function loadRanking() {
   bindRankingUsersCache();
 
   if (!ensureRankingBattleRefs()) return;
+  if (rankingBattleLoaded) {
+    setMainRankingTab(mainRankingTab);
+    return;
+  }
+  rankingBattleLoaded = true;
 
-  RANKING_BATTLE_ALLTIME_REF.on("value", s => {
+  rankingAllTimeListenRef = RANKING_BATTLE_ALLTIME_REF;
+  rankingAllTimeOnValue = s => {
     const arr = [];
     s.forEach(child => {
       const d = child.val() || {};
@@ -22616,10 +22646,12 @@ function loadRanking() {
     });
     rankingAllTimeCache = arr;
     renderMainRanking();
-  });
+  };
+  rankingAllTimeListenRef.on("value", rankingAllTimeOnValue);
 
   const weekKey = getRankingBattleWeekKey();
-  RANKING_BATTLE_WEEKLY_REF.child(String(weekKey || "")).on("value", s => {
+  rankingWeeklyListenRef = RANKING_BATTLE_WEEKLY_REF.child(String(weekKey || ""));
+  rankingWeeklyOnValue = s => {
     const arr = [];
     s.forEach(child => {
       const d = child.val() || {};
@@ -22637,7 +22669,8 @@ function loadRanking() {
     });
     rankingWeeklyCache = arr;
     renderMainRanking();
-  });
+  };
+  rankingWeeklyListenRef.on("value", rankingWeeklyOnValue);
 
   setMainRankingTab(mainRankingTab);
 }
@@ -23892,16 +23925,54 @@ let bossRunsClosedCache = {};   // { bossId: { runKey: runObj } }
 let bossCooldownCache = {};     // { bossId: { nextAt: ms } }
 var bossRunsUnsubscribed = true;
 let bossRunsClosedReadable = true;
+let bossRunsActiveHandlers = null;
+let bossCooldownHandlers = null;
+let bossRunStatusHandlers = {};
+let focusedBossRunRef = null;
+let focusedBossRunOnValue = null;
+let focusedBossRunId = "";
 
   // ✅ 계정 전환/재로그인 시 보스전 리스너를 강제로 다시 붙이기 위한 리셋
 function resetBossRunsSubscription(){
-  try { BOSS_RUNS_ACTIVE_REF.off(); } catch(e){}
-  try { BOSS_RUNS_CLOSED_REF.off(); } catch(e){}
-  try { BOSS_COOLDOWN_REF.off(); } catch(e){}
+  try {
+    if (bossRunsActiveHandlers) {
+      BOSS_RUNS_ACTIVE_REF.off("child_added", bossRunsActiveHandlers.added);
+      BOSS_RUNS_ACTIVE_REF.off("child_changed", bossRunsActiveHandlers.changed);
+      BOSS_RUNS_ACTIVE_REF.off("child_removed", bossRunsActiveHandlers.removed);
+    } else {
+      BOSS_RUNS_ACTIVE_REF.off();
+    }
+  } catch(e){}
+  try {
+    Object.keys(bossRunStatusHandlers || {}).forEach((bossId) => {
+      const h = bossRunStatusHandlers[bossId];
+      if (h) db.ref(`bossRunsActive/${bossId}/status`).off("value", h);
+    });
+  } catch(e){}
+  try {
+    if (focusedBossRunRef && focusedBossRunOnValue) {
+      focusedBossRunRef.off("value", focusedBossRunOnValue);
+    }
+  } catch(e){}
+  try {
+    if (bossCooldownHandlers) {
+      BOSS_COOLDOWN_REF.off("child_added", bossCooldownHandlers.added);
+      BOSS_COOLDOWN_REF.off("child_changed", bossCooldownHandlers.changed);
+      BOSS_COOLDOWN_REF.off("child_removed", bossCooldownHandlers.removed);
+    } else {
+      BOSS_COOLDOWN_REF.off();
+    }
+  } catch(e){}
   try { db.ref('.info/serverTimeOffset').off(); } catch(e){}
 
   bossServerClockBound = false;
   bossServerTimeOffsetMs = 0;
+  bossRunsActiveHandlers = null;
+  bossCooldownHandlers = null;
+  bossRunStatusHandlers = {};
+  focusedBossRunRef = null;
+  focusedBossRunOnValue = null;
+  focusedBossRunId = "";
   bossRunsUnsubscribed = true;
   bossRunsActiveCache = {};
   bossRunsClosedCache = {};
@@ -24146,12 +24217,19 @@ function setActiveBossBinding(bossId, runKey){
     if (activeBossRunKey) localStorage.setItem("pug_activeBossRunKey", activeBossRunKey);
     else localStorage.removeItem("pug_activeBossRunKey");
   } catch(e) {}
+  if (activeBossId) ensureFocusedBossRunSubscription(activeBossId);
   save();
 }
 function clearActiveBossBinding(){
   activeBossId = "";
   activeBossRunKey = "";
   try { localStorage.removeItem("pug_activeBossRunKey"); } catch(e) {}
+  if (focusedBossRunRef && focusedBossRunOnValue) {
+    try { focusedBossRunRef.off("value", focusedBossRunOnValue); } catch(e) {}
+  }
+  focusedBossRunRef = null;
+  focusedBossRunOnValue = null;
+  focusedBossRunId = "";
   save();
 }
 function autoClearStaleBossBinding(opts = {}){
@@ -24291,43 +24369,121 @@ function repairGuardianRunsOnLoad(cache){
   return;
 }
 
+function updateBossRunCacheAndRender(bossId, run){
+  bossId = String(bossId || "");
+  if (!bossId) return;
+  if (run) bossRunsActiveCache[bossId] = run;
+  else delete bossRunsActiveCache[bossId];
+
+  try { autoClearStaleBossBinding({ includeClosed: bossRunsClosedReadable }); } catch(e) { console.warn('autoClearStaleBossBinding(active) failed', e); }
+  startBossRunWatchdog();
+  refreshAdventureGuildAlert();
+  updateBossBattleBtn();
+
+  const bound = resolveMyBossRun({ includeClosed: true });
+  if (!bound && (activeBossId || activeBossRunKey || getStoredActiveBossRunKey())) clearActiveBossBinding();
+
+  renderAdventureGuildBossRuns();
+}
+
+function bindBossRunStatusLightweight(bossId){
+  bossId = String(bossId || "");
+  if (!bossId || bossRunStatusHandlers[bossId]) return;
+
+  const ref = db.ref(`bossRunsActive/${bossId}/status`);
+  const onValue = (snap) => {
+    const run = (bossRunsActiveCache || {})[bossId];
+    if (!run) return;
+    run.status = String(snap.val() || run.status || "");
+    updateBossRunCacheAndRender(bossId, run);
+  };
+
+  bossRunStatusHandlers[bossId] = onValue;
+  ref.on("value", onValue);
+}
+
+function unbindBossRunStatusLightweight(bossId){
+  bossId = String(bossId || "");
+  const h = bossRunStatusHandlers[bossId];
+  if (!bossId || !h) return;
+  try { db.ref(`bossRunsActive/${bossId}/status`).off("value", h); } catch(e) {}
+  delete bossRunStatusHandlers[bossId];
+}
+
+function ensureFocusedBossRunSubscription(bossId){
+  bossId = String(bossId || "");
+  if (!bossId) return;
+  if (focusedBossRunRef && focusedBossRunOnValue && focusedBossRunId === bossId) return;
+
+  if (focusedBossRunRef && focusedBossRunOnValue) {
+    try { focusedBossRunRef.off("value", focusedBossRunOnValue); } catch(e) {}
+  }
+
+  focusedBossRunId = bossId;
+  focusedBossRunRef = db.ref(`bossRunsActive/${bossId}`);
+  focusedBossRunOnValue = (snap) => {
+    const run = snap.val() || null;
+    updateBossRunCacheAndRender(bossId, run);
+    const ov = document.getElementById("bossBattleOverlay");
+    if (ov && ov.style.display !== "none") renderBossBattle();
+  };
+  focusedBossRunRef.on("value", focusedBossRunOnValue);
+}
+
 // ✅ 모험가길드 열릴 때 한번만 구독 시작
 function ensureBossRunsSubscription() {
   if (bossRunsUnsubscribed === false) return;
 
   bindBossServerClock();
   bossRunsUnsubscribed = false;
-  BOSS_RUNS_ACTIVE_REF.on("value", (snap) => {
-    bossRunsActiveCache = snap.val() || {};
-    try { autoClearStaleBossBinding({ includeClosed: bossRunsClosedReadable }); } catch(e) { console.warn('autoClearStaleBossBinding(active) failed', e); }
-    startBossRunWatchdog();
-    refreshAdventureGuildAlert();
-    updateBossBattleBtn();
 
-    const bound = resolveMyBossRun({ includeClosed: true });
-    if (!bound && (activeBossId || activeBossRunKey || getStoredActiveBossRunKey())) clearActiveBossBinding();
-
-    renderAdventureGuildBossRuns();
-  });
-
-  BOSS_RUNS_CLOSED_REF.on("value", (snap) => {
-    bossRunsClosedCache = snap.val() || {};
-    bossRunsClosedReadable = true;
-    try { autoClearStaleBossBinding({ includeClosed: true }); } catch(e) { console.warn('autoClearStaleBossBinding(closed) failed', e); }
-    const bound = resolveMyBossRun({ includeClosed: true });
-    if (!bound && (activeBossId || activeBossRunKey || getStoredActiveBossRunKey())) {
-      const live = resolveMyBossRun({ includeClosed: false });
-      if (!live) clearActiveBossBinding();
+  bossRunsActiveHandlers = {
+    added: (snap) => {
+      const bossId = String(snap.key || "");
+      updateBossRunCacheAndRender(bossId, snap.val() || {});
+      bindBossRunStatusLightweight(bossId);
+      if (String(activeBossId || "") === bossId) ensureFocusedBossRunSubscription(bossId);
+    },
+    changed: (snap) => {
+      // Full child changes are intentionally not subscribed below. Keep this for safe off() compatibility.
+    },
+    removed: (snap) => {
+      const bossId = String(snap.key || "");
+      unbindBossRunStatusLightweight(bossId);
+      updateBossRunCacheAndRender(bossId, null);
     }
-  }, (err) => {
-    bossRunsClosedReadable = false;
-    console.warn("bossRunsClosed read blocked by Firebase Rules", err);
+  };
+
+  BOSS_RUNS_ACTIVE_REF.on("child_added", bossRunsActiveHandlers.added);
+  BOSS_RUNS_ACTIVE_REF.on("child_removed", bossRunsActiveHandlers.removed);
+
+  fetchBoundClosedBossRunOnce().then(() => {
+    try { autoClearStaleBossBinding({ includeClosed: true }); } catch(e) { console.warn('autoClearStaleBossBinding(closed-once) failed', e); }
+    updateBossBattleBtn();
   });
 
-  BOSS_COOLDOWN_REF.on("value", (snap) => {
-    bossCooldownCache = snap.val() || {};
+  const refreshAfterCooldownChange = () => {
     renderAdventureGuildBossRuns();
-  });
+  };
+
+  bossCooldownHandlers = {
+    added: (snap) => {
+      bossCooldownCache[snap.key] = snap.val() || {};
+      refreshAfterCooldownChange();
+    },
+    changed: (snap) => {
+      bossCooldownCache[snap.key] = snap.val() || {};
+      refreshAfterCooldownChange();
+    },
+    removed: (snap) => {
+      delete bossCooldownCache[snap.key];
+      refreshAfterCooldownChange();
+    }
+  };
+
+  BOSS_COOLDOWN_REF.on("child_added", bossCooldownHandlers.added);
+  BOSS_COOLDOWN_REF.on("child_changed", bossCooldownHandlers.changed);
+  BOSS_COOLDOWN_REF.on("child_removed", bossCooldownHandlers.removed);
 
   setInterval(() => {
     const ov = document.getElementById("adventureGuildOverlay");
@@ -24684,6 +24840,7 @@ function openBossBattle(){
 
   restoreBossBattleOverlayUi();
   ov.style.display = "flex";
+  ensureFocusedBossRunSubscription(bossId);
   markBossBattleLogsSeenNow(bossId);
   document.getElementById("bossBattleBossImg")?.classList.add("boss-breathe");
   document.getElementById("bossBattleBossShadow")?.classList.add("boss-breathe-shadow");
@@ -34276,6 +34433,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   const EPIC_CHEST_OPEN_SRC = 'images/ui/epic_chest_open.png';
   let epicFieldCache = {};
   let epicFieldUnsubBound = false;
+  let epicFieldHandlers = null;
   let epicRenderTimer = null;
   function getCurrentEpicFieldId(){
     try {
@@ -34497,11 +34655,30 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function ensureEpicSubscription(){
     if (epicFieldUnsubBound) return;
     epicFieldUnsubBound = true;
-    EPIC_BY_FIELD_REF.on('value', snap => {
-      epicFieldCache = snap.val() || {};
+
+    const refreshEpicUi = () => {
       handleEpicStateTransitions();
       renderEpicOverlay();
-    });
+    };
+
+    epicFieldHandlers = {
+      added: snap => {
+        epicFieldCache[String(snap.key || '')] = snap.val() || {};
+        refreshEpicUi();
+      },
+      changed: snap => {
+        epicFieldCache[String(snap.key || '')] = snap.val() || {};
+        refreshEpicUi();
+      },
+      removed: snap => {
+        delete epicFieldCache[String(snap.key || '')];
+        refreshEpicUi();
+      }
+    };
+
+    EPIC_BY_FIELD_REF.on('child_added', epicFieldHandlers.added);
+    EPIC_BY_FIELD_REF.on('child_changed', epicFieldHandlers.changed);
+    EPIC_BY_FIELD_REF.on('child_removed', epicFieldHandlers.removed);
   }
 
   function handleEpicStateTransitions(){
