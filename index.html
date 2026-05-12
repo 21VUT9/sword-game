@@ -36740,40 +36740,61 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     if (!attackAllowed(run)) return;
     const phase = getPhase(run);
     const t = Date.now();
-    if (phase === "knight" && !(run.roderickDrawResolveAt && t < Number(run.roderickDrawResolveAt || 0))) return;
+    let shouldRecordGuard = false;
+    if (phase === "knight") {
+      shouldRecordGuard = !!(run.roderickDrawResolveAt && t < Number(run.roderickDrawResolveAt || 0));
+      if (!shouldRecordGuard) return;
+    }
     if (phase === "king") {
       const qteStartAt = Number(run.slashQteStartAt || run.slashCastAt || 0);
       const localQteStart = getLocalWraithQteStart(run.slashSeq);
-      const effectiveQteEnd = (localQteStart || qteStartAt) + WRAITH_SLASH_QTE_MS;
-      if (!run.slashActive || !qteStartAt || t < qteStartAt || !localQteStart || t > effectiveQteEnd) return;
+      const serverQteEnd = Number(run.slashQteEndAt || run.slashResolveAt || 0);
+      const effectiveQteEnd = localQteStart
+        ? localQteStart + WRAITH_SLASH_QTE_MS
+        : (serverQteEnd || (qteStartAt + WRAITH_SLASH_QTE_MS));
+      shouldRecordGuard = !!(run.slashActive && qteStartAt && t >= qteStartAt && t <= effectiveQteEnd);
     }
     const btn = document.getElementById("wraithGuardBtn");
     const last = Number(btn && btn.dataset.lastAt || 0);
     if (t - last < 3000) return;
     playWraithGuardSfx();
     startWraithButtonCooldown(btn, 3000);
-    db.ref(`bossRunsActive/${WRAITH_BOSS_ID}/members/${userId}`).transaction((m) => {
-      if (!m) return m;
-      if (phase === "knight" && run.roderickDrawResolveAt && now() < Number(run.roderickDrawResolveAt || 0)) {
-        m.guardedDrawSeq = Number(run.roderickDrawSeq || 0);
+    if (!shouldRecordGuard) return;
+    let localSlashGuard = false;
+    let localSlashParry = false;
+    let localParryDamage = 0;
+    if (phase === "king" && run.slashActive) {
+      const visualPct = getWraithSlashQteVisualPct();
+      const localQteStart = getLocalWraithQteStart(run.slashSeq);
+      const qteStart = localQteStart || Number(run.slashQteStartAt || run.slashCastAt || now());
+      const elapsed = Math.max(0, Date.now() - qteStart);
+      const qteDuration = localQteStart ? WRAITH_SLASH_QTE_MS : Math.max(1, Number(run.slashQteEndAt || run.slashResolveAt || now()) - qteStart);
+      const pct = visualPct == null ? (elapsed / qteDuration) : visualPct;
+      freezeWraithSlashQte(pct);
+      localSlashGuard = pct >= 1/3 && pct <= 2/3;
+      localSlashParry = pct >= 19/40 && pct <= 21/40;
+      if (localSlashParry) {
+        const base = Number(getPlayerFinalCombatStats().mainPower || 0) * Number(getBossPowerMultiplier(WRAITH_BOSS_ID, Number(sword || 0)) || 1);
+        localParryDamage = Math.floor(base * 5);
       }
-      if (phase === "king" && run.slashActive) {
-        const visualPct = getWraithSlashQteVisualPct();
-        const localQteStart = getLocalWraithQteStart(run.slashSeq);
-        const qteStart = localQteStart || Number(run.slashQteStartAt || run.slashCastAt || now());
-        if (visualPct == null && Date.now() < qteStart) return m;
-        const elapsed = Math.max(0, Date.now() - qteStart);
-        const qteDuration = localQteStart ? WRAITH_SLASH_QTE_MS : Math.max(1, Number(run.slashQteEndAt || run.slashResolveAt || now()) - qteStart);
-        const pct = visualPct == null ? (elapsed / qteDuration) : visualPct;
-        freezeWraithSlashQte(pct);
-        if (pct >= 1/3 && pct <= 2/3) m.slashGuardSeq = Number(run.slashSeq || 0);
-        if (pct >= 19/40 && pct <= 21/40) {
-          m.slashParrySeq = Number(run.slashSeq || 0);
-          const base = Number(getPlayerFinalCombatStats().mainPower || 0) * Number(getBossPowerMultiplier(WRAITH_BOSS_ID, Number(sword || 0)) || 1);
-          m.lastParryDamage = Math.floor(base * 5);
+    }
+    db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
+      if (!cur || String(cur.status || "") !== "active" || !cur.members || !cur.members[userId]) return;
+      const curPhase = String(cur.wraithPhase || "knight");
+      const m = cur.members[userId];
+      if (Number(m.hp || 0) <= 0) return;
+      if (curPhase === "knight" && cur.roderickDrawResolveAt && now() < Number(cur.roderickDrawResolveAt || 0)) {
+        m.guardedDrawSeq = Number(cur.roderickDrawSeq || 0);
+      }
+      if (curPhase === "king" && cur.slashActive && !cur.slashResolved && Number(cur.slashSeq || 0) === Number(run.slashSeq || 0)) {
+        if (localSlashGuard) m.slashGuardSeq = Number(cur.slashSeq || 0);
+        if (localSlashParry) {
+          m.slashParrySeq = Number(cur.slashSeq || 0);
+          m.lastParryDamage = localParryDamage;
         }
       }
-      return m;
+      cur.members[userId] = m;
+      return cur;
     });
   }
 
