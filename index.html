@@ -9208,6 +9208,7 @@ let ignoreNextUpgradeWarning = false;
 
 let activeBossId = "";
 let activeBossRunKey = "";
+let activeBossBindingSetAt = 0;
 try { activeBossRunKey = String(localStorage.getItem("pug_activeBossRunKey") || ""); } catch(e) {}
    
 // 🧮 사냥 스태미나 계산 (리셋 + 회복 처리)
@@ -24234,6 +24235,7 @@ function getStoredActiveBossRunKey(){
 function setActiveBossBinding(bossId, runKey){
   activeBossId = String(bossId || "");
   activeBossRunKey = String(runKey || "");
+  activeBossBindingSetAt = Date.now();
   try {
     if (activeBossRunKey) localStorage.setItem("pug_activeBossRunKey", activeBossRunKey);
     else localStorage.removeItem("pug_activeBossRunKey");
@@ -24244,6 +24246,7 @@ function setActiveBossBinding(bossId, runKey){
 function clearActiveBossBinding(){
   activeBossId = "";
   activeBossRunKey = "";
+  activeBossBindingSetAt = 0;
   try { localStorage.removeItem("pug_activeBossRunKey"); } catch(e) {}
   if (focusedBossRunRef && focusedBossRunOnValue) {
     try { focusedBossRunRef.off("value", focusedBossRunOnValue); } catch(e) {}
@@ -24263,6 +24266,8 @@ function autoClearStaleBossBinding(opts = {}){
   if (curId) {
     const activeRun = (bossRunsActiveCache || {})[curId];
     if (activeRun && isMyPendingBossRun(activeRun)) {
+      stillValid = true;
+    } else if (activeRun && isRecentlyBoundActiveBossRun(curId, activeRun)) {
       stillValid = true;
     } else if (includeClosed && bossRunsClosedReadable && curKey) {
       const closedRun = getClosedBossRun(curId, curKey);
@@ -24313,6 +24318,14 @@ function isMyPendingBossRun(run){
   const claimed = !!(run.claimed && run.claimed[userId]);
   return (st === "active" || st === "failed" || (st === "cleared" && !claimed));
 }
+function isRecentlyBoundActiveBossRun(bossId, run){
+  if (!bossId || !run || String(run.status || "") !== "active") return false;
+  if (String(activeBossId || "") !== String(bossId || "")) return false;
+  const liveKey = String(run.logKey || "");
+  const boundKey = String(activeBossRunKey || getStoredActiveBossRunKey() || "");
+  if (liveKey && boundKey && liveKey !== boundKey) return false;
+  return Date.now() - Number(activeBossBindingSetAt || 0) < 15000;
+}
 function resolveMyBossRun(opts = {}){
   const includeClosed = opts.includeClosed !== false;
   const curId = String(activeBossId || "");
@@ -24326,6 +24339,9 @@ function resolveMyBossRun(opts = {}){
         if (liveKey && liveKey !== activeBossRunKey) setActiveBossBinding(curId, liveKey);
         return { bossId: curId, run: activeRun, source: "active" };
       }
+    }
+    if (activeRun && isRecentlyBoundActiveBossRun(curId, activeRun)) {
+      return { bossId: curId, run: activeRun, source: "active-pending" };
     }
     if (includeClosed && bossRunsClosedReadable) {
       const closedRun = getClosedBossRun(curId, curKey);
@@ -24402,7 +24418,8 @@ function updateBossRunCacheAndRender(bossId, run){
   updateBossBattleBtn();
 
   const bound = resolveMyBossRun({ includeClosed: true });
-  if (!bound && (activeBossId || activeBossRunKey || getStoredActiveBossRunKey())) clearActiveBossBinding();
+  const currentRun = (activeBossId && bossRunsActiveCache) ? bossRunsActiveCache[String(activeBossId || "")] : null;
+  if (!bound && !isRecentlyBoundActiveBossRun(activeBossId, currentRun) && (activeBossId || activeBossRunKey || getStoredActiveBossRunKey())) clearActiveBossBinding();
 
   renderAdventureGuildBossRuns();
 }
@@ -26699,6 +26716,16 @@ function joinBossRun(bossId) {
     }
 
     const curMember = snap && snap.val ? snap.val() : null;
+    if (curMember) {
+      const cachedRun = (bossRunsActiveCache || {})[bossId];
+      if (cachedRun) {
+        cachedRun.members = cachedRun.members || {};
+        cachedRun.members[userId] = curMember;
+        updateBossRunCacheAndRender(bossId, cachedRun);
+      }
+      ensureFocusedBossRunSubscription(bossId);
+      updateBossBattleBtn();
+    }
     if (!committed && curMember) {
       setActiveBossBinding(bossId, targetRunKey);
       showNpcMessage(`이미 해당 토벌대에 참여 중입니다.
