@@ -1170,6 +1170,27 @@ button {
 
 #onlineUsersList{
   margin-top:8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,213,79,0.38) rgba(255,255,255,0.06);
+}
+
+#onlineUsersList::-webkit-scrollbar{
+  width:8px;
+}
+
+#onlineUsersList::-webkit-scrollbar-track{
+  background:rgba(255,255,255,0.05);
+  border-radius:999px;
+}
+
+#onlineUsersList::-webkit-scrollbar-thumb{
+  background:linear-gradient(180deg, rgba(255,213,79,0.72), rgba(255,138,76,0.48));
+  border:2px solid rgba(15,15,15,0.92);
+  border-radius:999px;
+}
+
+#onlineUsersList::-webkit-scrollbar-thumb:hover{
+  background:linear-gradient(180deg, rgba(255,226,118,0.90), rgba(255,158,92,0.66));
 }
 
 .online-user-row{
