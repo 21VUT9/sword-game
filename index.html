@@ -8928,6 +8928,7 @@ let lastAttendanceDay = "";   // 마지막 출석 날짜 (streak 전용)
 let maxSwordLevel = 0;   // 계정 전체 최고 강화 기록
 let destroyCount  = 0;   // 계정 전체 누적 파괴 횟수
 let currentSessionId = null;   // 🔐 이 브라우저 탭의 세션 ID
+let currentSessionClientId = null;
 // 🔐 현재 클라이언트가 로드한 최신 저장 버전
 let currentSaveVersion = 0;
 let pendingLocalSaveRestore = false;
@@ -9079,6 +9080,7 @@ let pendingLoginUserId = null;
 let loginGeneration = 0;
 let activeSessionWatchRef = null;
 let activeConnectedRef = null;
+let activePresenceConnectionRef = null;
 
 function nextLoginGeneration(){
   loginGeneration += 1;
@@ -9103,6 +9105,10 @@ function cleanupSessionBindings(){
   if (activeSessionWatchRef) {
     try { activeSessionWatchRef.off(); } catch(e) {}
     activeSessionWatchRef = null;
+  }
+  if (activePresenceConnectionRef) {
+    try { activePresenceConnectionRef.onDisconnect().cancel(); } catch(e) {}
+    activePresenceConnectionRef = null;
   }
   if (rankingUsersRefreshTimer) {
     clearInterval(rankingUsersRefreshTimer);
@@ -10680,6 +10686,8 @@ function logout() {
 function performLogoutNow() {
   const prevUserRef = userRef;
   const prevUserId = userId;
+  const prevSessionId = currentSessionId;
+  const prevSessionClientId = currentSessionClientId;
   nextLoginGeneration();
   cleanupSessionBindings();
   isSwitchingAccount = false;
@@ -10691,14 +10699,16 @@ function performLogoutNow() {
 
 
   // 🔐 서버에 남아있는 세션ID 제거
-if (prevUserId && typeof db !== "undefined" && db) {
-  db.ref("presence/" + String(prevUserId)).remove();
+if (prevUserId && prevSessionId && typeof db !== "undefined" && db) {
+  removePresenceIfOwned(prevUserId, prevSessionId, prevSessionClientId);
+  db.ref("presenceConnections/" + String(prevUserId) + "/" + String(prevSessionId)).remove();
 }
 if (prevUserId) {
   clearLocalSessionId(prevUserId);
 }
 
 currentSessionId = null;
+currentSessionClientId = null;
 staleSessionReloadPending = false;
 pendingLoginUserId = null;
 pendingLoginData = null;
@@ -11208,7 +11218,11 @@ function startSession(ctx) {
     setLocalSessionId(sessionUid, sid);
   }
   currentSessionId = sid;
+  currentSessionClientId = Date.now() + "_" + Math.random().toString(36).slice(2);
   mergeOnlinePresenceRows([]);
+  activePresenceConnectionRef = db.ref("presenceConnections/" + sessionUid + "/" + sid);
+  activePresenceConnectionRef.set({ connectedAt: Date.now() }).catch(() => {});
+  activePresenceConnectionRef.onDisconnect().remove().catch(() => {});
 
   // ✅ sessionId + 하트비트 기록
   sessionRef.update(buildPresenceSnapshot(sessionUid));
@@ -11235,7 +11249,7 @@ function startSession(ctx) {
   });
 
   // ✅ 이 탭이 끊기면 session 정보 정리
-  sessionRef.onDisconnect().remove();
+  try { sessionRef.onDisconnect().cancel(); } catch(e) {}
 
   resetBossRunsSubscription();
   ensureBossRunsSubscription();
@@ -11246,18 +11260,21 @@ function startSession(ctx) {
 
 // ✅ 내 sessionId가 "다른 값"으로 바뀐 경우에만 튕김(같은 세션은 유지)
 function watchSessionId(uid, mySessionId, sessionGen) {
-  const ref = db.ref("presence/" + uid + "/sessionId");
+  const myClientId = String(currentSessionClientId || "");
+  const ref = db.ref("presence/" + uid);
   activeSessionWatchRef = ref;
 
   ref.on("value", (snap) => {
     if (isLoginContextStale(sessionGen, uid)) return;
-    const cur = snap.val();
+    const curData = snap.val();
+    const cur = (curData && typeof curData === "object") ? String(curData.sessionId || "") : String(curData || "");
+    const curClientId = (curData && typeof curData === "object") ? String(curData.clientId || "") : "";
 
     // sessionId가 비는 건(모바일 순간 끊김) 허용
     if (!cur) return;
 
     // 다른 값이면 다른 곳에서 접속한 것
-    if (cur !== mySessionId) {
+    if (cur !== mySessionId || (curClientId && myClientId && curClientId !== myClientId)) {
       if (isLoginContextStale(sessionGen, uid)) return;
       console.warn("[SESSION] 다른 곳에서 접속하여 로그아웃 처리");
 
@@ -11289,9 +11306,26 @@ function getPresenceRef(uid){
   return db.ref("presence/" + String(uid));
 }
 
+function removePresenceIfOwned(uid, sid, clientId){
+  uid = String(uid || "");
+  sid = String(sid || "");
+  clientId = String(clientId || "");
+  if (!uid || !sid || typeof db === "undefined" || !db) return Promise.resolve(false);
+  return db.ref("presence/" + uid).transaction(cur => {
+    if (!cur) return cur;
+    if (String(cur.sessionId || "") !== sid) return;
+    if (clientId && String(cur.clientId || "") && String(cur.clientId || "") !== clientId) return;
+    return null;
+  }).then(res => !!(res && res.committed)).catch(e => {
+    console.warn("presence owned-remove failed", e);
+    return false;
+  });
+}
+
 function buildPresenceSnapshot(uid){
   return {
     sessionId: String(currentSessionId || ""),
+    clientId: String(currentSessionClientId || ""),
     sessionUpdatedAt: Date.now(),
     nickname: String(uid || userId || ""),
     equippedTitle: String(equippedTitle || ""),
@@ -11365,8 +11399,37 @@ function hasDifferentActivePresenceSession(uid, mySessionId){
   return fetchActivePresence(uid).then(p => {
     if (!p) return false;
     const sid = String(p.sessionId || "");
-    return !!(sid && sid !== String(mySessionId || ""));
+    const clientId = String(p.clientId || "");
+    const myClientId = String(currentSessionClientId || "");
+    return !!(
+      (sid && sid !== String(mySessionId || "")) ||
+      (sid && sid === String(mySessionId || "") && clientId && myClientId && clientId !== myClientId)
+    );
   }).catch(() => false);
+}
+
+function isLikelyPageReload(){
+  try {
+    const nav = performance && performance.getEntriesByType ? performance.getEntriesByType("navigation")[0] : null;
+    if (nav && nav.type) return nav.type === "reload";
+    if (performance && performance.navigation) return performance.navigation.type === 1;
+  } catch(e) {}
+  return false;
+}
+
+function shouldBlockLoginForActiveSession(activeSession, uid){
+  if (!activeSession || isSessionStale(activeSession)) return false;
+  const activeSid = String(activeSession.sessionId || "");
+  if (!activeSid) return false;
+  const localSid = getLocalSessionId(uid || userId || "");
+  if (!currentSessionId && localSid && activeSid === String(localSid) && isLikelyPageReload()) return false;
+  if (!currentSessionId) return true;
+  const mySid = String(currentSessionId || "");
+  const myClientId = String(currentSessionClientId || "");
+  const activeClientId = String(activeSession.clientId || "");
+  if (activeSid !== mySid) return true;
+  if (activeClientId && myClientId && activeClientId !== myClientId) return true;
+  return false;
 }
 
 let onlineUsersRenderTimer = null;
@@ -19694,18 +19757,12 @@ function login() {
       // - 같은 기기 새로고침(같은 sessionId)이면 통과
       // - 하트비트 끊긴 죽은 세션이면 통과(자동 복구)
       const activeSession = activePresence || (data.sessionId && !isSessionStale(data) ? data : null);
-      if (activeSession) {
-        const mySid = getLocalSessionId(loginUid);
-        const activeSid = String(activeSession.sessionId || "");
-        const isSameDeviceSession = !!(mySid && activeSid && activeSid === mySid);
-
-        if (!isSameDeviceSession) {
-          pendingLoginUserId = loginUid;
-          pendingLoginData = Object.assign({}, data, activeSession);
-          abortLoginTransition();
-          showAlreadyOnlinePopup(loginUid, activeSession);
-          return;
-        }
+      if (shouldBlockLoginForActiveSession(activeSession, loginUid)) {
+        pendingLoginUserId = loginUid;
+        pendingLoginData = Object.assign({}, data, activeSession);
+        abortLoginTransition();
+        showAlreadyOnlinePopup(loginUid, activeSession);
+        return;
       }
 
       if (data.password !== loginPassword) {
@@ -21988,16 +22045,10 @@ window.questState = questState;
         // 🔐 이미 다른 곳에서 접속 중이면: 자동로그인도 팝업으로 처리
 // 🔐 자동로그인도 동일 규칙 적용
 const activeSession = activePresence || (data.sessionId && !isSessionStale(data) ? data : null);
-if (activeSession) {
-  const mySid = getLocalSessionId(userId);
-  const activeSid = String(activeSession.sessionId || "");
-  const isSameDeviceSession = !!(mySid && activeSid && activeSid === mySid);
-
-  if (!isSameDeviceSession) {
-    abortLoginTransition();
-    showAlreadyOnlinePopup(userId, activeSession);
-    return;
-  }
+if (shouldBlockLoginForActiveSession(activeSession, userId)) {
+  abortLoginTransition();
+  showAlreadyOnlinePopup(userId, activeSession);
+  return;
 }
 
     sword = data.sword ?? 0;
@@ -22728,6 +22779,7 @@ function buildMyOnlinePresenceRow(){
     equippedTitle: equippedTitle || "",
     reach30Count: Number(reach30Count || 0),
     sessionId: currentSessionId,
+    clientId: currentSessionClientId || "",
     sessionUpdatedAt: Date.now()
   };
 }
