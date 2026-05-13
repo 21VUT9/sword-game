@@ -36221,7 +36221,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       #bossBattleOverlay.wraith-active #bossBattleBg{opacity:1 !important; filter:none !important; transition:none !important;}
       .wraith-vignette::after{display:none !important; content:none !important;}
       .wraith-sprite-canvas{position:absolute; left:50%; top:52%; width:min(840px,110.4%); height:auto; aspect-ratio:1/1; transform:translate(-50%,-55%); z-index:38; pointer-events:none; image-rendering:auto; filter:drop-shadow(0 0 18px rgba(255,255,255,.18));}
-      .wraith-sprite-canvas.slash{top:57%; width:min(1092px,143.52%); transform:translate(-50%,-50%);}
+      .wraith-sprite-canvas.slash{top:55%; width:min(1092px,143.52%); transform:translate(-50%,-50%);}
       .wraith-sprite-canvas.summon{top:57%; width:min(1008px,132.48%); transform:translate(-50%,-50%);}
       .wraith-sprite-canvas.counter-phys{filter:drop-shadow(0 0 18px rgba(255,255,255,.18)) drop-shadow(0 0 28px rgba(255,54,54,.98)) drop-shadow(0 0 58px rgba(255,0,0,.55));}
       .wraith-sprite-canvas.counter-magic{filter:drop-shadow(0 0 18px rgba(255,255,255,.18)) drop-shadow(0 0 28px rgba(80,160,255,.98)) drop-shadow(0 0 58px rgba(40,100,255,.55));}
@@ -37302,6 +37302,15 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       const frameDuration = cfg.duration / Math.max(1, cfg.frames);
       const frame = Math.min(cfg.frames - 1, Math.floor(elapsed / frameDuration));
       drawFrame(frame);
+      if (canvas.dataset.started !== "1") {
+        canvas.dataset.started = "1";
+        if (cfg.type === "slash") {
+          requestAnimationFrame(() => {
+            const latest = getRun();
+            if (latest && Number(latest.slashHitAt || 0) === Number(cfg.startedAt || 0)) renderWraithBattle();
+          });
+        }
+      }
       if (elapsed >= cfg.duration) {
         removeWraithSpriteSheet();
         return;
@@ -37309,6 +37318,24 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       canvas.dataset.raf = String(requestAnimationFrame(draw));
     };
     if (!canvas.dataset.raf) canvas.dataset.raf = String(requestAnimationFrame(draw));
+  }
+
+  function isWraithSlashSpriteStarted(run){
+    const slashAt = Number(run && run.slashHitAt || 0);
+    if (!slashAt) return false;
+    const canvas = document.getElementById("wraithSpriteCanvas");
+    return !!(canvas && canvas.dataset.key === `slash_${slashAt}` && canvas.dataset.started === "1");
+  }
+
+  function scheduleWraithFeedbackRetry(delay){
+    const layer = document.getElementById("bossFxLayer");
+    if (!layer || layer.dataset.feedbackRetry === "1") return;
+    layer.dataset.feedbackRetry = "1";
+    setTimeout(() => {
+      delete layer.dataset.feedbackRetry;
+      const latest = getRun();
+      if (latest) renderWraithBattle();
+    }, Math.max(30, Number(delay || 80)));
   }
 
   function updateLocalFeedback(run){
@@ -37334,6 +37361,16 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     checks.forEach(([field, text, kind, ms, shake]) => {
       const v = Number(m[field] || 0);
       if (!v || seen[field] === v) return;
+      const slashAt = Number(run.slashHitAt || 0);
+      const isSlashFeedback = slashAt
+        && (field === "lastGuardFailAt" || field === "lastGuardSuccessAt" || field === "lastParrySuccessAt")
+        && v >= slashAt - 500
+        && v <= slashAt + 3000;
+      if (isSlashFeedback && !isWraithSlashSpriteStarted(run) && now() < slashAt + 1200) {
+        renderWraithSpriteSheet(run);
+        scheduleWraithFeedbackRetry(80);
+        return;
+      }
       seen[field] = v;
       if (shake) {
         const shakeEl = document.getElementById("bossBattleOverlay") || document.body;
@@ -37653,7 +37690,6 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     updateMyHpShape(run);
     refreshWraithHuntHeader();
     maybeHandleWraithSkills(run);
-    updateLocalFeedback(run);
 
     const phase = getPhase(run);
     const st = String(run.status || "active");
@@ -37747,6 +37783,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     renderWraithQte(run);
     renderWraithSlashWarning(run);
     renderWraithSpriteSheet(run);
+    updateLocalFeedback(run);
     renderWraithGateMessage(run);
     renderWraithIntroLockMessage(run);
     maybePlayWraithIntro(run);
@@ -37905,7 +37942,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const layer = document.getElementById("bossFxLayer");
     if (!layer) return;
     let msg = document.getElementById("wraithIntroLockMsg");
-    if (!isWraithKingIntroLocked(run)) { if (msg) msg.remove(); return; }
+    if (!isWraithKingIntroLocked(run) || document.getElementById("wraithIntroVideo")) { if (msg) msg.remove(); return; }
     if (!msg) {
       msg = document.createElement("div");
       msg.id = "wraithIntroLockMsg";
@@ -37938,6 +37975,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       </video>
     `;
     layer.appendChild(wrap);
+    document.getElementById("wraithIntroLockMsg")?.remove();
     const v = wrap.querySelector("video");
     let playbackStarted = false;
     const done = (markSeen) => {
