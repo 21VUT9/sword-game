@@ -11208,15 +11208,18 @@ function startSession(ctx) {
     setLocalSessionId(sessionUid, sid);
   }
   currentSessionId = sid;
+  mergeOnlinePresenceRows([]);
 
   // ✅ sessionId + 하트비트 기록
   sessionRef.update(buildPresenceSnapshot(sessionUid));
+  mergeOnlinePresenceRows([]);
 
   // ✅ 하트비트(죽은 세션 판별용)
   sessionPingTimer = setInterval(() => {
     if (isLoginContextStale(sessionGen, sessionUid)) return;
     if (!currentSessionId) return;
     sessionRef.update(buildPresenceSnapshot(sessionUid));
+    touchMyOnlinePresenceLocal();
   }, 15000);
 
   watchSessionId(sessionUid, currentSessionId, sessionGen);
@@ -11227,6 +11230,7 @@ function startSession(ctx) {
     if (isLoginContextStale(sessionGen, sessionUid)) return;
     if (snap.val() === true && currentSessionId) {
       sessionRef.update(buildPresenceSnapshot(sessionUid));
+      mergeOnlinePresenceRows([]);
     }
   });
 
@@ -11368,6 +11372,7 @@ function hasDifferentActivePresenceSession(uid, mySessionId){
 let onlineUsersRenderTimer = null;
 
 function getOnlineUsersForPanel(){
+  touchMyOnlinePresenceLocal();
   const now = Date.now();
   const src = Array.isArray(allUsersCache) ? allUsersCache : [];
   return src
@@ -21350,9 +21355,11 @@ function openBossRewardOverlay(){
   }
 
   const members = run.members || {};
-  const arr = Object.keys(members).map(uid => ({
+  const damageByUser = run.damageByUser || {};
+  const memberIds = new Set([].concat(Object.keys(members), Object.keys(damageByUser)));
+  const arr = Array.from(memberIds).map(uid => ({
     uid,
-    dmg: Number(members[uid] && members[uid].dmg ? members[uid].dmg : 0),
+    dmg: getBossMemberDamage(run, uid),
     nick: (members[uid] && members[uid].nick) ? members[uid].nick : uid,
     title: (members[uid] && members[uid].title) ? members[uid].title : ""
   }));
@@ -22702,10 +22709,44 @@ function loadUsersCacheOnce(){
     s.forEach(c => {
       arr.push(normalizePublicUserRow(c.key, c.val() || {}));
     });
-    setAllUsersCacheRows(arr);
+    mergePublicUserRows(arr);
   }).catch(err => {
     console.warn("users cache load failed", err);
   });
+}
+
+function buildMyOnlinePresenceRow(){
+  if (!userId || !currentSessionId) return null;
+  return {
+    id: String(userId),
+    sword: Number(sword || 0),
+    updated: Number(lastSavedSwordForUpdated || 0),
+    power: Number(power || 0),
+    duelWin: Number(duelWin || 0),
+    duelLose: Number(duelLose || 0),
+    weaponType: weaponType || "sword",
+    equippedTitle: equippedTitle || "",
+    reach30Count: Number(reach30Count || 0),
+    sessionId: currentSessionId,
+    sessionUpdatedAt: Date.now()
+  };
+}
+
+function touchMyOnlinePresenceLocal(){
+  const row = buildMyOnlinePresenceRow();
+  if (!row) return;
+  const id = String(row.id);
+  let found = false;
+  const arr = Array.isArray(allUsersCache) ? allUsersCache : [];
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i] && String(arr[i].id || "") === id) {
+      arr[i] = Object.assign({}, arr[i], row);
+      found = true;
+      break;
+    }
+  }
+  if (!found) arr.push(row);
+  allUsersCache = arr;
 }
 
 function mergeOnlinePresenceRows(rows){
@@ -22729,21 +22770,10 @@ function mergeOnlinePresenceRows(rows){
     }
   });
 
-  if (userId && currentSessionId) {
-    const id = String(userId);
-    byId[id] = Object.assign({}, byId[id] || {}, {
-      id,
-      sword: Number(sword || 0),
-      updated: Number(lastSavedSwordForUpdated || 0),
-      power: Number(power || 0),
-      duelWin: Number(duelWin || 0),
-      duelLose: Number(duelLose || 0),
-      weaponType: weaponType || "sword",
-      equippedTitle: equippedTitle || "",
-      reach30Count: Number(reach30Count || 0),
-      sessionId: currentSessionId,
-      sessionUpdatedAt: Date.now()
-    });
+  const myRow = buildMyOnlinePresenceRow();
+  if (myRow) {
+    const id = String(myRow.id);
+    byId[id] = Object.assign({}, byId[id] || {}, myRow);
   }
 
   setAllUsersCacheRows(Object.values(byId));
@@ -22780,7 +22810,10 @@ function rebindOnlinePresenceListener(){
     });
     mergeOnlinePresenceRows(arr);
   };
-  onlinePresenceRef.on("value", onlinePresenceOnValue);
+  onlinePresenceRef.on("value", onlinePresenceOnValue, (err) => {
+    console.warn("presence listener unavailable, using local session fallback", err);
+    mergeOnlinePresenceRows([]);
+  });
 }
 
 function bindUpgradeRankingCache(){
@@ -22798,7 +22831,6 @@ function bindUpgradeRankingCache(){
     upgradeRankingCache = arr;
     mergePublicUserRows(arr);
     if (!arr.length) {
-      if (typeof loadUsersCacheOnce === "function") loadUsersCacheOnce();
       loadUsersCacheOnce().then(() => {
         if (mainRankingTab === "upgrade") renderMainRanking();
       });
@@ -24619,13 +24651,45 @@ function repairGuardianRunsOnLoad(cache){
   return;
 }
 
+const TOTAL_DAMAGE_DERIVED_HP_EXCLUDED_BOSSES = new Set([
+  "frost_queen",
+  "guardian_knight",
+  "dawn_twin_knights",
+  "wraith_king"
+]);
+
+function shouldUseTotalDamageDisplayHp(bossId, run){
+  bossId = String(bossId || "");
+  if (!bossId || !run || typeof run !== "object") return false;
+  if (TOTAL_DAMAGE_DERIVED_HP_EXCLUDED_BOSSES.has(bossId)) return false;
+  return Number(run.maxHp || 0) > 0 && Number(run.totalDamage || 0) > 0;
+}
+
+function getBossDisplayMaxHp(bossId, run){
+  return Math.max(1, Number(run && run.maxHp || 1));
+}
+
+function getBossDisplayHp(bossId, run){
+  if (!run || typeof run !== "object") return 0;
+  if (shouldUseTotalDamageDisplayHp(bossId, run)) {
+    return Math.max(0, getBossDisplayMaxHp(bossId, run) - Math.max(0, Number(run.totalDamage || 0)));
+  }
+  return Math.max(0, Number(run.hp || 0));
+}
+
+function getBossMemberDamage(run, uid){
+  if (!run || !uid) return 0;
+  uid = String(uid);
+  const memberDmg = Number(run.members && run.members[uid] && run.members[uid].dmg || 0);
+  const indexedDmg = Number(run.damageByUser && run.damageByUser[uid] || 0);
+  return Math.max(0, memberDmg, indexedDmg);
+}
+
 function applyDerivedBossDamageState(bossId, run){
   if (!run || typeof run !== "object") return run;
-  if (String(bossId || "") === "frost_queen") return run;
-  const maxHp = Number(run.maxHp || 0);
-  const totalDamage = Math.max(0, Number(run.totalDamage || 0));
-  if (maxHp > 0 && totalDamage > 0) {
-    run.hp = Math.max(0, maxHp - totalDamage);
+  if (TOTAL_DAMAGE_DERIVED_HP_EXCLUDED_BOSSES.has(String(bossId || ""))) return run;
+  if (shouldUseTotalDamageDisplayHp(bossId, run)) {
+    run.hp = getBossDisplayHp(bossId, run);
     if (run.hp <= 0 && String(run.status || "") === "active") {
       run.status = "cleared";
     }
@@ -25500,8 +25564,8 @@ function openBossBattleHelp(){
 
   // 보스 스탯(0인 항목은 표시 안 함)
   const stats = (typeof getBossBattleStats === "function") ? (getBossBattleStats(bossId) || {}) : {};
-  const hp    = Math.max(0, Number(run.hp || 0));
-  const maxHp = Math.max(1, Number(run.maxHp || 1));
+  const hp    = getBossDisplayHp(bossId, run);
+  const maxHp = getBossDisplayMaxHp(bossId, run);
 
   const bossLines = [];
   bossLines.push(`• 체력: <b>${formatBossHpShort(hp)}</b> / ${formatBossHpShort(maxHp)}`);
@@ -25780,18 +25844,21 @@ if (partyEl) {
   partyEl.style.overflowY = "auto";
 
   const members = run.members || {};
-  const hpDealt = Math.max(0, Number(run.maxHp || 0) - Number(run.hp || 0));
+  const displayHp = getBossDisplayHp(bossId, run);
+  const displayMaxHp = getBossDisplayMaxHp(bossId, run);
+  const hpDealt = Math.max(0, displayMaxHp - displayHp);
 const shieldMax = Math.max(0, Number(run.shieldMax || 0));
 const shieldHp  = Math.max(0, Number(run.shieldHp || 0));
 const shieldDealt = (shieldMax > 0) ? Math.max(0, shieldMax - shieldHp) : 0;
+const indexedTotalDamage = shouldUseTotalDamageDisplayHp(bossId, run) ? Math.max(0, Number(run.totalDamage || 0)) : 0;
 
-const totalDamage = Math.max(1, hpDealt + shieldDealt);
+const totalDamage = Math.max(1, indexedTotalDamage, hpDealt + shieldDealt);
 
   // 멤버 배열화
   let arr = Object.values(members).map(m => {
     const uid = String((m && m.uid) || "");
     const nick = String((m && m.nick) || "???");
-    const dmg = Number((m && m.dmg) || 0);
+    const dmg = getBossMemberDamage(run, uid);
 
     // ✅ 새로 추가한 표기용 스냅샷(없을 수도 있으니 fallback)
     const titleId = String((m && m.titleId) || "");
@@ -25861,8 +25928,8 @@ const totalDamage = Math.max(1, hpDealt + shieldDealt);
 renderBossBattleLogs();
   
   // HP
-  const hp = Math.max(0, Number(run.hp || 0));
-  const maxHp = Math.max(1, Number(run.maxHp || 1));
+  const hp = getBossDisplayHp(bossId, run);
+  const maxHp = getBossDisplayMaxHp(bossId, run);
   const ratio = Math.max(0, Math.min(1, hp / maxHp));
 
   const fillWrap = document.getElementById("bossHpFillWrap");
@@ -26388,8 +26455,8 @@ function calcBossAttackResult(bossId){
     // ✅ 각인: 보스 체력 조건 딜 보너스(100% 첫타 / 1% 이하 막타)
   try {
     const run = (bossRunsActiveCache || {})[bossId];
-    const hpNow = Number(run && run.hp != null ? run.hp : 0);
-    const hpMax = Number(run && run.maxHp != null ? run.maxHp : 0);
+    const hpNow = getBossDisplayHp(bossId, run);
+    const hpMax = getBossDisplayMaxHp(bossId, run);
 
     if (hpMax > 0) {
       // 100%일 때 첫타격 +500% → (1 + 5.00) = 6배
@@ -26695,7 +26762,7 @@ const bossDamageBatchState = {};
 function canUseBatchedBossDamage(bossId, run){
   bossId = String(bossId || "");
   if (!bossId || !run || String(run.status || "") !== "active") return false;
-  if (bossId === "frost_queen" || bossId === "guardian_knight" || bossId === "dawn_twin_knights" || bossId === "wraith_king") return false;
+  if (TOTAL_DAMAGE_DERIVED_HP_EXCLUDED_BOSSES.has(bossId)) return false;
   if (!run.members || !run.members[userId]) return false;
   return Number(run.maxHp || 0) > 0;
 }
