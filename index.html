@@ -32877,9 +32877,9 @@ function ensureBossCooldownResetByRun(bossId, runLike){
     const shieldModeNow = String(run.shieldMode || '');
     let displayDmg = dmg;
     const shieldMatchesWeaponNow = (shieldModeNow === 'magic' && isMagic) || (shieldModeNow === 'physical' && !isMagic);
-    if (!result.isMiss && shieldHpNow > 0 && shieldMatchesWeaponNow) {
+    if (!result.isMiss && shieldHpNow > 0) {
       // 보호막 타입과 공격 타입이 맞을 때만 10% 데미지 표시
-      displayDmg = Math.max(1, Math.floor(dmg * 0.1));
+      displayDmg = shieldMatchesWeaponNow ? Math.max(1, Math.floor(dmg * 0.1)) : dmg;
     }
 
     const useWeaponMeleeFx = !result.isMiss
@@ -32906,17 +32906,11 @@ function ensureBossCooldownResetByRun(bossId, runLike){
 
       if (shieldHp > 0) {
         const shieldMatchesWeapon = (shieldMode === 'magic' && isMagic) || (shieldMode === 'physical' && !isMagic);
-        if (shieldMatchesWeapon) {
-          // 보호막 타입과 공격 타입이 맞을 때만 10% 데미지만 보호막에 적용하고 HP에는 넘기지 않는다.
-          const shieldDamage = Math.max(1, Math.floor(dmg * 0.1));
-          const toShield = Math.min(shieldHp, shieldDamage);
-          shieldHp -= toShield;
-          cur.shieldHp = shieldHp;
-          applied = toShield; // 기록용 데미지 (보호막에 적용된 실제 데미지)
-        } else {
-          // 반대 타입 공격은 보호막에 막히지 않고 본체에 정상 적용된다.
-          hp = Math.max(0, hp - applied);
-        }
+        const shieldDamage = shieldMatchesWeapon ? Math.max(1, Math.floor(dmg * 0.1)) : dmg;
+        const toShield = Math.min(shieldHp, shieldDamage);
+        shieldHp -= toShield;
+        cur.shieldHp = shieldHp;
+        applied = toShield;
       } else {
         // 보호막이 없을 때는 정상 데미지로 체력을 깎음
         hp = Math.max(0, hp - applied);
