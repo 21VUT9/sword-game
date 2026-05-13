@@ -11235,6 +11235,9 @@ function startSession(ctx) {
 
   resetBossRunsSubscription();
   ensureBossRunsSubscription();
+  if (typeof bindRankingUsersCache === "function") {
+    bindRankingUsersCache();
+  }
 }
 
 // ✅ 내 sessionId가 "다른 값"으로 바뀐 경우에만 튕김(같은 세션은 유지)
@@ -11351,6 +11354,15 @@ function fetchActivePresence(uid){
     if (v && !isSessionStale(v)) return v;
     return null;
   }).catch(() => null);
+}
+
+function hasDifferentActivePresenceSession(uid, mySessionId){
+  if (!uid || !mySessionId) return Promise.resolve(false);
+  return fetchActivePresence(uid).then(p => {
+    if (!p) return false;
+    const sid = String(p.sessionId || "");
+    return !!(sid && sid !== String(mySessionId || ""));
+  }).catch(() => false);
 }
 
 let onlineUsersRenderTimer = null;
@@ -19639,7 +19651,10 @@ function login() {
 
   const loginRef = db.ref("users/" + loginUid);
 
-  loginRef.once("value").then(s => {
+  Promise.all([
+    loginRef.once("value"),
+    fetchActivePresence(loginUid)
+  ]).then(([s, activePresence]) => {
     if (isLoginContextStale(attemptGen, loginUid, false)) return;
 
     // ✅ (신규 계정) 서버에 올라와 있는 최신 +30 이벤트를 읽어서 "이미 본 것"으로 저장
@@ -19673,17 +19688,17 @@ function login() {
       // 🔐 이미 다른 곳에서 접속 중이면: "살아있는" 다른 세션만 막기
       // - 같은 기기 새로고침(같은 sessionId)이면 통과
       // - 하트비트 끊긴 죽은 세션이면 통과(자동 복구)
-      if (data.sessionId) {
+      const activeSession = activePresence || (data.sessionId && !isSessionStale(data) ? data : null);
+      if (activeSession) {
         const mySid = getLocalSessionId(loginUid);
+        const activeSid = String(activeSession.sessionId || "");
+        const isSameDeviceSession = !!(mySid && activeSid && activeSid === mySid);
 
-        const isSameDeviceSession = (mySid && data.sessionId === mySid);
-        const isDead = isSessionStale(data);
-
-        if (!isSameDeviceSession && !isDead) {
+        if (!isSameDeviceSession) {
           pendingLoginUserId = loginUid;
-          pendingLoginData = data;
+          pendingLoginData = Object.assign({}, data, activeSession);
           abortLoginTransition();
-          showAlreadyOnlinePopup(loginUid, data);
+          showAlreadyOnlinePopup(loginUid, activeSession);
           return;
         }
       }
@@ -20288,26 +20303,49 @@ function save(options = {}) {
   markSaveRequestStarted();
 
   if (fastSave) {
-    return Promise.all([
-      saveRef.update(updateData),
-      syncPublicUserIndexes(saveUid, updateData, true)
-    ]).then(() => {
-      if (sword !== lastSavedSwordForUpdated) {
-        lastSavedSwordForUpdated = sword;
+    return hasDifferentActivePresenceSession(saveUid, mySessionId).then((mismatch) => {
+      if (mismatch) {
+        markSaveRequestFinished(false);
+        return false;
       }
-      clearLocalSaveBackup(saveUid, nextSaveVersion);
-      markSaveRequestFinished(true);
-      return true;
+      return Promise.all([
+        saveRef.update(updateData),
+        syncPublicUserIndexes(saveUid, updateData, true)
+      ]).then(() => {
+        if (sword !== lastSavedSwordForUpdated) {
+          lastSavedSwordForUpdated = sword;
+        }
+        clearLocalSaveBackup(saveUid, nextSaveVersion);
+        markSaveRequestFinished(true);
+        return true;
+      });
+    }).catch((e) => {
+      console.warn("save() fast failed", e);
+      markSaveRequestFinished(false);
+      return false;
+    });
+  }
+  /*
+  */
+  /*
     }).catch((e) => {
       console.warn("save() fast 실패", e);
       markSaveRequestFinished(false);
       return false;
     });
-  }
+  */
 
-  return new Promise((resolve) => {
+  return hasDifferentActivePresenceSession(saveUid, mySessionId).then((presenceMismatch) => new Promise((resolve) => {
     let sessionMismatch = false;
     let olderThanServer = false;
+    if (presenceMismatch) {
+      if (!suppressConflictPopup && typeof showStaleDataReloadPopup === "function") {
+        showStaleDataReloadPopup();
+      }
+      markSaveRequestFinished(false);
+      resolve(false);
+      return;
+    }
 
     saveRef.transaction((cur) => {
       if (isLoginContextStale(saveGen, saveUid)) return;
@@ -20360,6 +20398,10 @@ function save(options = {}) {
       markSaveRequestFinished(true);
       syncPublicUserIndexes(saveUid, updateData, true).finally(() => resolve(true));
     });
+  })).catch((e) => {
+    console.warn("save() presence preflight failed", e);
+    markSaveRequestFinished(false);
+    return false;
   });
 }
 
@@ -21921,7 +21963,10 @@ window.questState = questState;
   userId = savedId;
   userRef = db.ref("users/" + userId);
 
-  userRef.once("value").then(s => {
+  Promise.all([
+    userRef.once("value"),
+    fetchActivePresence(savedId)
+  ]).then(([s, activePresence]) => {
     if (isLoginContextStale(attemptGen, savedId, false)) return;
     if (!s.exists()) {
       // 혹시 DB에서 사라진 계정이면 기록도 지움
@@ -21935,15 +21980,15 @@ window.questState = questState;
 
         // 🔐 이미 다른 곳에서 접속 중이면: 자동로그인도 팝업으로 처리
 // 🔐 자동로그인도 동일 규칙 적용
-if (data.sessionId) {
+const activeSession = activePresence || (data.sessionId && !isSessionStale(data) ? data : null);
+if (activeSession) {
   const mySid = getLocalSessionId(userId);
+  const activeSid = String(activeSession.sessionId || "");
+  const isSameDeviceSession = !!(mySid && activeSid && activeSid === mySid);
 
-  const isSameDeviceSession = (mySid && data.sessionId === mySid);
-  const isDead = isSessionStale(data);
-
-  if (!isSameDeviceSession && !isDead) {
+  if (!isSameDeviceSession) {
     abortLoginTransition();
-    showAlreadyOnlinePopup(userId, data);
+    showAlreadyOnlinePopup(userId, activeSession);
     return;
   }
 }
@@ -22511,6 +22556,11 @@ let rankingWeeklyOnValue = null;
 
 function setMainRankingTab(mode){
   mainRankingTab = (["weekly", "upgrade"].includes(mode)) ? mode : "alltime";
+  if (typeof bindRankingUsersCache === "function") bindRankingUsersCache();
+  if (mainRankingTab !== "upgrade" && !rankingBattleLoaded && typeof loadRanking === "function") {
+    loadRanking();
+    return;
+  }
   const allTab = document.getElementById("rankingTabAllTime");
   const weekTab = document.getElementById("rankingTabWeekly");
   const upgradeTab = document.getElementById("rankingTabUpgrade");
@@ -22566,6 +22616,7 @@ function renderMainRanking(){
     });
 
     if (!arr.length) {
+      if (typeof loadUsersCacheOnce === "function") loadUsersCacheOnce();
       rankingEl.innerHTML = `<div style="color:#999; font-size:13px;">기록 없음</div>`;
     } else {
       rankingEl.innerHTML = arr.slice(0, 10).map((u, i) => buildUpgradeRankingRowHtml(u, i + 1)).join("");
@@ -22698,6 +22749,23 @@ function mergeOnlinePresenceRows(rows){
   setAllUsersCacheRows(Object.values(byId));
 }
 
+function mergePublicUserRows(rows){
+  const byId = {};
+  (allUsersCache || []).forEach(u => { if (u && u.id) byId[String(u.id)] = Object.assign({}, u); });
+
+  (rows || []).forEach(u => {
+    if (!u || !u.id) return;
+    const id = String(u.id);
+    const prev = byId[id] || {};
+    byId[id] = Object.assign({}, prev, u, {
+      sessionId: prev.sessionId || u.sessionId || "",
+      sessionUpdatedAt: Number(prev.sessionUpdatedAt || u.sessionUpdatedAt || 0)
+    });
+  });
+
+  setAllUsersCacheRows(Object.values(byId));
+}
+
 function rebindOnlinePresenceListener(){
   if (onlinePresenceRef && onlinePresenceOnValue) {
     try { onlinePresenceRef.off("value", onlinePresenceOnValue); } catch(e) {}
@@ -22728,10 +22796,22 @@ function bindUpgradeRankingCache(){
       return Number(a.updated || 0) - Number(b.updated || 0);
     });
     upgradeRankingCache = arr;
-    mergeOnlinePresenceRows(arr);
+    mergePublicUserRows(arr);
+    if (!arr.length) {
+      if (typeof loadUsersCacheOnce === "function") loadUsersCacheOnce();
+      loadUsersCacheOnce().then(() => {
+        if (mainRankingTab === "upgrade") renderMainRanking();
+      });
+      return;
+    }
     if (mainRankingTab === "upgrade") renderMainRanking();
   };
-  upgradeRankingListenRef.on("value", upgradeRankingOnValue);
+  upgradeRankingListenRef.on("value", upgradeRankingOnValue, (err) => {
+    console.warn("upgrade ranking index unavailable, falling back to users", err);
+    loadUsersCacheOnce().then(() => {
+      if (mainRankingTab === "upgrade") renderMainRanking();
+    });
+  });
 }
 
 function bindRankingUsersCache(){
@@ -27241,6 +27321,72 @@ function closeUserListOverlay() {
 }
   
   // ⚔️ 결투장 랭킹 불러오기 (duelPoint 기준)
+function normalizeDuelArenaRankRow(uid, d, source, thisWeekKey){
+  d = d || {};
+  const point = Number(d.duelPoint || 0);
+  if (!point || point <= 0) return null;
+  if (source === "users" && String(d.duelPointWeekKey || "") !== String(thisWeekKey || "")) return null;
+  return {
+    id: String(uid || d.id || ""),
+    duelPoint: point,
+    sword: Number(d.sword || 0),
+    duelWin: Number(d.duelWin || 0),
+    duelLose: Number(d.duelLose || 0),
+    updated: Number(source === "users" ? (d.duelUpdated || d.updated || 0) : (d.updated || 0)),
+    weaponType: d.weaponType || "sword",
+    equippedTitle: d.equippedTitle || "",
+    reach30Count: Number(d.reach30Count || 0)
+  };
+}
+
+function sortDuelArenaRankRows(arr){
+  arr = Array.isArray(arr) ? arr : [];
+  arr.sort((a, b) => {
+    if (Number(b.duelPoint || 0) !== Number(a.duelPoint || 0)) {
+      return Number(b.duelPoint || 0) - Number(a.duelPoint || 0);
+    }
+    return Number(a.updated || 0) - Number(b.updated || 0);
+  });
+  return arr;
+}
+
+function loadDuelArenaRankingRows(){
+  const thisWeekKey = getKstWeekKey();
+  const loadFromUsers = () => db.ref("users").orderByChild("duelPoint").once("value").then(userSnap => {
+    const fallbackRows = [];
+    const backfill = {};
+    userSnap.forEach(child => {
+      const row = normalizeDuelArenaRankRow(child.key, child.val() || {}, "users", thisWeekKey);
+      if (!row) return;
+      fallbackRows.push(row);
+      backfill["rankings/duelWeekly/" + thisWeekKey + "/" + row.id] = row;
+    });
+    if (Object.keys(backfill).length) {
+      db.ref().update(backfill).catch(e => console.warn("duel ranking backfill failed", e));
+    }
+    return sortDuelArenaRankRows(fallbackRows);
+  });
+
+  return db.ref("rankings/duelWeekly/" + thisWeekKey)
+    .orderByChild("duelPoint")
+    .limitToLast(50)
+    .once("value")
+    .then((snap) => {
+      const rows = [];
+      snap.forEach(child => {
+        const row = normalizeDuelArenaRankRow(child.key, child.val() || {}, "ranking", thisWeekKey);
+        if (row) rows.push(row);
+      });
+      if (rows.length) return sortDuelArenaRankRows(rows);
+
+      return loadFromUsers();
+    })
+    .catch((err) => {
+      console.warn("duel ranking index unavailable, falling back to users", err);
+      return loadFromUsers();
+    });
+}
+
 function loadDuelArenaRanking() {
   const listEl = document.getElementById("duelArenaRankList");
   const myEl   = document.getElementById("duelArenaMyRank");
@@ -27252,6 +27398,66 @@ function loadDuelArenaRanking() {
     </div>
   `;
   myEl.textContent = "";
+
+  loadDuelArenaRankingRows()
+    .then((arr) => {
+      if (!arr.length) {
+        listEl.innerHTML = `
+          <div style="padding:8px 0; text-align:center; color:#999; font-size:12px;">
+            아직 결투 포인트를 가진 모험가가 없습니다.<br>
+            가장 먼저 결투장을 정복해 보세요.
+          </div>
+        `;
+        myEl.textContent = "";
+        return;
+      }
+
+      sortDuelArenaRankRows(arr);
+      const top = arr.slice(0, 10);
+      listEl.innerHTML = top.map((u, idx) => {
+        const rank = idx + 1;
+        let weaponText = `+${u.sword}강`;
+        try {
+          const info = getWeaponInfo(u.sword, u.weaponType || "sword");
+          if (info && info.name) weaponText = `${info.name} +${u.sword}강`;
+        } catch (e) {}
+        const recordText = `${u.duelWin}승 ${u.duelLose}패`;
+        return `
+          <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid #333; font-size:12px;">
+            <div>
+              <span style="font-weight:bold;">${rank}위</span>
+              &nbsp; ${formatNicknameWithTitle(u.id, u.equippedTitle || "", u.reach30Count || 0)}
+            </div>
+            <div style="text-align:right;">
+              <div>결투포인트 <span style="color:#ffd54f;">${u.duelPoint}</span></div>
+              <div style="font-size:11px; color:#ccc;">${weaponText} · ${recordText}</div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      const myIndex = arr.findIndex(u => String(u.id || "") === String(userId || ""));
+      if (myIndex === -1) {
+        myEl.textContent = "내 결투 포인트: 0 (랭킹 미등록)";
+      } else {
+        const me = arr[myIndex];
+        myEl.innerHTML = `
+          내 랭킹: <span style="color:#ffd54f;">${myIndex + 1}위</span>
+          · 결투포인트 ${me.duelPoint}
+          · 전적 ${me.duelWin}승 ${me.duelLose}패
+        `;
+      }
+    })
+    .catch((err) => {
+      console.error("결투장 랭킹 로드 실패:", err);
+      listEl.innerHTML = `
+        <div style="padding:8px 0; text-align:center; color:#f88; font-size:12px;">
+          결투장 랭킹을 불러오지 못했습니다.<br>
+          잠시 후 다시 시도해 주세요.
+        </div>
+      `;
+    });
+  return;
 
   const usersRef = db.ref("rankings/duelWeekly/" + getKstWeekKey());
   const thisWeekKey = getKstWeekKey();   // 🆕 이번 주 월요일 기준 주키
