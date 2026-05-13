@@ -3822,6 +3822,29 @@ hr.section-divider{
   line-height:1.72;
 }
 
+.storybookGrid,
+.storybookReaderText{
+  scrollbar-color: rgba(18,16,14,0.86) rgba(0,0,0,0.18);
+}
+
+.storybookGrid::-webkit-scrollbar-track,
+.storybookReaderText::-webkit-scrollbar-track{
+  background:rgba(0,0,0,0.14);
+  border-radius:999px;
+}
+
+.storybookGrid::-webkit-scrollbar-thumb,
+.storybookReaderText::-webkit-scrollbar-thumb{
+  background:linear-gradient(180deg, rgba(58,54,49,0.94), rgba(12,11,10,0.92));
+  border:2px solid rgba(214,190,146,0.18);
+  border-radius:999px;
+}
+
+.storybookGrid::-webkit-scrollbar-thumb:hover,
+.storybookReaderText::-webkit-scrollbar-thumb:hover{
+  background:linear-gradient(180deg, rgba(76,71,65,0.98), rgba(22,20,18,0.96));
+}
+
 .storybookReaderPageIndicator{
   position:absolute;
   left:50%;
@@ -36151,6 +36174,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   const WRAITH_SLASH_WARNING_MS = 5 * SECOND;
   const WRAITH_SLASH_QTE_MS = 1 * SECOND;
   const WRAITH_SLASH_RESOLVE_GRACE_MS = 2000;
+  const WRAITH_KING_INTRO_MS = 15 * SECOND;
   const WRAITH_KING_LINES = [
     "그 마녀는… 나에게 영원을 주었다 … 끝나지 않는 고통의 형태로 …",
     "이 땅의 모든 것은… 나와 함께 멈췄다 … 숨도… 죽음도 …",
@@ -36205,7 +36229,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       .wraith-sprite-canvas{position:absolute; left:50%; top:52%; width:min(840px,110.4%); height:auto; aspect-ratio:1/1; transform:translate(-50%,-55%); z-index:38; pointer-events:none; image-rendering:auto; filter:drop-shadow(0 0 18px rgba(255,255,255,.18));}
       .wraith-sprite-canvas.slash{top:57%; width:min(1092px,143.52%); transform:translate(-50%,-50%);}
       .wraith-sprite-canvas.summon{top:57%; width:min(1008px,132.48%); transform:translate(-50%,-50%);}
+      .wraith-sprite-canvas.counter-phys{filter:drop-shadow(0 0 18px rgba(255,255,255,.18)) drop-shadow(0 0 28px rgba(255,54,54,.98)) drop-shadow(0 0 58px rgba(255,0,0,.55));}
+      .wraith-sprite-canvas.counter-magic{filter:drop-shadow(0 0 18px rgba(255,255,255,.18)) drop-shadow(0 0 28px rgba(80,160,255,.98)) drop-shadow(0 0 58px rgba(40,100,255,.55));}
       .wraith-center-msg{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:45; width:max-content; max-width:94%; padding:18px 22px; border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.68); color:#fff; text-align:center; font-weight:900; line-height:1.6; white-space:nowrap; box-shadow:0 14px 28px rgba(0,0,0,.45);}
+      .wraith-center-msg.wraith-intro-lock-msg{z-index:60; font-size:24px; letter-spacing:0;}
       .wraith-qte{position:absolute; left:50%; top:62%; transform:translateX(-50%); z-index:46; width:min(440px,82%); height:28px; border:1px solid rgba(255,255,255,.28); background:rgba(0,0,0,.7);}
       .wraith-qte-label{position:absolute; left:50%; bottom:calc(100% + 7px); transform:translateX(-50%); color:rgba(255,255,255,.62); font-size:15px; font-weight:900; text-shadow:0 2px 6px rgba(0,0,0,.8); pointer-events:none; white-space:nowrap;}
       .wraith-qte-safe{position:absolute; left:33.333%; width:33.333%; top:0; bottom:0; background:rgba(100,220,255,.32);}
@@ -36281,8 +36308,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     }
     const guard = document.getElementById("wraithGuardBtn");
     const attack = document.getElementById("wraithAttackBtn");
-    if (guard) guard.onclick = () => wraithGuard();
-    if (attack) attack.onclick = (ev) => wraithAttack(ev);
+    if (guard) guard.onclick = null;
+    if (attack) attack.onclick = null;
   }
 
   function fmtHp(v){ return typeof formatBossHpShort === "function" ? formatBossHpShort(Number(v || 0)) : Number(v || 0).toLocaleString("ko-KR"); }
@@ -36300,10 +36327,17 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function myMaxHp(){ return Math.max(1, Number(typeof getHuntStaminaMax === "function" ? getHuntStaminaMax() : 20) * 100); }
   function isMagicWeaponType(t){ t = String(t || weaponType || "sword"); return ["staff","gauntlet","magitech","scythe"].includes(t); }
   function isMyDead(run){ const m = run && run.members && run.members[userId]; return !!(m && Number(m.hp || 0) <= 0); }
+  function getWraithKingIntroUntil(run){
+    return Number(run && run.kingIntroUntil || 0);
+  }
+  function isWraithKingIntroLocked(run){
+    return getPhase(run) === "king" && now() < getWraithKingIntroUntil(run);
+  }
   function attackAllowed(run){
     if (!run || String(run.status || "") !== "active") return false;
     if (!isBossBattleOverlayOpen()) return false;
     if (isMyDead(run)) return false;
+    if (isWraithKingIntroLocked(run)) return false;
     if (document.getElementById("wraithIntroVideo")) return false;
     const phase = getPhase(run);
     return phase === "knight" || phase === "king" || phase === "legion" || phase === "curse";
@@ -36858,11 +36892,14 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
           cur.bossName = "모르트헤임 발테리온";
           cur.maxHp = KING_MAX_HP;
           cur.hp = KING_MAX_HP;
-          cur.endsAt = now() + 15 * MINUTE;
-          cur.kingStartedAt = now();
-          cur.nextSlashCheckAt = now() + 10 * SECOND;
-          cur.nextSummonCheckAt = now() + 100 * SECOND;
-          cur.nextCounterCheckAt = now() + 45 * SECOND;
+          const kingStartedAt = now();
+          const kingIntroUntil = kingStartedAt + WRAITH_KING_INTRO_MS;
+          cur.endsAt = kingStartedAt + 15 * MINUTE;
+          cur.kingStartedAt = kingStartedAt;
+          cur.kingIntroUntil = kingIntroUntil;
+          cur.nextSlashCheckAt = kingIntroUntil + 10 * SECOND;
+          cur.nextSummonCheckAt = kingIntroUntil + 100 * SECOND;
+          cur.nextCounterCheckAt = kingIntroUntil + 45 * SECOND;
           return cur;
         }, (err, committed) => {
           if (!err && committed) writeBossBattleLog(WRAITH_BOSS_ID, "발테리온 왕실의 문이 열리고, 망령왕 모르트헤임이 모습을 드러냅니다.", { tone:"yellow" });
@@ -36955,6 +36992,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     }
 
     if (phase !== "king" && phase !== "legion") return;
+    if (phase === "king" && t < getWraithKingIntroUntil(run)) return;
     if (phase === "legion") {
       if (t >= Number(run.legionEndsAt || 0) && Number(run.legionHp || 0) > 0) {
         db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
@@ -37171,6 +37209,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   const wraithSpriteImages = {};
+  const wraithPlayedSpriteSfxKeys = {};
   const WRAITH_SPRITE_FRAME_W = 500;
   const WRAITH_SPRITE_FRAME_H = 500;
   const WRAITH_SPRITE_CANVAS_SIZE = 750;
@@ -37224,8 +37263,14 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       canvas.height = WRAITH_SPRITE_CANVAS_SIZE;
       canvas.dataset.key = cfg.key;
       layer.appendChild(canvas);
-      if (cfg.type === "slash") playWraithSlashSfx();
+      if (cfg.type === "slash" && !wraithPlayedSpriteSfxKeys[cfg.key]) {
+        wraithPlayedSpriteSfxKeys[cfg.key] = 1;
+        playWraithSlashSfx();
+      }
     }
+    const counterType = (getPhase(run) === "king" && now() < Number(run.counterUntil || 0)) ? String(run.counterType || "") : "";
+    canvas.classList.toggle("counter-phys", counterType === "phys");
+    canvas.classList.toggle("counter-magic", counterType === "magic");
 
     const sprite = getWraithSpriteImage(cfg.src);
     const ctx = canvas.getContext("2d");
@@ -37416,8 +37461,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     if (!panel || panel.style.display === "flex") return;
     panel.style.display = "flex";
     if (btn) {
-      btn.style.display = "none";
-      setTimeout(() => { btn.style.display = "inline-block"; }, 5000);
+      btn.style.display = "inline-block";
+      btn.disabled = false;
     }
   }
 
@@ -37709,6 +37754,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     renderWraithSlashWarning(run);
     renderWraithSpriteSheet(run);
     renderWraithGateMessage(run);
+    renderWraithIntroLockMessage(run);
     maybePlayWraithIntro(run);
 
     if (partyEl) renderWraithParty(run, partyEl, partyTitleEl);
@@ -37861,8 +37907,30 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     msg.innerHTML = `발테리온 왕실의 문이 서서히 열립니다.<br>${Math.ceil(Math.max(0, Number(run.gateOpenAt || 0) - now()) / 1000)}초 후 보스방에 진입합니다.`;
   }
 
+  function renderWraithIntroLockMessage(run){
+    const layer = document.getElementById("bossFxLayer");
+    if (!layer) return;
+    let msg = document.getElementById("wraithIntroLockMsg");
+    if (!isWraithKingIntroLocked(run)) { if (msg) msg.remove(); return; }
+    if (!msg) {
+      msg = document.createElement("div");
+      msg.id = "wraithIntroLockMsg";
+      msg.className = "wraith-center-msg wraith-intro-lock-msg";
+      layer.appendChild(msg);
+    }
+    msg.textContent = "[보스 조정중]";
+    if (!msg.dataset.clearTimer) {
+      msg.dataset.clearTimer = "1";
+      setTimeout(() => {
+        const latest = getRun();
+        if (latest && getPhase(latest) === "king") renderWraithBattle();
+      }, Math.max(0, getWraithKingIntroUntil(run) - now()));
+    }
+  }
+
   function maybePlayWraithIntro(run){
     if (getPhase(run) !== "king") return;
+    if (!isWraithKingIntroLocked(run)) return;
     const key = `wraithIntroSeen_${String(run.logKey || "")}`;
     try { if (localStorage.getItem(key) === "1") return; } catch(e){}
     const layer = document.getElementById("bossFxLayer");
@@ -37887,7 +37955,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     if (v) {
       v.onplay = () => { playbackStarted = true; };
       v.onended = () => done(true);
-      v.onerror = () => done(false);
+      v.onerror = () => done(true);
       const p = v.play && v.play();
       if (p && p.catch) {
         p.catch(() => {
@@ -37898,8 +37966,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       }
     }
     setTimeout(() => {
-      if (document.body.contains(wrap)) done(playbackStarted || Number(v && v.currentTime || 0) > 0);
-    }, 45000);
+      if (document.body.contains(wrap)) done(true);
+    }, WRAITH_KING_INTRO_MS);
   }
 
   function renderWraithParty(run, partyEl, titleEl){
@@ -38212,6 +38280,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     document.getElementById("wraithMeleeHitCanvas")?.remove();
     document.getElementById("wraithSlashWarning")?.remove();
     document.getElementById("wraithSlashQte")?.remove();
+    document.getElementById("wraithIntroLockMsg")?.remove();
+    document.getElementById("wraithIntroVideo")?.remove();
     return __origCloseBossBattleWraith.apply(this, arguments);
   };
 
@@ -38329,8 +38399,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     }
     const guard = document.getElementById("bossGuardBtn");
     const attack = document.getElementById("bossAttackBtn");
-    if (guard) guard.onclick = () => triggerCommonBossGuard();
-    if (attack) attack.onclick = () => triggerCommonBossAttack(true);
+    if (guard) guard.onclick = null;
+    if (attack) attack.onclick = null;
     return dock;
   }
 
@@ -38533,7 +38603,20 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     if (Date.now() < suppressActionButtonClickUntil) {
       e.preventDefault();
       e.stopPropagation();
+      return;
     }
+    const btn = e.target && e.target.closest && e.target.closest("#bossAttackBtn,#bossGuardBtn,#wraithAttackBtn,#wraithGuardBtn");
+    if (!btn || btn.disabled) return;
+    const nowAt = Date.now();
+    if (nowAt - lastActionButtonPressAt < 22) return;
+    lastActionButtonPressAt = nowAt;
+    e.preventDefault();
+    e.stopPropagation();
+    suppressActionButtonClickUntil = nowAt + 450;
+    runActionButton(btn, {
+      clientX: Number.isFinite(e.clientX) ? e.clientX : window.innerWidth / 2,
+      clientY: Number.isFinite(e.clientY) ? e.clientY : window.innerHeight / 2
+    });
   }, { passive:false, capture:true });
 })();
 
