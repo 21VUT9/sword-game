@@ -9117,6 +9117,11 @@ function cleanupSessionBindings(){
   }
   onlinePresenceRef = null;
   onlinePresenceOnValue = null;
+  if (upgradeRankingListenRef && upgradeRankingOnValue) {
+    try { upgradeRankingListenRef.off("value", upgradeRankingOnValue); } catch(e) {}
+  }
+  upgradeRankingListenRef = null;
+  upgradeRankingOnValue = null;
   rankingUsersCacheBound = false;
   try {
     if (rankingAllTimeListenRef && rankingAllTimeOnValue) rankingAllTimeListenRef.off("value", rankingAllTimeOnValue);
@@ -10686,9 +10691,8 @@ function performLogoutNow() {
 
 
   // 🔐 서버에 남아있는 세션ID 제거
-if (prevUserRef) {
-  prevUserRef.child("sessionId").remove();
-  prevUserRef.child("sessionUpdatedAt").remove();
+if (prevUserId && typeof db !== "undefined" && db) {
+  db.ref("presence/" + String(prevUserId)).remove();
 }
 if (prevUserId) {
   clearLocalSessionId(prevUserId);
@@ -11189,7 +11193,7 @@ function clearLegacyLocalSessionId(uid){
 
 function startSession(ctx) {
   const sessionUid = String((ctx && ctx.uid) || userId || "");
-  const sessionRef = (ctx && ctx.ref) || userRef;
+  const sessionRef = getPresenceRef(sessionUid);
   const sessionGen = Number((ctx && ctx.generation) || loginGeneration || 0);
   if (!sessionRef || !sessionUid) return;
   if (isLoginContextStale(sessionGen, sessionUid)) return;
@@ -11206,16 +11210,13 @@ function startSession(ctx) {
   currentSessionId = sid;
 
   // ✅ sessionId + 하트비트 기록
-  sessionRef.update({
-    sessionId: currentSessionId,
-    sessionUpdatedAt: Date.now()
-  });
+  sessionRef.update(buildPresenceSnapshot(sessionUid));
 
   // ✅ 하트비트(죽은 세션 판별용)
   sessionPingTimer = setInterval(() => {
     if (isLoginContextStale(sessionGen, sessionUid)) return;
     if (!currentSessionId) return;
-    sessionRef.child("sessionUpdatedAt").set(Date.now());
+    sessionRef.update(buildPresenceSnapshot(sessionUid));
   }, 15000);
 
   watchSessionId(sessionUid, currentSessionId, sessionGen);
@@ -11225,16 +11226,12 @@ function startSession(ctx) {
   activeConnectedRef.on("value", (snap) => {
     if (isLoginContextStale(sessionGen, sessionUid)) return;
     if (snap.val() === true && currentSessionId) {
-      sessionRef.update({
-        sessionId: currentSessionId,
-        sessionUpdatedAt: Date.now()
-      });
+      sessionRef.update(buildPresenceSnapshot(sessionUid));
     }
   });
 
   // ✅ 이 탭이 끊기면 session 정보 정리
-  sessionRef.child("sessionId").onDisconnect().remove();
-  sessionRef.child("sessionUpdatedAt").onDisconnect().remove();
+  sessionRef.onDisconnect().remove();
 
   resetBossRunsSubscription();
   ensureBossRunsSubscription();
@@ -11242,7 +11239,7 @@ function startSession(ctx) {
 
 // ✅ 내 sessionId가 "다른 값"으로 바뀐 경우에만 튕김(같은 세션은 유지)
 function watchSessionId(uid, mySessionId, sessionGen) {
-  const ref = db.ref("users/" + uid + "/sessionId");
+  const ref = db.ref("presence/" + uid + "/sessionId");
   activeSessionWatchRef = ref;
 
   ref.on("value", (snap) => {
@@ -11279,6 +11276,82 @@ function isSessionStale(data){
   return !t || (Date.now() - t > 90000);
 }
 
+
+function getPresenceRef(uid){
+  if (!uid || typeof db === "undefined" || !db) return null;
+  return db.ref("presence/" + String(uid));
+}
+
+function buildPresenceSnapshot(uid){
+  return {
+    sessionId: String(currentSessionId || ""),
+    sessionUpdatedAt: Date.now(),
+    nickname: String(uid || userId || ""),
+    equippedTitle: String(equippedTitle || ""),
+    reach30Count: Number(reach30Count || 0),
+    sword: Number(sword || 0),
+    power: Number(power || 0),
+    duelWin: Number(duelWin || 0),
+    duelLose: Number(duelLose || 0),
+    weaponType: String(weaponType || "sword")
+  };
+}
+
+function buildUpgradeRankingSnapshot(uid, data){
+  data = data || {};
+  return {
+    id: String(uid || data.id || userId || ""),
+    sword: Number(data.sword != null ? data.sword : sword || 0),
+    updated: Number(data.updated != null ? data.updated : Date.now()),
+    power: Number(data.power != null ? data.power : power || 0),
+    duelWin: Number(data.duelWin != null ? data.duelWin : duelWin || 0),
+    duelLose: Number(data.duelLose != null ? data.duelLose : duelLose || 0),
+    weaponType: String(data.weaponType || weaponType || "sword"),
+    equippedTitle: String(data.equippedTitle != null ? data.equippedTitle : equippedTitle || ""),
+    reach30Count: Number(data.reach30Count != null ? data.reach30Count : reach30Count || 0)
+  };
+}
+
+function syncPublicUserIndexes(uid, data, includePresence = true){
+  uid = String(uid || userId || "");
+  if (!uid || typeof db === "undefined" || !db) return Promise.resolve(false);
+  const updates = {};
+  updates["rankings/upgrade/" + uid] = buildUpgradeRankingSnapshot(uid, data || {});
+  try {
+    const weekKey = (typeof getKstWeekKey === "function") ? String(getKstWeekKey() || "") : "";
+    const point = Number((data && data.duelPoint != null) ? data.duelPoint : duelPoint || 0);
+    if (weekKey && point > 0) {
+      updates["rankings/duelWeekly/" + weekKey + "/" + uid] = {
+        id: uid,
+        duelPoint: point,
+        duelWin: Number((data && data.duelWin != null) ? data.duelWin : duelWin || 0),
+        duelLose: Number((data && data.duelLose != null) ? data.duelLose : duelLose || 0),
+        updated: Number((data && data.duelUpdated != null) ? data.duelUpdated : duelUpdated || Date.now()),
+        sword: Number((data && data.sword != null) ? data.sword : sword || 0),
+        weaponType: String((data && data.weaponType) || weaponType || "sword"),
+        equippedTitle: String((data && data.equippedTitle != null) ? data.equippedTitle : equippedTitle || ""),
+        reach30Count: Number((data && data.reach30Count != null) ? data.reach30Count : reach30Count || 0)
+      };
+    }
+  } catch(e) {}
+  if (includePresence && currentSessionId && String(uid) === String(userId || "")) {
+    updates["presence/" + uid] = buildPresenceSnapshot(uid);
+  }
+  return db.ref().update(updates).then(() => true).catch((e) => {
+    console.warn("public index sync failed", e);
+    return false;
+  });
+}
+
+function fetchActivePresence(uid){
+  const pref = getPresenceRef(uid);
+  if (!pref) return Promise.resolve(null);
+  return pref.once("value").then(s => {
+    const v = s.val();
+    if (v && !isSessionStale(v)) return v;
+    return null;
+  }).catch(() => null);
+}
 
 let onlineUsersRenderTimer = null;
 
@@ -19836,6 +19909,10 @@ function login() {
 
     // 🟢 여기까지 왔다는 건 실제로 이 탭이 접속을 가져가는 것 → 세션 시작
     startSession({ uid: loginUid, ref: loginRef, generation: attemptGen });
+    syncPublicUserIndexes(loginUid, {
+      sword, updated: lastSavedSwordForUpdated || Date.now(), power, duelWin, duelLose,
+      weaponType, equippedTitle, reach30Count
+    }, true);
     ensureBossRunsSubscription();  // ✅ 로그인 직후에도 토벌 구독/복구 시작
 
     // 화면 전환
@@ -20188,7 +20265,9 @@ function save(options = {}) {
     questCompletedAt: ensureQuestCompletedAtMap(),
     repeatQuestState: repeatQuestState,
     storybookState: storybookState,
-    engraveLines: engraveLines
+    engraveLines: engraveLines,
+    sessionId: null,
+    sessionUpdatedAt: null
   };
 
   const now = Date.now();
@@ -20209,7 +20288,10 @@ function save(options = {}) {
   markSaveRequestStarted();
 
   if (fastSave) {
-    return saveRef.update(updateData).then(() => {
+    return Promise.all([
+      saveRef.update(updateData),
+      syncPublicUserIndexes(saveUid, updateData, true)
+    ]).then(() => {
       if (sword !== lastSavedSwordForUpdated) {
         lastSavedSwordForUpdated = sword;
       }
@@ -20232,7 +20314,7 @@ function save(options = {}) {
 
       const dbData = cur || {};
       const dbSessionId = String(dbData.sessionId || "");
-      sessionMismatch = !!(dbSessionId && mySessionId && dbSessionId !== mySessionId);
+      sessionMismatch = !!(dbSessionId && mySessionId && dbSessionId !== mySessionId && !isSessionStale(dbData));
 
       if (sessionMismatch) return;
       if (Number(dbData.saveVersion || 0) > nextSaveVersion) {
@@ -20276,7 +20358,7 @@ function save(options = {}) {
       }
       clearLocalSaveBackup(saveUid, nextSaveVersion);
       markSaveRequestFinished(true);
-      resolve(true);
+      syncPublicUserIndexes(saveUid, updateData, true).finally(() => resolve(true));
     });
   });
 }
@@ -22097,6 +22179,10 @@ setDisplay("workbenchDockUI", "flex");
 
     // 🔐 자동로그인으로 들어온 경우에도 이 탭이 세션을 가져가도록
     startSession();
+    syncPublicUserIndexes(userId, {
+      sword, updated: lastSavedSwordForUpdated || Date.now(), power, duelWin, duelLose,
+      weaponType, equippedTitle, reach30Count
+    }, true);
     ensureBossRunsSubscription();  // ✅ 로그인 직후에도 토벌 구독/복구 시작
     loadRanking();
 
@@ -22409,11 +22495,14 @@ function getRankingSnapshotTitleHtml(snap){
 let mainRankingTab = "alltime";
 let rankingAllTimeCache = [];
 let rankingWeeklyCache = [];
+let upgradeRankingCache = [];
 let rankingUsersCacheBound = false;
 let rankingUsersRefreshTimer = null;
 let onlinePresenceRefreshTimer = null;
 let onlinePresenceRef = null;
 let onlinePresenceOnValue = null;
+let upgradeRankingListenRef = null;
+let upgradeRankingOnValue = null;
 let rankingBattleLoaded = false;
 let rankingAllTimeListenRef = null;
 let rankingAllTimeOnValue = null;
@@ -22470,7 +22559,8 @@ function renderMainRanking(){
   if (!rankingEl || !myRankEl) return;
 
   if (mainRankingTab === "upgrade") {
-    const arr = allUsersCache.slice().sort((a, b) => {
+    const source = (upgradeRankingCache && upgradeRankingCache.length) ? upgradeRankingCache : allUsersCache;
+    const arr = source.slice().sort((a, b) => {
       if (Number(b.sword || 0) !== Number(a.sword || 0)) return Number(b.sword || 0) - Number(a.sword || 0);
       return Number(a.updated || 0) - Number(b.updated || 0);
     });
@@ -22614,7 +22704,7 @@ function rebindOnlinePresenceListener(){
   }
 
   const threshold = Date.now() - 90000;
-  onlinePresenceRef = db.ref("users").orderByChild("sessionUpdatedAt").startAt(threshold);
+  onlinePresenceRef = db.ref("presence").orderByChild("sessionUpdatedAt").startAt(threshold);
   onlinePresenceOnValue = (s) => {
     const arr = [];
     s.forEach(c => {
@@ -22625,12 +22715,30 @@ function rebindOnlinePresenceListener(){
   onlinePresenceRef.on("value", onlinePresenceOnValue);
 }
 
+function bindUpgradeRankingCache(){
+  if (upgradeRankingListenRef && upgradeRankingOnValue) return;
+  upgradeRankingListenRef = db.ref("rankings/upgrade").orderByChild("sword").limitToLast(50);
+  upgradeRankingOnValue = (s) => {
+    const arr = [];
+    s.forEach(c => {
+      arr.push(normalizePublicUserRow(c.key, c.val() || {}));
+    });
+    arr.sort((a, b) => {
+      if (Number(b.sword || 0) !== Number(a.sword || 0)) return Number(b.sword || 0) - Number(a.sword || 0);
+      return Number(a.updated || 0) - Number(b.updated || 0);
+    });
+    upgradeRankingCache = arr;
+    mergeOnlinePresenceRows(arr);
+    if (mainRankingTab === "upgrade") renderMainRanking();
+  };
+  upgradeRankingListenRef.on("value", upgradeRankingOnValue);
+}
+
 function bindRankingUsersCache(){
   if (rankingUsersCacheBound) return;
   rankingUsersCacheBound = true;
-  loadUsersCacheOnce();
+  bindUpgradeRankingCache();
   rebindOnlinePresenceListener();
-  rankingUsersRefreshTimer = setInterval(loadUsersCacheOnce, 60000);
   onlinePresenceRefreshTimer = setInterval(rebindOnlinePresenceListener, 30000);
 }
 
@@ -23380,6 +23488,7 @@ function renderDuelList(keyword) {
   if (!allUsersCache || allUsersCache.length === 0) {
     listEl.innerHTML = `<div style="font-size:13px; color:#aaa;">유저 목록을 불러오는 중입니다...</div>`;
     if (helpEl) helpEl.style.display = "none";
+    loadUsersCacheOnce();
     return;
   }
 
@@ -24430,9 +24539,24 @@ function repairGuardianRunsOnLoad(cache){
   return;
 }
 
+function applyDerivedBossDamageState(bossId, run){
+  if (!run || typeof run !== "object") return run;
+  if (String(bossId || "") === "frost_queen") return run;
+  const maxHp = Number(run.maxHp || 0);
+  const totalDamage = Math.max(0, Number(run.totalDamage || 0));
+  if (maxHp > 0 && totalDamage > 0) {
+    run.hp = Math.max(0, maxHp - totalDamage);
+    if (run.hp <= 0 && String(run.status || "") === "active") {
+      run.status = "cleared";
+    }
+  }
+  return run;
+}
+
 function updateBossRunCacheAndRender(bossId, run){
   bossId = String(bossId || "");
   if (!bossId) return;
+  if (run) run = applyDerivedBossDamageState(bossId, run);
   if (run) bossRunsActiveCache[bossId] = run;
   else delete bossRunsActiveCache[bossId];
 
@@ -24712,25 +24836,28 @@ function ensureBossBattleLogsSubscription(bossId) {
   bossBattleLogsPath = path;
   bossBattleLogsCache = [];
 
-  const ref = db.ref(path).limitToLast(80);
+  const ref = db.ref(path).limitToLast(20);
 
   const onValue = (snap) => {
     const v = snap.val() || {};
-    const arr = Object.keys(v).map(k => ({
-  t: Number(v[k].t || 0),
-  msg: String(v[k].msg || ""),
-  tone: String(v[k].tone || "")
-}));
-    arr.sort((a,b) => a.t - b.t);
-    bossBattleLogsCache = arr;
+    bossBattleLogsCache.push({
+      key: String(snap.key || ""),
+      t: Number(v.t || 0),
+      msg: String(v.msg || ""),
+      tone: String(v.tone || "")
+    });
+    bossBattleLogsCache.sort((a,b) => a.t - b.t);
+    if (bossBattleLogsCache.length > 20) {
+      bossBattleLogsCache = bossBattleLogsCache.slice(-20);
+    }
     renderBossBattleLogs();
     refreshBossBattleAlert(bossId);
   };
 
-  ref.on("value", onValue);
+  ref.on("child_added", onValue);
 
   // ✅ off 함수 저장
-  bossBattleLogsUnsub = () => ref.off("value", onValue);
+  bossBattleLogsUnsub = () => ref.off("child_added", onValue);
 }
 
 function renderBossBattleLogs() {
@@ -26483,6 +26610,60 @@ function spawnEpicDamageFloatAt(clientX, clientY, valueOrText, kind){
   setTimeout(() => el.remove(), HOLD_MS + FADE_MS + 80);
 }
 
+const bossDamageBatchState = {};
+
+function canUseBatchedBossDamage(bossId, run){
+  bossId = String(bossId || "");
+  if (!bossId || !run || String(run.status || "") !== "active") return false;
+  if (bossId === "frost_queen" || bossId === "guardian_knight" || bossId === "dawn_twin_knights" || bossId === "wraith_king") return false;
+  if (!run.members || !run.members[userId]) return false;
+  return Number(run.maxHp || 0) > 0;
+}
+
+function queueBatchedBossDamage(bossId, damage){
+  bossId = String(bossId || "");
+  damage = Math.max(0, Number(damage || 0));
+  if (!bossId || !userId || damage <= 0) return;
+
+  if (!bossDamageBatchState[bossId]) {
+    bossDamageBatchState[bossId] = { pending: 0, timer: null };
+  }
+  const st = bossDamageBatchState[bossId];
+  st.pending += damage;
+  if (st.timer) return;
+
+  st.timer = setTimeout(() => {
+    const batch = Math.max(0, Number(st.pending || 0));
+    st.pending = 0;
+    st.timer = null;
+    if (batch <= 0) return;
+
+    const totalRef = db.ref(`bossRunsActive/${bossId}/totalDamage`);
+    const userDmgRef = db.ref(`bossRunsActive/${bossId}/damageByUser/${userId}`);
+    const memberDmgRef = db.ref(`bossRunsActive/${bossId}/members/${userId}/dmg`);
+
+    totalRef.transaction(v => Number(v || 0) + batch, (err, committed, snap) => {
+      if (err || !committed) return;
+      const total = Number(snap && snap.val ? snap.val() : 0);
+      const run = (bossRunsActiveCache || {})[bossId] || {};
+      const maxHp = Number(run.maxHp || 0);
+      if (maxHp > 0 && total >= maxHp && String(run.status || "") === "active") {
+        db.ref(`bossRunsActive/${bossId}`).transaction(cur => {
+          if (!cur || String(cur.status || "") !== "active") return cur;
+          if (Number(cur.maxHp || 0) > 0 && Number(cur.totalDamage || 0) >= Number(cur.maxHp || 0)) {
+            cur.hp = 0;
+            cur.status = "cleared";
+            cur.clearedAt = Date.now();
+          }
+          return cur;
+        });
+      }
+    });
+    userDmgRef.transaction(v => Number(v || 0) + batch);
+    memberDmgRef.transaction(v => Number(v || 0) + batch);
+  }, 400);
+}
+
 function playEpicHitFx(){
   const wrap = document.getElementById("epicMonsterWrap");
   const img  = document.getElementById("epicMonsterImg");
@@ -26563,6 +26744,20 @@ if (!result.isMiss && !useWeaponMeleeFx) playBossHitFx();
 
   // 서버 반영(트랜잭션)
   if (dmg <= 0) return; // ✅ MISS면 사냥포인트만 소모되고 HP/기여도는 증가하지 않음
+  if (canUseBatchedBossDamage(bossId, run)) {
+    run.totalDamage = Math.max(0, Number(run.totalDamage || 0)) + dmg;
+    run.hp = Math.max(0, Number(run.maxHp || run.hp || 0) - Number(run.totalDamage || 0));
+    if (run.members && run.members[userId]) {
+      run.members[userId].dmg = Number(run.members[userId].dmg || 0) + dmg;
+    }
+    if (run.hp <= 0) {
+      run.status = "cleared";
+      run.clearedAt = Date.now();
+    }
+    queueBatchedBossDamage(bossId, dmg);
+    renderBossBattle();
+    return;
+  }
   const runRef = db.ref(`bossRunsActive/${bossId}`);
   runRef.transaction((cur) => {
     if (!cur || cur.status !== "active") return;
@@ -27033,6 +27228,8 @@ function openUserListOverlay() {
     renderUserList(allUsersCache);
   }
 
+  loadUsersCacheOnce();
+
   overlay.style.display = "block";
 }
 
@@ -27056,12 +27253,13 @@ function loadDuelArenaRanking() {
   `;
   myEl.textContent = "";
 
-  const usersRef = db.ref("users");
+  const usersRef = db.ref("rankings/duelWeekly/" + getKstWeekKey());
   const thisWeekKey = getKstWeekKey();   // 🆕 이번 주 월요일 기준 주키
 
   // duelPoint 기준으로 모두 가져온 뒤, 메모리에서 필터 + 정렬
   usersRef
     .orderByChild("duelPoint")
+    .limitToLast(50)
     .once("value")
     .then((snap) => {
       const arr = [];
@@ -27071,9 +27269,6 @@ function loadDuelArenaRanking() {
         const uid = child.key;
 
         // 🆕 이번 주가 아닌 계정은 랭킹에서 제외
-        const userWeekKey = u.duelPointWeekKey || "";
-        if (userWeekKey !== thisWeekKey) return;
-
         const point = Number(u.duelPoint || 0);
         if (!point || point <= 0) return; // 포인트 0 이하면 랭킹 제외
 
@@ -27083,7 +27278,7 @@ function loadDuelArenaRanking() {
           sword: Number(u.sword || 0),
           duelWin: Number(u.duelWin || 0),
           duelLose: Number(u.duelLose || 0),
-          updated: Number(u.duelUpdated || u.updated || 0),
+          updated: Number(u.updated || 0),
           weaponType: u.weaponType || "sword"
         });
       });
@@ -28078,12 +28273,12 @@ function confirmForceDisconnectAndContinue() {
 
   const forceGen = nextLoginGeneration();
   cleanupSessionBindings();
-  const ref = db.ref("users/" + uid);
+const ref = db.ref("users/" + uid);
 
 // 기존 세션/하트비트 정리 + 내 로컬 세션도 초기화(강제 탈취 상황)
 clearLocalSessionId(uid);
 
-ref.update({ sessionId: "", sessionUpdatedAt: 0 }).then(() => {
+db.ref("presence/" + uid).remove().then(() => {
   if (isLoginContextStale(forceGen, uid, false)) return;
 
   // 2) 이 탭 기준 로그인 상태 확정
@@ -28096,6 +28291,10 @@ ref.update({ sessionId: "", sessionUpdatedAt: 0 }).then(() => {
 
   // 세션 시작 (네 코드에 이미 존재)
   startSession({ uid, ref, generation: forceGen });
+  syncPublicUserIndexes(uid, {
+    sword, updated: lastSavedSwordForUpdated || Date.now(), power, duelWin, duelLose,
+    weaponType, equippedTitle, reach30Count
+  }, true);
 
   // ✅ 강제탈취로 로그인 확정 시, 이 기기의 자동로그인 계정을 지금 uid로 고정
 try {
