@@ -11226,6 +11226,7 @@ function startSession(ctx) {
 
   // ✅ sessionId + 하트비트 기록
   sessionRef.update(buildPresenceSnapshot(sessionUid));
+  writeUserSessionLock(sessionUid);
   mergeOnlinePresenceRows([]);
 
   // ✅ 하트비트(죽은 세션 판별용)
@@ -11233,6 +11234,7 @@ function startSession(ctx) {
     if (isLoginContextStale(sessionGen, sessionUid)) return;
     if (!currentSessionId) return;
     sessionRef.update(buildPresenceSnapshot(sessionUid));
+    writeUserSessionLock(sessionUid);
     touchMyOnlinePresenceLocal();
   }, 15000);
 
@@ -11244,6 +11246,7 @@ function startSession(ctx) {
     if (isLoginContextStale(sessionGen, sessionUid)) return;
     if (snap.val() === true && currentSessionId) {
       sessionRef.update(buildPresenceSnapshot(sessionUid));
+      writeUserSessionLock(sessionUid);
       mergeOnlinePresenceRows([]);
     }
   });
@@ -11261,14 +11264,14 @@ function startSession(ctx) {
 // ✅ 내 sessionId가 "다른 값"으로 바뀐 경우에만 튕김(같은 세션은 유지)
 function watchSessionId(uid, mySessionId, sessionGen) {
   const myClientId = String(currentSessionClientId || "");
-  const ref = db.ref("presence/" + uid);
+  const ref = db.ref("users/" + uid);
   activeSessionWatchRef = ref;
 
   ref.on("value", (snap) => {
     if (isLoginContextStale(sessionGen, uid)) return;
     const curData = snap.val();
     const cur = (curData && typeof curData === "object") ? String(curData.sessionId || "") : String(curData || "");
-    const curClientId = (curData && typeof curData === "object") ? String(curData.clientId || "") : "";
+    const curClientId = (curData && typeof curData === "object") ? String(curData.clientId || curData.sessionClientId || "") : "";
 
     // sessionId가 비는 건(모바일 순간 끊김) 허용
     if (!cur) return;
@@ -11322,10 +11325,47 @@ function removePresenceIfOwned(uid, sid, clientId){
   });
 }
 
+function buildSessionLockSnapshot(){
+  return {
+    sessionId: String(currentSessionId || ""),
+    sessionClientId: String(currentSessionClientId || ""),
+    sessionUpdatedAt: Date.now()
+  };
+}
+
+function writeUserSessionLock(uid){
+  uid = String(uid || userId || "");
+  if (!uid || !currentSessionId || typeof db === "undefined" || !db) return Promise.resolve(false);
+  return db.ref("users/" + uid).update(buildSessionLockSnapshot()).then(() => true).catch(e => {
+    console.warn("user session lock write failed", e);
+    return false;
+  });
+}
+
+function removeUserSessionLockIfOwned(uid, sid, clientId){
+  uid = String(uid || "");
+  sid = String(sid || "");
+  clientId = String(clientId || "");
+  if (!uid || !sid || typeof db === "undefined" || !db) return Promise.resolve(false);
+  return db.ref("users/" + uid).transaction(cur => {
+    if (!cur) return cur;
+    if (String(cur.sessionId || "") !== sid) return;
+    if (clientId && String(cur.sessionClientId || "") && String(cur.sessionClientId || "") !== clientId) return;
+    cur.sessionId = null;
+    cur.sessionClientId = null;
+    cur.sessionUpdatedAt = null;
+    return cur;
+  }).then(res => !!(res && res.committed)).catch(e => {
+    console.warn("user session lock owned-remove failed", e);
+    return false;
+  });
+}
+
 function buildPresenceSnapshot(uid){
   return {
     sessionId: String(currentSessionId || ""),
     clientId: String(currentSessionClientId || ""),
+    sessionClientId: String(currentSessionClientId || ""),
     sessionUpdatedAt: Date.now(),
     nickname: String(uid || userId || ""),
     equippedTitle: String(equippedTitle || ""),
@@ -11394,12 +11434,23 @@ function fetchActivePresence(uid){
   }).catch(() => null);
 }
 
+function fetchActiveUserSession(uid){
+  uid = String(uid || "");
+  if (!uid || typeof db === "undefined" || !db) return Promise.resolve(null);
+  return db.ref("users/" + uid).once("value").then(s => {
+    const v = s.val();
+    if (v && v.sessionId && !isSessionStale(v)) return v;
+    return null;
+  }).catch(() => null);
+}
+
 function hasDifferentActivePresenceSession(uid, mySessionId){
   if (!uid || !mySessionId) return Promise.resolve(false);
-  return fetchActivePresence(uid).then(p => {
+  return Promise.all([fetchActivePresence(uid), fetchActiveUserSession(uid)]).then(([presenceSession, userSession]) => {
+    const p = presenceSession || userSession;
     if (!p) return false;
     const sid = String(p.sessionId || "");
-    const clientId = String(p.clientId || "");
+    const clientId = String(p.clientId || p.sessionClientId || "");
     const myClientId = String(currentSessionClientId || "");
     return !!(
       (sid && sid !== String(mySessionId || "")) ||
@@ -11426,7 +11477,7 @@ function shouldBlockLoginForActiveSession(activeSession, uid){
   if (!currentSessionId) return true;
   const mySid = String(currentSessionId || "");
   const myClientId = String(currentSessionClientId || "");
-  const activeClientId = String(activeSession.clientId || "");
+  const activeClientId = String(activeSession.clientId || activeSession.sessionClientId || "");
   if (activeSid !== mySid) return true;
   if (activeClientId && myClientId && activeClientId !== myClientId) return true;
   return false;
@@ -20343,8 +20394,9 @@ function save(options = {}) {
     repeatQuestState: repeatQuestState,
     storybookState: storybookState,
     engraveLines: engraveLines,
-    sessionId: null,
-    sessionUpdatedAt: null
+    sessionId: String(currentSessionId || ""),
+    sessionClientId: String(currentSessionClientId || ""),
+    sessionUpdatedAt: Date.now()
   };
 
   const now = Date.now();
@@ -22780,6 +22832,7 @@ function buildMyOnlinePresenceRow(){
     reach30Count: Number(reach30Count || 0),
     sessionId: currentSessionId,
     clientId: currentSessionClientId || "",
+    sessionClientId: currentSessionClientId || "",
     sessionUpdatedAt: Date.now()
   };
 }
@@ -28599,11 +28652,16 @@ function confirmForceDisconnectAndContinue() {
   const forceGen = nextLoginGeneration();
   cleanupSessionBindings();
 const ref = db.ref("users/" + uid);
+const oldSid = String(data && data.sessionId || "");
+const oldClientId = String(data && (data.clientId || data.sessionClientId) || "");
 
 // 기존 세션/하트비트 정리 + 내 로컬 세션도 초기화(강제 탈취 상황)
 clearLocalSessionId(uid);
 
-db.ref("presence/" + uid).remove().then(() => {
+Promise.all([
+  db.ref("presence/" + uid).remove().catch(() => false),
+  oldSid ? removeUserSessionLockIfOwned(uid, oldSid, oldClientId) : Promise.resolve(false)
+]).then(() => {
   if (isLoginContextStale(forceGen, uid, false)) return;
 
   // 2) 이 탭 기준 로그인 상태 확정
