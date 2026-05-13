@@ -21,6 +21,38 @@ body {
   --frame-pad: 0px; /* 기본(모바일/좁은 화면) */
   --workbench-h: 200px; /* ✅ 작업대 높이 */
   --field-top-offset: 110px;
+  --game-scrollbar-size: 8px;
+  --game-scrollbar-track: rgba(255,255,255,0.05);
+  --game-scrollbar-firefox-track: rgba(255,255,255,0.06);
+  --game-scrollbar-thumb: linear-gradient(180deg, rgba(255,213,79,0.72), rgba(255,138,76,0.48));
+  --game-scrollbar-thumb-hover: linear-gradient(180deg, rgba(255,226,118,0.90), rgba(255,158,92,0.66));
+  --game-scrollbar-thumb-firefox: rgba(255,213,79,0.38);
+  --game-scrollbar-thumb-border: rgba(15,15,15,0.92);
+}
+
+*{
+  scrollbar-width: thin;
+  scrollbar-color: var(--game-scrollbar-thumb-firefox) var(--game-scrollbar-firefox-track);
+}
+
+*::-webkit-scrollbar{
+  width: var(--game-scrollbar-size);
+  height: var(--game-scrollbar-size);
+}
+
+*::-webkit-scrollbar-track{
+  background: var(--game-scrollbar-track);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb{
+  background: var(--game-scrollbar-thumb);
+  border: 2px solid var(--game-scrollbar-thumb-border);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover{
+  background: var(--game-scrollbar-thumb-hover);
 }
 
 @media (min-width: 1001px){
