@@ -21524,14 +21524,14 @@ function openBossRewardOverlay(){
   const arr = Array.from(memberIds).map(uid => ({
     uid,
     dmg: getBossMemberDamage(run, uid),
-    nick: (members[uid] && members[uid].nick) ? members[uid].nick : uid,
+    nick: getBossRunParticipantNick(run, uid),
     title: (members[uid] && members[uid].title) ? members[uid].title : ""
   }));
 
   const total = arr.reduce((s, a) => s + a.dmg, 0);
   arr.sort((a,b) => b.dmg - a.dmg);
 
-  const myIndex = arr.findIndex(x => x.uid === userId);
+  const myIndex = arr.findIndex(x => String(x.uid) === String(userId));
   const myRank = (myIndex >= 0) ? (myIndex + 1) : 0;
   const myPct = (myIndex >= 0 && total > 0) ? (arr[myIndex].dmg / total * 100) : 0;
 
@@ -21567,7 +21567,7 @@ function openBossRewardOverlay(){
   for (let i=0; i<maxShow; i++){
     const m = arr[i];
     const pct = (total > 0) ? (m.dmg / total * 100) : 0;
-    const isMe = (m.uid === userId);
+    const isMe = (String(m.uid) === String(userId));
     const row = document.createElement("div");
     const bossLeaderId = (run && run.leaderUid) ? run.leaderUid : "";
     const isLeader = (bossLeaderId && m.uid === bossLeaderId);
@@ -21807,8 +21807,20 @@ function claimBossReward(){
     if (!cur) return;
     const st = String(cur.status || "");
     if (st !== "cleared") return;
-    if (!cur.members || !cur.members[userId]) return;
-    if (String(bossId || "") === "wraith_king" && Number(cur.members[userId].hp || 0) <= 0) return;
+    if (!hasBossRunParticipation(cur, userId)) return;
+    if (String(bossId || "") === "wraith_king" && cur.members && cur.members[userId] && Number(cur.members[userId].hp || 0) <= 0) return;
+    if (!cur.members) cur.members = {};
+    if (!cur.members[userId]) {
+      cur.members[userId] = {
+        uid: userId,
+        nick: getNickSafe(),
+        joinedAt: Number(cur.createdAt || 0),
+        dmg: Number(cur.damageByUser && cur.damageByUser[userId] || 0),
+        titleId: String(equippedTitle || ""),
+        weaponType: String(weaponType || "sword"),
+        weaponLv: Number(sword || 0)
+      };
+    }
     if (!cur.claimed) cur.claimed = {};
     if (cur.claimed[userId]) return;
     cur.claimed[userId] = getBossClockNow();
@@ -21847,12 +21859,14 @@ function claimBossReward(){
     }
 
     const members = runAfter.members || {};
-    const arr = Object.keys(members).map(uid => ({
+    const damageByUser = runAfter.damageByUser || {};
+    const memberIds = new Set([].concat(Object.keys(members), Object.keys(damageByUser)));
+    const arr = Array.from(memberIds).map(uid => ({
       uid,
-      dmg: Number(members[uid] && members[uid].dmg ? members[uid].dmg : 0)
+      dmg: getBossMemberDamage(runAfter, uid)
     }));
     const total = arr.reduce((s,a) => s + a.dmg, 0);
-    const me = arr.find(x => x.uid === userId);
+    const me = arr.find(x => String(x.uid) === String(userId));
     const pct = (me && total > 0) ? (me.dmg / total * 100) : 0;
 
     const isLeader = (String(runAfter.leaderUid || "") === userId);
@@ -24718,7 +24732,7 @@ function fetchBoundClosedBossRunOnce(){
   });
 }
 function isMyPendingBossRun(run){
-  if (!run || !run.members || !run.members[userId]) return false;
+  if (!hasBossRunParticipation(run, userId)) return false;
   const st = String(run.status || "");
   const claimed = !!(run.claimed && run.claimed[userId]);
   return (st === "active" || st === "failed" || (st === "cleared" && !claimed));
@@ -24843,6 +24857,21 @@ function getBossMemberDamage(run, uid){
   const memberDmg = Number(run.members && run.members[uid] && run.members[uid].dmg || 0);
   const indexedDmg = Number(run.damageByUser && run.damageByUser[uid] || 0);
   return Math.max(0, memberDmg, indexedDmg);
+}
+
+function hasBossRunParticipation(run, uid){
+  if (!run || !uid) return false;
+  uid = String(uid);
+  return !!(
+    (run.members && run.members[uid]) ||
+    Number(run.damageByUser && run.damageByUser[uid] || 0) > 0
+  );
+}
+
+function getBossRunParticipantNick(run, uid){
+  uid = String(uid || "");
+  const member = run && run.members && run.members[uid];
+  return String((member && member.nick) || (uid === String(userId || "") ? getNickSafe() : uid) || "???");
 }
 
 function applyDerivedBossDamageState(bossId, run){
