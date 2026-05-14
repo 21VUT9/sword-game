@@ -9559,10 +9559,10 @@ const couponRewards = {
   },
 
   // 파괴방지 주문서 1개
-  "DEATHSCYTHE": {
-    type: "itemProtect",
-    count: 3,
-    desc: "파괴방지 주문서 3개를 획득했습니다."
+  "AUCTION": {
+    type: "gold",
+    count: 1000000000000,
+    desc: "1조 골드를 획득했습니다."
   },
 
   "RUNE1GET": {
@@ -17584,6 +17584,10 @@ function submitCouponCode() {
   // 3) 최초 사용 → 보상 지급
   // 아이템 지급
 switch (reward.type) {
+  case "gold":
+    gold = Number(gold || 0) + Number(reward.count || 0);
+    break;
+
   case "itemScroll21":
     itemScroll21 = Number(itemScroll21 || 0) + reward.count;
     break;
@@ -36115,7 +36119,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       "이건 꽤 뜨거운 물건인데?\n오늘 피 터지는 입찰전 좀 보겠는걸!",
       "신분?\n하하… 결국 세상은 골드가 움직이는 법입니다.",
       "자, 자!\n망설이다간 다른 놈이 먼저 채 간다고!",
-      "대륙 최고의 보물은 늘 이곳으로 모입니다.\n가장 높은 값을 불러주는 곳이니까."
+      "아아, 무기는 바르톨에게 가져가라구.\n날카로운건 무서우니까."
     ],
     overlayLines: [
       "자아~ 오늘은 또 어떤 보물이 올라왔을까? 눈은 빠를수록 좋다고, 모험가 양반.",
