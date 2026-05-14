@@ -21805,7 +21805,17 @@ function claimBossReward(){
 
   runRef.transaction((cur) => {
     if (!cur) return;
-    const st = String(cur.status || "");
+    let st = String(cur.status || "");
+    if (st === "active" && !TOTAL_DAMAGE_DERIVED_HP_EXCLUDED_BOSSES.has(String(bossId || ""))) {
+      const maxHp = Number(cur.maxHp || 0);
+      const totalDamage = Number(cur.totalDamage || 0);
+      if (maxHp > 0 && totalDamage >= maxHp) {
+        cur.hp = 0;
+        cur.status = "cleared";
+        cur.clearedAt = Number(cur.clearedAt || 0) || getBossClockNow();
+        st = "cleared";
+      }
+    }
     if (st !== "cleared") return;
     if (!hasBossRunParticipation(cur, userId)) return;
     if (String(bossId || "") === "wraith_king" && cur.members && cur.members[userId] && Number(cur.members[userId].hp || 0) <= 0) return;
@@ -26983,13 +26993,13 @@ function queueBatchedBossDamage(bossId, damage){
       const total = Number(snap && snap.val ? snap.val() : 0);
       const run = (bossRunsActiveCache || {})[bossId] || {};
       const maxHp = Number(run.maxHp || 0);
-      if (maxHp > 0 && total >= maxHp && String(run.status || "") === "active") {
+      if (maxHp > 0 && total >= maxHp) {
         db.ref(`bossRunsActive/${bossId}`).transaction(cur => {
           if (!cur || String(cur.status || "") !== "active") return cur;
           if (Number(cur.maxHp || 0) > 0 && Number(cur.totalDamage || 0) >= Number(cur.maxHp || 0)) {
             cur.hp = 0;
             cur.status = "cleared";
-            cur.clearedAt = Date.now();
+            cur.clearedAt = getBossClockNow();
           }
           return cur;
         });
