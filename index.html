@@ -2528,12 +2528,14 @@ button {
 #questIconBtn{ top: calc(240px + var(--field-top-offset)); }
 #storybookIconBtn{ top: calc(360px + var(--field-top-offset)); }
 #cumulativeRewardIconBtn{ top: calc(480px + var(--field-top-offset)); }
+#auctionIconBtn{ top: calc(600px + var(--field-top-offset)); }
 
   /* ✅ 출석 미완료 알림 뱃지 (!) */
 #attendanceIconBtn{ overflow: visible; } /* (혹시 밖으로 삐져도 보이게) */
 #bossBattleIconBtn{ overflow: visible; }
 #guildIconBtn{ overflow: visible; }
 #cumulativeRewardIconBtn{ overflow: visible; }
+#auctionIconBtn{ overflow: visible; }
 
 .icon-alert-badge{
   position: absolute;
@@ -5972,6 +5974,13 @@ a, button, [role="button"], .actionBtn, .dock-btn, .map-field, .inventory-slot {
   <img class="map-icon-img" src="images/ui/icon_cumulative_rewards.png" alt="누적보상">
   <div id="cumulativeRewardAlertBadge" class="icon-alert-badge">!</div>
   <span class="map-icon-label one-line">누적보상</span>
+</button>
+
+<button id="auctionIconBtn"
+        class="map-icon-btn left-icon-btn"
+        onclick="openAuctionOverlay()" data-nosfx="1">
+  <img class="map-icon-img" src="images/ui/icon_auction.png" alt="경매장">
+  <span class="map-icon-label one-line">경매장</span>
 </button>
   
 </div>
@@ -10839,6 +10848,7 @@ weaponCodexSeen = {};
   setDisp("questIconBtn", "none");
   setDisp("storybookIconBtn", "none");
   setDisp("cumulativeRewardIconBtn", "none");
+  setDisp("auctionIconBtn", "none");
 
   setDisp("duelIconBtn", "none");
   setDisp("guildIconBtn", "none");
@@ -12494,6 +12504,9 @@ btn.addEventListener("click", () => {
       break;
     case "verdia":
       openVerdiaDialogue();
+      break;
+    case "kylo":
+      openKyloDialogue();
       break;
     default:
       showLockedFeaturePopup();
@@ -20122,6 +20135,7 @@ function login() {
     setDisplay("questIconBtn",      "block");
     setDisplay("storybookIconBtn",  "block");
     setDisplay("cumulativeRewardIconBtn", "block");
+    setDisplay("auctionIconBtn", "block");
 
     setDisplay("toastDock",       "flex");
     setDisplay("workbenchDock",   "block");
@@ -22399,6 +22413,7 @@ setDisplay("achievementIconBtn",  "block");
 setDisplay("questIconBtn",      "block");
 setDisplay("storybookIconBtn",  "block");
 setDisplay("cumulativeRewardIconBtn", "block");
+setDisplay("auctionIconBtn", "block");
 
 setDisplay("toastDock",       "flex");
 setDisplay("workbenchDock",   "block");
@@ -36082,6 +36097,1284 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     briella_alive: 'images/epic/briella_idle.png',
     briella_dead: 'images/epic/briella_down.png'
   };
+})();
+
+/* =========================
+   Royal Auction House UI
+   ========================= */
+(function(){
+  const KYLO_AUCTION = {
+    name: "카일로 벤트릭",
+    title: "퍼그란트 왕립 경매장 진행자",
+    icon: "images/npc_icons/npc_kylo.png",
+    talk: "images/npc/kylo_talk.png",
+    idle: "images/npc/kylo_idle.png",
+    baseLines: [
+      "오오, 모험가 양반.\n오늘은 또 어떤 보물을 들고 오셨나?",
+      "자아— 시작하지!\n이 보물의 가치를 증명할 자는 누구지?",
+      "이건 꽤 뜨거운 물건인데?\n오늘 피 터지는 입찰전 좀 보겠는걸!",
+      "신분?\n하하… 결국 세상은 골드가 움직이는 법입니다.",
+      "자, 자!\n망설이다간 다른 놈이 먼저 채 간다고!",
+      "대륙 최고의 보물은 늘 이곳으로 모입니다.\n가장 높은 값을 불러주는 곳이니까."
+    ],
+    overlayLines: [
+      "자아~ 오늘은 또 어떤 보물이 올라왔을까? 눈은 빠를수록 좋다고, 모험가 양반.",
+      "망설이는 순간 다른 누군가가 채 간다니까? 경매장은 원래 그런 곳이야.",
+      "흐흠… 좋은 물건 냄새가 나는군. 오늘 골드 좀 크게 움직이겠어.",
+      "가치를 알아보는 안목, 그게 진짜 힘이지. 골드는 거짓말을 안 하거든.",
+      "퍼그란트 최고의 보물은 결국 이곳으로 모인다. 가장 높은 값을 불러주는 곳이니까."
+    ]
+  };
+
+  let auctionTab = "market";
+
+  function kyloRandomLine(){
+    return KYLO_AUCTION.overlayLines[Math.floor(Math.random() * KYLO_AUCTION.overlayLines.length)];
+  }
+
+  function ensureAuctionOverlay(){
+    if (!document.getElementById("auctionUiStyle")) {
+      const style = document.createElement("style");
+      style.id = "auctionUiStyle";
+      style.textContent = `
+        #auctionOverlay{position:fixed;inset:0;z-index:13500;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.72);color:#eee;}
+        .auction-panel{width:min(940px,92vw);height:min(780px,90vh);background:linear-gradient(180deg,#17120c,#0d0b09);border:1px solid rgba(236,190,92,.35);box-shadow:0 18px 60px rgba(0,0,0,.75);display:grid;grid-template-columns:minmax(0,1fr) 132px;position:relative;overflow:hidden;}
+        .auction-main{display:flex;flex-direction:column;min-width:0;min-height:0;padding:16px 18px 14px;}
+        .auction-head{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(255,255,255,.12);padding-bottom:10px;}
+        .auction-title{font-size:22px;font-weight:900;color:#ffd36a;}
+        .auction-close{background:#21170f;color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:6px 10px;cursor:pointer;}
+        .auction-body{display:grid;grid-template-rows:3fr 2fr;gap:10px;min-height:0;flex:1;padding:12px 0;}
+        .auction-section{min-height:0;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.035);padding:10px;overflow:hidden;display:flex;flex-direction:column;}
+        .auction-section-title{font-size:13px;font-weight:900;color:#ffd36a;margin-bottom:8px;}
+        .auction-empty{font-size:13px;color:#aaa;line-height:1.6;}
+        .auction-tabs{position:relative;background:#100d0a;border-left:1px solid rgba(236,190,92,.25);padding-top:80px;}
+        .auction-tab{width:112px;height:58px;margin:0 0 8px -1px;border:1px solid rgba(236,190,92,.42);border-left:0;background:#21160d;color:#d8c59d;font-weight:900;cursor:pointer;clip-path:polygon(0 0,100% 0,90% 50%,100% 100%,0 100%);}
+        .auction-tab.active{background:#6b4219;color:#fff7d8;}
+        .auction-kylo{position:absolute;right:8px;bottom:0;width:118px;max-height:230px;object-fit:contain;filter:drop-shadow(0 10px 18px rgba(0,0,0,.8));}
+        .auction-kylo-message{display:flex;align-items:flex-end;gap:10px;min-height:92px;border-top:1px solid rgba(255,255,255,.12);padding-top:10px;}
+        .auction-kylo-bubble{flex:1;min-height:58px;background:rgba(0,0,0,.42);border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:10px;font-size:13px;line-height:1.5;color:#f6e7bd;}
+        #npcPopup{z-index:14000;}
+        @media(max-width:760px){.auction-panel{grid-template-columns:1fr 96px}.auction-tab{width:84px}.auction-kylo{width:94px}.auction-body{grid-template-rows:1fr 1fr}.auction-kylo-message{min-height:82px}}
+      `;
+      document.head.appendChild(style);
+    }
+
+    if (!document.getElementById("auctionOverlay")) {
+      const overlay = document.createElement("div");
+      overlay.id = "auctionOverlay";
+      overlay.onclick = (e) => { if (e.target === overlay) closeAuctionOverlay(); };
+      overlay.innerHTML = `
+        <div class="auction-panel" onclick="event.stopPropagation()">
+          <div class="auction-main">
+            <div class="auction-head">
+              <div>
+                <div class="auction-title">경매장</div>
+                <div class="auction-empty">카일로 벤트릭이 진행하는 공개 경매</div>
+              </div>
+              <button class="auction-close" type="button" onclick="closeAuctionOverlay()">닫기</button>
+            </div>
+            <div id="auctionBody" class="auction-body"></div>
+            <div class="auction-kylo-message">
+              <div id="auctionKyloBottomLine" class="auction-kylo-bubble"></div>
+            </div>
+          </div>
+          <div class="auction-tabs">
+            <button id="auctionTabMarket" class="auction-tab" type="button" onclick="setAuctionTab('market')">경매장</button>
+            <button id="auctionTabSell" class="auction-tab" type="button" onclick="setAuctionTab('sell')">판매</button>
+            <img class="auction-kylo" src="${KYLO_AUCTION.idle}" onerror="this.style.display='none'">
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    }
+  }
+
+  function renderAuctionOverlay(){
+    ensureAuctionOverlay();
+    const body = document.getElementById("auctionBody");
+    const market = document.getElementById("auctionTabMarket");
+    const sell = document.getElementById("auctionTabSell");
+    if (market) market.classList.toggle("active", auctionTab === "market");
+    if (sell) sell.classList.toggle("active", auctionTab === "sell");
+    const line = document.getElementById("auctionKyloBottomLine");
+    if (line) line.textContent = kyloRandomLine();
+    if (!body) return;
+    if (auctionTab === "sell") {
+      body.innerHTML = `
+        <div class="auction-section"><div class="auction-section-title">등록한 판매 물품</div><div class="auction-empty">판매 시스템을 불러오는 중입니다.</div></div>
+        <div class="auction-section"><div class="auction-section-title">판매 가능 물품</div><div class="auction-empty">명예의훈장, 각인의주문서, 빛나지 못한 별의조각, +2 이상 룬석은 판매할 수 없습니다.</div></div>
+      `;
+    } else {
+      body.innerHTML = `
+        <div class="auction-section"><div class="auction-section-title">진행중인 경매</div><div class="auction-empty">진행중인 경매를 불러오는 중입니다.</div></div>
+        <div class="auction-section"><div class="auction-section-title">내 입찰</div><div class="auction-empty">입찰한 물건이 없습니다.</div></div>
+      `;
+    }
+  }
+
+  function openAuctionOverlay(){
+    ensureAuctionOverlay();
+    const overlay = document.getElementById("auctionOverlay");
+    if (overlay) overlay.style.display = "flex";
+    renderAuctionOverlay();
+  }
+
+  function closeAuctionOverlay(){
+    const overlay = document.getElementById("auctionOverlay");
+    if (overlay) overlay.style.display = "none";
+  }
+
+  function setAuctionTab(tab){
+    auctionTab = tab === "sell" ? "sell" : "market";
+    renderAuctionOverlay();
+  }
+
+  function openKyloDialogue(){
+    const line = KYLO_AUCTION.baseLines[Math.floor(Math.random() * KYLO_AUCTION.baseLines.length)];
+    openNpcDialogueFromTalkSets([[line]], `${KYLO_AUCTION.name} - ${KYLO_AUCTION.title}`, KYLO_AUCTION.talk);
+  }
+
+  window.openAuctionOverlay = openAuctionOverlay;
+  window.closeAuctionOverlay = closeAuctionOverlay;
+  window.setAuctionTab = setAuctionTab;
+  window.openKyloDialogue = openKyloDialogue;
+
+  const init = () => {
+    ensureAuctionOverlay();
+    try {
+      if (Array.isArray(TALK_NPCS) && !TALK_NPCS.some(n => n.key === "kylo")) {
+        TALK_NPCS.push({ key:"kylo", name:"카일로", img:KYLO_AUCTION.icon });
+      }
+    } catch(e) {}
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+})();
+
+/* =========================
+   Auction House System
+   ========================= */
+(function(){
+  const KYLO = {
+    name: "카일로",
+    fullName: "카일로 벤트릭",
+    title: "경매장",
+    icon: "images/npc_icons/npc_kylo.png",
+    talk: "images/npc/kylo_talk.png",
+    idle: "images/npc/kylo_idle.png",
+    baseLines: [
+      "오오, 모험가 양반.\n오늘은 또 어떤 보물을 들고 오셨나?",
+      "자아- 시작하지!\n이 보물의 가치를 증명할 자는 누구지?",
+      "이건 꽤 뜨거운 물건인데?\n오늘 피 터지는 입찰전 좀 보겠는걸!",
+      "신분?\n하하... 결국 세상은 골드가 움직이는 법입니다.",
+      "자, 자!\n망설이다간 다른 놈이 먼저 채 간다고!",
+      "대륙 최고의 보물은 늘 이곳으로 모입니다.\n가장 높은 값을 불러주는 곳이니까."
+    ],
+    lines: [
+      "자아~ 오늘은 또 어떤 보물이 올라왔을까? 눈은 빠를수록 좋다고, 모험가 양반.",
+      "망설이는 순간 다른 누군가가 채 간다니까? 경매장은 원래 그런 곳이야.",
+      "흐흠... 좋은 물건 냄새가 나는군. 오늘 골드 좀 크게 움직이겠어.",
+      "가치를 알아보는 안목, 그게 진짜 힘이지. 골드는 거짓말을 안 하거든.",
+      "퍼그란트 최고의 보물은 결국 이곳으로 모인다. 가장 높은 값을 불러주는 곳이니까."
+    ]
+  };
+
+  const MINUTE = 60 * 1000;
+  const HOUR = 60 * MINUTE;
+  const DAY = 24 * HOUR;
+  const POLL_MS = 15000;
+  const MAX_SELLING = 5;
+  const START_PRICE = 1000000;
+
+  window.auctionAllowedItems = Object.assign({
+    itemProtect: true,
+    itemDownProtect: true,
+    itemScroll15: true,
+    itemScroll21: true,
+    itemSuper: true,
+    unidentifiedRune: true,
+    rune: true
+  }, window.auctionAllowedItems || {});
+
+  const ITEM_DEFS = {
+    itemProtect: {
+      name: "파괴방지 주문서",
+      img: "images/items/scroll_protect.png",
+      get: () => Number(itemProtect || 0),
+      add: (n) => { itemProtect = Math.max(0, Number(itemProtect || 0) + Number(n || 0)); }
+    },
+    itemDownProtect: {
+      name: "강등방지 주문서",
+      img: "images/items/scroll_down_protect.png",
+      get: () => Number(itemDownProtect || 0),
+      add: (n) => { itemDownProtect = Math.max(0, Number(itemDownProtect || 0) + Number(n || 0)); }
+    },
+    itemScroll15: {
+      name: "15강 강화 주문서",
+      img: "images/items/scroll_15.png",
+      get: () => Number(itemScroll15 || 0),
+      add: (n) => { itemScroll15 = Math.max(0, Number(itemScroll15 || 0) + Number(n || 0)); }
+    },
+    itemScroll21: {
+      name: "21강 강화 주문서",
+      img: "images/items/scroll_21.png",
+      get: () => Number(itemScroll21 || 0),
+      add: (n) => { itemScroll21 = Math.max(0, Number(itemScroll21 || 0) + Number(n || 0)); }
+    },
+    itemSuper: {
+      name: "슈퍼강화 주문서",
+      img: "images/items/scroll_super.png",
+      get: () => Number(itemSuper || 0),
+      add: (n) => { itemSuper = Math.max(0, Number(itemSuper || 0) + Number(n || 0)); }
+    },
+    unidentifiedRune: {
+      name: "미확인 룬석",
+      img: "images/items/runes/rune_stone_unidentified.png",
+      get: () => Number(unidentifiedRuneStones || 0),
+      add: (n) => { unidentifiedRuneStones = Math.max(0, Number(unidentifiedRuneStones || 0) + Number(n || 0)); }
+    }
+  };
+
+  let auctionTab = "market";
+  let listings = [];
+  let myBids = {};
+  let pollTimer = null;
+  let detailRef = null;
+  let detailHandler = null;
+  let currentDetailId = "";
+
+  function nowMs(){
+    try {
+      if (typeof getBossClockNow === "function") return Number(getBossClockNow() || Date.now());
+    } catch(e) {}
+    return Date.now();
+  }
+
+  function uid(){
+    const localUserId = (typeof userId !== "undefined") ? userId : "";
+    return String(window.userId || localUserId || "");
+  }
+
+  function displayName(){
+    const localNickname = (typeof nickname !== "undefined") ? nickname : "";
+    const localPlayerName = (typeof playerName !== "undefined") ? playerName : "";
+    return String(window.playerName || localPlayerName || window.nickname || localNickname || uid());
+  }
+
+  function serverTs(){
+    return firebase.database.ServerValue.TIMESTAMP;
+  }
+
+  function money(v){
+    const n = Math.max(0, Math.floor(Number(v || 0)));
+    try {
+      if (typeof formatGold === "function") return formatGold(n);
+    } catch(e) {}
+    return n.toLocaleString("ko-KR");
+  }
+
+  function esc(v){
+    return String(v ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  }
+
+  function safeKey(v){
+    return String(v || "").replace(/[.#$/\[\]]/g, "_");
+  }
+
+  function itemName(item){
+    if (!item) return "알 수 없는 물건";
+    if (item.name) return item.name;
+    if (item.kind === "rune") return getRuneName(item.rune);
+    return (ITEM_DEFS[item.type] && ITEM_DEFS[item.type].name) || item.type || "알 수 없는 물건";
+  }
+
+  function itemImg(item){
+    if (!item) return "";
+    if (item.kind === "rune") return getRuneIcon(item.rune);
+    if (item.img) return item.img;
+    return (ITEM_DEFS[item.type] && ITEM_DEFS[item.type].img) || "";
+  }
+
+  function itemQty(item){
+    return Math.max(1, Math.floor(Number(item && item.qty || 1)));
+  }
+
+  function itemKey(item){
+    if (!item) return "unknown";
+    if (item.kind === "rune") return "rune_" + safeKey((item.rune && item.rune.kind) || item.runeUid || "stone");
+    return safeKey(item.type || "unknown");
+  }
+
+  function normalizeItem(item){
+    const copy = JSON.parse(JSON.stringify(item || {}));
+    copy.qty = itemQty(copy);
+    copy.name = itemName(copy);
+    copy.img = itemImg(copy);
+    copy.itemKey = itemKey(copy);
+    return copy;
+  }
+
+  function getRuneName(rune){
+    try {
+      if (typeof getRuneDisplayName === "function") return getRuneDisplayName(rune);
+    } catch(e) {}
+    const grade = rune && (rune.grade || rune.rank || "");
+    const type = rune && (rune.type || rune.name || "룬석");
+    return `${grade ? grade + " " : ""}${type}`;
+  }
+
+  function getRuneIcon(rune){
+    try {
+      if (typeof getRuneStoneIcon === "function") return getRuneStoneIcon(rune && rune.kind);
+    } catch(e) {}
+    return "images/items/runes/rune_stone.png";
+  }
+
+  function runeUid(rune, idx){
+    if (!rune) return String(idx);
+    if (rune.uid) return String(rune.uid);
+    if (rune.id) return String(rune.id);
+    try {
+      if (typeof makeRuneUid === "function") return makeRuneUid(rune, idx);
+    } catch(e) {}
+    return String(idx);
+  }
+
+  function isRuneOnPreset(rune, idx){
+    try {
+      if (typeof isRuneEquipped === "function" && isRuneEquipped(runeUid(rune, idx))) return true;
+    } catch(e) {}
+    const id = runeUid(rune, idx);
+    const presets = [window.runePreset1, window.runePreset2, window.runePreset3, window.runePresets, window.equippedRunes];
+    return presets.some(p => {
+      const text = JSON.stringify(p || "");
+      return id && text.includes(id);
+    });
+  }
+
+  function canSellRune(rune, idx){
+    if (!window.auctionAllowedItems.rune) return false;
+    if (!rune) return false;
+    if (Number(rune.level || rune.enhance || rune.upgrade || 0) >= 2) return false;
+    return !isRuneOnPreset(rune, idx);
+  }
+
+  function inventoryRows(){
+    const rows = [];
+    Object.keys(ITEM_DEFS).forEach(type => {
+      if (!window.auctionAllowedItems[type]) return;
+      const def = ITEM_DEFS[type];
+      const count = Math.floor(Number(def.get() || 0));
+      if (count > 0) {
+        rows.push({
+          id: type,
+          kind: "item",
+          type,
+          name: def.name,
+          img: def.img,
+          count,
+          maxQty: count
+        });
+      }
+    });
+    if (Array.isArray(runeInventory)) {
+      runeInventory.forEach((rune, idx) => {
+        if (!canSellRune(rune, idx)) return;
+        rows.push({
+          id: `rune:${runeUid(rune, idx)}`,
+          kind: "rune",
+          runeUid: runeUid(rune, idx),
+          runeIndex: idx,
+          rune: JSON.parse(JSON.stringify(rune || {})),
+          name: getRuneName(rune),
+          img: getRuneIcon(rune),
+          count: 1,
+          maxQty: 1
+        });
+      });
+    }
+    return rows;
+  }
+
+  function removeFromInventory(item){
+    item = normalizeItem(item);
+    const qty = itemQty(item);
+    if (item.kind === "rune") {
+      if (!Array.isArray(runeInventory)) return false;
+      const idx = runeInventory.findIndex((r, i) => runeUid(r, i) === item.runeUid);
+      if (idx < 0 || !canSellRune(runeInventory[idx], idx)) return false;
+      runeInventory.splice(idx, 1);
+      return true;
+    }
+    const def = ITEM_DEFS[item.type];
+    if (!def || def.get() < qty) return false;
+    def.add(-qty);
+    return true;
+  }
+
+  function addToInventory(item){
+    item = normalizeItem(item);
+    const qty = itemQty(item);
+    if (item.kind === "rune") {
+      if (!Array.isArray(runeInventory)) runeInventory = [];
+      runeInventory.push(item.rune || {});
+      return;
+    }
+    const def = ITEM_DEFS[item.type];
+    if (def) def.add(qty);
+  }
+
+  function auctionStatus(a){
+    const n = nowMs();
+    if (!a || a.deleted || a.claimed) return "done";
+    if (n < Number(a.readyAt || 0)) return "preparing";
+    if (n < Number(a.endsAt || 0)) return "active";
+    return a.currentBidder ? "sold" : "failed";
+  }
+
+  function statusText(a){
+    const st = auctionStatus(a);
+    if (st === "preparing") return `준비중 ${timeLeft(Number(a.readyAt || 0) - nowMs())}`;
+    if (st === "active") return `입찰중 ${timeLeft(Number(a.endsAt || 0) - nowMs())}`;
+    if (st === "sold") return "경매종료";
+    if (st === "failed") return "판매실패";
+    return "종료";
+  }
+
+  function timeLeft(ms){
+    ms = Math.max(0, Number(ms || 0));
+    const h = Math.floor(ms / HOUR);
+    const m = Math.floor((ms % HOUR) / MINUTE);
+    if (h > 0) return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+    return `00:${String(m).padStart(2,"0")}`;
+  }
+
+  function bidStep(amount){
+    amount = Number(amount || 0);
+    if (amount < 40000) return 5000;
+    if (amount < 100000) return 10000;
+    if (amount < 400000) return 50000;
+    if (amount < 1000000) return 100000;
+    if (amount < 4000000) return 500000;
+    if (amount < 10000000) return 1000000;
+    if (amount < 40000000) return 5000000;
+    if (amount < 100000000) return 10000000;
+    if (amount < 400000000) return 50000000;
+    if (amount < 1000000000) return 100000000;
+    if (amount < 4000000000) return 500000000;
+    if (amount < 10000000000) return 1000000000;
+    if (amount < 40000000000) return 5000000000;
+    if (amount < 100000000000) return 10000000000;
+    if (amount < 400000000000) return 50000000000;
+    if (amount < 1000000000000) return 100000000000;
+    if (amount < 4000000000000) return 500000000000;
+    if (amount < 10000000000000) return 1000000000000;
+    if (amount < 40000000000000) return 5000000000000;
+    if (amount < 100000000000000) return 10000000000000;
+    if (amount < 400000000000000) return 50000000000000;
+    return 100000000000000;
+  }
+
+  function roundStartBid(v){
+    v = Math.max(START_PRICE, Math.floor(Number(v || 0)));
+    if (v >= 1000000000000) return Math.floor(v / 100000000000) * 100000000000;
+    if (v >= 100000000) return Math.floor(v / 1000000) * 1000000;
+    if (v >= 10000) return Math.floor(v / 10000) * 10000;
+    return v;
+  }
+
+  function currentBid(a){
+    return Math.max(Number(a && a.currentBid || 0), Number(a && a.startBid || 0));
+  }
+
+  function nextBid(a){
+    const cur = currentBid(a);
+    return cur + bidStep(cur);
+  }
+
+  function auctionRef(){
+    return db.ref("auctions");
+  }
+
+  function bidRef(user){
+    return db.ref("auctionUserBids").child(user || uid());
+  }
+
+  function priceRef(key){
+    return db.ref("auctionPriceHistory").child(safeKey(key));
+  }
+
+  function ensureStyle(){
+    if (document.getElementById("auctionSystemStyle")) return;
+    const style = document.createElement("style");
+    style.id = "auctionSystemStyle";
+    style.textContent = `
+      .auction-panel{width:min(940px,92vw);height:min(820px,92vh);}
+      .auction-title{font-size:22px;font-weight:900;color:#ffd36a;}
+      .auction-list{display:flex;flex-direction:column;gap:8px;overflow:auto;min-height:0;padding-right:4px;}
+      .auction-row{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:9px;align-items:center;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);border-radius:8px;padding:8px;color:#eee;min-height:58px;}
+      .auction-row.clickable{cursor:pointer;}
+      .auction-row.clickable:hover{border-color:rgba(255,211,106,.55);background:rgba(255,211,106,.08);}
+      .auction-row.outbid{color:#ff8d8d;}
+      .auction-row.won{color:#ffe179;}
+      .auction-row img{width:40px;height:40px;object-fit:contain;}
+      .auction-row-title{font-weight:900;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      .auction-row-sub{font-size:12px;color:#bfb7a2;line-height:1.45;margin-top:2px;}
+      .auction-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+      .auction-btn{border:1px solid rgba(255,211,106,.45);background:#4b2b12;color:#fff4cf;border-radius:6px;padding:6px 9px;font-weight:800;font-size:12px;cursor:pointer;}
+      .auction-btn:disabled{opacity:.45;cursor:not-allowed;}
+      .auction-qty{border-color:rgba(255,255,255,.22);background:#1d1711;color:#eee;}
+      .auction-empty{font-size:13px;color:#aaa;line-height:1.6;}
+      #auctionDetailOverlay{position:fixed;inset:0;z-index:13800;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);}
+      .auction-detail{width:min(560px,92vw);background:#14100b;border:1px solid rgba(255,211,106,.45);box-shadow:0 18px 60px rgba(0,0,0,.75);border-radius:8px;padding:16px;color:#eee;}
+      .auction-detail-head{display:flex;gap:12px;align-items:center;border-bottom:1px solid rgba(255,255,255,.12);padding-bottom:12px;margin-bottom:12px;}
+      .auction-detail-head img{width:56px;height:56px;object-fit:contain;}
+      .auction-detail-title{font-size:16px;font-weight:900;color:#ffd36a;}
+      .auction-detail-grid{display:grid;grid-template-columns:120px minmax(0,1fr);gap:8px 10px;font-size:13px;margin:12px 0;}
+      .auction-detail-grid b{color:#fff;}
+      .auction-detail-bid{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid rgba(255,255,255,.12);padding-top:12px;margin-top:12px;}
+      .auction-kylo-message{min-height:96px;}
+      #npcPopup{z-index:14000!important;}
+      @media(max-width:760px){.auction-row{grid-template-columns:38px minmax(0,1fr)}.auction-row img{width:34px;height:34px}.auction-actions{grid-column:2}.auction-detail-bid{flex-direction:column;align-items:stretch}.auction-body{grid-template-rows:1fr 1fr;}}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function ensureDom(){
+    ensureStyle();
+    let overlay = document.getElementById("auctionOverlay");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "auctionOverlay";
+      overlay.style.display = "none";
+      overlay.onclick = (e) => { if (e.target === overlay) closeAuctionOverlay(); };
+      document.body.appendChild(overlay);
+    }
+    overlay.innerHTML = `
+      <div class="auction-panel" onclick="event.stopPropagation()">
+        <div class="auction-main">
+          <div class="auction-head">
+            <div>
+              <div class="auction-title">경매장</div>
+              <div class="auction-empty">${KYLO.fullName}이 진행하는 공개 경매</div>
+            </div>
+            <button class="auction-close" type="button" onclick="closeAuctionOverlay()">닫기</button>
+          </div>
+          <div id="auctionBody" class="auction-body"></div>
+          <div class="auction-kylo-message">
+            <div id="auctionKyloBottomLine" class="auction-kylo-bubble"></div>
+          </div>
+        </div>
+        <div class="auction-tabs">
+          <button id="auctionTabMarket" class="auction-tab" type="button" onclick="setAuctionTab('market')">경매장</button>
+          <button id="auctionTabSell" class="auction-tab" type="button" onclick="setAuctionTab('sell')">판매</button>
+          <img class="auction-kylo" src="${KYLO.idle}" onerror="this.style.display='none'">
+        </div>
+      </div>
+    `;
+    if (!document.getElementById("auctionDetailOverlay")) {
+      const detail = document.createElement("div");
+      detail.id = "auctionDetailOverlay";
+      detail.onclick = (e) => { if (e.target === detail) closeAuctionDetail(); };
+      document.body.appendChild(detail);
+    }
+  }
+
+  function randomKyloLine(){
+    return KYLO.lines[Math.floor(Math.random() * KYLO.lines.length)];
+  }
+
+  function setKyloLine(text){
+    const el = document.getElementById("auctionKyloBottomLine");
+    if (el) el.textContent = text || randomKyloLine();
+  }
+
+  function render(){
+    ensureDom();
+    const body = document.getElementById("auctionBody");
+    const marketTab = document.getElementById("auctionTabMarket");
+    const sellTab = document.getElementById("auctionTabSell");
+    if (marketTab) marketTab.classList.toggle("active", auctionTab === "market");
+    if (sellTab) sellTab.classList.toggle("active", auctionTab === "sell");
+    setKyloLine(randomKyloLine());
+    if (!body) return;
+    body.innerHTML = auctionTab === "sell" ? renderSellTab() : renderMarketTab();
+  }
+
+  function renderMarketTab(){
+    const active = listings
+      .filter(a => auctionStatus(a) === "active")
+      .sort((a,b) => {
+        const ah = Number(a.endsAt || 0) - nowMs() <= HOUR ? 1 : 0;
+        const bh = Number(b.endsAt || 0) - nowMs() <= HOUR ? 1 : 0;
+        if (ah !== bh) return bh - ah;
+        if (Number(a.updatedAt || 0) !== Number(b.updatedAt || 0)) return Number(b.updatedAt || 0) - Number(a.updatedAt || 0);
+        return Number(b.createdAt || 0) - Number(a.createdAt || 0);
+      });
+    const bidRows = Object.entries(myBids || {})
+      .map(([id, bid]) => ({ id, bid, auction: listings.find(a => a.id === id) }))
+      .filter(row => row.bid && row.bid.status !== "claimed" && row.bid.status !== "refunded")
+      .sort((a,b) => Number(b.bid.updatedAt || 0) - Number(a.bid.updatedAt || 0));
+    return `
+      <div class="auction-section">
+        <div class="auction-section-title">진행중인 경매</div>
+        <div class="auction-list">
+          ${active.length ? active.map(renderAuctionRow).join("") : `<div class="auction-empty">진행중인 경매가 없습니다. 최초 시범 경매 등록 상태를 확인해 주세요.</div>`}
+        </div>
+      </div>
+      <div class="auction-section">
+        <div class="auction-section-title">내 입찰</div>
+        <div class="auction-list">
+          ${bidRows.length ? bidRows.map(renderBidRow).join("") : `<div class="auction-empty">입찰한 물건이 없습니다.</div>`}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderAuctionRow(a){
+    const item = normalizeItem(a.item);
+    const bid = currentBid(a);
+    const qty = itemQty(item);
+    return `
+      <div class="auction-row clickable" onclick="openAuctionDetail('${esc(a.id)}')">
+        <img src="${esc(itemImg(item))}" onerror="this.style.display='none'">
+        <div>
+          <div class="auction-row-title">${esc(itemName(item))} ${qty > 1 ? "x" + qty : ""}</div>
+          <div class="auction-row-sub">입찰 : ${money(bid)} 골드 · ${statusText(a)}</div>
+        </div>
+        <div class="auction-actions"><button class="auction-btn" type="button">상세</button></div>
+      </div>
+    `;
+  }
+
+  function renderBidRow(row){
+    const bid = row.bid || {};
+    const a = row.auction || {};
+    const item = normalizeItem(a.item || bid.item);
+    const st = auctionStatus(a);
+    const outbid = bid.status === "outbid" || (a.currentBidder && a.currentBidder !== uid());
+    const won = st === "sold" && a.currentBidder === uid();
+    const cls = won ? "won" : (outbid ? "outbid" : "");
+    const current = a.id ? currentBid(a) : Number(bid.seenBid || bid.amount || 0);
+    return `
+      <div class="auction-row ${cls}">
+        <img src="${esc(itemImg(item))}" onerror="this.style.display='none'">
+        <div>
+          <div class="auction-row-title">${esc(itemName(item))} ${itemQty(item) > 1 ? "x" + itemQty(item) : ""} ${won ? "[경매종료]" : ""}</div>
+          <div class="auction-row-sub">현재입찰 : ${money(current)} 골드 · 예치금 : ${money(bid.amount)} 골드</div>
+        </div>
+        <div class="auction-actions">
+          ${outbid ? `<button class="auction-btn" type="button" onclick="auctionRefundBid('${esc(row.id)}')">예치금 회수</button>` : ""}
+          ${won ? `<button class="auction-btn" type="button" onclick="auctionClaimWin('${esc(row.id)}')">낙찰받기</button>` : ""}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderSellTab(){
+    const me = uid();
+    const selling = listings
+      .filter(a => a.sellerUid === me && !a.claimed && !a.deleted && auctionStatus(a) !== "sold")
+      .sort((a,b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+    const inv = inventoryRows();
+    return `
+      <div class="auction-section">
+        <div class="auction-section-title">등록한 판매 물품 (${selling.length}/${MAX_SELLING})</div>
+        <div class="auction-list">
+          ${selling.length ? selling.map(renderSellingRow).join("") : `<div class="auction-empty">등록한 판매 물품이 없습니다.</div>`}
+        </div>
+      </div>
+      <div class="auction-section">
+        <div class="auction-section-title">판매 가능 리스트</div>
+        <div class="auction-list">
+          ${inv.length ? inv.map(renderInventoryRow).join("") : `<div class="auction-empty">현재 판매 가능한 아이템이나 룬석이 없습니다.<br>명예의훈장, 각인의주문서, 빛나지못한별의조각, +2 이상 룬석은 제외됩니다.</div>`}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderSellingRow(a){
+    const item = normalizeItem(a.item);
+    const st = auctionStatus(a);
+    const failCount = Number(a.failCount || 0);
+    return `
+      <div class="auction-row ${st === "failed" ? "outbid" : ""}">
+        <img src="${esc(itemImg(item))}" onerror="this.style.display='none'">
+        <div>
+          <div class="auction-row-title">${esc(itemName(item))} ${itemQty(item) > 1 ? "x" + itemQty(item) : ""}</div>
+          <div class="auction-row-sub">${statusText(a)} · 매입가 ${money(a.paidPrice)} 골드 · 시작가 ${money(a.startBid)} 골드</div>
+        </div>
+        <div class="auction-actions">
+          ${st === "failed" ? `<button class="auction-btn" type="button" onclick="auctionRecoverFailed('${esc(a.id)}')">회수</button>` : ""}
+          ${st === "failed" && failCount < 3 ? `<button class="auction-btn" type="button" onclick="auctionRelistFailed('${esc(a.id)}')">재등록</button>` : ""}
+          ${st === "failed" && failCount >= 3 ? `<button class="auction-btn" type="button" onclick="auctionDeleteFailed('${esc(a.id)}')">삭제</button>` : ""}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderInventoryRow(row){
+    const payload = encodeURIComponent(JSON.stringify(row));
+    const qtyButtons = [1,5,20,50]
+      .filter(q => q <= row.maxQty)
+      .map(q => `<button class="auction-btn auction-qty" type="button" onclick="auctionPickSellItem('${payload}',${q})">${q}개 판매</button>`)
+      .join("");
+    return `
+      <div class="auction-row">
+        <img src="${esc(row.img)}" onerror="this.style.display='none'">
+        <div>
+          <div class="auction-row-title">${esc(row.name)}</div>
+          <div class="auction-row-sub">보유 ${row.count}개</div>
+        </div>
+        <div class="auction-actions">${qtyButtons}</div>
+      </div>
+    `;
+  }
+
+  function refresh(){
+    if (!uid()) return Promise.resolve();
+    const reads = [
+      auctionRef().orderByChild("updatedAt").limitToLast(100).once("value"),
+      bidRef().once("value")
+    ];
+    return Promise.all(reads).then(([auctionSnap, bidSnap]) => {
+      const arr = [];
+      auctionSnap.forEach(child => {
+        const v = child.val() || {};
+        v.id = child.key;
+        arr.push(v);
+      });
+      const bids = bidSnap.val() || {};
+      const bidAuctionIds = new Set(Object.keys(bids));
+      listings = arr.filter(a => {
+        const st = auctionStatus(a);
+        return st === "active" || st === "preparing" || st === "failed" || st === "sold" || a.sellerUid === uid() || bidAuctionIds.has(a.id);
+      });
+      myBids = bids;
+      render();
+    }).catch(err => {
+      console.warn("auction refresh failed", err);
+      render();
+    });
+  }
+
+  function startPolling(){
+    stopPolling();
+    refresh();
+    pollTimer = setInterval(refresh, POLL_MS);
+  }
+
+  function stopPolling(){
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = null;
+  }
+
+  function estimateUnitPrice(item){
+    item = normalizeItem(item);
+    return priceRef(item.itemKey).orderByChild("soldAt").limitToLast(10).once("value").then(snap => {
+      const prices = [];
+      snap.forEach(ch => {
+        const v = ch.val() || {};
+        if (Number(v.unitPrice || 0) > 0) prices.push(Number(v.unitPrice));
+      });
+      if (prices.length < 3) return START_PRICE;
+      prices.sort((a,b) => a - b);
+      const trimmed = prices.length >= 10 ? prices.slice(1, -1) : prices;
+      const avg = trimmed.reduce((sum, n) => sum + n, 0) / Math.max(1, trimmed.length);
+      return Math.max(START_PRICE, Math.floor(avg * 0.7));
+    }).catch(() => START_PRICE);
+  }
+
+  function kyloMessage(html, confirmText, onConfirm, cancelText, onCancel){
+    if (typeof showNpcMessage !== "function") {
+      if (window.confirm(String(html).replace(/<[^>]+>/g, "")) && onConfirm) onConfirm();
+      return;
+    }
+    const id = "kyloConfirm_" + Date.now();
+    const body = `
+      <div style="line-height:1.65;">${html}</div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
+        ${confirmText ? `<button id="${id}_ok" class="auction-btn" type="button">${esc(confirmText)}</button>` : ""}
+        <button id="${id}_cancel" class="auction-btn auction-qty" type="button">${esc(cancelText || "취소")}</button>
+      </div>
+    `;
+    showNpcMessage(body, KYLO.idle, false, KYLO.name);
+    setTimeout(() => {
+      const ok = document.getElementById(id + "_ok");
+      const cancel = document.getElementById(id + "_cancel");
+      if (ok) ok.onclick = () => { closeNpcPopupIfPossible(); if (onConfirm) onConfirm(); };
+      if (cancel) cancel.onclick = () => { closeNpcPopupIfPossible(); if (onCancel) onCancel(); };
+    }, 0);
+  }
+
+  function closeNpcPopupIfPossible(){
+    try {
+      const popup = document.getElementById("npcPopup");
+      if (popup) popup.style.display = "none";
+    } catch(e) {}
+  }
+
+  function pickSellItem(encoded, qty){
+    const row = JSON.parse(decodeURIComponent(encoded || ""));
+    const item = normalizeItem(Object.assign({}, row, { qty }));
+    const activeMine = listings.filter(a => a.sellerUid === uid() && !a.claimed && !a.deleted && auctionStatus(a) !== "sold").length;
+    if (activeMine >= MAX_SELLING) {
+      kyloMessage(`동시에 등록 가능한 물건은 ${MAX_SELLING}개까지야.`, null, null, "확인");
+      return;
+    }
+    estimateUnitPrice(item).then(unit => {
+      const paid = Math.max(START_PRICE, Math.floor(unit * itemQty(item)));
+      kyloMessage(
+        `이 물건은 <b>${money(paid)} 골드</b>로 매입해주지.<br>판매할텐가?`,
+        "판매",
+        () => createListing(item, paid),
+        "취소"
+      );
+    });
+  }
+
+  function createListing(item, paidPrice){
+    item = normalizeItem(item);
+    if (!removeFromInventory(item)) {
+      kyloMessage("지금은 그 물건을 판매할 수 없어. 인벤토리를 다시 확인해 보라고.", null, null, "확인");
+      return;
+    }
+    gold = Number(gold || 0) + Number(paidPrice || 0);
+    const n = nowMs();
+    const readyAt = n + (10 * MINUTE) + Math.floor(Math.random() * (5 * MINUTE + 1));
+    const startBid = roundStartBid(Number(paidPrice || 0) * 0.7);
+    const ref = auctionRef().push();
+    const data = {
+      sellerUid: uid(),
+      sellerName: displayName(),
+      item,
+      itemKey: item.itemKey,
+      paidPrice: Math.floor(Number(paidPrice || 0)),
+      startBid,
+      currentBid: 0,
+      currentBidder: "",
+      currentBidderName: "",
+      createdAt: n,
+      updatedAt: n,
+      readyAt,
+      endsAt: readyAt + DAY,
+      failCount: 0,
+      status: "preparing"
+    };
+    ref.set(data).then(() => {
+      save();
+      update();
+      kyloMessage(`좋아. <b>${money(paidPrice)} 골드</b>, 즉시 지급하지.<br>물건은 준비 시간이 끝나면 경매장에 올라갈 거야.`, null, null, "확인");
+      return refresh();
+    }).catch(err => {
+      console.warn("auction create failed", err);
+      addToInventory(item);
+      gold = Math.max(0, Number(gold || 0) - Number(paidPrice || 0));
+      save();
+      update();
+      kyloMessage("등록 중 문제가 생겼어. 물건과 골드는 원래대로 돌려뒀다.", null, null, "확인");
+    });
+  }
+
+  function openDetail(id){
+    currentDetailId = id;
+    closeDetailListener();
+    const overlay = document.getElementById("auctionDetailOverlay");
+    if (!overlay) ensureDom();
+    detailRef = auctionRef().child(id);
+    detailHandler = snap => renderDetail(id, snap.val());
+    detailRef.on("value", detailHandler);
+    document.getElementById("auctionDetailOverlay").style.display = "flex";
+  }
+
+  function closeDetailListener(){
+    if (detailRef && detailHandler) detailRef.off("value", detailHandler);
+    detailRef = null;
+    detailHandler = null;
+  }
+
+  function closeDetail(){
+    closeDetailListener();
+    currentDetailId = "";
+    const overlay = document.getElementById("auctionDetailOverlay");
+    if (overlay) overlay.style.display = "none";
+  }
+
+  function renderDetail(id, a){
+    const overlay = document.getElementById("auctionDetailOverlay");
+    if (!overlay) return;
+    if (!a) {
+      overlay.innerHTML = `<div class="auction-detail"><div class="auction-empty">경매 정보를 찾을 수 없습니다.</div><div class="auction-actions"><button class="auction-btn" onclick="closeAuctionDetail()">닫기</button></div></div>`;
+      return;
+    }
+    a.id = id;
+    const item = normalizeItem(a.item);
+    const st = auctionStatus(a);
+    const cur = currentBid(a);
+    const next = nextBid(a);
+    const alreadyBid = myBids && myBids[id] && myBids[id].status === "active";
+    const canBid = st === "active" && a.sellerUid !== uid() && a.currentBidder !== uid() && !alreadyBid;
+    overlay.innerHTML = `
+      <div class="auction-detail" onclick="event.stopPropagation()">
+        <div class="auction-detail-head">
+          <img src="${esc(itemImg(item))}" onerror="this.style.display='none'">
+          <div>
+            <div class="auction-detail-title">${esc(itemName(item))} ${itemQty(item) > 1 ? "x" + itemQty(item) : ""}</div>
+            <div class="auction-row-sub">남은시간 : ${st === "active" ? timeLeft(Number(a.endsAt || 0) - nowMs()) : statusText(a)}</div>
+          </div>
+        </div>
+        <div class="auction-detail-grid">
+          <span>시작입찰가</span><b>${money(a.startBid)} 골드</b>
+          <span>현재입찰가</span><b>${money(cur)} 골드</b>
+          <span>입찰자</span><b>${esc(a.currentBidderName || "없음")}</b>
+        </div>
+        <div class="auction-detail-bid">
+          <div>
+            <b>${money(next)} 골드</b>
+            <div class="auction-row-sub">1개당 ${money(Math.floor(next / itemQty(item)))} 골드</div>
+          </div>
+          <div class="auction-actions">
+            <button class="auction-btn" type="button" ${canBid ? "" : "disabled"} onclick="auctionConfirmBid('${esc(id)}',${next})">입찰하기</button>
+            <button class="auction-btn auction-qty" type="button" onclick="closeAuctionDetail()">닫기</button>
+          </div>
+        </div>
+        ${alreadyBid ? `<div class="auction-empty" style="margin-top:10px;">이미 이 물건에 입찰했습니다.</div>` : ""}
+      </div>
+    `;
+  }
+
+  function confirmBid(id, amount){
+    const a = listings.find(x => x.id === id);
+    if (!a) {
+      kyloMessage("경매 정보를 다시 불러와야겠어.", null, null, "확인");
+      return;
+    }
+    kyloMessage(
+      `<b>${money(amount)} 골드</b>. 입찰하겠나?<br><span style="color:#aaa;">${money(amount)} 골드가 예치됩니다.</span>`,
+      "확인",
+      () => placeBid(id, amount),
+      "취소"
+    );
+  }
+
+  function placeBid(id, amount){
+    amount = Math.floor(Number(amount || 0));
+    if (Number(gold || 0) < amount) {
+      kyloMessage("골드가 부족하군. 경매장은 약속보다 현금을 믿지.", null, null, "확인");
+      return;
+    }
+    const ref = auctionRef().child(id);
+    let before = null;
+    ref.transaction(cur => {
+      if (!cur) return;
+      const st = auctionStatus(cur);
+      if (st !== "active") return;
+      if (cur.sellerUid === uid() || cur.currentBidder === uid()) return;
+      const min = nextBid(cur);
+      if (amount < min) return;
+      before = {
+        bidder: cur.currentBidder || "",
+        bid: Number(cur.currentBid || 0),
+        name: cur.currentBidderName || "",
+        item: cur.item || null
+      };
+      cur.currentBid = amount;
+      cur.currentBidder = uid();
+      cur.currentBidderName = displayName();
+      cur.updatedAt = nowMs();
+      cur.status = "active";
+      return cur;
+    }, (err, committed, snap) => {
+      if (err || !committed) {
+        kyloMessage("입찰이 성사되지 않았어. 누군가 먼저 움직였을지도 모르지.", null, null, "확인");
+        refresh();
+        return;
+      }
+      const a = snap.val() || {};
+      gold = Number(gold || 0) - amount;
+      const updates = {};
+      updates[`auctionUserBids/${uid()}/${id}`] = {
+        auctionId: id,
+        amount,
+        item: normalizeItem(a.item),
+        status: "active",
+        createdAt: nowMs(),
+        updatedAt: nowMs()
+      };
+      if (before && before.bidder) {
+        updates[`auctionUserBids/${before.bidder}/${id}/status`] = "outbid";
+        updates[`auctionUserBids/${before.bidder}/${id}/seenBid`] = amount;
+        updates[`auctionUserBids/${before.bidder}/${id}/updatedAt`] = nowMs();
+      }
+      db.ref().update(updates).then(() => {
+        save();
+        update();
+        closeDetail();
+        refresh();
+      }).catch(error => {
+        console.warn("auction bid update failed", error);
+        gold = Number(gold || 0) + amount;
+        save();
+        update();
+        kyloMessage("입찰 저장 중 문제가 생겼어. 예치금은 되돌려뒀다.", null, null, "확인");
+      });
+    });
+  }
+
+  function refundBid(id){
+    const bid = myBids[id];
+    if (!bid || bid.status !== "outbid") return;
+    gold = Number(gold || 0) + Number(bid.amount || 0);
+    bidRef().child(id).update({ status:"refunded", refundedAt: nowMs(), updatedAt: nowMs() }).then(() => {
+      save();
+      update();
+      refresh();
+    });
+  }
+
+  function claimWin(id){
+    const a = listings.find(x => x.id === id);
+    const bid = myBids[id];
+    if (!a || !bid || auctionStatus(a) !== "sold" || a.currentBidder !== uid()) return;
+    addToInventory(a.item);
+    const updates = {};
+    updates[`auctions/${id}/claimed`] = true;
+    updates[`auctions/${id}/claimedAt`] = nowMs();
+    updates[`auctions/${id}/status`] = "claimed";
+    updates[`auctionUserBids/${uid()}/${id}/status`] = "claimed";
+    updates[`auctionUserBids/${uid()}/${id}/claimedAt`] = nowMs();
+    updates[`auctionPriceHistory/${safeKey(a.itemKey || itemKey(a.item))}/${id}`] = {
+      auctionId: id,
+      price: Number(a.currentBid || bid.amount || 0),
+      unitPrice: Math.floor(Number(a.currentBid || bid.amount || 0) / itemQty(a.item)),
+      item: normalizeItem(a.item),
+      soldAt: nowMs()
+    };
+    db.ref().update(updates).then(() => {
+      save();
+      update();
+      refresh();
+    });
+  }
+
+  function recoverFailed(id){
+    const a = listings.find(x => x.id === id);
+    if (!a || a.sellerUid !== uid() || auctionStatus(a) !== "failed") return;
+    const cost = Number(a.paidPrice || 0);
+    if (Number(gold || 0) < cost) {
+      kyloMessage(
+        `회수하려면 매입금 <b>${money(cost)} 골드</b>를 돌려줘야 해.<br>골드가 부족하군.`,
+        "재등록",
+        () => relistFailed(id),
+        "취소"
+      );
+      return;
+    }
+    gold = Number(gold || 0) - cost;
+    addToInventory(a.item);
+    auctionRef().child(id).update({ claimed:true, status:"recovered", recoveredAt: nowMs(), updatedAt: nowMs() }).then(() => {
+      save();
+      update();
+      refresh();
+    });
+  }
+
+  function relistFailed(id){
+    const a = listings.find(x => x.id === id);
+    if (!a || a.sellerUid !== uid() || auctionStatus(a) !== "failed") return;
+    const failCount = Number(a.failCount || 0) + 1;
+    const n = nowMs();
+    const readyAt = n + (10 * MINUTE) + Math.floor(Math.random() * (5 * MINUTE + 1));
+    auctionRef().child(id).update({
+      currentBid: 0,
+      currentBidder: "",
+      currentBidderName: "",
+      failCount,
+      readyAt,
+      endsAt: readyAt + DAY,
+      updatedAt: n,
+      status: "preparing"
+    }).then(refresh);
+  }
+
+  function deleteFailed(id){
+    const a = listings.find(x => x.id === id);
+    if (!a || a.sellerUid !== uid() || auctionStatus(a) !== "failed" || Number(a.failCount || 0) < 3) return;
+    auctionRef().child(id).update({ deleted:true, status:"deleted", updatedAt: nowMs() }).then(refresh);
+  }
+
+  function createSystemAuction(type, suffix){
+    const def = ITEM_DEFS[type];
+    if (!def || !window.auctionAllowedItems[type]) return Promise.resolve();
+    const n = nowMs();
+    const ref = auctionRef().child(`system_${safeKey(type)}_${safeKey(suffix)}`);
+    return ref.transaction(cur => cur || {
+      sellerUid: "system",
+      sellerName: KYLO.name,
+      item: normalizeItem({ kind:"item", type, qty:1, name:def.name, img:def.img }),
+      itemKey: safeKey(type),
+      paidPrice: START_PRICE,
+      startBid: START_PRICE,
+      currentBid: 0,
+      currentBidder: "",
+      currentBidderName: "",
+      createdAt: n,
+      updatedAt: n,
+      readyAt: n,
+      endsAt: n + DAY,
+      failCount: 0,
+      status: "active",
+      systemAuction: true
+    }).then(() => null);
+  }
+
+  function createSystemRuneAuction(kind, suffix){
+    if (!window.auctionAllowedItems.rune) return Promise.resolve();
+    if (!RUNE_DEFS || !RUNE_DEFS[kind]) return Promise.resolve();
+    const def = RUNE_DEFS[kind];
+    const n = nowMs();
+    const rune = {
+      uid: `system_rune_${safeKey(kind)}_${safeKey(suffix)}`,
+      kind,
+      level: 1,
+      acquiredAt: n,
+      isNew: false,
+      perfectPath: true,
+      straightSuccessCount: 0
+    };
+    const ref = auctionRef().child(`system_rune_${safeKey(kind)}_${safeKey(suffix)}`);
+    return ref.transaction(cur => cur || {
+      sellerUid: "system",
+      sellerName: KYLO.name,
+      item: normalizeItem({
+        kind: "rune",
+        runeUid: rune.uid,
+        rune,
+        qty: 1,
+        name: def.name,
+        img: getRuneIcon(rune)
+      }),
+      itemKey: `rune_${safeKey(kind)}`,
+      paidPrice: START_PRICE,
+      startBid: START_PRICE,
+      currentBid: 0,
+      currentBidder: "",
+      currentBidderName: "",
+      createdAt: n,
+      updatedAt: n,
+      readyAt: n,
+      endsAt: n + DAY,
+      failCount: 0,
+      status: "active",
+      systemAuction: true
+    }).then(() => null);
+  }
+
+  function kstWeeklyKey(){
+    const d = new Date(nowMs() + 9 * HOUR);
+    const day = d.getUTCDay();
+    const diff = (day + 6) % 7;
+    const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - diff));
+    return `${monday.getUTCFullYear()}-${String(monday.getUTCMonth()+1).padStart(2,"0")}-${String(monday.getUTCDate()).padStart(2,"0")}`;
+  }
+
+  function ensureSpecialAuctions(){
+    if (!uid()) return Promise.resolve();
+    const stateRef = db.ref("auctionSpecialState");
+    return stateRef.once("value").then(snap => {
+      const state = snap.val() || {};
+      const jobs = [];
+      const types = Object.keys(ITEM_DEFS).filter(t => window.auctionAllowedItems[t]);
+      const runeKinds = (window.auctionAllowedItems.rune && typeof RUNE_DEFS === "object")
+        ? Object.keys(RUNE_DEFS)
+        : [];
+      if (!state.initialSeedDone) {
+        types.forEach(type => jobs.push(createSystemAuction(type, "initial")));
+        runeKinds.forEach(kind => jobs.push(createSystemRuneAuction(kind, "initial")));
+        jobs.push(stateRef.update({ initialSeedDone:true, initialRuneSeedDone:true, initialSeedAt: nowMs(), initialRuneSeedAt: nowMs() }));
+      } else if (!state.initialRuneSeedDone) {
+        runeKinds.forEach(kind => jobs.push(createSystemRuneAuction(kind, "initial")));
+        jobs.push(stateRef.update({ initialRuneSeedDone:true, initialRuneSeedAt: nowMs() }));
+      }
+      const kst = new Date(nowMs() + 9 * HOUR);
+      const isMondayReady = kst.getUTCDay() === 1 && (kst.getUTCHours() > 0 || (kst.getUTCHours() === 0 && kst.getUTCMinutes() >= 10));
+      const weekKey = kstWeeklyKey();
+      if (isMondayReady && state.weeklyKey !== weekKey) {
+        const candidates = [
+          ...types.map(type => ({ kind:"item", type })),
+          ...runeKinds.map(kind => ({ kind:"rune", runeKind: kind }))
+        ];
+        const shuffled = candidates.slice().sort(() => Math.random() - 0.5).slice(0, 3);
+        shuffled.forEach(entry => {
+          if (entry.kind === "rune") jobs.push(createSystemRuneAuction(entry.runeKind, `weekly_${weekKey}`));
+          else jobs.push(createSystemAuction(entry.type, `weekly_${weekKey}`));
+        });
+        jobs.push(stateRef.update({ weeklyKey, weeklyAt: nowMs() }));
+      }
+      return Promise.all(jobs);
+    }).then(() => refresh()).catch(err => console.warn("auction special seed failed", err));
+  }
+
+  function openAuctionOverlay(){
+    ensureDom();
+    const overlay = document.getElementById("auctionOverlay");
+    if (overlay) overlay.style.display = "flex";
+    render();
+    ensureSpecialAuctions();
+    startPolling();
+  }
+
+  function closeAuctionOverlay(){
+    const overlay = document.getElementById("auctionOverlay");
+    if (overlay) overlay.style.display = "none";
+    closeDetail();
+    stopPolling();
+  }
+
+  function setAuctionTab(tab){
+    auctionTab = tab === "sell" ? "sell" : "market";
+    render();
+  }
+
+  function openKyloDialogue(){
+    const line = KYLO.baseLines[Math.floor(Math.random() * KYLO.baseLines.length)];
+    if (typeof openNpcDialogueFromTalkSets === "function") {
+      openNpcDialogueFromTalkSets([[line]], KYLO.name, KYLO.talk);
+    }
+  }
+
+  function init(){
+    ensureDom();
+    try {
+      if (Array.isArray(TALK_NPCS)) {
+        const old = TALK_NPCS.find(n => n.key === "kylo");
+        if (old) {
+          old.name = KYLO.name;
+          old.img = KYLO.icon;
+        } else {
+          TALK_NPCS.push({ key:"kylo", name:KYLO.name, img:KYLO.icon });
+        }
+      }
+      if (typeof renderTalkNpcGrid === "function") renderTalkNpcGrid();
+    } catch(e) {}
+  }
+
+  window.openAuctionOverlay = openAuctionOverlay;
+  window.closeAuctionOverlay = closeAuctionOverlay;
+  window.setAuctionTab = setAuctionTab;
+  window.openKyloDialogue = openKyloDialogue;
+  window.auctionPickSellItem = pickSellItem;
+  window.openAuctionDetail = openDetail;
+  window.closeAuctionDetail = closeDetail;
+  window.auctionConfirmBid = confirmBid;
+  window.auctionRefundBid = refundBid;
+  window.auctionClaimWin = claimWin;
+  window.auctionRecoverFailed = recoverFailed;
+  window.auctionRelistFailed = relistFailed;
+  window.auctionDeleteFailed = deleteFailed;
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
 })();
 </script>
 
