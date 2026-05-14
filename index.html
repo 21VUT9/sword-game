@@ -1609,6 +1609,11 @@ button {
   opacity:0.78;
 }
 
+.active-skill-slot.learned img{
+  filter:none;
+  opacity:1;
+}
+
 .active-skill-slot.locked img{
   filter:grayscale(1) saturate(0) brightness(0.38);
   opacity:0.42;
@@ -6654,7 +6659,7 @@ a, button, [role="button"], .actionBtn, .dock-btn, .map-field, .inventory-slot {
 <div id="bossBattleOverlay"
      style="position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:3000; background:rgba(0,0,0,0.72);">
 
-  <div style="width:min(980px, 96vw); height:min(680px, 92vh); background:#111; border:1px solid #555; border-radius:14px; overflow:hidden; position:relative;">
+  <div style="width:min(980px, 96vw); height:min(680px, 92vh); background:#111; border:1px solid #555; border-radius:14px; overflow:hidden; position:relative; transform:translateY(-36px);">
 
 <!-- ✅ 토벌 결과 배너(성공/실패) -->
 <div id="bossBattleResultBanner"
@@ -9469,6 +9474,9 @@ let swampElfHuntCount = 0; // 🌿 늪엘프의 숲 사냥 성공 횟수 (메인
 let itemEngraveNormal = 0;  // 🪬 일반각인의 주문서
 let itemEngraveAdvanced = 0; // 🪬 고급각인의 주문서
 let itemBossPriority = 0; // 🎫 보스토벌우선신청권
+let itemSkillStone = 0; // 액티브 스킬 레벨업 재료
+let activeSkillLevels = {};
+let activeSkillEquip = { Q:"", W:"", E:"", R:"" };
 
 // 📜 마법 스크롤 상점 판매 아이템
 const scrollShopItems = [
@@ -17121,6 +17129,28 @@ window.addEventListener("keydown", function (e) {
 
   
 // 프로필 저장 상태 텍스트 표시
+(function(){
+  if (window.__npcPopupOutsideCloseInstalled) return;
+  window.__npcPopupOutsideCloseInstalled = true;
+  function closeNpcPopupFromBackdrop(e){
+    const popup = document.getElementById("npcPopup");
+    if (!popup || popup.style.display === "none" || popup.style.display === "") return;
+    if (e && e.target === popup) {
+      e.preventDefault();
+      e.stopPropagation();
+      closeNpcPopup();
+    }
+  }
+  const bindNpcPopupOutsideClose = () => {
+    const popup = document.getElementById("npcPopup");
+    if (!popup) return;
+    popup.addEventListener("mousedown", closeNpcPopupFromBackdrop);
+    popup.addEventListener("touchstart", closeNpcPopupFromBackdrop, { passive:false });
+  };
+  if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", bindNpcPopupOutsideClose);
+  else bindNpcPopupOutsideClose();
+})();
+
 let profileSaveTimer = null;
 
 function setProfileSaveStatus(message, durationMs) {
@@ -19481,6 +19511,14 @@ if (r < successChance) {
     );
   }
 
+  if (Math.random() < adjDrop(0.0005)) {
+    itemSkillStone = Number(itemSkillStone || 0) + 1;
+    popupMsg += `<br><span style="color:#9fffbf;">스킬석 1개를 획득했습니다!</span>`;
+    writeLog(
+      `${userId}님이 사냥터에서 <span style="color:#7CFF7C;">스킬석</span> 1개를 획득했습니다!`
+    );
+  }
+
   // ✅ 망령왕의 죽음세계: 0.1% 확률로 미확인 룬석 1개
   if (currentField === 6 && Math.random() < adjDrop(0.001)) {
     if (addUnidentifiedRuneStone(1)) {
@@ -20017,6 +20055,9 @@ function login() {
       itemEngraveNormal = Number(data.itemEngraveNormal || 0);
       itemEngraveAdvanced = Number(data.itemEngraveAdvanced || 0);
       itemBossPriority = Number(data.itemBossPriority || 0);
+      itemSkillStone = Number(data.itemSkillStone || 0);
+      activeSkillLevels = (data.activeSkillLevels && typeof data.activeSkillLevels === "object") ? data.activeSkillLevels : {};
+      activeSkillEquip = Object.assign({ Q:"", W:"", E:"", R:"" }, (data.activeSkillEquip && typeof data.activeSkillEquip === "object") ? data.activeSkillEquip : {});
       runeInventory = normalizeRuneInventory(data.runeInventory);
       unidentifiedRuneStones = Math.max(0, Number(data.unidentifiedRuneStones || 0));
       runeSlotUnlockCount = clampRuneUnlockCount(data.runeSlotUnlockCount);
@@ -20398,6 +20439,9 @@ function save(options = {}) {
     itemEngraveNormal: Number(itemEngraveNormal || 0),
     itemEngraveAdvanced: Number(itemEngraveAdvanced || 0),
     itemBossPriority: Number(itemBossPriority || 0),
+    itemSkillStone: Number(itemSkillStone || 0),
+    activeSkillLevels: activeSkillLevels || {},
+    activeSkillEquip: activeSkillEquip || { Q:"", W:"", E:"", R:"" },
     runeInventory: normalizeRuneInventory(runeInventory),
     unidentifiedRuneStones: Math.max(0, Number(unidentifiedRuneStones || 0)),
     runeSlotUnlockCount: clampRuneUnlockCount(runeSlotUnlockCount),
@@ -22344,6 +22388,9 @@ if (!power || power <= 20) {
     itemEngraveNormal = Number(data.itemEngraveNormal || 0);
     itemEngraveAdvanced = Number(data.itemEngraveAdvanced || 0);
     itemBossPriority = Number(data.itemBossPriority || 0);
+    itemSkillStone = Number(data.itemSkillStone || 0);
+    activeSkillLevels = (data.activeSkillLevels && typeof data.activeSkillLevels === "object") ? data.activeSkillLevels : {};
+    activeSkillEquip = Object.assign({ Q:"", W:"", E:"", R:"" }, (data.activeSkillEquip && typeof data.activeSkillEquip === "object") ? data.activeSkillEquip : {});
     runeInventory = normalizeRuneInventory(data.runeInventory);
     unidentifiedRuneStones = Math.max(0, Number(data.unidentifiedRuneStones || 0));
     runeSlotUnlockCount = clampRuneUnlockCount(data.runeSlotUnlockCount);
@@ -28476,6 +28523,16 @@ if (starShard > 0) {
     });
   }
   
+  if (Number(itemSkillStone || 0) > 0) {
+    items.push({
+      id: "skillStone",
+      name: "스킬석",
+      count: Number(itemSkillStone || 0),
+      img: "images/items/skill_ston.png",
+      desc: "액티브 스킬의 레벨을 올릴 때 사용하는 희귀한 결정입니다."
+    });
+  }
+
   const title = document.createElement("p");
   title.textContent = "보유 아이템";
   title.style.margin = "0 0 4px 0";
@@ -37380,6 +37437,658 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 })();
+
+/* =========================
+   Active Skill: Sword 1 - 난무
+   ========================= */
+(function(){
+  const SKILL_ID = "sword_1";
+  const SKILL_NAME = "난무";
+  const DETAIL_ICON = "images/skills/active_sword_1.png";
+  const EQUIP_ICON = "images/ui/active_sword_utill_1.png";
+  const BLANK_ICON = "images/ui/skill_blank.png";
+  const COOLDOWN_MS = 3000;
+  const HIT_COUNT = 8;
+  const SKILL_SPRITE_SCALE = 0.8;
+  const ACTIVE_SKILL_USE_DISABLED = true;
+  const skillCooldownUntil = {};
+
+  const SPRITES = {
+    effect: [
+      { src:"images/effects/swordskill1-effect-1.png", frameW:128, frameH:128, cols:2, total:8 },
+      { src:"images/effects/swordskill1-effect-2.png", frameW:128, frameH:128, cols:2, total:10 },
+      { src:"images/effects/swordskill1-effect-3.png", frameW:128, frameH:128, cols:2, total:10 },
+      { src:"images/effects/swordskill1-effect-4.png", frameW:128, frameH:128, cols:2, total:10 },
+      { src:"images/effects/swordskill1-effect-5.png", frameW:128, frameH:128, cols:2, total:8 },
+      { src:"images/effects/swordskill1-effect-6.png", frameW:128, frameH:128, cols:2, total:10 },
+      { src:"images/effects/swordskill1-effect-7.png", frameW:128, frameH:128, cols:2, total:10 },
+      { src:"images/effects/swordskill1-effect-8.png", frameW:128, frameH:128, cols:2, total:10 }
+    ],
+    flash: { src:"images/effects/swordskill1-flash-1.png", frameW:128, frameH:128, cols:4, total:16 },
+    impact: { src:"images/effects/swordskill1-impactburst-1.png", frameW:64, frameH:64, cols:12, total:12 },
+    spark: [
+      { src:"images/effects/swordskill1-spark-1.png", frameW:64, frameH:64, cols:8, total:8 },
+      { src:"images/effects/swordskill1-spark-2.png", frameW:64, frameH:64, cols:8, total:8 }
+    ]
+  };
+  const SOUND_MAP = [
+    "sounds/swordskill1-sound-1.mp3",
+    null,
+    "sounds/swordskill1-sound-2.wav",
+    null,
+    "sounds/swordskill1-sound-3.wav",
+    null,
+    "sounds/swordskill1-sound-4.mp3",
+    null
+  ];
+  const imageCache = new Map();
+  let skillFxItems = [];
+  let skillFxLooping = false;
+  let swordSkillShakePower = 0;
+  let swordSkillShakeLooping = false;
+
+  function ensureSkillState(){
+    if (!activeSkillLevels || typeof activeSkillLevels !== "object") activeSkillLevels = {};
+    if (!activeSkillEquip || typeof activeSkillEquip !== "object") activeSkillEquip = {};
+    activeSkillEquip = Object.assign({ Q:"", W:"", E:"", R:"" }, activeSkillEquip);
+    activeSkillLevels[SKILL_ID] = Math.max(1, Number(activeSkillLevels[SKILL_ID] || 1));
+  }
+
+  function getSkillLevel(){
+    ensureSkillState();
+    return Math.max(1, Number(activeSkillLevels[SKILL_ID] || 1));
+  }
+
+  function getSkillDamagePct(level){
+    return 125 + (Math.max(1, Number(level || 1)) - 1) * 25;
+  }
+
+  function getSkillImage(src){
+    if (imageCache.has(src)) return imageCache.get(src);
+    const img = new Image();
+    img.src = src;
+    imageCache.set(src, img);
+    return img;
+  }
+
+  function escapeHtml(v){
+    return String(v == null ? "" : v).replace(/[&<>"']/g, (ch) => ({
+      "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+    }[ch]));
+  }
+
+  function playSkillSound(index, options = {}){
+    const src = SOUND_MAP[index];
+    if (!src) return;
+    try {
+      const a = new Audio(src);
+      a.volume = options.volume ?? 0.78;
+      a.playbackRate = options.rate ?? (0.98 + Math.random() * 0.08);
+      const p = a.play();
+      if (p && p.catch) p.catch(()=>{});
+    } catch(e) {}
+  }
+
+  function ensureBossSkillCanvas(){
+    const layer = document.getElementById("bossFxLayer") || document.body;
+    let canvas = document.getElementById("activeSkillFxCanvas");
+    if (!canvas) {
+      canvas = document.createElement("canvas");
+      canvas.id = "activeSkillFxCanvas";
+      canvas.style.position = "absolute";
+      canvas.style.inset = "0";
+      canvas.style.width = "100%";
+      canvas.style.height = "100%";
+      canvas.style.pointerEvents = "none";
+      canvas.style.zIndex = "80";
+      layer.appendChild(canvas);
+    }
+    const rect = layer.getBoundingClientRect();
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const w = Math.max(1, Math.floor(rect.width * dpr));
+    const h = Math.max(1, Math.floor(rect.height * dpr));
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+    canvas.dataset.dpr = String(dpr);
+    return canvas;
+  }
+
+  function getBossSkillPoint(){
+    const layer = document.getElementById("bossFxLayer") || document.body;
+    const layerRect = layer.getBoundingClientRect();
+    const img = document.getElementById("bossBattleBossImg");
+    const rect = img && img.getBoundingClientRect();
+    if (!rect || !rect.width || !rect.height) {
+      return { x: layerRect.width / 2, y: layerRect.height / 2, clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 };
+    }
+    const clientX = rect.left + rect.width * (0.28 + Math.random() * 0.44);
+    const clientY = rect.top + rect.height * (0.26 + Math.random() * 0.50);
+    return { x: clientX - layerRect.left, y: clientY - layerRect.top, clientX, clientY };
+  }
+
+  function spawnSpriteEffect(def, options = {}){
+    const canvas = ensureBossSkillCanvas();
+    skillFxItems.push({
+      def,
+      img: getSkillImage(def.src),
+      startedAt: performance.now() + Number(options.delay || 0),
+      life: Number(options.life || 520),
+      scale: Number(options.scale || 3.4) * SKILL_SPRITE_SCALE,
+      rotate: Number(options.rotate || 0),
+      alpha: options.alpha == null ? 1 : Number(options.alpha),
+      x: Number(options.x || 0),
+      y: Number(options.y || 0)
+    });
+    if (!skillFxLooping) runSkillFxLoop(canvas);
+  }
+
+  function clearSkillCanvasLoop(){
+    skillFxItems = [];
+    const canvas = document.getElementById("activeSkillFxCanvas");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function runSkillFxLoop(canvas){
+    skillFxLooping = true;
+    const ctx = canvas.getContext("2d");
+    function loop(nowTime){
+      const c = document.getElementById("activeSkillFxCanvas");
+      if (!c) {
+        skillFxItems = [];
+        skillFxLooping = false;
+        return;
+      }
+      ensureBossSkillCanvas();
+      const dpr = Number(c.dataset.dpr || 1);
+      ctx.clearRect(0, 0, c.width, c.height);
+      skillFxItems = skillFxItems.filter((e) => {
+        if (nowTime < e.startedAt) return true;
+        const t = Math.min(1, (nowTime - e.startedAt) / Math.max(1, e.life));
+        const frame = Math.min(e.def.total - 1, Math.floor(t * e.def.total));
+        const sx = (frame % e.def.cols) * e.def.frameW;
+        const sy = Math.floor(frame / e.def.cols) * e.def.frameH;
+        if (e.img.complete && e.img.naturalWidth) {
+          ctx.save();
+          ctx.globalCompositeOperation = "lighter";
+          ctx.globalAlpha = e.alpha * (1 - Math.max(0, t - 0.74) / 0.26);
+          ctx.translate(e.x * dpr, e.y * dpr);
+          ctx.rotate(e.rotate);
+          ctx.scale(e.scale * dpr, e.scale * dpr);
+          ctx.drawImage(e.img, sx, sy, e.def.frameW, e.def.frameH, -e.def.frameW / 2, -e.def.frameH / 2, e.def.frameW, e.def.frameH);
+          ctx.restore();
+        }
+        return t < 1;
+      });
+      if (skillFxItems.length) {
+        requestAnimationFrame(loop);
+      } else {
+        ctx.clearRect(0, 0, c.width, c.height);
+        skillFxLooping = false;
+      }
+    }
+    requestAnimationFrame(loop);
+  }
+
+  function triggerSwordSkillScreenShake(power){
+    swordSkillShakePower = Math.max(Number(swordSkillShakePower || 0), Number(power || 0));
+    if (swordSkillShakeLooping) return;
+    swordSkillShakeLooping = true;
+    const panel = document.getElementById("bossBattleOverlay")?.firstElementChild;
+    const baseTransform = "translateY(-36px)";
+    function loop(){
+      const overlay = document.getElementById("bossBattleOverlay");
+      const target = overlay && overlay.firstElementChild;
+      if (!overlay || !target || overlay.style.display === "none" || overlay.style.display === "") {
+        swordSkillShakePower = 0;
+        swordSkillShakeLooping = false;
+        return;
+      }
+      const p = Number(swordSkillShakePower || 0);
+      if (p <= 0.15) {
+        target.style.transform = baseTransform;
+        swordSkillShakePower = 0;
+        swordSkillShakeLooping = false;
+        return;
+      }
+      const sx = (Math.random() * 2 - 1) * p;
+      const sy = (Math.random() * 2 - 1) * p;
+      target.style.transform = `translate(${sx.toFixed(2)}px, ${(-36 + sy).toFixed(2)}px)`;
+      swordSkillShakePower *= 0.82;
+      requestAnimationFrame(loop);
+    }
+    if (panel) panel.style.transform = baseTransform;
+    requestAnimationFrame(loop);
+  }
+
+  function getSwordSkillDamagePoint(center, index){
+    const lane = index % 4;
+    const row = Math.floor(index / 4);
+    return {
+      clientX: center.clientX + (lane - 1.5) * 34 + (Math.random() * 10 - 5),
+      clientY: center.clientY - 18 - index * 18 - row * 8 + (Math.random() * 8 - 4)
+    };
+  }
+
+  function playSwordSkillFx(hitResults){
+    clearSkillCanvasLoop();
+    const center = getBossSkillPoint();
+    spawnSpriteEffect(SPRITES.flash, { x:center.x, y:center.y, scale:3.75, life:520, alpha:0.88 });
+    SPRITES.effect.forEach((def, i) => {
+      const finisher = i === SPRITES.effect.length - 1;
+      const delay = i * 140;
+      spawnSpriteEffect(def, {
+        x: center.x,
+        y: center.y,
+        delay,
+        scale: finisher ? 4.1 : 3.45,
+        rotate: -0.35 + Math.random() * 0.7,
+        life: finisher ? 640 : 540,
+        alpha: finisher ? 1 : 0.9
+      });
+      const sparkDef = SPRITES.spark[i % SPRITES.spark.length];
+      for (let s = 0; s < (finisher ? 4 : 2); s++) {
+        spawnSpriteEffect(sparkDef, {
+          x: center.x,
+          y: center.y,
+          delay: delay + 30 + s * 12,
+          scale: finisher ? 2.2 : 1.75,
+          rotate: Math.random() * Math.PI,
+          life: 360,
+          alpha: 0.78
+        });
+      }
+      setTimeout(() => {
+        triggerSwordSkillScreenShake(i === 6 ? 15 : (i < 6 ? 3.5 : 5));
+        playSkillSound(i, { volume: finisher ? 0.92 : 0.78 });
+        const r = hitResults && hitResults[i];
+        const dmgPt = getSwordSkillDamagePoint(center, i);
+        if (r && typeof spawnBossDamageFloatAt === "function") {
+          spawnBossDamageFloatAt(dmgPt.clientX, dmgPt.clientY, r.isMiss ? "MISS" : r.displayDamage, r.isMiss ? "miss" : (r.isCrit ? "crit" : "hit"));
+        }
+        if (typeof spawnBossHitEffectAt === "function" && r && !r.isMiss) {
+          spawnBossHitEffectAt(center.clientX, center.clientY, r.isCrit ? "crit" : "hit", false);
+        }
+      }, delay);
+    });
+    setTimeout(() => spawnSpriteEffect(SPRITES.impact, { x:center.x, y:center.y, scale:6.4, life:620, alpha:0.94 }), 920);
+    try { if (typeof playBossHitFx === "function") playBossHitFx(); } catch(e) {}
+  }
+
+  function calcSkillHitResult(bossId, pct){
+    const result = (typeof calcBossAttackResult === "function")
+      ? calcBossAttackResult(bossId)
+      : { damage:0, isMiss:false, isCrit:false };
+    const base = Number(result.damage || 0);
+    const dmg = result.isMiss ? 0 : Math.max(1, Math.floor(base * (Number(pct || 100) / 100)));
+    return Object.assign({}, result, { damage:dmg, displayDamage:dmg });
+  }
+
+  function applySkillDamageToActiveBoss(bossId, totalDamage){
+    totalDamage = Math.max(0, Number(totalDamage || 0));
+    if (!bossId || totalDamage <= 0 || !userId) return;
+    const run = (bossRunsActiveCache || {})[bossId];
+    if (!run || String(run.status || "") !== "active") return;
+    if (typeof canUseBatchedBossDamage === "function" && canUseBatchedBossDamage(bossId, run) && typeof queueBatchedBossDamage === "function") {
+      run.totalDamage = Math.max(0, Number(run.totalDamage || 0)) + totalDamage;
+      run.hp = Math.max(0, Number(run.maxHp || run.hp || 0) - Number(run.totalDamage || 0));
+      if (run.members && run.members[userId]) run.members[userId].dmg = Number(run.members[userId].dmg || 0) + totalDamage;
+      if (run.hp <= 0) {
+        run.status = "cleared";
+        run.clearedAt = Date.now();
+      }
+      queueBatchedBossDamage(bossId, totalDamage);
+      if (typeof renderBossBattle === "function") renderBossBattle();
+      return;
+    }
+    db.ref(`bossRunsActive/${bossId}`).transaction((cur) => {
+      if (!cur || String(cur.status || "") !== "active") return cur;
+      cur.hp = Math.max(0, Number(cur.hp || 0) - totalDamage);
+      if (!cur.members) cur.members = {};
+      if (!cur.members[userId]) cur.members[userId] = { uid:userId, nick: (typeof getNickSafe === "function" ? getNickSafe() : userId), dmg:0 };
+      cur.members[userId].dmg = Number(cur.members[userId].dmg || 0) + totalDamage;
+      if (cur.hp <= 0) {
+        cur.hp = 0;
+        cur.status = "cleared";
+        cur.clearedAt = Date.now();
+      }
+      return cur;
+    });
+  }
+
+  function useEquippedActiveSkill(slot){
+    ensureSkillState();
+    slot = String(slot || "").toUpperCase();
+    if (activeSkillEquip[slot] !== SKILL_ID) return false;
+    if (ACTIVE_SKILL_USE_DISABLED) {
+      showNpcMessage("업데이트 중입니다", null, true, "액티브 스킬");
+      return true;
+    }
+    const nowTime = Date.now();
+    if (nowTime < Number(skillCooldownUntil[SKILL_ID] || 0)) return false;
+
+    const isRanking = !!(typeof isRankingBattleMode !== "undefined" && isRankingBattleMode && rankingBattleRun && String(rankingBattleRun.status || "") === "active");
+    const bossId = isRanking ? (typeof RANKING_BATTLE_BOSS_ID !== "undefined" ? RANKING_BATTLE_BOSS_ID : "ranking_battle") : String(activeBossId || "");
+    const run = isRanking ? rankingBattleRun : ((bossRunsActiveCache || {})[bossId]);
+    if (!run || String(run.status || "") !== "active") return false;
+
+    skillCooldownUntil[SKILL_ID] = nowTime + COOLDOWN_MS;
+    syncBossSkillButtons();
+
+    const level = getSkillLevel();
+    const pct = getSkillDamagePct(level);
+    const hits = [];
+    let total = 0;
+    for (let i = 0; i < HIT_COUNT; i++) {
+      const hit = calcSkillHitResult(bossId, pct);
+      hits.push(hit);
+      total += Number(hit.damage || 0);
+    }
+
+    playSwordSkillFx(hits);
+
+    if (isRanking) {
+      rankingBattleRun.myDamage = Number(rankingBattleRun.myDamage || 0) + total;
+      rankingBattleRun.hp = Math.max(0, Number(rankingBattleRun.hp || 0) - total);
+      if (Number(rankingBattleRun.hp || 0) <= 0 && typeof finishRankingBattle === "function") finishRankingBattle(true);
+      else if (typeof renderBossBattle === "function") setTimeout(renderBossBattle, 1150);
+    } else {
+      applySkillDamageToActiveBoss(bossId, total);
+    }
+    return true;
+  }
+
+  function renderActiveSkillBook(){
+    ensureSkillState();
+    const activeListEl = document.getElementById("activeSkillList");
+    if (!activeListEl) return;
+    const counts = (typeof weapon30Counts === "object" && weapon30Counts) ? weapon30Counts : {};
+    const swordUnlocked = Number(counts.sword || 0) >= 1;
+    const lv = getSkillLevel();
+    const rows = [
+      { type:"sword", name:"검사의 길", first:true },
+      { type:"spear", name:"전사의 길" },
+      { type:"axe", name:"바이킹의 길" },
+      { type:"bow", name:"사냥꾼의 길" },
+      { type:"staff", name:"마법사의 길" },
+      { type:"dagger", name:"암살자의 길" },
+      { type:"gauntlet", name:"파이터의 길" },
+      { type:"scythe", name:"수확자의 길" },
+      { type:"magitech", name:"캡틴의 길" }
+    ];
+    activeListEl.innerHTML = rows.map((row) => {
+      const count = Number(counts[row.type] || 0);
+      return `
+        <div class="active-skill-row">
+          <div class="active-skill-path">${row.name}</div>
+          <div class="active-skill-slots">
+            ${[1,2,3].map((idx) => {
+              const locked = count < [1,3,5][idx - 1];
+              const isNammu = row.first && idx === 1 && !locked;
+              const img = isNammu ? DETAIL_ICON : "images/skills/skill-block.png";
+              const label = isNammu ? `<span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;"><span style="color:#f2f2f2;font-size:11px;font-weight:900;">${SKILL_NAME}</span><span>LV${lv}</span></span>` : "LV0";
+              const click = isNammu ? `openNammuSkillDetail()` : `showActiveSkillNotImplemented()`;
+              return `<button class="active-skill-slot ${locked ? "locked" : ""} ${isNammu ? "learned" : ""}" type="button" onclick="${click}" ${locked ? 'aria-disabled="true"' : ""}>
+                <img src="${img}" alt="">
+                <span class="active-skill-lv">${locked ? "LOCK" : label}</span>
+              </button>`;
+            }).join("")}
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function openNammuSkillDetail(){
+    ensureSkillState();
+    const lv = getSkillLevel();
+    const next = lv + 1;
+    const curPct = getSkillDamagePct(lv);
+    const nextPct = getSkillDamagePct(next);
+    const html = `
+      <div class="nammu-skill-detail" style="width:100%; max-width:320px; margin:0 auto; color:#eee; box-sizing:border-box;">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+          <img src="${DETAIL_ICON}" style="width:54px;height:54px;object-fit:contain;border:1px solid rgba(255,255,255,.22);border-radius:8px;background:rgba(255,255,255,.06);">
+          <div style="flex:1; font-size:18px; font-weight:900; display:flex; align-items:center; justify-content:center; gap:4px; min-width:0;">
+            <span>${SKILL_NAME} Lv${lv}</span>
+            <button type="button" onclick="confirmNammuSkillLevelUp()" aria-label="레벨업" style="appearance:none;-webkit-appearance:none;border:0;background:transparent;padding:0;margin:0;color:#ffd54f;font-weight:900;font-size:18px;line-height:1;cursor:pointer;text-shadow:0 0 8px rgba(255,213,79,.55);">▲</button>
+          </div>
+        </div>
+        <div style="padding:10px;border:1px solid rgba(124,255,124,.28);border-radius:8px;background:linear-gradient(180deg, rgba(124,255,124,.13), rgba(124,255,124,.06));font-size:13px;line-height:1.65;">
+          <b>Lv${lv}</b><br>
+          강력한 검기로 단일 적을 무차별적으로 베어낸다.<br>
+          공격력 ${curPct}%의 데미지로 8회공격<br>
+          쿨타임 : 3초
+        </div>
+        <div style="margin-top:8px;padding:10px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:rgba(255,255,255,.04);font-size:13px;line-height:1.65;">
+          <b>Lv${next}</b><br>
+          강력한 검기로 단일 적을 무차별적으로 베어낸다.<br>
+          공격력 <span style="color:#7CFF7C;font-weight:900;">${nextPct}%</span>의 데미지로 8회공격<br>
+          쿨타임 : 3초
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;">
+          <button type="button" onclick="openActiveSkillEquipPopup()" style="flex:1;padding:10px 8px;border-radius:8px;border:1px solid rgba(255,213,79,.42);background:linear-gradient(180deg,rgba(255,213,79,.16),rgba(80,62,18,.72));color:#ffe18a;font-weight:900;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 4px 10px rgba(0,0,0,.22);">장착</button>
+          <button type="button" onclick="closeNpcPopup()" style="flex:1;padding:10px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(18,18,18,.82));color:#ddd;font-weight:900;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 4px 10px rgba(0,0,0,.22);">닫기</button>
+        </div>
+      </div>
+    `;
+    showNpcMessage(html, null, false, "스킬 상세");
+  }
+
+  function confirmNammuSkillLevelUp(){
+    const html = `
+      <div style="font-size:14px;line-height:1.6;">
+        스킬석 1개를 사용하여 레벨업 하시겠습니까?<br>
+        <span style="color:#aaa;">보유 스킬석: ${Number(itemSkillStone || 0)}개</span>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;">
+        <button type="button" onclick="levelUpNammuSkill()" style="flex:1;padding:9px;border-radius:8px;font-weight:900;">확인</button>
+        <button type="button" onclick="openNammuSkillDetail()" style="flex:1;padding:9px;border-radius:8px;font-weight:900;">취소</button>
+      </div>
+    `;
+    showNpcMessage(html, null, false, "레벨업");
+  }
+
+  function levelUpNammuSkill(){
+    ensureSkillState();
+    if (Number(itemSkillStone || 0) <= 0) {
+      showNpcMessage("스킬석이 부족합니다.", null, true, "레벨업");
+      return;
+    }
+    itemSkillStone = Math.max(0, Number(itemSkillStone || 0) - 1);
+    activeSkillLevels[SKILL_ID] = getSkillLevel() + 1;
+    save();
+    renderActiveSkillBook();
+    openNammuSkillDetail();
+  }
+
+  function openActiveSkillEquipPopup(){
+    ensureSkillState();
+    const slots = ["Q","W","E","R"];
+    const html = `
+      <div id="activeSkillEquipPopup" style="width:100%;max-width:320px;margin:0 auto;box-sizing:border-box;color:#eee;position:relative;padding-top:2px;">
+        <button type="button" onclick="closeNpcPopup()" aria-label="닫기" style="position:absolute;right:0;top:0;width:28px;height:28px;border:0;background:transparent;color:rgba(255,255,255,.72);font-size:22px;line-height:28px;font-weight:900;cursor:pointer;text-shadow:0 2px 8px rgba(0,0,0,.75);z-index:2;">×</button>
+        <div style="font-size:15px;font-weight:900;margin-bottom:10px;text-align:center;color:#ffd54f;">스킬 장착</div>
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:12px;">
+          ${slots.map(k => renderEquipSlot(k)).join("")}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:0 0 12px;">
+          <div style="height:70px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;color:#ddd;"><img src="images/ui/defenc_but.png" style="width:48px;height:48px;object-fit:contain;display:block;">A</div>
+          <div style="height:70px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;color:#ddd;"><img src="images/ui/attack_but.png" style="width:48px;height:48px;object-fit:contain;display:block;">S</div>
+          <div></div>
+          <div></div>
+        </div>
+        <div style="font-size:12px;color:#aaa;line-height:1.45;text-align:center;">난무는 Q, W, E 칸에만 장착할 수 있습니다.</div>
+      </div>
+    `;
+    showNpcMessage(html, null, false, "스킬 장착");
+  }
+
+  function renderEquipSlot(k){
+    const equipped = activeSkillEquip[k] === SKILL_ID;
+    const canEquip = k !== "R";
+    const img = equipped ? EQUIP_ICON : BLANK_ICON;
+    const glow = equipped ? "filter:drop-shadow(0 0 12px rgba(124,255,124,.52));" : "filter:drop-shadow(0 0 10px rgba(255,213,79,.72));";
+    return `
+      <button type="button" onclick="${canEquip ? `equipNammuSkill('${k}')` : `showSkillEquipBlocked('R')`}" style="height:78px;min-width:0;border:0;background:transparent;color:#ffd54f;font-weight:900;padding:6px 4px;${glow}">
+        <img src="${img}" style="width:46px;height:46px;object-fit:contain;display:block;margin:0 auto 3px;">
+        ${k}
+      </button>
+    `;
+  }
+
+  function equipNammuSkill(slot){
+    ensureSkillState();
+    slot = String(slot || "").toUpperCase();
+    if (!["Q","W","E"].includes(slot)) {
+      showSkillEquipBlocked(slot);
+      return;
+    }
+    ["Q","W","E","R"].forEach(k => {
+      if (activeSkillEquip[k] === SKILL_ID) activeSkillEquip[k] = "";
+    });
+    activeSkillEquip[slot] = SKILL_ID;
+    save();
+    openActiveSkillEquipPopup();
+    syncBossSkillButtons();
+  }
+
+  function showSkillEquipBlocked(){
+    const html = `
+      <div style="font-size:14px;line-height:1.6;color:#eee;">
+        검사의 길 1번 스킬은 Q, W, E 칸에만 장착할 수 있습니다.
+      </div>
+      <div style="margin-top:12px;">
+        <button type="button" onclick="openActiveSkillEquipPopup()" style="width:100%;padding:10px 8px;border-radius:8px;border:1px solid rgba(255,213,79,.42);background:linear-gradient(180deg,rgba(255,213,79,.16),rgba(80,62,18,.72));color:#ffe18a;font-weight:900;">확인</button>
+      </div>
+    `;
+    showNpcMessage(html, null, false, "스킬 장착");
+  }
+
+  function injectBossSkillButtonStyles(){
+    if (document.getElementById("bossSkillButtonStyle")) return;
+    const st = document.createElement("style");
+    st.id = "bossSkillButtonStyle";
+    st.textContent = `
+      .boss-action-dock,.wraith-action-dock{flex-wrap:wrap;max-width:496px;}
+      .boss-skill-row{display:flex;gap:10px;width:100%;order:-1;}
+      .boss-basic-row{display:flex;gap:10px;width:100%;}
+      .boss-skill-btn{width:104px;height:104px;border:0;border-radius:50%;padding:0;background:transparent center/contain no-repeat;position:relative;color:transparent;overflow:hidden;cursor:pointer;filter:drop-shadow(0 4px 8px rgba(0,0,0,.8));}
+      .boss-skill-btn.blank{filter:drop-shadow(0 4px 8px rgba(0,0,0,.8));}
+      .boss-skill-btn.is-cooling{filter:grayscale(.85) brightness(.58);cursor:default;}
+      .boss-skill-btn.is-cooling::before{content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(rgba(255,213,79,.62) var(--cool,0deg), rgba(0,0,0,.55) 0deg);clip-path:circle(50% at 50% 50%);}
+      .boss-skill-btn::after{content:"[" attr(data-key) "]";position:absolute;left:50%;bottom:17px;transform:translateX(-50%);z-index:3;color:rgba(255,255,255,.72);font-size:20px;font-weight:900;text-shadow:0 2px 5px rgba(0,0,0,.75);pointer-events:none;}
+    `;
+    document.head.appendChild(st);
+  }
+
+  function ensureBossSkillButtons(){
+    ensureSkillState();
+    injectBossSkillButtonStyles();
+    const commonDock = document.getElementById("bossActionDock");
+    const wraithDock = document.getElementById("wraithActionDock");
+    const dock = (String(activeBossId || "") === "wraith_king" && wraithDock) ? wraithDock : (commonDock || wraithDock);
+    if (!dock) return;
+    if (!dock.querySelector(".boss-skill-row")) {
+      const currentButtons = Array.from(dock.children).filter(el => el.tagName === "BUTTON");
+      const basicRow = document.createElement("div");
+      basicRow.className = "boss-basic-row";
+      currentButtons.forEach(btn => basicRow.appendChild(btn));
+      const skillRow = document.createElement("div");
+      skillRow.className = "boss-skill-row";
+      ["Q","W","E","R"].forEach(k => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.id = `bossSkillBtn${k}`;
+        btn.className = "boss-skill-btn";
+        btn.dataset.key = k;
+        btn.setAttribute("aria-label", `스킬 ${k}`);
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          useEquippedActiveSkill(k);
+        });
+        skillRow.appendChild(btn);
+      });
+      dock.appendChild(skillRow);
+      dock.appendChild(basicRow);
+    }
+    syncBossSkillButtons();
+  }
+
+  function syncBossSkillButtons(){
+    ensureSkillState();
+    ["Q","W","E","R"].forEach(k => {
+      const btn = document.getElementById(`bossSkillBtn${k}`);
+      if (!btn) return;
+      const equipped = activeSkillEquip[k] === SKILL_ID;
+      btn.classList.toggle("blank", !equipped);
+      btn.style.backgroundImage = `url("${equipped ? EQUIP_ICON : BLANK_ICON}")`;
+      const left = Math.max(0, Number(skillCooldownUntil[SKILL_ID] || 0) - Date.now());
+      btn.classList.toggle("is-cooling", equipped && left > 0);
+      if (equipped && left > 0) {
+        const p = 1 - (left / COOLDOWN_MS);
+        btn.style.setProperty("--cool", `${Math.floor(Math.max(0, Math.min(1, p)) * 360)}deg`);
+      } else {
+        btn.style.removeProperty("--cool");
+      }
+    });
+  }
+
+  function isActiveSkillEquipPopupOpen(){
+    const popup = document.getElementById("npcPopup");
+    const equipPopup = document.getElementById("activeSkillEquipPopup");
+    return !!(popup && equipPopup && popup.style.display !== "none" && popup.style.display !== "");
+  }
+
+  const __origOpenStatOverlayActiveSkill = window.openStatOverlay || openStatOverlay;
+  window.openStatOverlay = openStatOverlay = function(){
+    const out = __origOpenStatOverlayActiveSkill.apply(this, arguments);
+    renderActiveSkillBook();
+    setSkillBookTab(skillBookTab);
+    return out;
+  };
+
+  const __origRenderBossBattleActiveSkill = window.renderBossBattle || renderBossBattle;
+  window.renderBossBattle = renderBossBattle = function(){
+    const out = __origRenderBossBattleActiveSkill.apply(this, arguments);
+    setTimeout(ensureBossSkillButtons, 0);
+    return out;
+  };
+
+  document.addEventListener("keydown", function(e){
+    const key = String(e.key || "").toUpperCase();
+    if (!["Q","W","E","R"].includes(key)) return;
+    const target = e.target;
+    if (target && /INPUT|TEXTAREA|SELECT/.test(target.tagName || "")) return;
+    if (isActiveSkillEquipPopupOpen()) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (key === "R") showSkillEquipBlocked();
+      else equipNammuSkill(key);
+      return;
+    }
+    if (useEquippedActiveSkill(key)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+
+  setInterval(syncBossSkillButtons, 120);
+  window.openNammuSkillDetail = openNammuSkillDetail;
+  window.confirmNammuSkillLevelUp = confirmNammuSkillLevelUp;
+  window.levelUpNammuSkill = levelUpNammuSkill;
+  window.openActiveSkillEquipPopup = openActiveSkillEquipPopup;
+  window.equipNammuSkill = equipNammuSkill;
+  window.showSkillEquipBlocked = showSkillEquipBlocked;
+  window.useEquippedActiveSkill = useEquippedActiveSkill;
+  window.renderActiveSkillBook = renderActiveSkillBook;
+  window.ensureBossSkillButtons = ensureBossSkillButtons;
+  window.syncBossSkillButtons = syncBossSkillButtons;
+})();
 </script>
 
 
@@ -37662,6 +38371,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
   function isWraithKingIntroLocked(run){
     return getPhase(run) === "king" && now() < getWraithKingIntroUntil(run);
+  }
+  function isWraithSkillBusy(run){
+    const phase = getPhase(run);
+    return !!(run && (run.slashActive || run.summonPending || phase === "legion" || phase === "curse"));
   }
   function attackAllowed(run){
     if (!run || String(run.status || "") !== "active") return false;
@@ -38262,6 +38975,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       const evadeDue = t >= Number(run.nextRoderickEvadeCheckAt || 0);
       const drawDue = t >= Number(run.nextRoderickDrawCheckAt || 0) && !run.roderickDrawResolveAt;
       if (startCheckDue || evadeDue || drawDue || (run.roderickDrawResolveAt && t >= Number(run.roderickDrawResolveAt))) {
+        const roderickLogToken = `roderick_${Date.now()}_${Math.random().toString(36).slice(2)}`;
         db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
           if (!cur || String(cur.status || "") !== "active" || String(cur.wraithPhase || "") !== "knight") return;
           const n = now();
@@ -38271,6 +38985,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
             if (Math.random() < 0.5) {
               cur.roderickEvadeUntil = n + 20 * MINUTE;
               cur.roderickEvadeAnnounceAt = n;
+              cur.roderickEvadeLogToken = roderickLogToken;
             }
           }
           if (n >= Number(cur.nextRoderickEvadeCheckAt || 0)) {
@@ -38278,6 +38993,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
             if (Math.random() < 0.6) {
               cur.roderickEvadeUntil = n + 20 * MINUTE;
               cur.roderickEvadeAnnounceAt = n;
+              cur.roderickEvadeLogToken = roderickLogToken;
             }
           }
           if (!cur.roderickDrawResolveAt && n >= Number(cur.nextRoderickDrawCheckAt || (Number(cur.createdAt || n) + 30 * MINUTE))) {
@@ -38287,6 +39003,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
               cur.roderickDrawResolveAt = n + 3 * MINUTE;
               cur.roderickDrawSeq = Number(cur.roderickDrawSeq || 0) + 1;
               cur.roderickDrawResolved = false;
+              cur.roderickDrawLogToken = roderickLogToken;
             }
           }
           if (cur.roderickDrawResolveAt && !cur.roderickDrawResolved && n >= Number(cur.roderickDrawResolveAt || 0)) {
@@ -38307,10 +39024,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         }, (err, committed, snap) => {
           if (err || !committed || !snap || !snap.val) return;
           const cur = snap.val() || {};
-          if (Math.abs(Number(cur.roderickEvadeAnnounceAt || 0) - t) < 15000) {
+          if (String(cur.roderickEvadeLogToken || "") === roderickLogToken && now() < Number(cur.roderickEvadeUntil || 0)) {
             writeBossBattleLog(WRAITH_BOSS_ID, "침묵의 기사가 [회피]를 사용합니다. (회피율 상승 : 40% / 20:00)", { tone:"yellow" });
           }
-          if (Math.abs(Number(cur.roderickDrawCastAt || 0) - t) < 15000) {
+          if (String(cur.roderickDrawLogToken || "") === roderickLogToken && now() < Number(cur.roderickDrawResolveAt || 0)) {
             writeBossBattleLog(WRAITH_BOSS_ID, "침묵의기사가 [발도]를 합니다. 공격에 대비하십시오. (피격시 사냥횟수 5감소) (방어 가능 : 3:00)", { tone:"yellow" });
           }
           if (cur.roderickDrawResolved && Math.abs(Number(cur.roderickDrawResolveAt || 0) - t) < 15000) {
@@ -38349,25 +39066,29 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       return;
     }
 
-    const busy = run.slashActive || run.summonPending || getPhase(run) === "legion" || getPhase(run) === "curse";
+    const busy = isWraithSkillBusy(run);
     if (!busy && t >= Number(run.nextSlashCheckAt || 0)) {
+      const slashLogToken = `slash_${Date.now()}_${Math.random().toString(36).slice(2)}`;
       db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
         if (!cur || String(cur.status || "") !== "active" || String(cur.wraithPhase || "") !== "king") return;
+        if (isWraithSkillBusy(cur)) return;
         const n = now();
         if (n < Number(cur.nextSlashCheckAt || 0)) return;
         cur.nextSlashCheckAt = n + 10 * SECOND;
         if (Math.random() < 0.3) {
-              cur.slashActive = true;
-              cur.slashCastAt = n;
-              cur.slashQteStartAt = n + WRAITH_SLASH_WARNING_MS;
-              cur.slashQteEndAt = n + WRAITH_SLASH_WARNING_MS + WRAITH_SLASH_QTE_MS;
-              cur.slashResolveAt = n + WRAITH_SLASH_WARNING_MS + WRAITH_SLASH_QTE_MS + WRAITH_SLASH_RESOLVE_GRACE_MS;
+          cur.slashActive = true;
+          cur.slashCastAt = n;
+          cur.slashQteStartAt = n + WRAITH_SLASH_WARNING_MS;
+          cur.slashQteEndAt = n + WRAITH_SLASH_WARNING_MS + WRAITH_SLASH_QTE_MS;
+          cur.slashResolveAt = n + WRAITH_SLASH_WARNING_MS + WRAITH_SLASH_QTE_MS + WRAITH_SLASH_RESOLVE_GRACE_MS;
           cur.slashSeq = Number(cur.slashSeq || 0) + 1;
           cur.slashResolved = false;
+          cur.slashLogToken = slashLogToken;
         }
         return cur;
       }, (err, committed, snap) => {
-        if (!err && committed && snap && snap.val && (snap.val() || {}).slashActive) {
+        const cur = snap && snap.val ? (snap.val() || {}) : {};
+        if (!err && committed && cur.slashActive && String(cur.slashLogToken || "") === slashLogToken) {
           writeBossBattleLog(WRAITH_BOSS_ID, "망령왕이 [참격]을 사용합니다. 공격에 대비하십시오.", { tone:"yellow" });
         }
       });
@@ -38378,8 +39099,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       return;
     }
     if (!busy && t >= Number(run.nextSummonCheckAt || 0)) {
+      const summonLogToken = `summon_${Date.now()}_${Math.random().toString(36).slice(2)}`;
       db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
         if (!cur || String(cur.status || "") !== "active" || String(cur.wraithPhase || "") !== "king") return;
+        if (isWraithSkillBusy(cur)) return;
         const n = now();
         if (n < Number(cur.nextSummonCheckAt || 0)) return;
         cur.nextSummonCheckAt = n + 100 * SECOND;
@@ -38387,10 +39110,12 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
           cur.summonPending = true;
           cur.summonCastAt = n;
           cur.summonSpawnAt = n + 5 * SECOND;
+          cur.summonLogToken = summonLogToken;
         }
         return cur;
       }, (err, committed, snap) => {
-        if (!err && committed && snap && snap.val && (snap.val() || {}).summonPending) {
+        const cur = snap && snap.val ? (snap.val() || {}) : {};
+        if (!err && committed && cur.summonPending && String(cur.summonLogToken || "") === summonLogToken) {
           writeBossBattleLog(WRAITH_BOSS_ID, "망령왕이 즉사의 주술을 사용하기위해 [군단]을 소환합니다. 1분내 처치하여 주술을 막아야 합니다. (1:00)", { tone:"yellow" });
         }
       });
@@ -38410,8 +39135,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       return;
     }
     if (!busy && t >= Number(run.nextCounterCheckAt || 0)) {
+      const counterLogToken = `counter_${Date.now()}_${Math.random().toString(36).slice(2)}`;
       db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
         if (!cur || String(cur.status || "") !== "active" || String(cur.wraithPhase || "") !== "king") return;
+        if (isWraithSkillBusy(cur)) return;
         const n = now();
         if (n < Number(cur.nextCounterCheckAt || 0)) return;
         cur.nextCounterCheckAt = n + 45 * SECOND;
@@ -38419,12 +39146,13 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
           cur.counterType = Math.random() < 0.5 ? "phys" : "magic";
           cur.counterUntil = n + (7 + Math.floor(Math.random() * 9)) * SECOND;
           cur.counterAnnounceAt = n;
+          cur.counterLogToken = counterLogToken;
         }
         return cur;
       }, (err, committed, snap) => {
         if (!err && committed && snap && snap.val) {
           const cur = snap.val() || {};
-          if (Math.abs(Number(cur.counterAnnounceAt || 0) - t) < 15000) {
+          if (String(cur.counterLogToken || "") === counterLogToken && now() < Number(cur.counterUntil || 0)) {
             writeBossBattleLog(WRAITH_BOSS_ID, cur.counterType === "magic"
               ? "망령왕이 [반격] 자세를 취합니다. 마법 공격에 주의하십시오."
               : "망령왕이 [반격] 자세를 취합니다. 물리 공격에 주의하십시오.", { tone:"yellow" });
@@ -38592,6 +39320,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       canvas.width = WRAITH_SPRITE_CANVAS_SIZE;
       canvas.height = WRAITH_SPRITE_CANVAS_SIZE;
       canvas.dataset.key = cfg.key;
+      canvas.onclick = wraithAttack;
       layer.appendChild(canvas);
       if (cfg.type === "slash" && !wraithPlayedSpriteSfxKeys[cfg.key]) {
         wraithPlayedSpriteSfxKeys[cfg.key] = 1;
@@ -38601,6 +39330,9 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const counterType = (getPhase(run) === "king" && now() < Number(run.counterUntil || 0)) ? String(run.counterType || "") : "";
     canvas.classList.toggle("counter-phys", counterType === "phys");
     canvas.classList.toggle("counter-magic", counterType === "magic");
+    const canAttackSprite = attackAllowed(run);
+    canvas.style.pointerEvents = canAttackSprite ? "auto" : "none";
+    canvas.style.cursor = canAttackSprite ? "pointer" : "";
 
     const sprite = getWraithSpriteImage(cfg.src);
     const ctx = canvas.getContext("2d");
@@ -40069,6 +40801,28 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       e.stopPropagation();
     }
   }, { passive: false, capture: true });
+})();
+
+(function(){
+  if (window.__activeSkillFinalBossHookInstalled) return;
+  window.__activeSkillFinalBossHookInstalled = true;
+  const prevRender = window.renderBossBattle || (typeof renderBossBattle === "function" ? renderBossBattle : null);
+  if (typeof prevRender === "function") {
+    window.renderBossBattle = renderBossBattle = function(){
+      const out = prevRender.apply(this, arguments);
+      if (typeof window.ensureBossSkillButtons === "function") setTimeout(window.ensureBossSkillButtons, 0);
+      return out;
+    };
+  }
+  const prevClose = window.closeBossBattle || (typeof closeBossBattle === "function" ? closeBossBattle : null);
+  if (typeof prevClose === "function") {
+    window.closeBossBattle = closeBossBattle = function(){
+      const out = prevClose.apply(this, arguments);
+      const canvas = document.getElementById("activeSkillFxCanvas");
+      if (canvas && canvas.parentNode) canvas.parentNode.removeChild(canvas);
+      return out;
+    };
+  }
 })();
 </script>
 
