@@ -36411,6 +36411,19 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     return Date.now();
   }
 
+  function auctionKstHour(){
+    return new Date(nowMs() + (9 * HOUR)).getUTCHours();
+  }
+
+  function isAuctionSellOpen(){
+    const h = auctionKstHour();
+    return h >= 9 && h < 23;
+  }
+
+  function showAuctionClosedMessage(){
+    kyloMessage("경매장 오픈시간이 아닙니다. (오픈시간 : am9:00-pm11:00)", null, null, "확인");
+  }
+
   function uid(){
     const localUserId = (typeof userId !== "undefined") ? userId : "";
     return String(window.userId || localUserId || "");
@@ -36457,7 +36470,15 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function itemQty(item){
-    return Math.max(1, Math.floor(Number(item && item.qty || 1)));
+    if (!item) return 1;
+    const raw = item.qty ?? item.quantity ?? item.stackQty ?? 1;
+    return Math.max(1, Math.floor(Number(raw || 1)));
+  }
+
+  function clampSellQty(row, qty){
+    const max = Math.max(1, Math.floor(Number(row && (row.maxQty ?? row.count) || 1)));
+    const picked = Math.max(1, Math.floor(Number(qty || 1)));
+    return Math.min(max, picked);
   }
 
   function itemKey(item){
@@ -36602,6 +36623,17 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     return "종료";
   }
 
+  function statusTextHtml(a){
+    const st = auctionStatus(a);
+    if (st === "active") {
+      const remain = Number(a.endsAt || 0) - nowMs();
+      const time = timeLeft(remain);
+      if (remain <= 10 * MINUTE) return `입찰중 <span class="auction-time-danger">${esc(time)}</span>`;
+      return `입찰중 ${esc(time)}`;
+    }
+    return esc(statusText(a));
+  }
+
   function timeLeft(ms){
     ms = Math.max(0, Number(ms || 0));
     const h = Math.floor(ms / HOUR);
@@ -36681,6 +36713,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       .auction-row img{width:40px;height:40px;object-fit:contain;}
       .auction-row-title{font-weight:900;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
       .auction-row-sub{font-size:12px;color:#bfb7a2;line-height:1.45;margin-top:2px;}
+      .auction-time-danger{color:#ff5b5b;font-weight:900;}
       .auction-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
       .auction-btn{border:1px solid rgba(255,211,106,.45);background:#4b2b12;color:#fff4cf;border-radius:6px;padding:6px 9px;font-weight:800;font-size:12px;cursor:pointer;}
       .auction-btn:disabled{opacity:.45;cursor:not-allowed;}
@@ -36801,7 +36834,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         <img src="${esc(itemImg(item))}" onerror="this.style.display='none'">
         <div>
           <div class="auction-row-title">${esc(itemName(item))} ${qty > 1 ? "x" + qty : ""}</div>
-          <div class="auction-row-sub">입찰 : ${money(bid)} 골드 · ${statusText(a)}</div>
+          <div class="auction-row-sub">입찰 : ${money(bid)} 골드 · ${statusTextHtml(a)}</div>
         </div>
         <div class="auction-actions"><button class="auction-btn" type="button">상세</button></div>
       </div>
@@ -36863,7 +36896,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         <img src="${esc(itemImg(item))}" onerror="this.style.display='none'">
         <div>
           <div class="auction-row-title">${esc(itemName(item))} ${itemQty(item) > 1 ? "x" + itemQty(item) : ""}</div>
-          <div class="auction-row-sub">${statusText(a)} · 매입가 ${money(a.paidPrice)} 골드 · 시작가 ${money(a.startBid)} 골드</div>
+          <div class="auction-row-sub">${statusTextHtml(a)} · 매입가 ${money(a.paidPrice)} 골드 · 시작가 ${money(a.startBid)} 골드</div>
         </div>
         <div class="auction-actions">
           ${st === "failed" ? `<button class="auction-btn" type="button" onclick="auctionRecoverFailed('${esc(a.id)}')">회수</button>` : ""}
@@ -36976,8 +37009,13 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function pickSellItem(encoded, qty){
+    if (!isAuctionSellOpen()) {
+      showAuctionClosedMessage();
+      return;
+    }
     const row = JSON.parse(decodeURIComponent(encoded || ""));
-    const item = normalizeItem(Object.assign({}, row, { qty }));
+    const sellQty = clampSellQty(row, qty);
+    const item = normalizeItem(Object.assign({}, row, { qty: sellQty }));
     const activeMine = listings.filter(a => a.sellerUid === uid() && !a.claimed && !a.deleted && auctionStatus(a) !== "sold").length;
     if (activeMine >= MAX_SELLING) {
       kyloMessage(`동시에 등록 가능한 물건은 ${MAX_SELLING}개까지야.`, null, null, "확인");
@@ -36995,6 +37033,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function createListing(item, paidPrice){
+    if (!isAuctionSellOpen()) {
+      showAuctionClosedMessage();
+      return;
+    }
     item = normalizeItem(item);
     if (!removeFromInventory(item)) {
       kyloMessage("지금은 그 물건을 판매할 수 없어. 인벤토리를 다시 확인해 보라고.", null, null, "확인");
@@ -37139,10 +37181,14 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         name: cur.currentBidderName || "",
         item: cur.item || null
       };
+      const n = nowMs();
+      if (Number(cur.endsAt || 0) - n <= 10 * MINUTE) {
+        cur.endsAt = n + (10 * MINUTE);
+      }
       cur.currentBid = amount;
       cur.currentBidder = uid();
       cur.currentBidderName = displayName();
-      cur.updatedAt = nowMs();
+      cur.updatedAt = n;
       cur.status = "active";
       return cur;
     }, (err, committed, snap) => {
@@ -37241,6 +37287,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function relistFailed(id){
+    if (!isAuctionSellOpen()) {
+      showAuctionClosedMessage();
+      return;
+    }
     const a = listings.find(x => x.id === id);
     if (!a || a.sellerUid !== uid() || auctionStatus(a) !== "failed") return;
     const failCount = Number(a.failCount || 0) + 1;
