@@ -36353,6 +36353,9 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     itemScroll15: true,
     itemScroll21: true,
     itemSuper: true,
+    itemEssence: true,
+    itemBossPriority: true,
+    itemSkillStone: true,
     unidentifiedRune: true,
     rune: true
   }, window.auctionAllowedItems || {});
@@ -36393,6 +36396,24 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       img: "images/items/runes/rune_stone_unidentified.png",
       get: () => Number(unidentifiedRuneStones || 0),
       add: (n) => { unidentifiedRuneStones = Math.max(0, Number(unidentifiedRuneStones || 0) + Number(n || 0)); }
+    },
+    itemEssence: {
+      name: "마력의정수",
+      img: "images/items/essence.png",
+      get: () => Number(itemEssence || 0),
+      add: (n) => { itemEssence = Math.max(0, Number(itemEssence || 0) + Number(n || 0)); }
+    },
+    itemBossPriority: {
+      name: "보스토벌우선신청권",
+      img: "images/items/boss_priority_ticket.png",
+      get: () => Number(itemBossPriority || 0),
+      add: (n) => { itemBossPriority = Math.max(0, Number(itemBossPriority || 0) + Number(n || 0)); }
+    },
+    itemSkillStone: {
+      name: "스킬석",
+      img: "images/items/skill_ston.png",
+      get: () => Number(itemSkillStone || 0),
+      add: (n) => { itemSkillStone = Math.max(0, Number(itemSkillStone || 0) + Number(n || 0)); }
     }
   };
 
@@ -36971,7 +36992,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         const v = ch.val() || {};
         if (Number(v.unitPrice || 0) > 0) prices.push(Number(v.unitPrice));
       });
-      if (prices.length < 3) return START_PRICE;
+      if (prices.length < 1) return START_PRICE;
       prices.sort((a,b) => a - b);
       const trimmed = prices.length >= 10 ? prices.slice(1, -1) : prices;
       const avg = trimmed.reduce((sum, n) => sum + n, 0) / Math.max(1, trimmed.length);
