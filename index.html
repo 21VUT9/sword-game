@@ -27204,6 +27204,7 @@ function playEpicHitFx(){
 }
 
 function attackBossByClick(ev){
+  if (typeof window.isActiveSkillBusy === "function" && window.isActiveSkillBusy()) return;
   const bossId = String(activeBossId || "");
   if (bossId === "guardian_knight" && typeof window.attackGuardianKnightBossByClick === "function") {
     return window.attackGuardianKnightBossByClick(ev);
@@ -37708,6 +37709,15 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   let swordSkillShakeLooping = false;
   let equipDraftPresetIdx = 0;
   let equipDraftPresets = null;
+  let activeSkillBusyUntil = 0;
+
+  function isActiveSkillBusy(){
+    return Date.now() < Number(activeSkillBusyUntil || 0);
+  }
+
+  function markActiveSkillBusy(duration){
+    activeSkillBusyUntil = Math.max(Number(activeSkillBusyUntil || 0), Date.now() + Number(duration || 0));
+  }
 
   function ensureSkillState(){
     if (!activeSkillLevels || typeof activeSkillLevels !== "object") activeSkillLevels = {};
@@ -38132,6 +38142,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       return true;
     }
     const nowTime = Date.now();
+    if (isActiveSkillBusy()) return true;
     if (nowTime < Number(skillCooldownUntil[SKILL_ID] || 0)) return false;
 
     const isRanking = !!(typeof isRankingBattleMode !== "undefined" && isRankingBattleMode && rankingBattleRun && String(rankingBattleRun.status || "") === "active");
@@ -38178,6 +38189,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       if (!hit.isMiss) firstHitBonusConsumed = true;
     }
 
+    markActiveSkillBusy(1200);
     playSwordSkillFx(hits);
 
     if (isRanking) {
@@ -38260,7 +38272,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
           <b>Lv${next}</b><br>
           강력한 검기로 단일 적을 무차별적으로 베어낸다.<br>
           공격력/주문력 <span style="color:#7CFF7C;font-weight:900;">${nextPct}%</span>로 8회 공격데미지를 입힘<br>
-          마나 ${nextMpCost}소모<br>
+          마나 <span style="color:#7CFF7C;font-weight:900;">${nextMpCost}</span>소모<br>
           쿨타임 : 3초
         </div>
         <div style="margin-top:12px;display:flex;gap:8px;">
@@ -38524,6 +38536,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   window.cancelActiveSkillEquipPreset = cancelActiveSkillEquipPreset;
   window.showSkillEquipBlocked = showSkillEquipBlocked;
   window.useEquippedActiveSkill = useEquippedActiveSkill;
+  window.isActiveSkillBusy = isActiveSkillBusy;
   window.getActiveSkillBattleResourceSnapshot = getActiveSkillBattleResourceSnapshot;
   window.renderActiveSkillBook = renderActiveSkillBook;
   window.ensureBossSkillButtons = ensureBossSkillButtons;
@@ -40116,6 +40129,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function wraithAttack(ev){
+    if (typeof window.isActiveSkillBusy === "function" && window.isActiveSkillBusy()) return;
     const run = getRun();
     if (!attackAllowed(run)) return;
     const t = Date.now();
@@ -41054,6 +41068,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
   function triggerCommonBossAttack(useCooldown, ev){
     if (!isCommonBossActionActive()) return false;
+    if (typeof window.isActiveSkillBusy === "function" && window.isActiveSkillBusy()) return false;
     const btn = document.getElementById("bossAttackBtn");
     const t = Date.now();
     if (useCooldown && t - commonBossActionLastAttackAt < 300) return false;
@@ -41148,6 +41163,9 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function runActionButton(btn, ev){
     if (!btn) return false;
     const id = String(btn.id || "");
+    if ((id === "bossAttackBtn" || id === "wraithAttackBtn") && typeof window.isActiveSkillBusy === "function" && window.isActiveSkillBusy()) {
+      return false;
+    }
     if (id === "bossAttackBtn" && typeof window.triggerCommonBossAttack === "function") {
       return window.triggerCommonBossAttack(true, getActionButtonBossHitPoint());
     }
@@ -41238,6 +41256,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function tryFastAttack(ev){
+    if (typeof window.isActiveSkillBusy === "function" && window.isActiveSkillBusy()) return false;
     const now = Date.now();
 
     // 너무 촘촘한 중복 이벤트(동일 탭에서 pointerdown + touchstart 둘 다 오는 경우)만 억제
