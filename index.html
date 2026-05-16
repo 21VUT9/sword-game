@@ -36697,6 +36697,14 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     return v;
   }
 
+  function roundRelistBid(v){
+    v = Math.max(1, Math.floor(Number(v || 0)));
+    if (v >= 1000000000000) return Math.floor(v / 100000000000) * 100000000000;
+    if (v >= 100000000) return Math.floor(v / 1000000) * 1000000;
+    if (v >= 10000) return Math.floor(v / 10000) * 10000;
+    return v;
+  }
+
   function currentBid(a){
     return Math.max(Number(a && a.currentBid || 0), Number(a && a.startBid || 0));
   }
@@ -36911,7 +36919,6 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function renderSellingRow(a){
     const item = normalizeItem(a.item);
     const st = auctionStatus(a);
-    const failCount = Number(a.failCount || 0);
     return `
       <div class="auction-row ${st === "failed" ? "outbid" : ""}">
         <img src="${esc(itemImg(item))}" onerror="this.style.display='none'">
@@ -36921,8 +36928,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         </div>
         <div class="auction-actions">
           ${st === "failed" ? `<button class="auction-btn" type="button" onclick="auctionRecoverFailed('${esc(a.id)}')">회수</button>` : ""}
-          ${st === "failed" && failCount < 3 ? `<button class="auction-btn" type="button" onclick="auctionRelistFailed('${esc(a.id)}')">재등록</button>` : ""}
-          ${st === "failed" && failCount >= 3 ? `<button class="auction-btn" type="button" onclick="auctionDeleteFailed('${esc(a.id)}')">삭제</button>` : ""}
+          ${st === "failed" ? `<button class="auction-btn" type="button" onclick="auctionRelistFailed('${esc(a.id)}')">재등록</button>` : ""}
         </div>
       </div>
     `;
@@ -37288,14 +37294,9 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function recoverFailed(id){
     const a = listings.find(x => x.id === id);
     if (!a || a.sellerUid !== uid() || auctionStatus(a) !== "failed") return;
-    const cost = Number(a.paidPrice || 0);
+    const cost = Math.ceil(Number(a.paidPrice || 0) * 1.1);
     if (Number(gold || 0) < cost) {
-      kyloMessage(
-        `회수하려면 매입금 <b>${money(cost)} 골드</b>를 돌려줘야 해.<br>골드가 부족하군.`,
-        "재등록",
-        () => relistFailed(id),
-        "취소"
-      );
+      kyloMessage("골드가 부족합니다", null, null, "확인");
       return;
     }
     gold = Number(gold || 0) - cost;
@@ -37314,25 +37315,45 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     }
     const a = listings.find(x => x.id === id);
     if (!a || a.sellerUid !== uid() || auctionStatus(a) !== "failed") return;
-    const failCount = Number(a.failCount || 0) + 1;
-    const n = nowMs();
-    const readyAt = n + (10 * MINUTE) + Math.floor(Math.random() * (5 * MINUTE + 1));
-    auctionRef().child(id).update({
-      currentBid: 0,
-      currentBidder: "",
-      currentBidderName: "",
-      failCount,
-      readyAt,
-      endsAt: readyAt + DAY,
-      updatedAt: n,
-      status: "preparing"
-    }).then(refresh);
-  }
-
-  function deleteFailed(id){
-    const a = listings.find(x => x.id === id);
-    if (!a || a.sellerUid !== uid() || auctionStatus(a) !== "failed" || Number(a.failCount || 0) < 3) return;
-    auctionRef().child(id).update({ deleted:true, status:"deleted", updatedAt: nowMs() }).then(refresh);
+    const currentStartBid = Math.max(1, Number(a.startBid || a.paidPrice || START_PRICE));
+    const relistPrice = roundRelistBid(currentStartBid * 0.8);
+    const relistCost = Math.ceil(currentStartBid * 0.25);
+    kyloMessage(
+      `<b>${money(relistPrice)} 골드</b> 금액에 재등록 하시겠습니까?<br><span style="color:#aaa;">${money(relistCost)} 골드 비용발생</span>`,
+      "재등록",
+      () => {
+        if (Number(gold || 0) < relistCost) {
+          kyloMessage("골드가 부족합니다", null, null, "확인");
+          return;
+        }
+        const failCount = Number(a.failCount || 0) + 1;
+        const n = nowMs();
+        const readyAt = n + (10 * MINUTE) + Math.floor(Math.random() * (5 * MINUTE + 1));
+        gold = Number(gold || 0) - relistCost;
+        auctionRef().child(id).update({
+          startBid: relistPrice,
+          currentBid: 0,
+          currentBidder: "",
+          currentBidderName: "",
+          failCount,
+          readyAt,
+          endsAt: readyAt + DAY,
+          updatedAt: n,
+          status: "preparing"
+        }).then(() => {
+          save();
+          update();
+          refresh();
+        }).catch(err => {
+          console.warn("auction relist failed", err);
+          gold = Number(gold || 0) + relistCost;
+          save();
+          update();
+          kyloMessage("재등록 중 문제가 생겼습니다", null, null, "확인");
+        });
+      },
+      "취소"
+    );
   }
 
   function createSystemAuction(type, suffix){
@@ -37503,7 +37524,6 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   window.auctionClaimWin = claimWin;
   window.auctionRecoverFailed = recoverFailed;
   window.auctionRelistFailed = relistFailed;
-  window.auctionDeleteFailed = deleteFailed;
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
