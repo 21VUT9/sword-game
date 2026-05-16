@@ -26214,7 +26214,8 @@ if (partyEl) {
   // 5명 정도 보이게 높이 제한 + 스크롤
   partyEl.style.maxHeight = "210px";
   partyEl.style.overflowY = "auto";
-  const playerResourceHtml = renderPlayerBattleResourceHtml();
+  const skillResource = (typeof window.getActiveSkillBattleResourceSnapshot === "function") ? window.getActiveSkillBattleResourceSnapshot(bossId, run, false) : null;
+  const playerResourceHtml = renderPlayerBattleResourceHtml(skillResource);
 
   const members = run.members || {};
   const displayHp = getBossDisplayHp(bossId, run);
@@ -26833,7 +26834,7 @@ function calcBossAttackResult(bossId){
 
     if (hpMax > 0) {
       // 100%일 때 첫타격 +500% → (1 + 5.00) = 6배
-      if (hpNow >= hpMax) {
+      if (hpNow >= hpMax && !(window && window.__activeSkillSuppressFirstHitBonus)) {
         const b = Number(my && my.bossFirstHitBonusPct ? my.bossFirstHitBonusPct : 0);
         if (b > 0) dmg = Math.floor(dmg * (1 + b / 100));
       }
@@ -29807,6 +29808,7 @@ function showActiveSkillNotImplemented(){
   // (C) 서브스탯(0%도 표기)
   const statHpEl = document.getElementById("statHp");
   const statMpEl = document.getElementById("statMp");
+  const statMpRegenEl = document.getElementById("statMpRegen");
   const battleMaxHp = (typeof getPlayerBattleMaxHp === "function")
     ? getPlayerBattleMaxHp()
     : Math.max(1, Number(typeof getHuntStaminaMax === "function" ? getHuntStaminaMax() : 20) * 100);
@@ -29816,6 +29818,7 @@ function showActiveSkillNotImplemented(){
     : (v) => Number(v || 0).toLocaleString("ko-KR");
   if (statHpEl) statHpEl.textContent = fmtResource(battleMaxHp);
   if (statMpEl) statMpEl.textContent = fmtResource(battleMaxMp);
+  if (statMpRegenEl) statMpRegenEl.textContent = "3 / 초";
 
   const penEl = document.getElementById("statPen");
   if (penEl) penEl.textContent = `${Math.round(my.penetration * 100)}%`;
@@ -31123,7 +31126,7 @@ calcBossAttackResult = function(bossId){
     const hpMax = Number(run && run.maxHp != null ? run.maxHp : 0);
 
     if (hpMax > 0) {
-      if (hpNow >= hpMax) {
+      if (hpNow >= hpMax && !(window && window.__activeSkillSuppressFirstHitBonus)) {
         const b = Number(my && my.bossFirstHitBonusPct ? my.bossFirstHitBonusPct : 0);
         if (b > 0) dmg = Math.floor(dmg * (1 + b / 100));
       }
@@ -31217,7 +31220,8 @@ renderBossBattle = function(){
   })();
   const weaponSnap = getRankingBattleWeaponSnapshot();
   if (partyEl) {
-    partyEl.innerHTML = renderPlayerBattleResourceHtml() + `
+    const skillResource = (typeof window.getActiveSkillBattleResourceSnapshot === "function") ? window.getActiveSkillBattleResourceSnapshot(RANKING_BATTLE_BOSS_ID, run, true) : null;
+    partyEl.innerHTML = renderPlayerBattleResourceHtml(skillResource) + `
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px dashed #333;">
         <div style="min-width:0; flex:1;">
           <div style="font-weight:900; color:#fff; line-height:1.45;">${titleHtml}</div>
@@ -34604,6 +34608,7 @@ setTimeout(() => {
       <div style="margin:0 0 10px; border-top:1px solid rgba(255,255,255,0.10);"></div>
       <div class="stat-line">HP <span id="statHp">0</span></div>
       <div class="stat-line">MP <span id="statMp">0</span></div>
+      <div class="stat-line">마나회복량 <span id="statMpRegen">0 / 초</span></div>
       <div class="stat-line">관통력 <span id="statPen">0%</span></div>
       <div class="stat-line">회피 무시 <span id="statIgnore">0%</span></div>
       <div class="stat-line">치명타 확률 <span id="statCrit">0%</span></div>
@@ -37664,8 +37669,9 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   const COOLDOWN_MS = 3000;
   const HIT_COUNT = 8;
   const SKILL_SPRITE_SCALE = 0.8;
-  const ACTIVE_SKILL_USE_DISABLED = true;
+  const ACTIVE_SKILL_USE_DISABLED = false;
   const skillCooldownUntil = {};
+  const localSkillMpByRun = {};
 
   const SPRITES = {
     effect: [
@@ -37743,7 +37749,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
   function getSkillMpCost(level){
     const lv = Math.max(1, Math.min(5, Number(level || 1)));
-    return Math.max(18, 33 - lv * 3);
+    return Math.max(30, 80 - lv * 10);
   }
 
   function getSkillImage(src){
@@ -37961,20 +37967,47 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     try { if (typeof playBossHitFx === "function") playBossHitFx(); } catch(e) {}
   }
 
-  function calcSkillHitResult(bossId, pct){
-    const result = (typeof calcBossAttackResult === "function")
-      ? calcBossAttackResult(bossId)
-      : { damage:0, isMiss:false, isCrit:false };
+  function calcSkillHitResult(bossId, pct, options = {}){
+    const prevSuppress = window.__activeSkillSuppressFirstHitBonus;
+    if (options.suppressFirstHitBonus) window.__activeSkillSuppressFirstHitBonus = true;
+    let result;
+    try {
+      result = (typeof calcBossAttackResult === "function")
+        ? calcBossAttackResult(bossId)
+        : { damage:0, isMiss:false, isCrit:false };
+    } finally {
+      if (options.suppressFirstHitBonus) window.__activeSkillSuppressFirstHitBonus = prevSuppress;
+    }
     const base = Number(result.damage || 0);
-    const dmg = result.isMiss ? 0 : Math.max(1, Math.floor(base * (Number(pct || 100) / 100)));
+    let dmg = result.isMiss ? 0 : Math.max(1, Math.floor(base * (Number(pct || 100) / 100)));
+    if (!result.isMiss && String(options.attackType || "") === "physical" && String(bossId || "") === "frost_queen") {
+      const run = (bossRunsActiveCache || {})[bossId] || {};
+      if (Math.max(0, Number(run.shieldHp || 0)) > 0 && Math.max(0, Number(run.shieldMax || 0)) > 0) {
+        dmg = 1;
+      }
+    }
     return Object.assign({}, result, { damage:dmg, displayDamage:dmg });
   }
 
-  function applySkillDamageToActiveBoss(bossId, totalDamage){
+  function applySkillDamageToActiveBoss(bossId, totalDamage, options = {}){
     totalDamage = Math.max(0, Number(totalDamage || 0));
     if (!bossId || totalDamage <= 0 || !userId) return;
     const run = (bossRunsActiveCache || {})[bossId];
     if (!run || String(run.status || "") !== "active") return;
+    const attackType = String(options.attackType || "");
+    const isPhysicalSkill = attackType === "physical";
+    if (isPhysicalSkill && String(bossId || "") === "frost_queen" && Math.max(0, Number(run.shieldHp || 0)) > 0 && Math.max(0, Number(run.shieldMax || 0)) > 0) {
+      if (run.members && run.members[userId]) run.members[userId].dmg = Number(run.members[userId].dmg || 0) + totalDamage;
+      db.ref(`bossRunsActive/${bossId}`).transaction((cur) => {
+        if (!cur || String(cur.status || "") !== "active") return cur;
+        if (!cur.members) cur.members = {};
+        if (!cur.members[userId]) cur.members[userId] = { uid:userId, nick: (typeof getNickSafe === "function" ? getNickSafe() : userId), dmg:0 };
+        cur.members[userId].dmg = Number(cur.members[userId].dmg || 0) + totalDamage;
+        return cur;
+      });
+      if (typeof renderBossBattle === "function") renderBossBattle();
+      return;
+    }
     if (typeof canUseBatchedBossDamage === "function" && canUseBatchedBossDamage(bossId, run) && typeof queueBatchedBossDamage === "function") {
       run.totalDamage = Math.max(0, Number(run.totalDamage || 0)) + totalDamage;
       run.hp = Math.max(0, Number(run.maxHp || run.hp || 0) - Number(run.totalDamage || 0));
@@ -38002,6 +38035,94 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     });
   }
 
+  function getSkillBattleResourceKey(bossId, run, isRanking){
+    if (isRanking) return `ranking:${String(run && run.startedAt || run && run.endsAt || "active")}`;
+    return `${String(bossId || "")}:${String(run && (run.logKey || run.createdAt || run.endsAt) || "active")}`;
+  }
+
+  function getLocalSkillMpState(bossId, run, isRanking){
+    const key = getSkillBattleResourceKey(bossId, run, isRanking);
+    const maxMp = (typeof getPlayerBattleMaxMp === "function") ? getPlayerBattleMaxMp() : 200;
+    if (!localSkillMpByRun[key]) localSkillMpByRun[key] = { mp:maxMp, maxMp };
+    localSkillMpByRun[key].maxMp = maxMp;
+    localSkillMpByRun[key].mp = Math.max(0, Math.min(maxMp, Number(localSkillMpByRun[key].mp || 0)));
+    return localSkillMpByRun[key];
+  }
+
+  function getActiveSkillBattleResourceSnapshot(bossId, run, isRanking){
+    if (String(bossId || "") === "wraith_king" && run && run.members && run.members[userId]) {
+      const m = run.members[userId] || {};
+      return { mp:Number(m.mp || 0), maxMp:Number(m.maxMp || ((typeof getPlayerBattleMaxMp === "function") ? getPlayerBattleMaxMp() : 200)) };
+    }
+    return getLocalSkillMpState(bossId, run, isRanking);
+  }
+
+  function spendActiveSkillMp(bossId, run, isRanking, cost){
+    cost = Math.max(0, Number(cost || 0));
+    if (cost <= 0) return true;
+    if (String(bossId || "") === "wraith_king" && run && run.members && run.members[userId]) {
+      const m = run.members[userId] || {};
+      if (Number(m.mp || 0) < cost) {
+        showNpcMessage("마나가 부족합니다.", null, true, "액티브 스킬");
+        return false;
+      }
+      if (bossRunsActiveCache && bossRunsActiveCache.wraith_king && bossRunsActiveCache.wraith_king.members && bossRunsActiveCache.wraith_king.members[userId]) {
+        bossRunsActiveCache.wraith_king.members[userId].mp = Math.max(0, Number(m.mp || 0) - cost);
+      }
+      db.ref(`bossRunsActive/wraith_king/members/${userId}`).transaction((cur) => {
+        if (!cur) return cur;
+        if (Number(cur.mp || 0) < cost) return cur;
+        cur.mp = Math.max(0, Number(cur.mp || 0) - cost);
+        return cur;
+      });
+      return true;
+    }
+    const st = getLocalSkillMpState(bossId, run, isRanking);
+    if (Number(st.mp || 0) < cost) {
+      showNpcMessage("마나가 부족합니다.", null, true, "액티브 스킬");
+      return false;
+    }
+    st.mp = Math.max(0, Number(st.mp || 0) - cost);
+    return true;
+  }
+
+  function shouldActiveSkillSpendHunt(bossId, run, isRanking){
+    if (isRanking) return true;
+    if (String(bossId || "") !== "wraith_king") return true;
+    const phase = String((run && run.wraithPhase) || "knight");
+    return phase === "knight" || phase === "gate";
+  }
+
+  function hasActiveSkillHuntCost(count, run, isRanking){
+    count = Math.max(1, Number(count || 1));
+    if (isRanking) return Number(run && run.remainingAttacks || 0) >= count;
+    if (typeof recalcHuntStamina === "function") recalcHuntStamina();
+    return Number(huntStamina || 0) >= count;
+  }
+
+  function spendActiveSkillHuntCost(count, run, isRanking){
+    count = Math.max(1, Number(count || 1));
+    if (isRanking) {
+      if (!hasActiveSkillHuntCost(count, run, true)) {
+        showNpcMessage(`랭킹전 남은 공격횟수가 ${count}회 이상 필요합니다.`, null, true, "액티브 스킬");
+        return false;
+      }
+      run.remainingAttacks = Math.max(0, Number(run.remainingAttacks || 0) - count);
+      if (typeof renderBossBattle === "function") renderBossBattle();
+      return true;
+    }
+    if (!hasActiveSkillHuntCost(count, run, false)) {
+      showNpcMessage(`오늘 남은 사냥횟수가 ${count}회 이상 필요합니다.`, null, true, "액티브 스킬");
+      return false;
+    }
+    huntStamina = Math.max(0, Number(huntStamina || 0) - count);
+    const max = (typeof getHuntStaminaMax === "function") ? getHuntStaminaMax() : 20;
+    huntCountToday = Math.max(0, max - huntStamina);
+    try { save(); } catch(e) {}
+    try { update(); } catch(e) {}
+    return true;
+  }
+
   function useEquippedActiveSkill(slot){
     ensureSkillState();
     slot = String(slot || "").toUpperCase();
@@ -38018,17 +38139,43 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const run = isRanking ? rankingBattleRun : ((bossRunsActiveCache || {})[bossId]);
     if (!run || String(run.status || "") !== "active") return false;
 
+    const level = getSkillLevel();
+    const mpCost = getSkillMpCost(level);
+    const spendHunt = shouldActiveSkillSpendHunt(bossId, run, isRanking);
+    const huntCost = 7;
+    if (spendHunt && !hasActiveSkillHuntCost(huntCost, run, isRanking)) {
+      if (isRanking) {
+        showNpcMessage(`랭킹전 남은 공격횟수가 ${huntCost}회 이상 필요합니다.`, null, true, "액티브 스킬");
+        return true;
+      }
+      showNpcMessage(`오늘 남은 사냥횟수가 ${huntCost}회 이상 필요합니다.`, null, true, "액티브 스킬");
+      return true;
+      if (isRanking) {
+        showNpcMessage("랭킹전 남은 공격횟수가 10회 이상 필요합니다.", null, true, "액티브 스킬");
+        return true;
+      }
+      showNpcMessage("오늘 남은 사냥횟수가 10회 이상 필요합니다.", null, true, "액티브 스킬");
+      return true;
+    }
+    if (!spendActiveSkillMp(bossId, run, isRanking, mpCost)) return true;
+    if (spendHunt && !spendActiveSkillHuntCost(huntCost, run, isRanking)) return true;
+
     skillCooldownUntil[SKILL_ID] = nowTime + COOLDOWN_MS;
     syncBossSkillButtons();
 
-    const level = getSkillLevel();
     const pct = getSkillDamagePct(level);
     const hits = [];
     let total = 0;
+    let firstHitBonusConsumed = false;
+    const limitFirstHitBonus = isRanking || String(bossId || "") !== "wraith_king";
     for (let i = 0; i < HIT_COUNT; i++) {
-      const hit = calcSkillHitResult(bossId, pct);
+      const hit = calcSkillHitResult(bossId, pct, {
+        suppressFirstHitBonus: limitFirstHitBonus && firstHitBonusConsumed,
+        attackType: "physical"
+      });
       hits.push(hit);
       total += Number(hit.damage || 0);
+      if (!hit.isMiss) firstHitBonusConsumed = true;
     }
 
     playSwordSkillFx(hits);
@@ -38039,7 +38186,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       if (Number(rankingBattleRun.hp || 0) <= 0 && typeof finishRankingBattle === "function") finishRankingBattle(true);
       else if (typeof renderBossBattle === "function") setTimeout(renderBossBattle, 1150);
     } else {
-      applySkillDamageToActiveBoss(bossId, total);
+      applySkillDamageToActiveBoss(bossId, total, { attackType:"physical" });
     }
     return true;
   }
@@ -38105,14 +38252,14 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         <div style="padding:10px;border:1px solid rgba(124,255,124,.28);border-radius:8px;background:linear-gradient(180deg, rgba(124,255,124,.13), rgba(124,255,124,.06));font-size:13px;line-height:1.65;">
           <b>Lv${lv}</b><br>
           강력한 검기로 단일 적을 무차별적으로 베어낸다.<br>
-          공격력 ${curPct}%의 데미지로 8회공격<br>
+          공격력/주문력 ${curPct}%로 8회 공격데미지를 입힘<br>
           마나 ${curMpCost}소모<br>
           쿨타임 : 3초
         </div>
         <div style="margin-top:8px;padding:10px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:rgba(255,255,255,.04);font-size:13px;line-height:1.65;">
           <b>Lv${next}</b><br>
           강력한 검기로 단일 적을 무차별적으로 베어낸다.<br>
-          공격력 <span style="color:#7CFF7C;font-weight:900;">${nextPct}%</span>의 데미지로 8회공격<br>
+          공격력/주문력 <span style="color:#7CFF7C;font-weight:900;">${nextPct}%</span>로 8회 공격데미지를 입힘<br>
           마나 ${nextMpCost}소모<br>
           쿨타임 : 3초
         </div>
@@ -38377,6 +38524,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   window.cancelActiveSkillEquipPreset = cancelActiveSkillEquipPreset;
   window.showSkillEquipBlocked = showSkillEquipBlocked;
   window.useEquippedActiveSkill = useEquippedActiveSkill;
+  window.getActiveSkillBattleResourceSnapshot = getActiveSkillBattleResourceSnapshot;
   window.renderActiveSkillBook = renderActiveSkillBook;
   window.ensureBossSkillButtons = ensureBossSkillButtons;
   window.syncBossSkillButtons = syncBossSkillButtons;
