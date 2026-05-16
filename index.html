@@ -9477,6 +9477,32 @@ let itemBossPriority = 0; // 🎫 보스토벌우선신청권
 let itemSkillStone = 0; // 액티브 스킬 레벨업 재료
 let activeSkillLevels = {};
 let activeSkillEquip = { Q:"", W:"", E:"", R:"" };
+let activeSkillEquipPresetIdx = 0;
+let activeSkillEquipPresets = [
+  { Q:"", W:"", E:"", R:"" },
+  { Q:"", W:"", E:"", R:"" },
+  { Q:"", W:"", E:"", R:"" }
+];
+
+function normalizeActiveSkillEquip(v){
+  const src = (v && typeof v === "object") ? v : {};
+  return {
+    Q: String(src.Q || ""),
+    W: String(src.W || ""),
+    E: String(src.E || ""),
+    R: String(src.R || "")
+  };
+}
+
+function normalizeActiveSkillEquipPresets(v, fallback){
+  const fallbackEquip = normalizeActiveSkillEquip(fallback);
+  const src = Array.isArray(v) ? v : [];
+  return [0,1,2].map(i => normalizeActiveSkillEquip(src[i] || (i === 0 ? fallbackEquip : null)));
+}
+
+function getActiveSkillEquipPresetName(idx){
+  return `Preset ${Number(idx || 0) + 1}`;
+}
 
 // 📜 마법 스크롤 상점 판매 아이템
 const scrollShopItems = [
@@ -17136,6 +17162,7 @@ window.addEventListener("keydown", function (e) {
     const popup = document.getElementById("npcPopup");
     if (!popup || popup.style.display === "none" || popup.style.display === "") return;
     if (e && e.target === popup) {
+      if (document.getElementById("activeSkillEquipPopup")) return;
       e.preventDefault();
       e.stopPropagation();
       closeNpcPopup();
@@ -19772,6 +19799,9 @@ function resetLocalStateForAccountSwitch(){
   runeSlotUnlockCount = 3;
   runePresetIdx = 0;
   runePresets = [Array(9).fill(null), Array(9).fill(null), Array(9).fill(null)];
+  activeSkillEquipPresetIdx = 0;
+  activeSkillEquipPresets = normalizeActiveSkillEquipPresets(null, null);
+  activeSkillEquip = normalizeActiveSkillEquip(activeSkillEquipPresets[0]);
   runeAppraiseCount = 0;
   runeDismantleCount = 0;
   runeCollectedCount = 0;
@@ -20057,7 +20087,9 @@ function login() {
       itemBossPriority = Number(data.itemBossPriority || 0);
       itemSkillStone = Number(data.itemSkillStone || 0);
       activeSkillLevels = (data.activeSkillLevels && typeof data.activeSkillLevels === "object") ? data.activeSkillLevels : {};
-      activeSkillEquip = Object.assign({ Q:"", W:"", E:"", R:"" }, (data.activeSkillEquip && typeof data.activeSkillEquip === "object") ? data.activeSkillEquip : {});
+      activeSkillEquipPresetIdx = [0,1,2].includes(Number(data.activeSkillEquipPresetIdx)) ? Number(data.activeSkillEquipPresetIdx) : 0;
+      activeSkillEquipPresets = normalizeActiveSkillEquipPresets(data.activeSkillEquipPresets, data.activeSkillEquip);
+      activeSkillEquip = normalizeActiveSkillEquip(activeSkillEquipPresets[activeSkillEquipPresetIdx]);
       runeInventory = normalizeRuneInventory(data.runeInventory);
       unidentifiedRuneStones = Math.max(0, Number(data.unidentifiedRuneStones || 0));
       runeSlotUnlockCount = clampRuneUnlockCount(data.runeSlotUnlockCount);
@@ -20341,6 +20373,9 @@ function login() {
       runeSlotUnlockCount: 3,
       runePresetIdx: 0,
       runePresets: [Array(9).fill(null), Array(9).fill(null), Array(9).fill(null)],
+      activeSkillEquipPresetIdx: 0,
+      activeSkillEquipPresets: normalizeActiveSkillEquipPresets(null, null),
+      activeSkillEquip: normalizeActiveSkillEquip(null),
       runeAppraiseCount: 0,
       runeDismantleCount: 0,
       runeCollectedCount: 0,
@@ -20441,7 +20476,9 @@ function save(options = {}) {
     itemBossPriority: Number(itemBossPriority || 0),
     itemSkillStone: Number(itemSkillStone || 0),
     activeSkillLevels: activeSkillLevels || {},
-    activeSkillEquip: activeSkillEquip || { Q:"", W:"", E:"", R:"" },
+    activeSkillEquip: normalizeActiveSkillEquip(activeSkillEquip),
+    activeSkillEquipPresetIdx: Number(activeSkillEquipPresetIdx || 0),
+    activeSkillEquipPresets: normalizeActiveSkillEquipPresets(activeSkillEquipPresets, activeSkillEquip),
     runeInventory: normalizeRuneInventory(runeInventory),
     unidentifiedRuneStones: Math.max(0, Number(unidentifiedRuneStones || 0)),
     runeSlotUnlockCount: clampRuneUnlockCount(runeSlotUnlockCount),
@@ -22390,7 +22427,9 @@ if (!power || power <= 20) {
     itemBossPriority = Number(data.itemBossPriority || 0);
     itemSkillStone = Number(data.itemSkillStone || 0);
     activeSkillLevels = (data.activeSkillLevels && typeof data.activeSkillLevels === "object") ? data.activeSkillLevels : {};
-    activeSkillEquip = Object.assign({ Q:"", W:"", E:"", R:"" }, (data.activeSkillEquip && typeof data.activeSkillEquip === "object") ? data.activeSkillEquip : {});
+    activeSkillEquipPresetIdx = [0,1,2].includes(Number(data.activeSkillEquipPresetIdx)) ? Number(data.activeSkillEquipPresetIdx) : 0;
+    activeSkillEquipPresets = normalizeActiveSkillEquipPresets(data.activeSkillEquipPresets, data.activeSkillEquip);
+    activeSkillEquip = normalizeActiveSkillEquip(activeSkillEquipPresets[activeSkillEquipPresetIdx]);
     runeInventory = normalizeRuneInventory(data.runeInventory);
     unidentifiedRuneStones = Math.max(0, Number(data.unidentifiedRuneStones || 0));
     runeSlotUnlockCount = clampRuneUnlockCount(data.runeSlotUnlockCount);
@@ -26058,6 +26097,74 @@ function formatDamageKoUnits(n){
   });
 }
   
+function getPlayerBattleThirtyClearCount(){
+  return Math.max(0, Number(typeof reach30Count !== "undefined" ? reach30Count : 0));
+}
+
+function getPlayerBattleMaxHp(){
+  const base = Math.max(1, Number(typeof getHuntStaminaMax === "function" ? getHuntStaminaMax() : 20) * 100);
+  return Math.max(1, Math.floor(base * (1 + getPlayerBattleThirtyClearCount() / 100)));
+}
+
+function getPlayerBattleMaxMp(){
+  return Math.max(0, 200 + getPlayerBattleThirtyClearCount() * 10);
+}
+
+function injectPlayerBattleResourceStyle(){
+  if (document.getElementById("playerBattleResourceStyle")) return;
+  const st = document.createElement("style");
+  st.id = "playerBattleResourceStyle";
+  st.textContent = `
+    .player-resource-card{padding:7px 0 9px; border-bottom:1px solid #252525;}
+    .player-resource-head{display:flex; justify-content:space-between; gap:8px; margin-bottom:5px; font-size:12px; font-weight:900; color:#e9e9e9;}
+    .player-resource-stack{height:26px; display:grid; grid-template-rows:7fr 3fr; border:1px solid rgba(255,255,255,.15); background:#0b0b0b; overflow:hidden; box-shadow:inset 0 0 10px rgba(0,0,0,.8);}
+    .player-resource-line{position:relative; overflow:hidden;}
+    .player-resource-line.hp{background:#251010;}
+    .player-resource-line.mp{background:#071629; border-top:1px solid rgba(255,255,255,.12);}
+    .player-resource-fill{position:absolute; left:0; top:0; bottom:0; width:0%;}
+    .player-resource-fill.hp{background:linear-gradient(90deg,#aa1622,#ff4d58);}
+    .player-resource-fill.mp{background:linear-gradient(90deg,#1d5ed8,#59b7ff);}
+    .player-resource-text{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:10px; font-weight:900; text-shadow:0 1px 3px #000; line-height:1;}
+    .player-resource-line.mp .player-resource-text{font-size:9px; color:#d9edff;}
+  `;
+  document.head.appendChild(st);
+}
+
+function getPlayerBattleResourceSnapshot(source){
+  source = source || {};
+  const maxHp = Math.max(1, Number(source.maxHp || getPlayerBattleMaxHp()));
+  const maxMp = Math.max(0, Number(source.maxMp || getPlayerBattleMaxMp()));
+  const hp = Math.max(0, Math.min(maxHp, Number(Number.isFinite(Number(source.hp)) ? source.hp : maxHp)));
+  const mp = Math.max(0, Math.min(maxMp, Number(Number.isFinite(Number(source.mp)) ? source.mp : maxMp)));
+  return { hp, maxHp, mp, maxMp };
+}
+
+function renderPlayerBattleResourceHtml(source, label){
+  injectPlayerBattleResourceStyle();
+  const s = getPlayerBattleResourceSnapshot(source);
+  const hpPct = s.maxHp > 0 ? Math.max(0, Math.min(100, s.hp / s.maxHp * 100)) : 0;
+  const mpPct = s.maxMp > 0 ? Math.max(0, Math.min(100, s.mp / s.maxMp * 100)) : 0;
+  const fmt = (typeof formatBossHpShort === "function") ? formatBossHpShort : (v => Number(v || 0).toLocaleString("ko-KR"));
+  return `
+    <div class="player-resource-card">
+      <div class="player-resource-head"><span>${label || "내 HP / MP"}</span><span style="color:#9fd3ff;">MP ${fmt(s.mp)} / ${fmt(s.maxMp)}</span></div>
+      <div class="player-resource-stack">
+        <div class="player-resource-line hp">
+          <div class="player-resource-fill hp" style="width:${hpPct}%"></div>
+          <div class="player-resource-text">HP ${fmt(s.hp)} / ${fmt(s.maxHp)}</div>
+        </div>
+        <div class="player-resource-line mp">
+          <div class="player-resource-fill mp" style="width:${mpPct}%"></div>
+          <div class="player-resource-text">MP ${fmt(s.mp)} / ${fmt(s.maxMp)}</div>
+        </div>
+        <div style="display:none;">
+          <button type="button" onclick="saveActiveSkillEquipPreset()" style="flex:1;padding:10px 8px;border-radius:8px;border:1px solid rgba(255,213,79,.42);background:linear-gradient(180deg,rgba(255,213,79,.16),rgba(80,62,18,.72));color:#ffe18a;font-weight:900;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 4px 10px rgba(0,0,0,.22);">저장</button>
+          <button type="button" onclick="cancelActiveSkillEquipPreset()" style="flex:1;padding:10px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(18,18,18,.82));color:#ddd;font-weight:900;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 4px 10px rgba(0,0,0,.22);">취소</button>
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderBossBattle(){
   const ctx = resolveMyBossRun({ includeClosed: true });
   const bossId = String((ctx && ctx.bossId) || "");
@@ -26107,6 +26214,7 @@ if (partyEl) {
   // 5명 정도 보이게 높이 제한 + 스크롤
   partyEl.style.maxHeight = "210px";
   partyEl.style.overflowY = "auto";
+  const playerResourceHtml = renderPlayerBattleResourceHtml();
 
   const members = run.members || {};
   const displayHp = getBossDisplayHp(bossId, run);
@@ -26147,7 +26255,7 @@ const totalDamage = Math.max(1, indexedTotalDamage, hpDealt + shieldDealt);
   others.forEach(x => view.push({ ...x, _isLeader: false }));
 
   if (view.length === 0) {
-    partyEl.innerHTML = `<div style="color:#777;">참여자가 없습니다.</div>`;
+    partyEl.innerHTML = playerResourceHtml + `<div style="color:#777;">참여자가 없습니다.</div>`;
   } else {
     // 무기분류 한글 라벨
     const weaponKor = (t) => {
@@ -26185,7 +26293,7 @@ const totalDamage = Math.max(1, indexedTotalDamage, hpDealt + shieldDealt);
 `;
     });
 
-    partyEl.innerHTML = html;
+    partyEl.innerHTML = playerResourceHtml + html;
   }
 }
 
@@ -29697,6 +29805,18 @@ function showActiveSkillNotImplemented(){
   if (wLine) wLine.textContent = `무기: ${my.weaponTypeKor}`;
 
   // (C) 서브스탯(0%도 표기)
+  const statHpEl = document.getElementById("statHp");
+  const statMpEl = document.getElementById("statMp");
+  const battleMaxHp = (typeof getPlayerBattleMaxHp === "function")
+    ? getPlayerBattleMaxHp()
+    : Math.max(1, Number(typeof getHuntStaminaMax === "function" ? getHuntStaminaMax() : 20) * 100);
+  const battleMaxMp = (typeof getPlayerBattleMaxMp === "function") ? getPlayerBattleMaxMp() : 200;
+  const fmtResource = (typeof formatBossHpShort === "function")
+    ? formatBossHpShort
+    : (v) => Number(v || 0).toLocaleString("ko-KR");
+  if (statHpEl) statHpEl.textContent = fmtResource(battleMaxHp);
+  if (statMpEl) statMpEl.textContent = fmtResource(battleMaxMp);
+
   const penEl = document.getElementById("statPen");
   if (penEl) penEl.textContent = `${Math.round(my.penetration * 100)}%`;
 
@@ -31097,7 +31217,7 @@ renderBossBattle = function(){
   })();
   const weaponSnap = getRankingBattleWeaponSnapshot();
   if (partyEl) {
-    partyEl.innerHTML = `
+    partyEl.innerHTML = renderPlayerBattleResourceHtml() + `
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px dashed #333;">
         <div style="min-width:0; flex:1;">
           <div style="font-weight:900; color:#fff; line-height:1.45;">${titleHtml}</div>
@@ -34481,6 +34601,9 @@ setTimeout(() => {
   <div id="statMainPct" style="margin-top:4px; padding-left:24px; font-size:12px; font-weight:700; color:rgba(255,255,255,0.58); line-height:1.2;">(공격력 + 0%)</div>
 </div>
 
+      <div style="margin:0 0 10px; border-top:1px solid rgba(255,255,255,0.10);"></div>
+      <div class="stat-line">HP <span id="statHp">0</span></div>
+      <div class="stat-line">MP <span id="statMp">0</span></div>
       <div class="stat-line">관통력 <span id="statPen">0%</span></div>
       <div class="stat-line">회피 무시 <span id="statIgnore">0%</span></div>
       <div class="stat-line">치명타 확률 <span id="statCrit">0%</span></div>
@@ -37051,7 +37174,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     estimateUnitPrice(item).then(unit => {
       const paid = Math.max(START_PRICE, Math.floor(unit * itemQty(item)));
       kyloMessage(
-        `이 물건은 <b>${money(paid)} 골드</b>로 매입해주지.<br>판매할텐가?`,
+        `이 물건은 <b>${money(paid)} 골드</b>로 매입해주지.<br>판매할텐가?<br><span style="color:#ff4d4d;font-weight:900;">(유찰시 수수료가 발생합니다. 판매에 주의하십시오.)</span>`,
         "판매",
         () => createListing(item, paid),
         "취소"
@@ -37577,12 +37700,36 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   let skillFxLooping = false;
   let swordSkillShakePower = 0;
   let swordSkillShakeLooping = false;
+  let equipDraftPresetIdx = 0;
+  let equipDraftPresets = null;
 
   function ensureSkillState(){
     if (!activeSkillLevels || typeof activeSkillLevels !== "object") activeSkillLevels = {};
     if (!activeSkillEquip || typeof activeSkillEquip !== "object") activeSkillEquip = {};
-    activeSkillEquip = Object.assign({ Q:"", W:"", E:"", R:"" }, activeSkillEquip);
+    activeSkillEquip = normalizeActiveSkillEquip(activeSkillEquip);
+    activeSkillEquipPresetIdx = [0,1,2].includes(Number(activeSkillEquipPresetIdx)) ? Number(activeSkillEquipPresetIdx) : 0;
+    activeSkillEquipPresets = normalizeActiveSkillEquipPresets(activeSkillEquipPresets, activeSkillEquip);
+    activeSkillEquip = normalizeActiveSkillEquip(activeSkillEquipPresets[activeSkillEquipPresetIdx]);
     activeSkillLevels[SKILL_ID] = Math.max(1, Number(activeSkillLevels[SKILL_ID] || 1));
+  }
+
+  function cloneEquipPresets(src){
+    return normalizeActiveSkillEquipPresets(src, activeSkillEquip).map(p => normalizeActiveSkillEquip(p));
+  }
+
+  function ensureEquipDraft(){
+    ensureSkillState();
+    if (!equipDraftPresets) {
+      equipDraftPresetIdx = activeSkillEquipPresetIdx;
+      equipDraftPresets = cloneEquipPresets(activeSkillEquipPresets);
+    }
+    equipDraftPresetIdx = [0,1,2].includes(Number(equipDraftPresetIdx)) ? Number(equipDraftPresetIdx) : 0;
+    equipDraftPresets = cloneEquipPresets(equipDraftPresets);
+  }
+
+  function getDraftEquip(){
+    ensureEquipDraft();
+    return equipDraftPresets[equipDraftPresetIdx];
   }
 
   function getSkillLevel(){
@@ -37592,6 +37739,11 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
   function getSkillDamagePct(level){
     return 125 + (Math.max(1, Number(level || 1)) - 1) * 25;
+  }
+
+  function getSkillMpCost(level){
+    const lv = Math.max(1, Math.min(5, Number(level || 1)));
+    return Math.max(18, 33 - lv * 3);
   }
 
   function getSkillImage(src){
@@ -37939,6 +38091,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const next = lv + 1;
     const curPct = getSkillDamagePct(lv);
     const nextPct = getSkillDamagePct(next);
+    const curMpCost = getSkillMpCost(lv);
+    const nextMpCost = getSkillMpCost(next);
     const html = `
       <div class="nammu-skill-detail" style="width:100%; max-width:320px; margin:0 auto; color:#eee; box-sizing:border-box;">
         <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
@@ -37952,12 +38106,14 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
           <b>Lv${lv}</b><br>
           강력한 검기로 단일 적을 무차별적으로 베어낸다.<br>
           공격력 ${curPct}%의 데미지로 8회공격<br>
+          마나 ${curMpCost}소모<br>
           쿨타임 : 3초
         </div>
         <div style="margin-top:8px;padding:10px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:rgba(255,255,255,.04);font-size:13px;line-height:1.65;">
           <b>Lv${next}</b><br>
           강력한 검기로 단일 적을 무차별적으로 베어낸다.<br>
           공격력 <span style="color:#7CFF7C;font-weight:900;">${nextPct}%</span>의 데미지로 8회공격<br>
+          마나 ${nextMpCost}소모<br>
           쿨타임 : 3초
         </div>
         <div style="margin-top:12px;display:flex;gap:8px;">
@@ -37997,12 +38153,16 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function openActiveSkillEquipPopup(){
-    ensureSkillState();
+    ensureEquipDraft();
     const slots = ["Q","W","E","R"];
     const html = `
       <div id="activeSkillEquipPopup" style="width:100%;max-width:320px;margin:0 auto;box-sizing:border-box;color:#eee;position:relative;padding-top:2px;">
+        <style>#activeSkillEquipPopup > button[onclick="closeNpcPopup()"]{display:none!important;}</style>
         <button type="button" onclick="closeNpcPopup()" aria-label="닫기" style="position:absolute;right:0;top:0;width:28px;height:28px;border:0;background:transparent;color:rgba(255,255,255,.72);font-size:22px;line-height:28px;font-weight:900;cursor:pointer;text-shadow:0 2px 8px rgba(0,0,0,.75);z-index:2;">×</button>
         <div style="font-size:15px;font-weight:900;margin-bottom:10px;text-align:center;color:#ffd54f;">스킬 장착</div>
+        <div style="display:flex;gap:6px;margin:0 0 10px;">
+          ${[0,1,2].map(i => `<button type="button" onclick="selectActiveSkillEquipPreset(${i})" class="rune-preset-btn ${Number(equipDraftPresetIdx) === i ? "active" : ""}" style="flex:1;">${getActiveSkillEquipPresetName(i)}</button>`).join("")}
+        </div>
         <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:12px;">
           ${slots.map(k => renderEquipSlot(k)).join("")}
         </div>
@@ -38019,7 +38179,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function renderEquipSlot(k){
-    const equipped = activeSkillEquip[k] === SKILL_ID;
+    const draft = getDraftEquip();
+    const equipped = draft[k] === SKILL_ID;
     const canEquip = k !== "R";
     const img = equipped ? EQUIP_ICON : BLANK_ICON;
     const glow = equipped ? "filter:drop-shadow(0 0 12px rgba(124,255,124,.52));" : "filter:drop-shadow(0 0 10px rgba(255,213,79,.72));";
@@ -38032,19 +38193,53 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function equipNammuSkill(slot){
-    ensureSkillState();
+    ensureEquipDraft();
     slot = String(slot || "").toUpperCase();
     if (!["Q","W","E"].includes(slot)) {
       showSkillEquipBlocked(slot);
       return;
     }
+    const draft = getDraftEquip();
     ["Q","W","E","R"].forEach(k => {
-      if (activeSkillEquip[k] === SKILL_ID) activeSkillEquip[k] = "";
+      if (draft[k] === SKILL_ID) draft[k] = "";
     });
-    activeSkillEquip[slot] = SKILL_ID;
-    save();
+    draft[slot] = SKILL_ID;
     openActiveSkillEquipPopup();
+  }
+
+  function selectActiveSkillEquipPreset(idx){
+    ensureEquipDraft();
+    equipDraftPresetIdx = [0,1,2].includes(Number(idx)) ? Number(idx) : 0;
+    openActiveSkillEquipPopup();
+  }
+
+  function saveActiveSkillEquipPreset(){
+    ensureEquipDraft();
+    activeSkillEquipPresetIdx = equipDraftPresetIdx;
+    activeSkillEquipPresets = cloneEquipPresets(equipDraftPresets);
+    activeSkillEquip = normalizeActiveSkillEquip(activeSkillEquipPresets[activeSkillEquipPresetIdx]);
+    equipDraftPresets = null;
+    save();
+    closeNpcPopup();
     syncBossSkillButtons();
+  }
+
+  function cancelActiveSkillEquipPreset(){
+    equipDraftPresets = null;
+    closeNpcPopup();
+  }
+
+  function appendActiveSkillEquipActions(){
+    const popup = document.getElementById("activeSkillEquipPopup");
+    if (!popup || popup.querySelector(".active-skill-equip-actions")) return;
+    const actions = document.createElement("div");
+    actions.className = "active-skill-equip-actions";
+    actions.style.cssText = "margin-top:12px;display:flex;gap:8px;";
+    actions.innerHTML = `
+      <button type="button" onclick="saveActiveSkillEquipPreset()" style="flex:1;padding:10px 8px;border-radius:8px;border:1px solid rgba(255,213,79,.42);background:linear-gradient(180deg,rgba(255,213,79,.16),rgba(80,62,18,.72));color:#ffe18a;font-weight:900;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 4px 10px rgba(0,0,0,.22);">저장</button>
+      <button type="button" onclick="cancelActiveSkillEquipPreset()" style="flex:1;padding:10px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(18,18,18,.82));color:#ddd;font-weight:900;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 4px 10px rgba(0,0,0,.22);">취소</button>
+    `;
+    popup.appendChild(actions);
   }
 
   function showSkillEquipBlocked(){
@@ -38168,12 +38363,18 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     }
   }, true);
 
-  setInterval(syncBossSkillButtons, 120);
+  setInterval(() => {
+    syncBossSkillButtons();
+    appendActiveSkillEquipActions();
+  }, 120);
   window.openNammuSkillDetail = openNammuSkillDetail;
   window.confirmNammuSkillLevelUp = confirmNammuSkillLevelUp;
   window.levelUpNammuSkill = levelUpNammuSkill;
   window.openActiveSkillEquipPopup = openActiveSkillEquipPopup;
   window.equipNammuSkill = equipNammuSkill;
+  window.selectActiveSkillEquipPreset = selectActiveSkillEquipPreset;
+  window.saveActiveSkillEquipPreset = saveActiveSkillEquipPreset;
+  window.cancelActiveSkillEquipPreset = cancelActiveSkillEquipPreset;
   window.showSkillEquipBlocked = showSkillEquipBlocked;
   window.useEquippedActiveSkill = useEquippedActiveSkill;
   window.renderActiveSkillBook = renderActiveSkillBook;
@@ -38454,7 +38655,16 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
   function getRun(){ return (bossRunsActiveCache || {})[WRAITH_BOSS_ID] || null; }
   function getPhase(run){ return String((run && run.wraithPhase) || "knight"); }
-  function myMaxHp(){ return Math.max(1, Number(typeof getHuntStaminaMax === "function" ? getHuntStaminaMax() : 20) * 100); }
+  function myMaxHp(){
+    return (typeof getPlayerBattleMaxHp === "function")
+      ? getPlayerBattleMaxHp()
+      : Math.max(1, Number(typeof getHuntStaminaMax === "function" ? getHuntStaminaMax() : 20) * 100);
+  }
+  function myMaxMp(){
+    return (typeof getPlayerBattleMaxMp === "function")
+      ? getPlayerBattleMaxMp()
+      : 200;
+  }
   function isMagicWeaponType(t){ t = String(t || weaponType || "sword"); return ["staff","gauntlet","magitech","scythe"].includes(t); }
   function isMyDead(run){ const m = run && run.members && run.members[userId]; return !!(m && Number(m.hp || 0) <= 0); }
   function getWraithKingIntroUntil(run){
@@ -38535,13 +38745,43 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     if (!run || !userId || !run.members || !run.members[userId]) return;
     const m = run.members[userId];
     const max = myMaxHp();
-    if (Number(m.maxHp || 0) === max && Number.isFinite(Number(m.hp))) return;
+    const maxMp = myMaxMp();
+    if (Number(m.maxHp || 0) === max && Number(m.maxMp || 0) === maxMp && Number.isFinite(Number(m.hp)) && Number.isFinite(Number(m.mp))) return;
     db.ref(`bossRunsActive/${WRAITH_BOSS_ID}/members/${userId}`).transaction((cur) => {
       if (!cur) return cur;
       const oldMax = Math.max(1, Number(cur.maxHp || max));
       const oldHp = Number.isFinite(Number(cur.hp)) ? Number(cur.hp) : max;
+      const oldMaxMp = Math.max(0, Number(cur.maxMp || maxMp));
+      const oldMp = Number.isFinite(Number(cur.mp)) ? Number(cur.mp) : maxMp;
       cur.maxHp = max;
       cur.hp = Math.max(0, Math.min(max, Math.round(oldHp * max / oldMax)));
+      cur.maxMp = maxMp;
+      cur.mp = oldMaxMp > 0 ? Math.max(0, Math.min(maxMp, Math.round(oldMp * maxMp / oldMaxMp))) : maxMp;
+      cur.lastMpRegenAt = Number(cur.lastMpRegenAt || now());
+      return cur;
+    });
+  }
+
+  function regenMyWraithMp(run){
+    if (!run || getPhase(run) !== "king" || !userId || !run.members || !run.members[userId]) return;
+    const m = run.members[userId];
+    if (Number(m.hp || 0) <= 0) return;
+    const maxMp = myMaxMp();
+    if (maxMp <= 0) return;
+    const t = now();
+    const phaseStart = Math.max(0, Number(run.kingStartedAt || run.kingIntroUntil || 0));
+    const last = Math.max(phaseStart, Number(m.lastMpRegenAt || t));
+    if (t - last < 1000) return;
+    db.ref(`bossRunsActive/${WRAITH_BOSS_ID}/members/${userId}`).transaction((cur) => {
+      if (!cur) return cur;
+      const curMpMax = myMaxMp();
+      const curPhaseStart = Math.max(0, Number(cur.kingStartedAt || cur.kingIntroUntil || 0));
+      const curLast = Math.max(curPhaseStart, Number(cur.lastMpRegenAt || t));
+      const elapsedSec = Math.floor((now() - curLast) / 1000);
+      if (elapsedSec <= 0) return cur;
+      cur.maxMp = curMpMax;
+      cur.mp = Math.min(curMpMax, Math.max(0, Number(cur.mp || 0)) + elapsedSec * 3);
+      cur.lastMpRegenAt = curLast + elapsedSec * 1000;
       return cur;
     });
   }
@@ -39598,6 +39838,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       nick: myNick,
       hp: 0,
       maxHp: Math.max(1, Number(myMember && myMember.maxHp || 1)),
+      mp: Math.max(0, Number(myMember && myMember.mp || 0)),
+      maxMp: Math.max(0, Number(myMember && myMember.maxMp || myMaxMp())),
       dmg: Number(myMember && myMember.dmg || 0),
       reason: "hp_zero",
       at: now()
@@ -39616,6 +39858,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
             nick:myNick,
             hp:0,
             maxHp:Math.max(1, Number(myMember && myMember.maxHp || 1)),
+            mp:Math.max(0, Number(myMember && myMember.mp || 0)),
+            maxMp:Math.max(0, Number(myMember && myMember.maxMp || myMaxMp())),
             dmg:Number(myMember && myMember.dmg || 0),
             reason:"hp_zero",
             at:now()
@@ -39847,6 +40091,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     if (!run) return;
     if (typeof setTwinBossMode === "function") setTwinBossMode(false);
     updateMyHpShape(run);
+    regenMyWraithMp(run);
     refreshWraithHuntHeader();
     maybeHandleWraithSkills(run);
 
@@ -40169,6 +40414,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       nick: String(m.nick || m.uid || "???"),
       hp: Math.max(0, Number(m.hp || 0)),
       maxHp: Math.max(1, Number(m.maxHp || 1)),
+      mp: Math.max(0, Number(Number.isFinite(Number(m.mp)) ? m.mp : m.maxMp || myMaxMp())),
+      maxMp: Math.max(0, Number(m.maxMp || myMaxMp())),
       dmg: Number(m.dmg || 0),
       isMe: String(m.uid || "") === String(userId || ""),
       eliminated: false,
@@ -40183,6 +40430,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         nick: String(m.nick || m.uid || "???"),
         hp: 0,
         maxHp: Math.max(1, Number(m.maxHp || m.hpMax || 1)),
+        mp: 0,
+        maxMp: Math.max(0, Number(m.maxMp || myMaxMp())),
         dmg: Number(m.dmg || 0),
         isMe: String(m.uid || "") === String(userId || ""),
         eliminated: true,
@@ -40197,16 +40446,24 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     }
     partyEl.style.maxHeight = "210px";
     partyEl.style.overflowY = "auto";
+    if (typeof injectPlayerBattleResourceStyle === "function") injectPlayerBattleResourceStyle();
     partyEl.innerHTML = arr.map(m => {
       const pct = Math.max(0, Math.min(100, m.hp / m.maxHp * 100));
+      const mpPct = m.maxMp > 0 ? Math.max(0, Math.min(100, m.mp / m.maxMp * 100)) : 0;
       const rowOpacity = m.eliminated ? ".58" : "1";
       const nameSuffix = m.eliminated ? ` <span style="color:#888;">(퇴장)</span>` : "";
       return `
         <div class="wraith-hp-row" style="opacity:${rowOpacity};">
           <div class="wraith-hp-name"><span>${m.isMe ? "내 정보 · " : ""}${m.nick}${nameSuffix}</span><span style="color:#aaa;">누적 ${fmtHp(m.dmg)}</span></div>
-          <div class="wraith-hp-bar">
-            <div class="wraith-hp-fill" style="width:${pct}%"></div>
-            <div class="wraith-hp-text">${m.hp} / ${m.maxHp}</div>
+          <div class="player-resource-stack" style="height:26px;">
+            <div class="player-resource-line hp">
+              <div class="player-resource-fill hp" style="width:${pct}%"></div>
+              <div class="player-resource-text">HP ${fmtHp(m.hp)} / ${fmtHp(m.maxHp)}</div>
+            </div>
+            <div class="player-resource-line mp">
+              <div class="player-resource-fill mp" style="width:${mpPct}%"></div>
+              <div class="player-resource-text">MP ${fmtHp(m.mp)} / ${fmtHp(m.maxMp)}</div>
+            </div>
           </div>
         </div>`;
     }).join("") || `<div style="color:#777;">참여자가 없습니다.</div>`;
@@ -40336,6 +40593,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
           const runRef = db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`);
           const t = now();
           const max = myMaxHp();
+          const maxMp = myMaxMp();
           const myStats = getPlayerFinalCombatStats();
           const newRun = {
             bossId: WRAITH_BOSS_ID,
@@ -40362,6 +40620,9 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
                 dmg: 0,
                 hp: max,
                 maxHp: max,
+                mp: maxMp,
+                maxMp: maxMp,
+                lastMpRegenAt: t,
                 ignoreEvadeAtJoin: Number(myStats.ignoreEvade || 0),
                 titleId: String(equippedTitle || ""),
                 weaponType: String(weaponType || "sword"),
