@@ -24777,6 +24777,15 @@ function setActiveBossBinding(bossId, runKey){
   if (activeBossId) ensureFocusedBossRunSubscription(activeBossId);
   save();
 }
+function refreshActiveBossRunSnapshotOnce(bossId){
+  bossId = String(bossId || "");
+  if (!bossId) return Promise.resolve(null);
+  return db.ref(`bossRunsActive/${bossId}`).once("value").then((snap) => {
+    const run = snap && snap.val ? snap.val() : null;
+    updateBossRunCacheAndRender(bossId, run);
+    return run;
+  });
+}
 function clearActiveBossBinding(){
   activeBossId = "";
   activeBossRunKey = "";
@@ -25079,7 +25088,9 @@ function ensureBossRunsSubscription() {
       if (String(activeBossId || "") === bossId) ensureFocusedBossRunSubscription(bossId);
     },
     changed: (snap) => {
-      // Full child changes are intentionally not subscribed below. Keep this for safe off() compatibility.
+      const bossId = String(snap.key || "");
+      updateBossRunCacheAndRender(bossId, snap.val() || {});
+      if (String(activeBossId || "") === bossId) ensureFocusedBossRunSubscription(bossId);
     },
     removed: (snap) => {
       const bossId = String(snap.key || "");
@@ -25089,6 +25100,7 @@ function ensureBossRunsSubscription() {
   };
 
   BOSS_RUNS_ACTIVE_REF.on("child_added", bossRunsActiveHandlers.added);
+  BOSS_RUNS_ACTIVE_REF.on("child_changed", bossRunsActiveHandlers.changed);
   BOSS_RUNS_ACTIVE_REF.on("child_removed", bossRunsActiveHandlers.removed);
 
   fetchBoundClosedBossRunOnce().then(() => {
@@ -25482,7 +25494,16 @@ function openBossBattle(){
   document.getElementById("bossBattleBossImg")?.classList.add("boss-breathe");
   document.getElementById("bossBattleBossShadow")?.classList.add("boss-breathe-shadow");
   ensureBossBattleLogsSubscription(bossId);
+  if (bossId === "wraith_king") {
+    refreshActiveBossRunSnapshotOnce(bossId).then(() => {
+      const ov2 = document.getElementById("bossBattleOverlay");
+      if (ov2 && ov2.style.display !== "none") renderBossBattle();
+    }).catch(() => {
+      renderBossBattle();
+    });
+  } else {
   renderBossBattle();
+  }
 
   if (bossBattleTickTimer) clearInterval(bossBattleTickTimer);
   bossBattleTickTimer = setInterval(() => {
@@ -38004,6 +38025,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     if (!bossId || totalDamage <= 0 || !userId) return;
     const run = (bossRunsActiveCache || {})[bossId];
     if (!run || String(run.status || "") !== "active") return;
+    if (String(bossId || "") === "wraith_king" && typeof window.applyWraithSkillDamageToActiveBoss === "function") {
+      window.applyWraithSkillDamageToActiveBoss(totalDamage, options);
+      return;
+    }
     const attackType = String(options.attackType || "");
     const isPhysicalSkill = attackType === "physical";
     if (isPhysicalSkill && String(bossId || "") === "frost_queen" && Math.max(0, Number(run.shieldHp || 0)) > 0 && Math.max(0, Number(run.shieldMax || 0)) > 0) {
@@ -38149,6 +38174,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const bossId = isRanking ? (typeof RANKING_BATTLE_BOSS_ID !== "undefined" ? RANKING_BATTLE_BOSS_ID : "ranking_battle") : String(activeBossId || "");
     const run = isRanking ? rankingBattleRun : ((bossRunsActiveCache || {})[bossId]);
     if (!run || String(run.status || "") !== "active") return false;
+    if (String(bossId || "") === "wraith_king" && typeof window.canUseWraithActiveSkill === "function" && !window.canUseWraithActiveSkill()) return true;
 
     const level = getSkillLevel();
     const mpCost = getSkillMpCost(level);
@@ -38666,6 +38692,12 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   const WRAITH_SLASH_WARNING_MS = 5 * SECOND;
   const WRAITH_SLASH_QTE_MS = 1 * SECOND;
   const WRAITH_SLASH_RESOLVE_GRACE_MS = 2000;
+  const WRAITH_SLASH_GUARD_START = 1 / 3;
+  const WRAITH_SLASH_GUARD_END = 2 / 3;
+  const WRAITH_SLASH_PARRY_START = 19 / 40;
+  const WRAITH_SLASH_PARRY_END = 21 / 40;
+  const WRAITH_SLASH_GUARD_LENIENCY_PCT = 0.07;
+  const WRAITH_SLASH_PARRY_LENIENCY_PCT = 0.02;
   const WRAITH_KING_INTRO_MS = 15 * SECOND;
   const WRAITH_KING_LINES = [
     "그 마녀는… 나에게 영원을 주었다 … 끝나지 않는 고통의 형태로 …",
@@ -39341,6 +39373,12 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     if (!qteRect.width) return null;
     const dotCenterX = dotRect.left + dotRect.width / 2;
     return Math.max(0, Math.min(1, (dotCenterX - qteRect.left) / qteRect.width));
+  }
+
+  function isWraithQtePctInside(pct, start, end, leniency){
+    if (!Number.isFinite(Number(pct))) return false;
+    pct = Number(pct);
+    return pct >= Math.max(0, start - leniency) && pct <= Math.min(1, end + leniency);
   }
 
   function getLocalWraithQteStart(seq){
@@ -40097,15 +40135,21 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       const qteStart = localQteStart || Number(run.slashQteStartAt || run.slashCastAt || now());
       const elapsed = Math.max(0, (localQteStart ? localT : serverT) - qteStart);
       const qteDuration = localQteStart ? WRAITH_SLASH_QTE_MS : Math.max(1, Number(run.slashQteEndAt || run.slashResolveAt || now()) - qteStart);
-      const pct = visualPct == null ? (elapsed / qteDuration) : visualPct;
+      const timePct = Math.max(0, Math.min(1, elapsed / qteDuration));
+      const pct = visualPct == null ? timePct : visualPct;
       freezeWraithSlashQte(pct);
-      localSlashGuard = pct >= 1/3 && pct <= 2/3;
-      localSlashParry = pct >= 19/40 && pct <= 21/40;
+      localSlashGuard =
+        isWraithQtePctInside(visualPct, WRAITH_SLASH_GUARD_START, WRAITH_SLASH_GUARD_END, WRAITH_SLASH_GUARD_LENIENCY_PCT) ||
+        isWraithQtePctInside(timePct, WRAITH_SLASH_GUARD_START, WRAITH_SLASH_GUARD_END, WRAITH_SLASH_GUARD_LENIENCY_PCT);
+      localSlashParry =
+        isWraithQtePctInside(visualPct, WRAITH_SLASH_PARRY_START, WRAITH_SLASH_PARRY_END, WRAITH_SLASH_PARRY_LENIENCY_PCT) ||
+        isWraithQtePctInside(timePct, WRAITH_SLASH_PARRY_START, WRAITH_SLASH_PARRY_END, WRAITH_SLASH_PARRY_LENIENCY_PCT);
       if (localSlashParry) {
         const base = Number(getPlayerFinalCombatStats().mainPower || 0) * Number(getBossPowerMultiplier(WRAITH_BOSS_ID, Number(sword || 0)) || 1);
         localParryDamage = Math.floor(base * 5);
       }
     }
+    if (phase === "king" && run.slashActive && !localSlashGuard) return;
     playWraithGuardSfx();
     startWraithButtonCooldown(btn, 3000);
     db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
@@ -40238,6 +40282,88 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
   window.attackWraithKingBossByClick = wraithAttack;
   window.guardWraithKingBoss = wraithGuard;
+  window.canUseWraithActiveSkill = function(){
+    return attackAllowed(getRun());
+  };
+
+  window.applyWraithSkillDamageToActiveBoss = function(totalDamage, options = {}){
+    totalDamage = Math.max(0, Number(totalDamage || 0));
+    if (totalDamage <= 0 || !userId) return;
+    const run = getRun();
+    if (!run || String(run.status || "") !== "active" || !run.members || !run.members[userId]) return;
+    if (!attackAllowed(run)) return;
+
+    db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
+      if (!cur || String(cur.status || "") !== "active" || !cur.members || !cur.members[userId]) return;
+      const phase = String(cur.wraithPhase || "knight");
+      const m = cur.members[userId];
+      if (Number(m.hp || 0) <= 0) return;
+
+      if (phase === "legion") {
+        cur.legionHp = Math.max(0, Number(cur.legionHp || 0) - totalDamage);
+        m.dmg = Number(m.dmg || 0) + totalDamage;
+        if (cur.legionHp <= 0) {
+          cur.wraithPhase = "king";
+          cur.legionHp = 0;
+          cur.legionClearedAt = now();
+        }
+      } else if (phase === "curse") {
+        cur.curseHp = Math.max(0, Number(cur.curseHp || 0) - totalDamage);
+        m.dmg = Number(m.dmg || 0) + totalDamage;
+        if (cur.curseHp <= 0) {
+          cur.status = "cleared";
+          cur.clearedAt = now();
+          cur.cooldownFixed = true;
+          cur.cooldownFixedAt = now();
+          cur.lastHitUid = userId;
+          cur.hp = 0;
+          cur.curseHp = 0;
+          chooseWraithSpecialRewards(cur);
+        }
+      } else if (phase === "knight" || phase === "king") {
+        cur.hp = Math.max(0, Number(cur.hp || 0) - totalDamage);
+        m.dmg = Number(m.dmg || 0) + totalDamage;
+        if (cur.hp <= 0) {
+          cur.lastHitUid = userId;
+          if (phase === "knight") {
+            cur.wraithPhase = "gate";
+            cur.hp = 0;
+            cur.knightDownAt = now();
+            cur.gateOpenAt = now() + 60 * SECOND;
+          } else {
+            cur.wraithPhase = "curse";
+            cur.hp = 0;
+            cur.curseHp = CURSE_MAX_HP;
+            cur.curseMaxHp = CURSE_MAX_HP;
+            cur.curseStartedAt = now();
+            cur.curseEndsAt = now() + 2 * MINUTE;
+          }
+        }
+      } else {
+        return;
+      }
+
+      cur.members[userId] = m;
+      cur.lastAttackAt = now();
+      return cur;
+    }, (err, committed, snap) => {
+      if (err || !committed || !snap || !snap.val) return;
+      const cur = snap.val() || {};
+      if (cur.legionClearedAt && Math.abs(Number(cur.legionClearedAt || 0) - now()) < 15000) {
+        writeOnce(cur, "legionClearLogAt", "군단을 처치하고 망령왕의 주술을 막는 데 성공했습니다.", { tone:"yellow" });
+      }
+      if (String(cur.wraithPhase || "") === "gate") {
+        writeOnce(cur, "knightDownLogAt", "침묵의 기사 로데릭이 무릎을 꿇습니다. 발테리온 왕실의 문이 서서히 열립니다.", { tone:"yellow" });
+      }
+      if (String(cur.wraithPhase || "") === "curse") {
+        writeOnce(cur, "curseLogAt", "망령왕의 생명력이 모두 소진되었으나, [불사의 저주]로 인해 다시 부활합니다. 부활을 저지하십시오. (2:00)", { tone:"yellow" });
+      }
+      if (String(cur.status || "") === "cleared") {
+        ensureBossCooldownResetByRun(WRAITH_BOSS_ID, cur);
+        writeWraithMainClearLogOnce(cur);
+      }
+    });
+  };
 
   function chooseWraithSpecialRewards(cur){
     const members = cur.members || {};
@@ -40835,12 +40961,16 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   const __origJoinBossRunConfirm = joinBossRunConfirm;
   joinBossRunConfirm = function(bossId){
     if (String(bossId || "") === WRAITH_BOSS_ID) {
-      const run = (bossRunsActiveCache || {})[WRAITH_BOSS_ID];
-      const alreadyMember = !!(run && run.members && run.members[userId]);
-      if (!alreadyMember && isWraithJoinClosedAfterKing(run)) {
-        showWraithJoinClosedMessage();
-        return;
-      }
+      refreshActiveBossRunSnapshotOnce(WRAITH_BOSS_ID).then(() => {
+        const run = (bossRunsActiveCache || {})[WRAITH_BOSS_ID];
+        const alreadyMember = !!(run && run.members && run.members[userId]);
+        if (!alreadyMember && isWraithJoinClosedAfterKing(run)) {
+          showWraithJoinClosedMessage();
+          return;
+        }
+        __origJoinBossRunConfirm.call(this, bossId);
+      }).catch(() => __origJoinBossRunConfirm.call(this, bossId));
+      return;
     }
     return __origJoinBossRunConfirm.apply(this, arguments);
   };
@@ -40848,6 +40978,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   const __origJoinBossRun = joinBossRun;
   joinBossRun = function(bossId){
     if (String(bossId || "") === WRAITH_BOSS_ID) {
+      refreshActiveBossRunSnapshotOnce(WRAITH_BOSS_ID).then(() => {
       const run = (bossRunsActiveCache || {})[WRAITH_BOSS_ID];
       if (run && run.eliminated && run.eliminated[userId]) {
         closeNpcPopup();
@@ -40860,16 +40991,16 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         showWraithJoinClosedMessage();
         return;
       }
-    }
-    const out = __origJoinBossRun.apply(this, arguments);
-    if (String(bossId || "") === WRAITH_BOSS_ID) {
+      __origJoinBossRun.call(this, bossId);
       setTimeout(() => {
-        const run = getRun();
-        if (!run || !userId || !(run.members && run.members[userId])) return;
-        updateMyHpShape(run);
+        const latest = getRun();
+        if (!latest || !userId || !(latest.members && latest.members[userId])) return;
+        updateMyHpShape(latest);
       }, 600);
+      }).catch(() => __origJoinBossRun.call(this, bossId));
+      return;
     }
-    return out;
+    return __origJoinBossRun.apply(this, arguments);
   };
 
   const __origCloseBossBattleWraith = closeBossBattle;
