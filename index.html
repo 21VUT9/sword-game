@@ -5689,6 +5689,10 @@ button,
   -webkit-tap-highlight-color: rgba(0,0,0,0);
 }
 
+#duelSearchInput {
+  font-size: 16px !important;
+}
+
 
 /* 📱 모바일 게임 터치 강화 세트 (오버레이 포함) */
 html, body, #appFrame,
@@ -17033,7 +17037,6 @@ function showDuelConfirmPopup(targetUserId) {
     if (duelSearchInput) {
       duelSearchInput.value = keepKeyword;
       renderDuelList(keepKeyword);
-      duelSearchInput.focus({ preventScroll: true });
     }
   }
 
@@ -21619,7 +21622,8 @@ function openBossRewardOverlay(){
 
   const members = run.members || {};
   const damageByUser = run.damageByUser || {};
-  const memberIds = new Set([].concat(Object.keys(members), Object.keys(damageByUser)));
+  const eliminated = run.eliminated || {};
+  const memberIds = new Set([].concat(Object.keys(members), Object.keys(damageByUser), Object.keys(eliminated)));
   const arr = Array.from(memberIds).map(uid => ({
     uid,
     dmg: getBossMemberDamage(run, uid),
@@ -21924,7 +21928,7 @@ function claimBossReward(){
         uid: userId,
         nick: getNickSafe(),
         joinedAt: Number(cur.createdAt || 0),
-        dmg: Number(cur.damageByUser && cur.damageByUser[userId] || 0),
+        dmg: getBossMemberDamage(cur, userId),
         titleId: String(equippedTitle || ""),
         weaponType: String(weaponType || "sword"),
         weaponLv: Number(sword || 0)
@@ -21969,7 +21973,8 @@ function claimBossReward(){
 
     const members = runAfter.members || {};
     const damageByUser = runAfter.damageByUser || {};
-    const memberIds = new Set([].concat(Object.keys(members), Object.keys(damageByUser)));
+    const eliminated = runAfter.eliminated || {};
+    const memberIds = new Set([].concat(Object.keys(members), Object.keys(damageByUser), Object.keys(eliminated)));
     const arr = Array.from(memberIds).map(uid => ({
       uid,
       dmg: getBossMemberDamage(runAfter, uid)
@@ -24979,8 +24984,9 @@ function getBossMemberDamage(run, uid){
   if (!run || !uid) return 0;
   uid = String(uid);
   const memberDmg = Number(run.members && run.members[uid] && run.members[uid].dmg || 0);
+  const eliminatedDmg = Number(run.eliminated && run.eliminated[uid] && run.eliminated[uid].dmg || 0);
   const indexedDmg = Number(run.damageByUser && run.damageByUser[uid] || 0);
-  return Math.max(0, memberDmg, indexedDmg);
+  return Math.max(0, memberDmg, eliminatedDmg, indexedDmg);
 }
 
 function hasBossRunParticipation(run, uid){
@@ -24988,6 +24994,7 @@ function hasBossRunParticipation(run, uid){
   uid = String(uid);
   return !!(
     (run.members && run.members[uid]) ||
+    (run.eliminated && run.eliminated[uid]) ||
     Number(run.damageByUser && run.damageByUser[uid] || 0) > 0
   );
 }
@@ -24995,7 +25002,8 @@ function hasBossRunParticipation(run, uid){
 function getBossRunParticipantNick(run, uid){
   uid = String(uid || "");
   const member = run && run.members && run.members[uid];
-  return String((member && member.nick) || (uid === String(userId || "") ? getNickSafe() : uid) || "???");
+  const eliminated = run && run.eliminated && run.eliminated[uid];
+  return String((member && member.nick) || (eliminated && eliminated.nick) || (uid === String(userId || "") ? getNickSafe() : uid) || "???");
 }
 
 function applyDerivedBossDamageState(bossId, run){
@@ -28050,8 +28058,7 @@ function openDuelTargetPanel() {
   const input = document.getElementById("duelSearchInput");
   if (input) {
     input.value = "";
-input.focus({ preventScroll: true });
-}
+  }
 
   // 🎯 결투장 안의 "결투하기(지정매칭)" 버튼 기준으로 위치 계산
   const btn = document.querySelector("#duelArenaPanel button[onclick='openDuelTargetPanel()']");
@@ -28321,7 +28328,6 @@ function toggleDuelPanel() {
     const input = document.getElementById("duelSearchInput");
     if (input) {
       input.value = "";
-      input.focus();
     }
   } else {
     panel.style.display = "none";
@@ -37359,8 +37365,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         item: cur.item || null
       };
       const n = nowMs();
-      if (Number(cur.endsAt || 0) - n <= 10 * MINUTE) {
-        cur.endsAt = n + (10 * MINUTE);
+      if (Number(cur.endsAt || 0) - n <= HOUR) {
+        cur.endsAt = n + HOUR;
       }
       cur.currentBid = amount;
       cur.currentBidder = uid();
@@ -38899,6 +38905,71 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     return Number(run.hp || 0);
   }
 
+  function addWraithDamageContribution(cur, uid, member, amount){
+    amount = Math.max(0, Number(amount || 0));
+    if (!cur || !uid || !member || amount <= 0) return;
+    member.dmg = Number(member.dmg || 0) + amount;
+    if (!cur.damageByUser || typeof cur.damageByUser !== "object") cur.damageByUser = {};
+    cur.damageByUser[uid] = Number(cur.damageByUser[uid] || 0) + amount;
+  }
+
+  const WRAITH_AI_LEASE_MS = 8000;
+  const WRAITH_AI_RENEW_MS = 2500;
+  function getWraithAiClientId(){
+    let cid = "";
+    try { cid = String((typeof currentSessionClientId !== "undefined" && currentSessionClientId) || ""); } catch(e){}
+    if (cid) return cid;
+    try {
+      cid = String(sessionStorage.getItem("pug_wraith_ai_client_id") || "");
+      if (!cid) {
+        cid = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        sessionStorage.setItem("pug_wraith_ai_client_id", cid);
+      }
+    } catch(e) {
+      cid = `local_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    }
+    return cid;
+  }
+  function hasWraithAiLease(run){
+    const cid = getWraithAiClientId();
+    const t = now();
+    const localUntil = Number(window.__wraithAiLocalLeaseUntil || 0);
+    if (localUntil > t) return true;
+    return !!(run && String(run.wraithAiDriverId || "") === cid && Number(run.wraithAiLeaseUntil || 0) > t);
+  }
+  function requestWraithAiLease(run){
+    if (!run || String(run.status || "") !== "active") return;
+    const cid = getWraithAiClientId();
+    const t = now();
+    const nextCheck = Number(window.__wraithAiLeaseNextCheckAt || 0);
+    if (nextCheck && t < nextCheck) return;
+    const owner = String(run.wraithAiDriverId || "");
+    const until = Number(run.wraithAiLeaseUntil || 0);
+    if (owner && owner !== cid && until > t) {
+      window.__wraithAiLocalLeaseUntil = 0;
+      window.__wraithAiLeaseNextCheckAt = Math.min(until, t + WRAITH_AI_RENEW_MS);
+      return;
+    }
+    window.__wraithAiLeaseNextCheckAt = t + WRAITH_AI_RENEW_MS;
+    db.ref(`bossRunsActive/${WRAITH_BOSS_ID}`).transaction((cur) => {
+      if (!cur || String(cur.status || "") !== "active") return;
+      const n = now();
+      const curOwner = String(cur.wraithAiDriverId || "");
+      const curUntil = Number(cur.wraithAiLeaseUntil || 0);
+      if (curOwner && curOwner !== cid && curUntil > n) return cur;
+      cur.wraithAiDriverId = cid;
+      cur.wraithAiLeaseUntil = n + WRAITH_AI_LEASE_MS;
+      cur.wraithAiLeaseAt = n;
+      return cur;
+    }, (err, committed, snap) => {
+      if (err || !committed || !snap || !snap.val) return;
+      const cur = snap.val() || {};
+      if (String(cur.wraithAiDriverId || "") === cid) {
+        window.__wraithAiLocalLeaseUntil = Number(cur.wraithAiLeaseUntil || 0);
+      }
+    });
+  }
+
   function ensureWraithBossDef(){
     if (typeof BOSS_FIELD_MAP === "object" && BOSS_FIELD_MAP) BOSS_FIELD_MAP[WRAITH_BOSS_ID] = 6;
     if (typeof BOSS_SPRITES === "object" && BOSS_SPRITES) {
@@ -39712,7 +39783,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         if (parry) {
           const reflect = Math.max(0, Number(m.lastParryDamage || 0));
           cur.hp = Math.max(0, Number(cur.hp || 0) - reflect);
-          m.dmg = Number(m.dmg || 0) + reflect;
+          addWraithDamageContribution(cur, uid, m, reflect);
           m.lastParrySuccessAt = now();
         } else if (guard) {
           m.lastGuardSuccessAt = now();
@@ -40220,7 +40291,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         m.hp = Math.max(0, Number(m.hp || 0) - counterDmg);
       } else if (phase === "legion") {
         cur.legionHp = Math.max(0, Number(cur.legionHp || 0) - dmg);
-        m.dmg = Number(m.dmg || 0) + dmg;
+        addWraithDamageContribution(cur, userId, m, dmg);
         if (cur.legionHp <= 0) {
           cur.wraithPhase = "king";
           cur.legionHp = 0;
@@ -40228,7 +40299,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         }
       } else if (phase === "curse") {
         cur.curseHp = Math.max(0, Number(cur.curseHp || 0) - dmg);
-        m.dmg = Number(m.dmg || 0) + dmg;
+        addWraithDamageContribution(cur, userId, m, dmg);
         if (cur.curseHp <= 0) {
           cur.status = "cleared";
           cur.clearedAt = now();
@@ -40241,7 +40312,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         }
       } else {
         cur.hp = Math.max(0, Number(cur.hp || 0) - dmg);
-        m.dmg = Number(m.dmg || 0) + dmg;
+        addWraithDamageContribution(cur, userId, m, dmg);
         if (cur.hp <= 0) {
           cur.lastHitUid = userId;
           if (phase === "knight") {
@@ -40301,7 +40372,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
       if (phase === "legion") {
         cur.legionHp = Math.max(0, Number(cur.legionHp || 0) - totalDamage);
-        m.dmg = Number(m.dmg || 0) + totalDamage;
+        addWraithDamageContribution(cur, userId, m, totalDamage);
         if (cur.legionHp <= 0) {
           cur.wraithPhase = "king";
           cur.legionHp = 0;
@@ -40309,7 +40380,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         }
       } else if (phase === "curse") {
         cur.curseHp = Math.max(0, Number(cur.curseHp || 0) - totalDamage);
-        m.dmg = Number(m.dmg || 0) + totalDamage;
+        addWraithDamageContribution(cur, userId, m, totalDamage);
         if (cur.curseHp <= 0) {
           cur.status = "cleared";
           cur.clearedAt = now();
@@ -40322,7 +40393,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         }
       } else if (phase === "knight" || phase === "king") {
         cur.hp = Math.max(0, Number(cur.hp || 0) - totalDamage);
-        m.dmg = Number(m.dmg || 0) + totalDamage;
+        addWraithDamageContribution(cur, userId, m, totalDamage);
         if (cur.hp <= 0) {
           cur.lastHitUid = userId;
           if (phase === "knight") {
@@ -40367,7 +40438,17 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
   function chooseWraithSpecialRewards(cur){
     const members = cur.members || {};
-    const arr = Object.keys(members).map(uid => ({ uid, dmg:Number(members[uid] && members[uid].dmg || 0) })).sort((a,b)=>b.dmg-a.dmg);
+    const damageByUser = cur.damageByUser || {};
+    const eliminated = cur.eliminated || {};
+    const ids = new Set([].concat(Object.keys(members), Object.keys(damageByUser), Object.keys(eliminated)));
+    const arr = Array.from(ids)
+      .map(uid => ({ uid, dmg:Math.max(
+        Number(members[uid] && members[uid].dmg || 0),
+        Number(damageByUser[uid] || 0),
+        Number(eliminated[uid] && eliminated[uid].dmg || 0)
+      ) }))
+      .filter(x => x.dmg > 0)
+      .sort((a,b)=>b.dmg-a.dmg);
     if (arr[0]) cur.topDamageUid = arr[0].uid;
     const uids = arr.map(x => x.uid);
     if (uids.length >= 5 && Math.random() < 0.5) cur.priorityWinnerUid = uids[Math.floor(Math.random() * uids.length)];
@@ -40381,7 +40462,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     updateMyHpShape(run);
     regenMyWraithMp(run);
     refreshWraithHuntHeader();
-    maybeHandleWraithSkills(run);
+    requestWraithAiLease(run);
+    if (hasWraithAiLease(run)) maybeHandleWraithSkills(run);
 
     const phase = getPhase(run);
     const st = String(run.status || "active");
