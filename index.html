@@ -36874,6 +36874,9 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   let detailRef = null;
   let detailHandler = null;
   let currentDetailId = "";
+  let kyloVaultGold = 0;
+  let kyloVaultRef = null;
+  let kyloVaultHandler = null;
 
   function nowMs(){
     try {
@@ -36952,6 +36955,18 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       if (typeof formatGold === "function") return formatGold(n);
     } catch(e) {}
     return n.toLocaleString("ko-KR");
+  }
+
+  function signedMoney(v){
+    const n = Math.floor(Number(v || 0));
+    const abs = Math.abs(n);
+    let text = "";
+    try {
+      text = (typeof formatGold === "function") ? formatGold(abs) : abs.toLocaleString("ko-KR");
+    } catch(e) {
+      text = abs.toLocaleString("ko-KR");
+    }
+    return n < 0 ? "-" + text : text;
   }
 
   function esc(v){
@@ -37212,6 +37227,50 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     return db.ref("auctionPriceHistory").child(safeKey(key));
   }
 
+  function kyloVaultGoldRef(){
+    return db.ref("auctionSpecialState/kyloVaultGold");
+  }
+
+  function renderKyloVaultLine(){
+    const el = document.getElementById("auctionKyloVaultLine");
+    if (!el) return;
+    const v = Math.floor(Number(kyloVaultGold || 0));
+    el.textContent = `카일로의 금고 : ${signedMoney(v)}골드`;
+    el.classList.toggle("positive", v > 0);
+    el.classList.toggle("negative", v < 0);
+  }
+
+  function startKyloVaultWatch(){
+    if (kyloVaultRef && kyloVaultHandler) return;
+    kyloVaultRef = kyloVaultGoldRef();
+    kyloVaultHandler = snap => {
+      kyloVaultGold = Math.floor(Number(snap.val() || 0));
+      renderKyloVaultLine();
+    };
+    kyloVaultRef.on("value", kyloVaultHandler);
+  }
+
+  function stopKyloVaultWatch(){
+    if (kyloVaultRef && kyloVaultHandler) {
+      try { kyloVaultRef.off("value", kyloVaultHandler); } catch(e) {}
+    }
+    kyloVaultRef = null;
+    kyloVaultHandler = null;
+  }
+
+  function adjustKyloVault(delta){
+    delta = Math.floor(Number(delta || 0));
+    if (!delta) return Promise.resolve();
+    return kyloVaultGoldRef().transaction(cur => Math.floor(Number(cur || 0)) + delta)
+      .then(res => {
+        if (res && res.snapshot) {
+          kyloVaultGold = Math.floor(Number(res.snapshot.val() || 0));
+          renderKyloVaultLine();
+        }
+      })
+      .catch(err => console.warn("kylo vault update failed", err));
+  }
+
   function ensureStyle(){
     if (document.getElementById("auctionSystemStyle")) return;
     const style = document.createElement("style");
@@ -37236,6 +37295,9 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       .auction-btn:disabled{opacity:.45;cursor:not-allowed;}
       .auction-qty{border-color:rgba(255,255,255,.22);background:#1d1711;color:#eee;}
       .auction-empty{font-size:13px;color:#aaa;line-height:1.6;}
+      .auction-vault{border-top:1px solid rgba(255,255,255,.10);padding:7px 2px 0;margin-top:-3px;font-size:12px;font-weight:900;color:#ffd36a;text-align:right;}
+      .auction-vault.positive{color:#7fc7ff;}
+      .auction-vault.negative{color:#ff7070;}
       #auctionDetailOverlay{position:fixed;inset:0;z-index:13800;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);}
       .auction-detail{width:min(560px,92vw);background:#14100b;border:1px solid rgba(255,211,106,.45);box-shadow:0 18px 60px rgba(0,0,0,.75);border-radius:8px;padding:16px;color:#eee;}
       .auction-detail-head{display:flex;gap:12px;align-items:center;border-bottom:1px solid rgba(255,255,255,.12);padding-bottom:12px;margin-bottom:12px;}
@@ -37273,6 +37335,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
             <button class="auction-close" type="button" onclick="closeAuctionOverlay()">닫기</button>
           </div>
           <div id="auctionBody" class="auction-body"></div>
+          <div id="auctionKyloVaultLine" class="auction-vault">카일로의 금고 : ${signedMoney(kyloVaultGold)}골드</div>
           <div class="auction-kylo-message">
             <div id="auctionKyloBottomLine" class="auction-kylo-bubble"></div>
           </div>
@@ -37303,6 +37366,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
   function render(){
     ensureDom();
+    renderKyloVaultLine();
     const body = document.getElementById("auctionBody");
     const marketTab = document.getElementById("auctionTabMarket");
     const sellTab = document.getElementById("auctionTabSell");
@@ -37642,6 +37706,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       status: "preparing"
     };
     ref.set(data).then(() => {
+      adjustKyloVault(-Math.floor(Number(paidPrice || 0)));
       save();
       update();
       kyloMessage(`좋아. <b>${money(paidPrice)} 골드</b>, 즉시 지급하지.<br>물건은 준비 시간이 끝나면 경매장에 올라갈 거야.`, null, null, "확인");
@@ -37844,6 +37909,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     };
     db.ref().update(updates).then(() => {
       adjustAuctionCredit(1);
+      adjustKyloVault(Number(a.currentBid || bid.amount || 0));
       if (a.sellerUid && a.sellerUid !== "system") {
         adjustUserAuctionCredit(a.sellerUid, 10).catch(err => console.warn("auction seller credit update failed", err));
       }
@@ -37872,6 +37938,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     gold = Number(gold || 0) - cost;
     addToInventory(a.item);
     auctionRef().child(id).update({ claimed:true, status:"recovered", recoveredAt: nowMs(), updatedAt: nowMs() }).then(() => {
+      adjustAuctionCredit(10);
+      adjustKyloVault(cost);
       save();
       update();
       refresh();
@@ -37923,6 +37991,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
           status: "preparing"
         }).then(() => {
           adjustAuctionCredit(5);
+          adjustKyloVault(relistCost);
           save();
           update();
           refresh();
@@ -38054,6 +38123,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
   function openAuctionOverlay(){
     ensureDom();
+    renderKyloVaultLine();
+    startKyloVaultWatch();
     const overlay = document.getElementById("auctionOverlay");
     if (overlay) overlay.style.display = "flex";
     render();
@@ -38066,6 +38137,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     if (overlay) overlay.style.display = "none";
     closeDetail();
     stopPolling();
+    stopKyloVaultWatch();
   }
 
   function setAuctionTab(tab){
