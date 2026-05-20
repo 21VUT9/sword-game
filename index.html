@@ -37075,6 +37075,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function renderSellingRow(a){
     const item = normalizeItem(a.item);
     const st = auctionStatus(a);
+    const failCount = Number(a.failCount || 0);
     return `
       <div class="auction-row ${st === "failed" ? "outbid" : ""}">
         <img src="${esc(itemImg(item))}" onerror="this.style.display='none'">
@@ -37084,7 +37085,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         </div>
         <div class="auction-actions">
           ${st === "failed" ? `<button class="auction-btn" type="button" onclick="auctionRecoverFailed('${esc(a.id)}')">회수</button>` : ""}
-          ${st === "failed" ? `<button class="auction-btn" type="button" onclick="auctionRelistFailed('${esc(a.id)}')">재등록</button>` : ""}
+          ${st === "failed" && failCount < 3 ? `<button class="auction-btn" type="button" onclick="auctionRelistFailed('${esc(a.id)}')">재등록</button>` : ""}
         </div>
       </div>
     `;
@@ -37159,6 +37160,24 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       const trimmed = prices.length >= 10 ? prices.slice(1, -1) : prices;
       const avg = trimmed.reduce((sum, n) => sum + n, 0) / Math.max(1, trimmed.length);
       return Math.max(START_PRICE, Math.floor(avg * 0.7));
+    }).catch(() => START_PRICE);
+  }
+
+  function estimateSpecialStartBid(itemKey){
+    return priceRef(itemKey).orderByChild("soldAt").limitToLast(10).once("value").then(snap => {
+      const rows = [];
+      snap.forEach(ch => {
+        const v = ch.val() || {};
+        const price = Number(v.unitPrice || v.price || 0);
+        const soldAt = Number(v.soldAt || 0);
+        if (price > 0) rows.push({ price, soldAt });
+      });
+      rows.sort((a,b) => a.soldAt - b.soldAt);
+      const prices = rows.slice(-10).map(row => row.price).sort((a,b) => a - b);
+      if (prices.length < 1) return START_PRICE;
+      const trimmed = prices.length >= 3 ? prices.slice(1, -1) : prices;
+      const avg = trimmed.reduce((sum, n) => sum + n, 0) / trimmed.length;
+      return roundRelistBid(avg * 0.2);
     }).catch(() => START_PRICE);
   }
 
@@ -37450,9 +37469,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function recoverFailed(id){
     const a = listings.find(x => x.id === id);
     if (!a || a.sellerUid !== uid() || auctionStatus(a) !== "failed") return;
-    const cost = Math.ceil(Number(a.paidPrice || 0) * 1.1);
+    const currentStartBid = Math.max(1, Number(a.startBid || a.paidPrice || START_PRICE));
+    const cost = Math.ceil(currentStartBid * 1.2);
     if (Number(gold || 0) < cost) {
-      kyloMessage("골드가 부족합니다", null, null, "확인");
+      kyloMessage(`회수 비용이 부족합니다.<br><span style="color:#aaa;">필요 골드 : ${money(cost)} 골드</span>`, null, null, "확인");
       return;
     }
     gold = Number(gold || 0) - cost;
@@ -37471,6 +37491,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     }
     const a = listings.find(x => x.id === id);
     if (!a || a.sellerUid !== uid() || auctionStatus(a) !== "failed") return;
+    if (Number(a.failCount || 0) >= 3) {
+      kyloMessage("3회 유찰된 물품은 회수만 가능합니다.", null, null, "확인");
+      return;
+    }
     const currentStartBid = Math.max(1, Number(a.startBid || a.paidPrice || START_PRICE));
     const relistPrice = roundRelistBid(currentStartBid * 0.8);
     const relistCost = Math.ceil(currentStartBid * 0.25);
@@ -37517,13 +37541,14 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     if (!def || !window.auctionAllowedItems[type]) return Promise.resolve();
     const n = nowMs();
     const ref = auctionRef().child(`system_${safeKey(type)}_${safeKey(suffix)}`);
-    return ref.transaction(cur => cur || {
+    const key = safeKey(type);
+    return estimateSpecialStartBid(key).then(startBid => ref.transaction(cur => cur || {
       sellerUid: "system",
       sellerName: KYLO.name,
       item: normalizeItem({ kind:"item", type, qty:1, name:def.name, img:def.img }),
-      itemKey: safeKey(type),
-      paidPrice: START_PRICE,
-      startBid: START_PRICE,
+      itemKey: key,
+      paidPrice: startBid,
+      startBid,
       currentBid: 0,
       currentBidder: "",
       currentBidderName: "",
@@ -37534,7 +37559,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       failCount: 0,
       status: "active",
       systemAuction: true
-    }).then(() => null);
+    })).then(() => null);
   }
 
   function createSystemRuneAuction(kind, suffix){
@@ -37552,7 +37577,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       straightSuccessCount: 0
     };
     const ref = auctionRef().child(`system_rune_${safeKey(kind)}_${safeKey(suffix)}`);
-    return ref.transaction(cur => cur || {
+    const key = `rune_${safeKey(kind)}`;
+    return estimateSpecialStartBid(key).then(startBid => ref.transaction(cur => cur || {
       sellerUid: "system",
       sellerName: KYLO.name,
       item: normalizeItem({
@@ -37563,9 +37589,9 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         name: def.name,
         img: getRuneIcon(rune)
       }),
-      itemKey: `rune_${safeKey(kind)}`,
-      paidPrice: START_PRICE,
-      startBid: START_PRICE,
+      itemKey: key,
+      paidPrice: startBid,
+      startBid,
       currentBid: 0,
       currentBidder: "",
       currentBidderName: "",
@@ -37576,7 +37602,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       failCount: 0,
       status: "active",
       systemAuction: true
-    }).then(() => null);
+    })).then(() => null);
   }
 
   function kstWeeklyKey(){
