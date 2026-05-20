@@ -6844,13 +6844,39 @@ box-sizing: border-box;">
           </div>
         </div>
 
-        <!-- 보스전 전용 로그(자리만 먼저) -->
+        <!-- 보스전 전용 로그 + 토벌대 채팅 -->
         <div style="padding:10px 12px; flex:1; display:flex; flex-direction:column; min-height:0;">
           <div style="font-weight:900; margin-bottom:8px;">전투 진행 로그</div>
 
-         <div id="bossBattleLogList"
-     style="flex:1; min-height:0; background:#141414; border:1px solid #333; border-radius:12px; padding:10px; font-size:12px; color:#bbb; overflow-y:auto; -webkit-overflow-scrolling:touch; line-height:1.4; text-align:left;">
-            · 전용 로그는 다음 단계에서 Firebase로 분리 연결합니다.
+         <div id="bossBattleLogPanel"
+     style="flex:1; min-height:0; background:#141414; border:1px solid #333; border-radius:12px; padding:10px; font-size:12px; color:#bbb; display:flex; flex-direction:column; gap:8px; text-align:left;">
+            <div id="bossBattleLogList"
+     style="flex:1 1 52%; min-height:80px; overflow-y:auto; -webkit-overflow-scrolling:touch; line-height:1.4;">
+              · 전용 로그는 다음 단계에서 Firebase로 분리 연결합니다.
+            </div>
+            <div style="height:1px; background:rgba(255,255,255,0.08);"></div>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+              <div style="font-weight:900; color:#9fd3ff;">토벌대 채팅</div>
+              <div id="bossChatStatusText" style="font-size:11px; color:#888;">최근 30개</div>
+            </div>
+            <div id="bossBattleChatList"
+     style="flex:1 1 38%; min-height:74px; overflow-y:auto; -webkit-overflow-scrolling:touch; line-height:1.35; padding-right:2px;">
+              <div style="color:#777;">채팅을 불러오는 중입니다.</div>
+            </div>
+            <div id="bossBattleChatInputRow" style="display:flex; gap:6px; align-items:center;">
+              <input id="bossBattleChatInput"
+                     type="text"
+                     maxlength="80"
+                     autocomplete="off"
+                     placeholder="토벌대 채팅 입력"
+                     style="flex:1; min-width:0; height:32px; box-sizing:border-box; border-radius:8px; border:1px solid #333; background:#0b0b0b; color:#eee; padding:0 9px; font-size:12px; outline:none;">
+              <button id="bossBattleChatSendBtn"
+                      type="button"
+                      onclick="sendBossBattleChat()"
+                      style="width:54px; height:32px; margin:0; padding:0; border-radius:8px; font-size:12px; font-weight:900;">
+                전송
+              </button>
+            </div>
           </div>
         </div>
 
@@ -21514,7 +21540,21 @@ const BOSS_FIELD_MAP = {
   
 // ✅ 보스전 아이콘 → "이동한다" 눌렀을 때
 
+function buildBossApplyButtonContent(label, reason, tone) {
+  const reasonColor = tone === "danger" ? "#ffb3b3" : (tone === "warn" ? "#ffd98a" : "#cfcfcf");
+  return `
+    <span style="display:block; font-weight:900; line-height:1.25;">${label}</span>
+    ${reason ? `<span data-boss-apply-reason style="display:block; margin-top:3px; font-size:12px; font-weight:900; color:${reasonColor}; line-height:1.25; text-shadow:0 1px 3px rgba(0,0,0,0.85);">${reason}</span>` : ""}
+  `;
+}
+
 function openBossApplyList() {
+  try { autoClearStaleBossBinding({ includeClosed: true }); } catch(e) {}
+  const currentCtx = (typeof resolveMyBossRun === "function") ? resolveMyBossRun({ includeClosed: true }) : null;
+  const pendingRun = (currentCtx && currentCtx.run && isMyBossRunBlockingNewApply(currentCtx.run)) ? currentCtx.run : null;
+  const pendingBossName = pendingRun
+    ? (`${String(pendingRun.bossTitle || "").trim()} ${String(pendingRun.bossName || "").trim()}`.trim() || "처리중인 보스전")
+    : "";
   let html = `
     <div style="font-size:14px; font-weight:bold; margin-bottom:8px;">
       🗡️ 토벌 대상 목록
@@ -21540,31 +21580,54 @@ function openBossApplyList() {
     const remainMs = Math.max(0, nextAt - getBossClockNow());
     const cooldownTxt = formatHMS(remainMs);
     const canApplyBySword = (Number(sword || 0) >= def.minSword);
+    const needGold = Number(def.applyCostGold || 0);
+    const canApplyByGold = (Number(gold || 0) >= needGold);
     const canApplyByCooldown = (remainMs <= 0);
     const hasPriorityTicket = hasBossPriorityTicket();
-    const canApplyByTicket = (!isActive && canApplyBySword && !canApplyByCooldown && hasPriorityTicket);
+    const canApplyByTicket = (!pendingRun && !isActive && canApplyBySword && canApplyByGold && !canApplyByCooldown && hasPriorityTicket);
 
     let btnText = "✅ 신청하기";
+    let btnReason = "조건 충족";
+    let btnTone = "ok";
     let disabled = false;
     let actionJs = `openBossApplyConfirm('${def.id}')`;
 
-    if (!canApplyBySword) {
-      btnText = `🔒 신청 불가 (조건: ${def.minSword}강 이상)`;
+    if (pendingRun) {
+      btnText = "🔒 신청 불가";
+      btnReason = `처리해야 할 보스전이 있습니다: ${pendingBossName}`;
+      btnTone = "danger";
+      disabled = true;
+    } else if (!canApplyBySword) {
+      btnText = "🔒 신청 불가";
+      btnReason = `무기 +${def.minSword}강 이상 필요 (현재 +${Number(sword || 0)}강)`;
+      btnTone = "danger";
       disabled = true;
     } else if (isActive) {
-      btnText = `⏳ 진행중인 토벌이 있습니다`;
+      btnText = "🔒 신청 불가";
+      btnReason = "이미 진행중인 토벌이 있습니다";
+      btnTone = "warn";
+      disabled = true;
+    } else if (!canApplyByGold) {
+      btnText = "🔒 신청 불가";
+      btnReason = `골드 부족 (필요: ${formatGold(needGold)} 골드)`;
+      btnTone = "danger";
       disabled = true;
     } else if (!canApplyByCooldown) {
       if (canApplyByTicket) {
         btnText = `🎫 우선신청권 사용`;
+        btnReason = "대기시간을 무시하고 신청 가능";
+        btnTone = "warn";
         actionJs = `openBossPriorityConfirm('${def.id}')`;
       } else {
-        btnText = `⏳ 신청 대기중`;
+        btnText = "🔒 신청 불가";
+        btnReason = `재신청 대기시간 ${cooldownTxt} 남음`;
+        btnTone = "warn";
         disabled = true;
       }
     }
 
-    const btnState = isActive ? "active" : (!canApplyBySword ? "locked" : (!canApplyByCooldown && !canApplyByTicket ? "cooldown" : (canApplyByTicket ? "ticket" : "ready")));
+    const btnState = pendingRun ? "pending" : (isActive ? "active" : (!canApplyBySword ? "locked" : (!canApplyByGold ? "gold" : (!canApplyByCooldown && !canApplyByTicket ? "cooldown" : (canApplyByTicket ? "ticket" : "ready")))));
+    const btnHtml = buildBossApplyButtonContent(btnText, btnReason, btnTone);
 
     html += `
       <div style="border:1px solid #444; border-radius:8px; padding:10px; margin-bottom:8px; background:rgba(0,0,0,0.35);">
@@ -21578,11 +21641,12 @@ function openBossApplyList() {
         <button
           data-boss-apply-btn="${def.id}"
           data-boss-btn-state="${btnState}"
+          data-boss-normal-action="openBossApplyConfirm('${def.id}')"
           ${disabled ? "disabled" : ""}
           onclick="${disabled ? "" : actionJs}"
-          style="width:100%; padding:8px 10px; font-size:14px; border-radius:8px; ${disabled ? "opacity:0.4; cursor:not-allowed;" : ""}"
+          style="width:100%; min-height:46px; padding:8px 10px; font-size:14px; border-radius:8px; white-space:normal; ${disabled ? "opacity:0.58; cursor:not-allowed;" : ""}"
         >
-          ${btnText}
+          ${btnHtml}
         </button>
       </div>
     `;
@@ -24419,11 +24483,16 @@ function refreshBossApplyPopupCountdown() {
     if (btn && !isActive) {
       if (remainMs > 0) {
         hasRemaining = true;
+        if (btn.getAttribute('data-boss-btn-state') === 'cooldown') {
+          const reasonEl = btn.querySelector('[data-boss-apply-reason]');
+          if (reasonEl) reasonEl.textContent = `재신청 대기시간 ${formatHMS(remainMs)} 남음`;
+        }
       } else if (btn.disabled && btn.getAttribute('data-boss-btn-state') === 'cooldown') {
         btn.disabled = false;
         btn.style.opacity = '';
         btn.style.cursor = '';
-        btn.textContent = '✅ 신청하기';
+        btn.innerHTML = buildBossApplyButtonContent('✅ 신청하기', '조건 충족', 'ok');
+        btn.setAttribute('onclick', btn.getAttribute('data-boss-normal-action') || `openBossApplyConfirm('${bossId}')`);
         btn.setAttribute('data-boss-btn-state', 'ready');
       }
     } else if (remainMs > 0) {
@@ -24866,6 +24935,11 @@ function isMyPendingBossRun(run){
   const claimed = !!(run.claimed && run.claimed[userId]);
   return (st === "active" || st === "failed" || (st === "cleared" && !claimed));
 }
+function isMyBossRunBlockingNewApply(run){
+  if (!isMyPendingBossRun(run)) return false;
+  const st = String(run.status || "");
+  return st === "active" || st === "cleared";
+}
 function isRecentlyBoundActiveBossRun(bossId, run){
   if (!bossId || !run || String(run.status || "") !== "active") return false;
   if (String(activeBossId || "") !== String(bossId || "")) return false;
@@ -25196,6 +25270,14 @@ let bossBattleLastStatus = {};      // { bossId: "active"|"cleared"|"failed" }
 let bossBattleLogsCache = [];
 let bossBattleLogsUnsub = null;
 let bossBattleLogsPath = "";
+let bossBattleChatCache = [];
+let bossBattleChatUnsub = null;
+let bossBattleChatPath = "";
+let bossBattleChatLastSentAt = 0;
+let bossBattleChatBurstCount = 0;
+let bossBattleChatCooldownUntil = 0;
+let bossBattleChatNoticeTimer = null;
+let bossBattleChatSending = false;
 
 //  토벌 “회차”별 로그방 경로 만들기
 function getBossBattleLogPath(bossId){
@@ -25204,6 +25286,19 @@ function getBossBattleLogPath(bossId){
   const run = (ctx && ctx.bossId === id) ? ctx.run : ((bossRunsActiveCache || {})[id] || getClosedBossRun(id, activeBossRunKey));
   const logKey = String((run && run.logKey) || activeBossRunKey || getStoredActiveBossRunKey() || "run_default");
   return `bossBattleLogs/${id}_${logKey}`;
+}
+
+function getBossBattleChatPath(bossId){
+  return `${getBossBattleLogPath(bossId)}/chatMessages`;
+}
+
+function escapeBossChatHtml(s){
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
   // =========================
@@ -25326,6 +25421,182 @@ function ensureBossBattleLogsSubscription(bossId) {
 
   // ✅ off 함수 저장
   bossBattleLogsUnsub = () => ref.off("child_added", onValue);
+}
+
+function detachBossBattleChatSubscription(){
+  if (bossBattleChatUnsub) {
+    try { bossBattleChatUnsub(); } catch(e) {}
+  }
+  bossBattleChatUnsub = null;
+  bossBattleChatPath = "";
+  bossBattleChatCache = [];
+}
+
+function ensureBossBattleChatSubscription(bossId) {
+  bossId = String(bossId || "");
+  if (!bossId) return;
+
+  const ctx = resolveMyBossRun({ includeClosed: false });
+  const run = ctx && String(ctx.bossId || "") === bossId ? ctx.run : ((bossRunsActiveCache || {})[bossId] || null);
+  if (!(run && run.members && run.members[userId])) {
+    detachBossBattleChatSubscription();
+    renderBossBattleChat();
+    return;
+  }
+
+  const path = getBossBattleChatPath(bossId);
+  if (bossBattleChatUnsub && bossBattleChatPath === path) return;
+
+  detachBossBattleChatSubscription();
+  bossBattleChatPath = path;
+  bossBattleChatCache = [];
+
+  const ref = db.ref(path).orderByKey().limitToLast(30);
+  const onAdded = (snap) => {
+    const v = snap.val() || {};
+    const key = String(snap.key || "");
+    if (key && bossBattleChatCache.some(x => String(x.key || "") === key)) return;
+    bossBattleChatCache.push({
+      key,
+      uid: String(v.uid || ""),
+      nick: String(v.nick || ""),
+      text: String(v.text || ""),
+      ts: Number(v.ts || 0)
+    });
+    bossBattleChatCache.sort((a,b) => a.ts - b.ts);
+    if (bossBattleChatCache.length > 30) bossBattleChatCache = bossBattleChatCache.slice(-30);
+    renderBossBattleChat();
+  };
+
+  ref.on("child_added", onAdded);
+  bossBattleChatUnsub = () => ref.off("child_added", onAdded);
+  renderBossBattleChat();
+}
+
+function renderBossBattleChat(){
+  const el = document.getElementById("bossBattleChatList");
+  const status = document.getElementById("bossChatStatusText");
+  if (!el) return;
+
+  const arr = bossBattleChatCache || [];
+  if (status) status.textContent = arr.length ? `최근 ${arr.length}개` : "최근 30개";
+
+  if (!arr.length) {
+    el.innerHTML = `<div style="color:#777;">아직 채팅이 없습니다.</div>`;
+    return;
+  }
+
+  el.innerHTML = arr.map(x => {
+    const t = x.ts ? formatTime(x.ts) : "";
+    const mine = String(x.uid || "") === String(userId || "");
+    const nick = escapeBossChatHtml(x.nick || x.uid || "???");
+    const text = escapeBossChatHtml(x.text).replace(/\n/g, " ");
+    return `
+      <div style="margin-bottom:5px; ${mine ? "color:#dff4ff;" : ""}">
+        <span style="color:#777;">[${t}]</span>
+        <span style="color:${mine ? "#9fd3ff" : "#ddd"}; font-weight:900;">${nick}</span>
+        <span style="color:#aaa;">:</span>
+        <span>${text}</span>
+      </div>
+    `;
+  }).join("");
+  el.scrollTop = el.scrollHeight;
+}
+
+function showBossChatSoftNotice(msg){
+  const ov = document.getElementById("bossBattleOverlay");
+  if (!ov) return;
+
+  let el = document.getElementById("bossChatSoftNotice");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "bossChatSoftNotice";
+    el.style.cssText = "position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:25000; max-width:min(420px,86vw); padding:8px 14px; border-radius:999px; background:rgba(0,0,0,0.42); border:1px solid rgba(255,255,255,0.16); color:#fff; font-size:13px; font-weight:900; text-align:center; pointer-events:none; opacity:0; transition:opacity 0.7s ease; text-shadow:0 1px 4px rgba(0,0,0,0.9);";
+    ov.appendChild(el);
+  }
+
+  el.textContent = String(msg || "");
+  el.style.opacity = "1";
+  if (bossBattleChatNoticeTimer) clearTimeout(bossBattleChatNoticeTimer);
+  bossBattleChatNoticeTimer = setTimeout(() => {
+    const cur = document.getElementById("bossChatSoftNotice");
+    if (cur) cur.style.opacity = "0";
+  }, 3000);
+}
+
+function showBossBattleSoftNoticeOrNpc(msg, title){
+  const ov = document.getElementById("bossBattleOverlay");
+  const isOpen = !!(ov && ov.style.display !== "none" && ov.style.display !== "");
+  if (isOpen && typeof showBossChatSoftNotice === "function") {
+    showBossChatSoftNotice(msg);
+    return;
+  }
+  showNpcMessage(msg, null, true, title || "안내");
+}
+
+function sendBossBattleChat(){
+  const input = document.getElementById("bossBattleChatInput");
+  const btn = document.getElementById("bossBattleChatSendBtn");
+  if (!input) return;
+  if (bossBattleChatSending) return;
+
+  const ctx = resolveMyBossRun({ includeClosed: false });
+  const bossId = String((ctx && ctx.bossId) || activeBossId || "");
+  const run = ctx && ctx.run;
+  if (!bossId || !(run && run.members && run.members[userId])) {
+    showBossChatSoftNotice("참여중인 보스전에서만 채팅할 수 있습니다.");
+    return;
+  }
+
+  let text = String(input.value || "").replace(/\s+/g, " ").trim();
+  if (!text) return;
+  if (text.length > 80) text = text.slice(0, 80);
+
+  const nowLocal = Date.now();
+  if (bossBattleChatCooldownUntil > nowLocal) {
+    showBossChatSoftNotice(`채팅 대기중 ${Math.ceil((bossBattleChatCooldownUntil - nowLocal) / 1000)}초`);
+    return;
+  }
+
+  if (bossBattleChatLastSentAt && nowLocal - bossBattleChatLastSentAt < 1000) {
+    showBossChatSoftNotice("채팅은 1초에 한 번 보낼 수 있습니다.");
+    return;
+  }
+
+  if (!bossBattleChatLastSentAt || nowLocal - bossBattleChatLastSentAt >= 3000) {
+    bossBattleChatBurstCount = 0;
+  }
+
+  if (bossBattleChatBurstCount >= 3) {
+    bossBattleChatCooldownUntil = nowLocal + 5000;
+    bossBattleChatBurstCount = 0;
+    showBossChatSoftNotice("연속 채팅이 많아 5초 후 다시 보낼 수 있습니다.");
+    return;
+  }
+
+  const path = getBossBattleChatPath(bossId);
+  const nowServer = getBossClockNow();
+  input.value = "";
+  bossBattleChatSending = true;
+  if (btn) btn.disabled = true;
+
+  db.ref(path).push({
+    uid: String(userId || ""),
+    nick: getNickSafe(),
+    text,
+    ts: nowServer
+  }).then(() => {
+    bossBattleChatLastSentAt = nowLocal;
+    bossBattleChatBurstCount += 1;
+  }).catch((e) => {
+    console.error("boss chat send failed", e);
+    input.value = text;
+    showBossChatSoftNotice("채팅 전송에 실패했습니다.");
+  }).finally(() => {
+    bossBattleChatSending = false;
+    if (btn) btn.disabled = false;
+    try { input.blur(); } catch(e) {}
+  });
 }
 
 function renderBossBattleLogs() {
@@ -25502,6 +25773,20 @@ function openBossBattle(){
   document.getElementById("bossBattleBossImg")?.classList.add("boss-breathe");
   document.getElementById("bossBattleBossShadow")?.classList.add("boss-breathe-shadow");
   ensureBossBattleLogsSubscription(bossId);
+  ensureBossBattleChatSubscription(bossId);
+  const chatInput = document.getElementById("bossBattleChatInput");
+  if (chatInput && !chatInput.dataset.boundBossChatEnter) {
+    chatInput.dataset.boundBossChatEnter = "1";
+    chatInput.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" && !ev.shiftKey) {
+        ev.preventDefault();
+        sendBossBattleChat();
+      } else if (ev.key === "Escape") {
+        ev.preventDefault();
+        chatInput.blur();
+      }
+    });
+  }
   if (bossId === "wraith_king") {
     refreshActiveBossRunSnapshotOnce(bossId).then(() => {
       const ov2 = document.getElementById("bossBattleOverlay");
@@ -25837,6 +26122,7 @@ function closeBossBattle(){
   markBossBattleLogsSeenNow(((resolveMyBossRun({ includeClosed: false }) || {}).bossId) || activeBossId);
   document.getElementById("bossBattleBossImg")?.classList.remove("boss-breathe");
   document.getElementById("bossBattleBossShadow")?.classList.remove("boss-breathe-shadow");
+  detachBossBattleChatSubscription();
   if (bossBattleTickTimer) { clearInterval(bossBattleTickTimer); bossBattleTickTimer = null; }
 }
 
@@ -26328,6 +26614,7 @@ const totalDamage = Math.max(1, indexedTotalDamage, hpDealt + shieldDealt);
 }
 
   ensureBossBattleLogsSubscription(bossId);
+ensureBossBattleChatSubscription(bossId);
 renderBossBattleLogs();
   
   // HP
@@ -27408,7 +27695,7 @@ function joinBossRunConfirm(bossId){
     return;
   }
 
-  if (curRun && isMyPendingBossRun(curRun)) {
+  if (curRun && isMyBossRunBlockingNewApply(curRun)) {
     const curName = `${String(curRun.bossTitle || "").trim()} ${String(curRun.bossName || "").trim()}`.trim() || "보스전";
     const sameExactActiveRun = (curBossId === String(bossId) && curSource === "active" && curRunKey && targetRunKey && curRunKey === targetRunKey);
     if (!sameExactActiveRun) {
@@ -27453,7 +27740,7 @@ function joinBossRun(bossId) {
   const targetRunKey = String(run && run.logKey || "");
   const sameExactActiveRun = (curBossId === String(bossId) && curSource === "active" && curRunKey && targetRunKey && curRunKey === targetRunKey);
 
-  if (curRun && isMyPendingBossRun(curRun) && !sameExactActiveRun) {
+  if (curRun && isMyBossRunBlockingNewApply(curRun) && !sameExactActiveRun) {
     const curName = `${String(curRun.bossTitle || "").trim()} ${String(curRun.bossName || "").trim()}`.trim() || "보스전";
     showNpcMessage(
       `<div style="font-size:13px; line-height:1.6;">이미 처리해야 할 보스전이 있습니다.<br><b>${curName}</b><br><br>현재 보스전을 <b>완료</b>하거나 <b>포기</b>한 뒤 다시 신청해주세요.</div>`,
@@ -27566,7 +27853,7 @@ function createBossRun(bossId, options = {}) {
   try { autoClearStaleBossBinding({ includeClosed: true }); } catch(e) { console.warn('autoClearStaleBossBinding(create) failed', e); }
   const curCtx = resolveMyBossRun({ includeClosed: true });
   const curRun = curCtx && curCtx.run;
-  if (curRun && isMyPendingBossRun(curRun)) {
+  if (curRun && isMyBossRunBlockingNewApply(curRun)) {
     const curName = `${String(curRun.bossTitle || "").trim()} ${String(curRun.bossName || "").trim()}`.trim() || "보스전";
     showNpcMessage(`<div style="font-size:13px; line-height:1.6;">이미 처리해야 할 보스전이 있습니다.<br><b>${curName}</b><br><br>현재 보스전을 <b>완료</b>하거나 <b>포기</b>한 뒤 다시 신청해주세요.</div>`, LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
     return;
@@ -32829,6 +33116,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
       }
 
       ensureBossBattleLogsSubscription(bossId);
+      ensureBossBattleChatSubscription(bossId);
       renderBossBattleLogs();
 
       const st = String(run.status || '');
@@ -33346,7 +33634,7 @@ function ensureBossCooldownResetByRun(bossId, runLike){
       const usePriorityTicket = !!(options && options.usePriorityTicket);
       const curCtx = resolveMyBossRun({ includeClosed: true });
       const curRun = curCtx && curCtx.run;
-      if (curRun && isMyPendingBossRun(curRun)) {
+      if (curRun && isMyBossRunBlockingNewApply(curRun)) {
         const curName = `${String(curRun.bossTitle || '').trim()} ${String(curRun.bossName || '').trim()}`.trim() || '보스전';
         showNpcMessage(`<div style="font-size:13px; line-height:1.6;">이미 처리해야 할 보스전이 있습니다.<br><b>${curName}</b><br><br>현재 보스전을 <b>완료</b>하거나 <b>포기</b>한 뒤 다시 신청해주세요.</div>`, LEON_IMG.focus, true, '길드마스터 – 레온하르트 발렌');
         return;
@@ -38124,13 +38412,41 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     return getLocalSkillMpState(bossId, run, isRanking);
   }
 
-  function spendActiveSkillMp(bossId, run, isRanking, cost){
+  function flashBossSkillInUse(slot){
+    const key = String(slot || "").toUpperCase();
+    const btn = key ? document.getElementById(`bossSkillBtn${key}`) : null;
+    if (!btn) return;
+    btn.classList.remove("is-skill-active");
+    void btn.offsetWidth;
+    btn.classList.add("is-skill-active");
+    clearTimeout(btn.__skillActiveTimer);
+    btn.__skillActiveTimer = setTimeout(() => {
+      btn.classList.remove("is-skill-active");
+    }, 600);
+  }
+
+  function flashBossSkillManaLow(slot){
+    const key = String(slot || "").toUpperCase();
+    const btn = key ? document.getElementById(`bossSkillBtn${key}`) : null;
+    if (!btn) return;
+    if (typeof playUiTick === "function") playUiTick();
+    btn.classList.remove("is-mana-low");
+    void btn.offsetWidth;
+    btn.classList.add("is-mana-low");
+    clearTimeout(btn.__manaLowTimer);
+    btn.__manaLowTimer = setTimeout(() => {
+      btn.classList.remove("is-mana-low");
+    }, 520);
+  }
+
+  function spendActiveSkillMp(bossId, run, isRanking, cost, slot){
     cost = Math.max(0, Number(cost || 0));
     if (cost <= 0) return true;
     if (String(bossId || "") === "wraith_king" && run && run.members && run.members[userId]) {
       const m = run.members[userId] || {};
       if (Number(m.mp || 0) < cost) {
-        showNpcMessage("마나가 부족합니다.", null, true, "액티브 스킬");
+        showBossBattleSoftNoticeOrNpc("마나가 부족합니다.", "액티브 스킬");
+        flashBossSkillManaLow(slot);
         return false;
       }
       if (bossRunsActiveCache && bossRunsActiveCache.wraith_king && bossRunsActiveCache.wraith_king.members && bossRunsActiveCache.wraith_king.members[userId]) {
@@ -38146,7 +38462,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     }
     const st = getLocalSkillMpState(bossId, run, isRanking);
     if (Number(st.mp || 0) < cost) {
-      showNpcMessage("마나가 부족합니다.", null, true, "액티브 스킬");
+      showBossBattleSoftNoticeOrNpc("마나가 부족합니다.", "액티브 스킬");
+      flashBossSkillManaLow(slot);
       return false;
     }
     st.mp = Math.max(0, Number(st.mp || 0) - cost);
@@ -38226,7 +38543,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       showNpcMessage("오늘 남은 사냥횟수가 10회 이상 필요합니다.", null, true, "액티브 스킬");
       return true;
     }
-    if (!spendActiveSkillMp(bossId, run, isRanking, mpCost)) return true;
+    if (!spendActiveSkillMp(bossId, run, isRanking, mpCost, slot)) return true;
     if (spendHunt && !spendActiveSkillHuntCost(huntCost, run, isRanking)) return true;
 
     skillCooldownUntil[SKILL_ID] = nowTime + COOLDOWN_MS;
@@ -38248,6 +38565,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     }
 
     markActiveSkillBusy(1200);
+    flashBossSkillInUse(slot);
     playSwordSkillFx(hits);
 
     if (isRanking) {
@@ -38482,8 +38800,12 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       .boss-skill-btn{width:104px;height:104px;border:0;border-radius:50%;padding:0;background:transparent center/contain no-repeat;position:relative;color:transparent;overflow:hidden;cursor:pointer;filter:drop-shadow(0 4px 8px rgba(0,0,0,.8));}
       .boss-skill-btn.blank{filter:drop-shadow(0 4px 8px rgba(0,0,0,.8));}
       .boss-skill-btn.is-cooling{filter:grayscale(.85) brightness(.58);cursor:default;}
+      .boss-skill-btn.is-skill-active{animation:bossSkillActivePulse .6s ease-out 1;filter:sepia(1) saturate(4.5) hue-rotate(165deg) brightness(1.28) drop-shadow(0 0 13px rgba(72,180,255,.95));}
+      .boss-skill-btn.is-mana-low{animation:bossSkillManaLowShake .52s ease-out 1;filter:grayscale(1) brightness(.66) contrast(1.08) drop-shadow(0 2px 5px rgba(0,0,0,.85));}
       .boss-skill-btn.is-cooling::before{content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(rgba(255,213,79,.62) var(--cool,0deg), rgba(0,0,0,.55) 0deg);clip-path:circle(50% at 50% 50%);}
       .boss-skill-btn::after{content:"[" attr(data-key) "]";position:absolute;left:50%;bottom:17px;transform:translateX(-50%);z-index:3;color:rgba(255,255,255,.72);font-size:20px;font-weight:900;text-shadow:0 2px 5px rgba(0,0,0,.75);pointer-events:none;}
+      @keyframes bossSkillActivePulse{0%{transform:scale(1);opacity:1;}18%{transform:scale(1.08);opacity:1;}42%{transform:scale(1);opacity:.92;}70%{transform:scale(1.04);opacity:1;}100%{transform:scale(1);opacity:1;}}
+      @keyframes bossSkillManaLowShake{0%,100%{transform:translateX(0);}18%{transform:translateX(-3px);}34%{transform:translateX(3px);}50%{transform:translateX(-2px);}66%{transform:translateX(2px);}82%{transform:translateX(-1px);}}
     `;
     document.head.appendChild(st);
   }
@@ -40590,6 +40912,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
     if (partyEl) renderWraithParty(run, partyEl, partyTitleEl);
     ensureBossBattleLogsSubscription(WRAITH_BOSS_ID);
+    ensureBossBattleChatSubscription(WRAITH_BOSS_ID);
     renderBossBattleLogs();
 
     if (st === "cleared") {
@@ -40955,7 +41278,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       if (!def) return;
       const usePriorityTicket = !!(options && options.usePriorityTicket);
       const curCtx = resolveMyBossRun({ includeClosed: true });
-      if (curCtx && curCtx.run && isMyPendingBossRun(curCtx.run)) {
+      if (curCtx && curCtx.run && isMyBossRunBlockingNewApply(curCtx.run)) {
         showNpcMessage("이미 처리해야 할 보스전이 있습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
         return;
       }
