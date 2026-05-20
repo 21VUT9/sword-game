@@ -9505,6 +9505,7 @@ let itemEngraveNormal = 0;  // 🪬 일반각인의 주문서
 let itemEngraveAdvanced = 0; // 🪬 고급각인의 주문서
 let itemBossPriority = 0; // 🎫 보스토벌우선신청권
 let itemSkillStone = 0; // 액티브 스킬 레벨업 재료
+let auctionCredit = 70; // 경매장 신용도
 let activeSkillLevels = {};
 let activeSkillEquip = { Q:"", W:"", E:"", R:"" };
 let activeSkillEquipPresetIdx = 0;
@@ -19819,6 +19820,7 @@ function resetLocalStateForAccountSwitch(){
   itemEngraveNormal = 0;
   itemEngraveAdvanced = 0;
   itemBossPriority = 0;
+  auctionCredit = 70;
   itemHonorMedal = 0;
   titlesOwned = {};
   equippedTitle = "";
@@ -20115,6 +20117,7 @@ function login() {
       itemEngraveAdvanced = Number(data.itemEngraveAdvanced || 0);
       itemBossPriority = Number(data.itemBossPriority || 0);
       itemSkillStone = Number(data.itemSkillStone || 0);
+      auctionCredit = Number(data.auctionCredit ?? 70);
       activeSkillLevels = (data.activeSkillLevels && typeof data.activeSkillLevels === "object") ? data.activeSkillLevels : {};
       activeSkillEquipPresetIdx = [0,1,2].includes(Number(data.activeSkillEquipPresetIdx)) ? Number(data.activeSkillEquipPresetIdx) : 0;
       activeSkillEquipPresets = normalizeActiveSkillEquipPresets(data.activeSkillEquipPresets, data.activeSkillEquip);
@@ -20405,6 +20408,7 @@ function login() {
       activeSkillEquipPresetIdx: 0,
       activeSkillEquipPresets: normalizeActiveSkillEquipPresets(null, null),
       activeSkillEquip: normalizeActiveSkillEquip(null),
+      auctionCredit: 70,
       runeAppraiseCount: 0,
       runeDismantleCount: 0,
       runeCollectedCount: 0,
@@ -20504,6 +20508,7 @@ function save(options = {}) {
     itemEngraveAdvanced: Number(itemEngraveAdvanced || 0),
     itemBossPriority: Number(itemBossPriority || 0),
     itemSkillStone: Number(itemSkillStone || 0),
+    auctionCredit: Math.max(0, Math.min(100, Math.round(Number(auctionCredit ?? 70)))),
     activeSkillLevels: activeSkillLevels || {},
     activeSkillEquip: normalizeActiveSkillEquip(activeSkillEquip),
     activeSkillEquipPresetIdx: Number(activeSkillEquipPresetIdx || 0),
@@ -22495,6 +22500,7 @@ if (!power || power <= 20) {
     itemEngraveAdvanced = Number(data.itemEngraveAdvanced || 0);
     itemBossPriority = Number(data.itemBossPriority || 0);
     itemSkillStone = Number(data.itemSkillStone || 0);
+    auctionCredit = Number(data.auctionCredit ?? 70);
     activeSkillLevels = (data.activeSkillLevels && typeof data.activeSkillLevels === "object") ? data.activeSkillLevels : {};
     activeSkillEquipPresetIdx = [0,1,2].includes(Number(data.activeSkillEquipPresetIdx)) ? Number(data.activeSkillEquipPresetIdx) : 0;
     activeSkillEquipPresets = normalizeActiveSkillEquipPresets(data.activeSkillEquipPresets, data.activeSkillEquip);
@@ -36889,6 +36895,42 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     kyloMessage("경매장 오픈시간이 아닙니다. (오픈시간 : am9:00-pm11:00)", null, null, "확인");
   }
 
+  function getAuctionCredit(){
+    const v = Number(auctionCredit);
+    return Math.max(0, Math.min(100, Number.isFinite(v) ? Math.round(v) : 70));
+  }
+
+  function setAuctionCredit(v){
+    auctionCredit = Math.max(0, Math.min(100, Math.round(Number(v || 0))));
+    return auctionCredit;
+  }
+
+  function adjustAuctionCredit(delta){
+    return setAuctionCredit(getAuctionCredit() + Number(delta || 0));
+  }
+
+  function adjustUserAuctionCredit(targetUid, delta){
+    targetUid = String(targetUid || "");
+    delta = Number(delta || 0);
+    if (!targetUid || !delta) return Promise.resolve();
+    if (targetUid === uid()) {
+      adjustAuctionCredit(delta);
+      return save();
+    }
+    return db.ref("users/" + targetUid + "/auctionCredit").transaction(cur => {
+      const base = (cur === null || cur === undefined) ? 70 : Number(cur || 0);
+      return Math.max(0, Math.min(100, Math.round(base + delta)));
+    }).then(() => null);
+  }
+
+  function isAuctionCreditBlocked(){
+    return getAuctionCredit() < 50;
+  }
+
+  function showAuctionCreditBlockedMessage(){
+    kyloMessage(`내 경매 신용도가 <b>${getAuctionCredit()}%</b>입니다.<br>신용도 50% 미만은 입찰 및 판매가 정지됩니다.`, null, null, "확인");
+  }
+
   function uid(){
     const localUserId = (typeof userId !== "undefined") ? userId : "";
     return String(window.userId || localUserId || "");
@@ -37177,6 +37219,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     style.textContent = `
       .auction-panel{width:min(940px,92vw);height:min(820px,92vh);}
       .auction-title{font-size:22px;font-weight:900;color:#ffd36a;}
+      .auction-credit{margin-left:auto;font-size:13px;font-weight:900;color:#f6e7bd;white-space:nowrap;}
+      .auction-credit.low{color:#ff7070;}
       .auction-list{display:flex;flex-direction:column;gap:8px;overflow:auto;min-height:0;padding-right:4px;}
       .auction-row{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:9px;align-items:center;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);border-radius:8px;padding:8px;color:#eee;min-height:58px;}
       .auction-row.clickable{cursor:pointer;}
@@ -37202,7 +37246,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       .auction-detail-bid{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid rgba(255,255,255,.12);padding-top:12px;margin-top:12px;}
       .auction-kylo-message{min-height:96px;}
       #npcPopup{z-index:14000!important;}
-      @media(max-width:760px){.auction-row{grid-template-columns:38px minmax(0,1fr)}.auction-row img{width:34px;height:34px}.auction-actions{grid-column:2}.auction-detail-bid{flex-direction:column;align-items:stretch}.auction-body{grid-template-rows:1fr 1fr;}}
+      @media(max-width:760px){.auction-head{flex-wrap:wrap}.auction-credit{order:2;margin-left:0}.auction-row{grid-template-columns:38px minmax(0,1fr)}.auction-row img{width:34px;height:34px}.auction-actions{grid-column:2}.auction-detail-bid{flex-direction:column;align-items:stretch}.auction-body{grid-template-rows:1fr 1fr;}}
     `;
     document.head.appendChild(style);
   }
@@ -37225,6 +37269,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
               <div class="auction-title">경매장</div>
               <div class="auction-empty">${KYLO.fullName}이 진행하는 공개 경매</div>
             </div>
+            <div id="auctionCreditText" class="auction-credit ${isAuctionCreditBlocked() ? "low" : ""}">내 경매 신용도 : ${getAuctionCredit()}%</div>
             <button class="auction-close" type="button" onclick="closeAuctionOverlay()">닫기</button>
           </div>
           <div id="auctionBody" class="auction-body"></div>
@@ -37412,11 +37457,12 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       });
       const bids = bidSnap.val() || {};
       const bidAuctionIds = new Set(Object.keys(bids));
-      listings = arr.filter(a => {
+    listings = arr.filter(a => {
         const st = auctionStatus(a);
         return st === "active" || st === "preparing" || st === "failed" || st === "sold" || a.sellerUid === uid() || bidAuctionIds.has(a.id);
       });
       myBids = bids;
+      applySellerFailedAuctionCreditPenalties();
       render();
     }).catch(err => {
       console.warn("auction refresh failed", err);
@@ -37433,6 +37479,39 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function stopPolling(){
     if (pollTimer) clearInterval(pollTimer);
     pollTimer = null;
+  }
+
+  function applySellerFailedAuctionCreditPenalties(){
+    listings
+      .filter(a => a && a.id && a.sellerUid === uid() && auctionStatus(a) === "failed" && !a.sellerCreditFailApplied)
+      .forEach(a => {
+        applySellerFailedAuctionCreditPenalty(a).then(applied => {
+          if (applied) render();
+        });
+      });
+  }
+
+  function applySellerFailedAuctionCreditPenalty(a){
+    if (!a || !a.id || a.sellerUid !== uid() || auctionStatus(a) !== "failed" || a.sellerCreditFailApplied) {
+      return Promise.resolve(false);
+    }
+    return auctionRef().child(a.id).transaction(cur => {
+      if (!cur || cur.sellerUid !== uid() || auctionStatus(cur) !== "failed" || cur.sellerCreditFailApplied) return;
+      cur.sellerCreditFailApplied = true;
+      cur.sellerCreditFailAppliedAt = nowMs();
+      return cur;
+    }).then(res => {
+      if (res && res.committed) {
+        a.sellerCreditFailApplied = true;
+        adjustAuctionCredit(-20);
+        save();
+        return true;
+      }
+      return false;
+    }).catch(err => {
+      console.warn("auction fail credit penalty failed", err);
+      return false;
+    });
   }
 
   function estimateUnitPrice(item){
@@ -37499,6 +37578,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function pickSellItem(encoded, qty){
+    if (isAuctionCreditBlocked()) {
+      showAuctionCreditBlockedMessage();
+      return;
+    }
     if (!isAuctionSellOpen()) {
       showAuctionClosedMessage();
       return;
@@ -37523,6 +37606,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function createListing(item, paidPrice){
+    if (isAuctionCreditBlocked()) {
+      showAuctionCreditBlockedMessage();
+      return;
+    }
     if (!isAuctionSellOpen()) {
       showAuctionClosedMessage();
       return;
@@ -37606,7 +37693,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const cur = currentBid(a);
     const next = nextBid(a);
     const alreadyBid = myBids && myBids[id] && myBids[id].status === "active";
-    const canBid = st === "active" && a.sellerUid !== uid() && a.currentBidder !== uid() && !alreadyBid;
+    const canBid = st === "active" && !isAuctionCreditBlocked() && a.sellerUid !== uid() && a.currentBidder !== uid() && !alreadyBid;
     overlay.innerHTML = `
       <div class="auction-detail" onclick="event.stopPropagation()">
         <div class="auction-detail-head">
@@ -37637,6 +37724,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function confirmBid(id, amount){
+    if (isAuctionCreditBlocked()) {
+      showAuctionCreditBlockedMessage();
+      return;
+    }
     const a = listings.find(x => x.id === id);
     if (!a) {
       kyloMessage("경매 정보를 다시 불러와야겠어.", null, null, "확인");
@@ -37651,6 +37742,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function placeBid(id, amount){
+    if (isAuctionCreditBlocked()) {
+      showAuctionCreditBlockedMessage();
+      return;
+    }
     amount = Math.floor(Number(amount || 0));
     if (Number(gold || 0) < amount) {
       kyloMessage("골드가 부족하군. 경매장은 약속보다 현금을 믿지.", null, null, "확인");
@@ -37748,6 +37843,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       soldAt: nowMs()
     };
     db.ref().update(updates).then(() => {
+      adjustAuctionCredit(1);
+      if (a.sellerUid && a.sellerUid !== "system") {
+        adjustUserAuctionCredit(a.sellerUid, 10).catch(err => console.warn("auction seller credit update failed", err));
+      }
       save();
       update();
       refresh();
@@ -37757,6 +37856,13 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function recoverFailed(id){
     const a = listings.find(x => x.id === id);
     if (!a || a.sellerUid !== uid() || auctionStatus(a) !== "failed") return;
+    if (!a.sellerCreditFailApplied) {
+      applySellerFailedAuctionCreditPenalty(a).then(() => {
+        a.sellerCreditFailApplied = true;
+        recoverFailed(id);
+      });
+      return;
+    }
     const currentStartBid = Math.max(1, Number(a.startBid || a.paidPrice || START_PRICE));
     const cost = Math.ceil(currentStartBid * 1.2);
     if (Number(gold || 0) < cost) {
@@ -37779,6 +37885,13 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     }
     const a = listings.find(x => x.id === id);
     if (!a || a.sellerUid !== uid() || auctionStatus(a) !== "failed") return;
+    if (!a.sellerCreditFailApplied) {
+      applySellerFailedAuctionCreditPenalty(a).then(() => {
+        a.sellerCreditFailApplied = true;
+        relistFailed(id);
+      });
+      return;
+    }
     if (Number(a.failCount || 0) >= 3) {
       kyloMessage("3회 유찰된 물품은 회수만 가능합니다.", null, null, "확인");
       return;
@@ -37809,6 +37922,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
           updatedAt: n,
           status: "preparing"
         }).then(() => {
+          adjustAuctionCredit(5);
           save();
           update();
           refresh();
