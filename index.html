@@ -37980,9 +37980,27 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     `;
   }
 
+  function hasUnrefundedAuctionBid(id){
+    const bid = myBids && myBids[id];
+    if (!bid) return false;
+    const st = String(bid.status || "");
+    if (st === "claimed" || st === "refunded") return false;
+    const a = listings.find(x => x.id === id);
+    if (a && a.currentBidder === uid()) return false;
+    return Number(bid.amount || 0) > 0;
+  }
+
+  function showUnrefundedBidMessage(){
+    kyloMessage("이 물건에 아직 회수하지 않은 예치금이 있습니다.<br>예치금을 먼저 회수한 뒤 다시 입찰해 주세요.", null, null, "확인");
+  }
+
   function confirmBid(id, amount){
     if (isAuctionCreditBlocked()) {
       showAuctionCreditBlockedMessage();
+      return;
+    }
+    if (hasUnrefundedAuctionBid(id)) {
+      showUnrefundedBidMessage();
       return;
     }
     const a = listings.find(x => x.id === id);
@@ -38001,6 +38019,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function placeBid(id, amount){
     if (isAuctionCreditBlocked()) {
       showAuctionCreditBlockedMessage();
+      return;
+    }
+    if (hasUnrefundedAuctionBid(id)) {
+      showUnrefundedBidMessage();
       return;
     }
     amount = Math.floor(Number(amount || 0));
@@ -38059,14 +38081,26 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function refundBid(id){
-    const bid = myBids[id];
-    if (!bid) return;
     if (refundPending[id]) return;
     refundPending[id] = true;
-    auctionRef().child(id).once("value").then(auctionSnap => {
+    const me = uid();
+    if (!me) {
+      refundPending[id] = false;
+      refresh();
+      return;
+    }
+    Promise.all([
+      bidRef(me).child(id).once("value"),
+      auctionRef().child(id).once("value")
+    ]).then(([bidSnap, auctionSnap]) => {
+      const bid = bidSnap.val() || myBids[id];
+      if (!bid) {
+        refundPending[id] = false;
+        refresh();
+        return;
+      }
       const auctionExists = auctionSnap.exists();
       const auction = auctionSnap.val() || listings.find(x => x.id === id) || {};
-      const me = uid();
       const bidAmount = Number(bid.amount || 0);
       const isCurrentWinner = !!(auctionExists && auction.currentBidder === me);
       const bidDone = bid.status === "claimed" || bid.status === "refunded";
@@ -38075,26 +38109,39 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         refresh();
         return;
       }
-      refundClaimRef(me, id).transaction(cur => {
-        if (cur) return;
-        return {
-          auctionId: id,
-          amount: bidAmount,
-          item: normalizeItem(bid.item || auction.item),
-          claimedAt: nowMs()
-        };
-      }, (err, committed) => {
-        if (err || !committed) {
-          refundPending[id] = false;
-          refresh();
-          return;
-        }
-        bidRef().child(id).update({ status:"refunded", refundedAt: nowMs(), updatedAt: nowMs() }).catch(error => {
-          console.warn("auction refund status update failed", error);
+      const creditRefundGold = () => new Promise((resolve, reject) => {
+        const creditKey = safeKey(id);
+        db.ref("users/" + me).transaction(cur => {
+          if (!cur) return cur;
+          const credits = (cur.auctionRefundCredits && typeof cur.auctionRefundCredits === "object") ? cur.auctionRefundCredits : {};
+          if (credits[creditKey]) return cur;
+          cur.gold = Number(cur.gold || 0) + bidAmount;
+          cur.auctionRefundCredits = Object.assign({}, credits, { [creditKey]: { amount: bidAmount, creditedAt: nowMs() } });
+          return cur;
+        }, (err, committed, userSnap) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          const userData = userSnap && userSnap.val && userSnap.val();
+          if (!userData) {
+            reject(new Error("auction refund user data missing"));
+            return;
+          }
+          if (userData && userData.auctionRefundCredits && userData.auctionRefundCredits[creditKey]) {
+            gold = Number(userData.gold || gold || 0);
+            resolve(!!committed);
+            return;
+          }
+          reject(new Error("auction refund credit was not recorded"));
+        }, false);
+      });
+      const finishRefund = () => {
+        const refundedAt = nowMs();
+        creditRefundGold().then(() => {
+          return bidRef(me).child(id).update({ status:"refunded", refundedAt, updatedAt: refundedAt });
         }).then(() => {
-          myBids[id] = Object.assign({}, bid, { status:"refunded", refundedAt: nowMs(), updatedAt: nowMs() });
-          gold = Number(gold || 0) + bidAmount;
-          return save();
+          myBids[id] = Object.assign({}, bid, { status:"refunded", refundedAt, updatedAt: refundedAt });
         }).then(() => {
           refundPending[id] = false;
           update();
@@ -38105,7 +38152,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
           update();
           refresh();
         });
-      });
+      };
+      finishRefund();
     }).catch(err => {
       refundPending[id] = false;
       console.warn("auction refund check failed", err);
