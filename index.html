@@ -38023,25 +38023,37 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
   function refundBid(id){
     const bid = myBids[id];
-    if (!bid || bid.status !== "outbid") return;
+    if (!bid) return;
     if (refundPending[id]) return;
     refundPending[id] = true;
-    bidRef().child(id).transaction(cur => {
-      if (!cur || cur.status !== "outbid") return;
-      cur.status = "refunded";
-      cur.refundedAt = nowMs();
-      cur.updatedAt = nowMs();
-      return cur;
-    }, (err, committed, snap) => {
-      refundPending[id] = false;
-      if (err || !committed) {
+    auctionRef().child(id).once("value").then(auctionSnap => {
+      const auction = auctionSnap.val() || listings.find(x => x.id === id) || {};
+      const me = uid();
+      const outbidByAuction = !!(auction.currentBidder && auction.currentBidder !== me);
+      bidRef().child(id).transaction(cur => {
+        if (!cur) return;
+        const st = String(cur.status || "");
+        if (st === "claimed" || st === "refunded") return;
+        if (st !== "outbid" && !outbidByAuction) return;
+        cur.status = "refunded";
+        cur.refundedAt = nowMs();
+        cur.updatedAt = nowMs();
+        return cur;
+      }, (err, committed, snap) => {
+        refundPending[id] = false;
+        if (err || !committed) {
+          refresh();
+          return;
+        }
+        const savedBid = snap.val() || bid;
+        gold = Number(gold || 0) + Number(savedBid.amount || bid.amount || 0);
+        save();
+        update();
         refresh();
-        return;
-      }
-      const savedBid = snap.val() || bid;
-      gold = Number(gold || 0) + Number(savedBid.amount || bid.amount || 0);
-      save();
-      update();
+      });
+    }).catch(err => {
+      refundPending[id] = false;
+      console.warn("auction refund check failed", err);
       refresh();
     });
   }
