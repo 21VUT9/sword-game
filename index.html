@@ -37547,7 +37547,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
   function applySellerFailedAuctionCreditPenalties(){
     listings
-      .filter(a => a && a.id && a.sellerUid === uid() && auctionStatus(a) === "failed" && !a.sellerCreditFailApplied)
+      .filter(a => a && a.id && a.sellerUid === uid() && auctionStatus(a) === "failed" && !a.sellerCreditPenaltyApplied)
       .forEach(a => {
         applySellerFailedAuctionCreditPenalty(a).then(applied => {
           if (applied) render();
@@ -37556,25 +37556,33 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function applySellerFailedAuctionCreditPenalty(a){
-    if (!a || !a.id || a.sellerUid !== uid() || auctionStatus(a) !== "failed" || a.sellerCreditFailApplied) {
+    if (!a || !a.id || a.sellerUid !== uid() || auctionStatus(a) !== "failed" || a.sellerCreditPenaltyApplied) {
       return Promise.resolve(false);
     }
-    return auctionRef().child(a.id).transaction(cur => {
-      if (!cur || cur.sellerUid !== uid() || auctionStatus(cur) !== "failed" || cur.sellerCreditFailApplied) return;
-      cur.sellerCreditFailApplied = true;
-      cur.sellerCreditFailAppliedAt = nowMs();
-      return cur;
-    }).then(res => {
-      if (res && res.committed) {
-        a.sellerCreditFailApplied = true;
-        adjustAuctionCredit(-20);
-        save();
-        return true;
-      }
-      return false;
-    }).catch(err => {
-      console.warn("auction fail credit penalty failed", err);
-      return false;
+    return new Promise(resolve => {
+      auctionRef().child(a.id).transaction(cur => {
+        if (!cur || cur.sellerUid !== uid() || auctionStatus(cur) !== "failed" || cur.sellerCreditPenaltyApplied) return;
+        cur.sellerCreditFailApplied = true;
+        cur.sellerCreditFailAppliedAt = nowMs();
+        cur.sellerCreditPenaltyApplied = true;
+        cur.sellerCreditPenaltyAppliedAt = nowMs();
+        return cur;
+      }, (err, committed) => {
+        if (err) {
+          console.warn("auction fail credit penalty failed", err);
+          resolve(false);
+          return;
+        }
+        if (committed) {
+          a.sellerCreditFailApplied = true;
+          a.sellerCreditPenaltyApplied = true;
+          adjustAuctionCredit(-20);
+          save();
+          resolve(true);
+          return;
+        }
+        resolve(false);
+      }, false);
     });
   }
 
@@ -37922,28 +37930,36 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function recoverFailed(id){
     const a = listings.find(x => x.id === id);
     if (!a || a.sellerUid !== uid() || auctionStatus(a) !== "failed") return;
-    if (!a.sellerCreditFailApplied) {
+    if (!a.sellerCreditPenaltyApplied) {
       applySellerFailedAuctionCreditPenalty(a).then(() => {
         a.sellerCreditFailApplied = true;
+        a.sellerCreditPenaltyApplied = true;
         recoverFailed(id);
       });
       return;
     }
-    const currentStartBid = Math.max(1, Number(a.startBid || a.paidPrice || START_PRICE));
-    const cost = Math.ceil(currentStartBid * 1.2);
-    if (Number(gold || 0) < cost) {
-      kyloMessage(`회수 비용이 부족합니다.<br><span style="color:#aaa;">필요 골드 : ${money(cost)} 골드</span>`, null, null, "확인");
-      return;
-    }
-    gold = Number(gold || 0) - cost;
-    addToInventory(a.item);
-    auctionRef().child(id).update({ claimed:true, status:"recovered", recoveredAt: nowMs(), updatedAt: nowMs() }).then(() => {
-      adjustAuctionCredit(10);
-      adjustKyloVault(cost);
-      save();
-      update();
-      refresh();
-    });
+    const paidBase = Math.max(1, Number(a.paidPrice || a.startBid || START_PRICE));
+    const cost = Math.ceil(paidBase * 1.2);
+    kyloMessage(
+      `<b>${money(cost)} 골드</b>에 회수하시겠습니까?<br><span style="color:#aaa;">매입가 ${money(paidBase)} 골드 + 회수 수수료 ${money(cost - paidBase)} 골드</span>`,
+      "회수",
+      () => {
+        if (Number(gold || 0) < cost) {
+          kyloMessage(`회수 비용이 부족합니다.<br><span style="color:#aaa;">필요 골드 : ${money(cost)} 골드</span>`, null, null, "확인");
+          return;
+        }
+        gold = Number(gold || 0) - cost;
+        addToInventory(a.item);
+        auctionRef().child(id).update({ claimed:true, status:"recovered", recoveredAt: nowMs(), updatedAt: nowMs() }).then(() => {
+          adjustAuctionCredit(10);
+          adjustKyloVault(cost);
+          save();
+          update();
+          refresh();
+        });
+      },
+      "취소"
+    );
   }
 
   function relistFailed(id){
@@ -37953,9 +37969,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     }
     const a = listings.find(x => x.id === id);
     if (!a || a.sellerUid !== uid() || auctionStatus(a) !== "failed") return;
-    if (!a.sellerCreditFailApplied) {
+    if (!a.sellerCreditPenaltyApplied) {
       applySellerFailedAuctionCreditPenalty(a).then(() => {
         a.sellerCreditFailApplied = true;
+        a.sellerCreditPenaltyApplied = true;
         relistFailed(id);
       });
       return;
@@ -37965,10 +37982,11 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       return;
     }
     const currentStartBid = Math.max(1, Number(a.startBid || a.paidPrice || START_PRICE));
+    const paidBase = Math.max(1, Number(a.paidPrice || currentStartBid || START_PRICE));
     const relistPrice = roundRelistBid(currentStartBid * 0.8);
-    const relistCost = Math.ceil(currentStartBid * 0.25);
+    const relistCost = Math.ceil(paidBase * 0.25);
     kyloMessage(
-      `<b>${money(relistPrice)} 골드</b> 금액에 재등록 하시겠습니까?<br><span style="color:#aaa;">${money(relistCost)} 골드 비용발생</span>`,
+      `<b>${money(relistPrice)} 골드</b> 시작가로 재등록하시겠습니까?<br><span style="color:#aaa;">매입가 ${money(paidBase)} 골드 기준 재등록 수수료 ${money(relistCost)} 골드</span>`,
       "재등록",
       () => {
         if (Number(gold || 0) < relistCost) {
