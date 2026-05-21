@@ -5989,6 +5989,7 @@ a, button, [role="button"], .actionBtn, .dock-btn, .map-field, .inventory-slot {
         class="map-icon-btn left-icon-btn"
         onclick="openAuctionOverlay()" data-nosfx="1">
   <img class="map-icon-img" src="images/ui/icon_auction.png" alt="경매장">
+  <div id="auctionAlertBadge" class="icon-alert-badge">!</div>
   <span class="map-icon-label one-line">경매장</span>
 </button>
   
@@ -36871,6 +36872,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   let listings = [];
   let myBids = {};
   let pollTimer = null;
+  let alertPollTimer = null;
   let detailRef = null;
   let detailHandler = null;
   let currentDetailId = "";
@@ -37527,9 +37529,11 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       });
       myBids = bids;
       applySellerFailedAuctionCreditPenalties();
+      updateAuctionAlertBadge();
       render();
     }).catch(err => {
       console.warn("auction refresh failed", err);
+      updateAuctionAlertBadge();
       render();
     });
   }
@@ -37543,6 +37547,62 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function stopPolling(){
     if (pollTimer) clearInterval(pollTimer);
     pollTimer = null;
+  }
+
+  function refreshAuctionAlertState(){
+    if (!uid()) {
+      myBids = {};
+      updateAuctionAlertBadge();
+      return Promise.resolve();
+    }
+    const overlay = document.getElementById("auctionOverlay");
+    const isOpen = !!(overlay && overlay.style.display !== "none" && overlay.style.display !== "");
+    if (isOpen) return Promise.resolve();
+    return Promise.all([
+      auctionRef().orderByChild("updatedAt").limitToLast(100).once("value"),
+      bidRef().once("value")
+    ]).then(([auctionSnap, bidSnap]) => {
+      const arr = [];
+      auctionSnap.forEach(child => {
+        const v = child.val() || {};
+        v.id = child.key;
+        arr.push(v);
+      });
+      const bids = bidSnap.val() || {};
+      const bidAuctionIds = new Set(Object.keys(bids));
+      listings = arr.filter(a => {
+        const st = auctionStatus(a);
+        return st === "active" || st === "preparing" || st === "failed" || st === "sold" || a.sellerUid === uid() || bidAuctionIds.has(a.id);
+      });
+      myBids = bids;
+      updateAuctionAlertBadge();
+    }).catch(err => console.warn("auction alert refresh failed", err));
+  }
+
+  function startAuctionAlertPolling(){
+    if (alertPollTimer) return;
+    refreshAuctionAlertState();
+    alertPollTimer = setInterval(refreshAuctionAlertState, POLL_MS);
+  }
+
+  function hasAuctionBidAlert(){
+    const me = uid();
+    if (!me || !myBids || typeof myBids !== "object") return false;
+    return Object.entries(myBids).some(([id, bid]) => {
+      if (!bid || bid.status === "claimed" || bid.status === "refunded") return false;
+      if (bid.status === "outbid") return true;
+      const a = listings.find(x => x.id === id);
+      if (!a) return false;
+      if (auctionStatus(a) === "sold" && a.currentBidder === me && !a.claimed) return true;
+      if (bid.status === "active" && a.currentBidder && a.currentBidder !== me) return true;
+      return false;
+    });
+  }
+
+  function updateAuctionAlertBadge(){
+    const badge = document.getElementById("auctionAlertBadge");
+    if (!badge) return;
+    badge.style.display = hasAuctionBidAlert() ? "flex" : "none";
   }
 
   function applySellerFailedAuctionCreditPenalties(){
@@ -38172,6 +38232,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
   function init(){
     ensureDom();
+    startAuctionAlertPolling();
     try {
       if (Array.isArray(TALK_NPCS)) {
         const old = TALK_NPCS.find(n => n.key === "kylo");
