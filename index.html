@@ -37231,12 +37231,56 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     return db.ref("auctionUserBids").child(user || uid());
   }
 
+  function refundClaimRef(user, auctionId){
+    return db.ref("auctionRefundClaims").child(user || uid()).child(auctionId);
+  }
+
   function priceRef(key){
     return db.ref("auctionPriceHistory").child(safeKey(key));
   }
 
   function kyloVaultGoldRef(){
     return db.ref("auctionSpecialState/kyloVaultGold");
+  }
+
+  function markAuctionBidActive(id, amount, item){
+    amount = Number(amount || 0);
+    return bidRef().child(id).transaction(cur => {
+      const st = String(cur && cur.status || "");
+      const seenBid = Number(cur && cur.seenBid || 0);
+      const curAmount = Number(cur && cur.amount || 0);
+      if (st === "outbid" && seenBid > amount) return cur;
+      return {
+        auctionId: id,
+        amount: Math.max(amount, curAmount),
+        item: normalizeItem(item || (cur && cur.item)),
+        status: "active",
+        createdAt: Number(cur && cur.createdAt || nowMs()),
+        updatedAt: nowMs()
+      };
+    });
+  }
+
+  function markAuctionBidOutbid(user, id, bidAmount, seenBid, item){
+    user = String(user || "");
+    if (!user) return Promise.resolve();
+    bidAmount = Number(bidAmount || 0);
+    seenBid = Number(seenBid || 0);
+    return bidRef(user).child(id).transaction(cur => {
+      const st = String(cur && cur.status || "");
+      const curAmount = Number(cur && cur.amount || 0);
+      if (st === "claimed" || st === "refunded") return cur;
+      if (cur && curAmount > bidAmount) return cur;
+      return Object.assign({}, cur || {}, {
+        auctionId: id,
+        amount: cur ? curAmount || bidAmount : bidAmount,
+        item: normalizeItem((cur && cur.item) || item),
+        status: "outbid",
+        seenBid,
+        createdAt: Number(cur && cur.createdAt || nowMs()),
+        updatedAt: nowMs()
+      });
+    });
   }
 
   function shouldRemoveClosedAuction(a, cutoff){
@@ -37288,6 +37332,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function cleanupAuctionStorage(force){
+    return Promise.resolve();
     const stateRef = db.ref("auctionSpecialState");
     const n = nowMs();
     const bidCutoff = n - AUCTION_BID_KEEP_MS;
@@ -37505,7 +37550,9 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const a = row.auction || {};
     const item = normalizeItem(a.item || bid.item);
     const st = auctionStatus(a);
-    const outbid = bid.status === "outbid" || (a.currentBidder && a.currentBidder !== uid());
+    const bidAmount = Number(bid.amount || 0);
+    const seenBid = Number(bid.seenBid || 0);
+    const outbid = bid.status === "outbid" || seenBid > bidAmount || (a.currentBidder && a.currentBidder !== uid()) || (a.id && Number(a.currentBid || 0) > bidAmount && a.currentBidder !== uid());
     const won = st === "sold" && a.currentBidder === uid();
     const cls = won ? "won" : (outbid ? "outbid" : "");
     const current = a.id ? currentBid(a) : Number(bid.seenBid || bid.amount || 0);
@@ -37666,10 +37713,12 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     return Object.entries(myBids).some(([id, bid]) => {
       if (!bid || bid.status === "claimed" || bid.status === "refunded") return false;
       if (bid.status === "outbid") return true;
+      if (Number(bid.seenBid || 0) > Number(bid.amount || 0)) return true;
       const a = listings.find(x => x.id === id);
       if (!a) return false;
       if (auctionStatus(a) === "sold" && a.currentBidder === me && !a.claimed) return true;
       if (bid.status === "active" && a.currentBidder && a.currentBidder !== me) return true;
+      if (Number(a.currentBid || 0) > Number(bid.amount || 0) && a.currentBidder !== me) return true;
       return false;
     });
   }
@@ -37900,7 +37949,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const st = auctionStatus(a);
     const cur = currentBid(a);
     const next = nextBid(a);
-    const alreadyBid = myBids && myBids[id] && myBids[id].status === "active";
+    const alreadyBid = myBids && myBids[id] && myBids[id].status === "active" && a.currentBidder === uid();
     const canBid = st === "active" && !isAuctionCreditBlocked() && a.sellerUid !== uid() && a.currentBidder !== uid() && !alreadyBid;
     overlay.innerHTML = `
       <div class="auction-detail" onclick="event.stopPropagation()">
@@ -37992,21 +38041,9 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       }
       const a = snap.val() || {};
       gold = Number(gold || 0) - amount;
-      const updates = {};
-      updates[`auctionUserBids/${uid()}/${id}`] = {
-        auctionId: id,
-        amount,
-        item: normalizeItem(a.item),
-        status: "active",
-        createdAt: nowMs(),
-        updatedAt: nowMs()
-      };
-      if (before && before.bidder) {
-        updates[`auctionUserBids/${before.bidder}/${id}/status`] = "outbid";
-        updates[`auctionUserBids/${before.bidder}/${id}/seenBid`] = amount;
-        updates[`auctionUserBids/${before.bidder}/${id}/updatedAt`] = nowMs();
-      }
-      db.ref().update(updates).then(() => {
+      const bidWrites = [markAuctionBidActive(id, amount, a.item)];
+      if (before && before.bidder) bidWrites.push(markAuctionBidOutbid(before.bidder, id, before.bid, amount, before.item));
+      Promise.all(bidWrites).then(() => {
         save();
         update();
         closeDetail();
@@ -38027,29 +38064,47 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     if (refundPending[id]) return;
     refundPending[id] = true;
     auctionRef().child(id).once("value").then(auctionSnap => {
+      const auctionExists = auctionSnap.exists();
       const auction = auctionSnap.val() || listings.find(x => x.id === id) || {};
       const me = uid();
-      const outbidByAuction = !!(auction.currentBidder && auction.currentBidder !== me);
-      bidRef().child(id).transaction(cur => {
-        if (!cur) return;
-        const st = String(cur.status || "");
-        if (st === "claimed" || st === "refunded") return;
-        if (st !== "outbid" && !outbidByAuction) return;
-        cur.status = "refunded";
-        cur.refundedAt = nowMs();
-        cur.updatedAt = nowMs();
-        return cur;
-      }, (err, committed, snap) => {
+      const bidAmount = Number(bid.amount || 0);
+      const isCurrentWinner = !!(auctionExists && auction.currentBidder === me);
+      const bidDone = bid.status === "claimed" || bid.status === "refunded";
+      if (bidDone || isCurrentWinner || bidAmount <= 0) {
         refundPending[id] = false;
+        refresh();
+        return;
+      }
+      refundClaimRef(me, id).transaction(cur => {
+        if (cur) return;
+        return {
+          auctionId: id,
+          amount: bidAmount,
+          item: normalizeItem(bid.item || auction.item),
+          claimedAt: nowMs()
+        };
+      }, (err, committed) => {
         if (err || !committed) {
+          refundPending[id] = false;
           refresh();
           return;
         }
-        const savedBid = snap.val() || bid;
-        gold = Number(gold || 0) + Number(savedBid.amount || bid.amount || 0);
-        save();
-        update();
-        refresh();
+        bidRef().child(id).update({ status:"refunded", refundedAt: nowMs(), updatedAt: nowMs() }).catch(error => {
+          console.warn("auction refund status update failed", error);
+        }).then(() => {
+          myBids[id] = Object.assign({}, bid, { status:"refunded", refundedAt: nowMs(), updatedAt: nowMs() });
+          gold = Number(gold || 0) + bidAmount;
+          return save();
+        }).then(() => {
+          refundPending[id] = false;
+          update();
+          refresh();
+        }).catch(error => {
+          refundPending[id] = false;
+          console.warn("auction refund save failed", error);
+          update();
+          refresh();
+        });
       });
     }).catch(err => {
       refundPending[id] = false;
