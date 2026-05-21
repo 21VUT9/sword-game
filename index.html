@@ -36879,6 +36879,12 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   let kyloVaultGold = 0;
   let kyloVaultRef = null;
   let kyloVaultHandler = null;
+  const refundPending = {};
+  const AUCTION_CLEANUP_INTERVAL = 6 * HOUR;
+  const AUCTION_CLOSED_KEEP_MS = 14 * 24 * HOUR;
+  const AUCTION_BID_KEEP_MS = 14 * 24 * HOUR;
+  const AUCTION_PRICE_HISTORY_KEEP = 30;
+  const AUCTION_CLEANUP_BATCH = 80;
 
   function nowMs(){
     try {
@@ -37231,6 +37237,75 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
   function kyloVaultGoldRef(){
     return db.ref("auctionSpecialState/kyloVaultGold");
+  }
+
+  function shouldRemoveClosedAuction(a, cutoff){
+    if (!a) return false;
+    const updated = Number(a.updatedAt || a.claimedAt || a.recoveredAt || a.deletedAt || 0);
+    if (!updated || updated > cutoff) return false;
+    const st = String(a.status || "");
+    return !!(a.deleted || a.claimed || st === "claimed" || st === "recovered" || st === "done");
+  }
+
+  function cleanupClosedAuctions(cutoff){
+    return auctionRef().orderByChild("updatedAt").endAt(cutoff).limitToFirst(AUCTION_CLEANUP_BATCH).once("value").then(snap => {
+      const updates = {};
+      snap.forEach(ch => {
+        const a = ch.val() || {};
+        if (shouldRemoveClosedAuction(a, cutoff)) updates[`auctions/${ch.key}`] = null;
+      });
+      return Object.keys(updates).length ? db.ref().update(updates) : null;
+    });
+  }
+
+  function cleanupMyAuctionBids(cutoff){
+    if (!uid()) return Promise.resolve();
+    return bidRef().orderByChild("updatedAt").endAt(cutoff).limitToFirst(AUCTION_CLEANUP_BATCH).once("value").then(snap => {
+      const updates = {};
+      snap.forEach(ch => {
+        const bid = ch.val() || {};
+        const st = String(bid.status || "");
+        if (st === "claimed" || st === "refunded") updates[`auctionUserBids/${uid()}/${ch.key}`] = null;
+      });
+      return Object.keys(updates).length ? db.ref().update(updates) : null;
+    });
+  }
+
+  function prunePriceHistory(itemKey){
+    itemKey = safeKey(itemKey || "");
+    if (!itemKey) return Promise.resolve();
+    return priceRef(itemKey).orderByChild("soldAt").once("value").then(snap => {
+      const rows = [];
+      snap.forEach(ch => rows.push({ key: ch.key, soldAt: Number((ch.val() || {}).soldAt || 0) }));
+      if (rows.length <= AUCTION_PRICE_HISTORY_KEEP) return null;
+      rows.sort((a,b) => a.soldAt - b.soldAt);
+      const updates = {};
+      rows.slice(0, rows.length - AUCTION_PRICE_HISTORY_KEEP).forEach(row => {
+        updates[`auctionPriceHistory/${itemKey}/${row.key}`] = null;
+      });
+      return db.ref().update(updates);
+    });
+  }
+
+  function cleanupAuctionStorage(force){
+    const stateRef = db.ref("auctionSpecialState");
+    const n = nowMs();
+    const bidCutoff = n - AUCTION_BID_KEEP_MS;
+    const myBidCleanup = cleanupMyAuctionBids(bidCutoff);
+    const closedCleanup = stateRef.child("cleanupLastAt").once("value").then(snap => {
+      const last = Number(snap.val() || 0);
+      if (!force && last && n - last < AUCTION_CLEANUP_INTERVAL) return null;
+      return stateRef.child("cleanupLastAt").transaction(cur => {
+        const prev = Number(cur || 0);
+        if (!force && prev && n - prev < AUCTION_CLEANUP_INTERVAL) return;
+        return n;
+      }).then(result => {
+        if (!result || !result.committed) return null;
+        const closedCutoff = n - AUCTION_CLOSED_KEEP_MS;
+        return cleanupClosedAuctions(closedCutoff);
+      });
+    });
+    return Promise.all([myBidCleanup, closedCleanup]).catch(err => console.warn("auction cleanup failed", err));
   }
 
   function renderKyloVaultLine(){
@@ -37949,8 +38024,22 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function refundBid(id){
     const bid = myBids[id];
     if (!bid || bid.status !== "outbid") return;
-    gold = Number(gold || 0) + Number(bid.amount || 0);
-    bidRef().child(id).update({ status:"refunded", refundedAt: nowMs(), updatedAt: nowMs() }).then(() => {
+    if (refundPending[id]) return;
+    refundPending[id] = true;
+    bidRef().child(id).transaction(cur => {
+      if (!cur || cur.status !== "outbid") return;
+      cur.status = "refunded";
+      cur.refundedAt = nowMs();
+      cur.updatedAt = nowMs();
+      return cur;
+    }, (err, committed, snap) => {
+      refundPending[id] = false;
+      if (err || !committed) {
+        refresh();
+        return;
+      }
+      const savedBid = snap.val() || bid;
+      gold = Number(gold || 0) + Number(savedBid.amount || bid.amount || 0);
       save();
       update();
       refresh();
@@ -37981,6 +38070,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       if (a.sellerUid && a.sellerUid !== "system") {
         adjustUserAuctionCredit(a.sellerUid, 10).catch(err => console.warn("auction seller credit update failed", err));
       }
+      prunePriceHistory(a.itemKey || itemKey(a.item)).catch(err => console.warn("auction price history cleanup failed", err));
       save();
       update();
       refresh();
@@ -38207,6 +38297,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     if (overlay) overlay.style.display = "flex";
     render();
     ensureSpecialAuctions();
+    cleanupAuctionStorage(false);
     startPolling();
   }
 
@@ -38233,6 +38324,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function init(){
     ensureDom();
     startAuctionAlertPolling();
+    cleanupAuctionStorage(false);
     try {
       if (Array.isArray(TALK_NPCS)) {
         const old = TALK_NPCS.find(n => n.key === "kylo");
