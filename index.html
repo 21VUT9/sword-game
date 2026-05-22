@@ -1599,6 +1599,7 @@ button {
 
 .active-skill-slot.locked{
   cursor:not-allowed;
+  pointer-events:none;
 }
 
 .active-skill-slot img{
@@ -30282,7 +30283,8 @@ function showActiveSkillNotImplemented(){
         <div class="active-skill-slots">
           ${[1, 2, 3].map((idx) => {
             const need = unlockAt[idx - 1];
-            const locked = clearCount < need;
+            const firstSkillLv = Math.max(0, Number((activeSkillLevels && activeSkillLevels[`${type}_1`]) || 0));
+            const locked = clearCount < need || (idx === 3 && firstSkillLv < 3);
             return `
             <button class="active-skill-slot ${locked ? "locked" : ""}" type="button" onclick="showActiveSkillNotImplemented()" title="${name} ${idx}번 스킬${locked ? ` - ${need}번째 30강 달성 시 개방` : ""}" ${locked ? "aria-disabled=\"true\"" : ""}>
               <img src="images/skills/skill-block.png" alt="">
@@ -34991,7 +34993,7 @@ setTimeout(() => {
     • 획득조건: 무기 +30 달성 시 LV1
   </div>
   <div id="activeSkillFooter" style="display:none; margin-top:12px; font-size:12px; color:#777; line-height:1.4;">
-    • 해금조건: +30 달성 1/3/5회차에 1/2/3번 스킬 해금 예정
+    • 해금조건: +30 달성 1/3/5회차에 1/2/3번 스킬 해금, 3번 스킬은 1번 액티브스킬 LV3 이상 필요
   </div>
 </div>
 
@@ -38578,6 +38580,11 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     return Math.max(30, 80 - lv * 10);
   }
 
+  function getActiveSkillFirstLevel(type){
+    const id = `${String(type || "")}_1`;
+    return Math.max(0, Number((activeSkillLevels && activeSkillLevels[id]) || 0));
+  }
+
   function getSkillImage(src){
     if (imageCache.has(src)) return imageCache.get(src);
     const img = new Image();
@@ -39079,12 +39086,15 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
           <div class="active-skill-path">${row.name}</div>
           <div class="active-skill-slots">
             ${[1,2,3].map((idx) => {
-              const locked = count < [1,3,5][idx - 1];
+              const required30Count = [1,3,5][idx - 1];
+              const lockedBy30Count = count < required30Count;
+              const lockedByFirstSkillLevel = idx === 3 && getActiveSkillFirstLevel(row.type) < 3;
+              const locked = lockedBy30Count || lockedByFirstSkillLevel;
               const isNammu = row.first && idx === 1 && !locked;
               const img = isNammu ? DETAIL_ICON : "images/skills/skill-block.png";
               const label = isNammu ? `<span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;"><span style="color:#f2f2f2;font-size:11px;font-weight:900;">${SKILL_NAME}</span><span>LV${lv}</span></span>` : "LV0";
               const click = isNammu ? `openNammuSkillDetail()` : `showActiveSkillNotImplemented()`;
-              return `<button class="active-skill-slot ${locked ? "locked" : ""} ${isNammu ? "learned" : ""}" type="button" onclick="${click}" ${locked ? 'aria-disabled="true"' : ""}>
+              return `<button class="active-skill-slot ${locked ? "locked" : ""} ${isNammu ? "learned" : ""}" type="button" ${locked ? 'disabled aria-disabled="true"' : `onclick="${click}"`}>
                 <img src="${img}" alt="">
                 <span class="active-skill-lv">${locked ? "LOCK" : label}</span>
               </button>`;
