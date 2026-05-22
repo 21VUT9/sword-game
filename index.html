@@ -37246,6 +37246,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function markAuctionBidActive(id, amount, item){
     amount = Number(amount || 0);
     return bidRef().child(id).transaction(cur => {
+      const n = nowMs();
       const st = String(cur && cur.status || "");
       const seenBid = Number(cur && cur.seenBid || 0);
       const curAmount = Number(cur && cur.amount || 0);
@@ -37254,9 +37255,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         auctionId: id,
         amount: Math.max(amount, curAmount),
         item: normalizeItem(item || (cur && cur.item)),
+        refundKey: safeKey(`${id}_${amount}_${n}`),
         status: "active",
-        createdAt: Number(cur && cur.createdAt || nowMs()),
-        updatedAt: nowMs()
+        createdAt: Number(cur && cur.createdAt || n),
+        updatedAt: n
       };
     });
   }
@@ -38102,6 +38104,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       const auctionExists = auctionSnap.exists();
       const auction = auctionSnap.val() || listings.find(x => x.id === id) || {};
       const bidAmount = Number(bid.amount || 0);
+      const refundKey = safeKey(bid.refundKey || `${id}_${bidAmount}_${Number(bid.updatedAt || bid.createdAt || 0)}`);
       const isCurrentWinner = !!(auctionExists && auction.currentBidder === me);
       const bidDone = bid.status === "claimed" || bid.status === "refunded";
       if (bidDone || isCurrentWinner || bidAmount <= 0) {
@@ -38110,7 +38113,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         return;
       }
       const creditRefundGold = () => new Promise((resolve, reject) => {
-        const creditKey = safeKey(id);
+        const creditKey = refundKey;
         db.ref("users/" + me).transaction(cur => {
           if (!cur) return cur;
           const credits = (cur.auctionRefundCredits && typeof cur.auctionRefundCredits === "object") ? cur.auctionRefundCredits : {};
