@@ -25344,7 +25344,7 @@ function hasPendingBossReward(bossId){
   const run = (ctx && ctx.bossId === id) ? ctx.run : ((bossRunsActiveCache || {})[id] || getClosedBossRun(id, activeBossRunKey));
   if (!run) return false;
   if (String(run.status || "") !== "cleared") return false;
-  if (!(run.members && run.members[userId])) return false;
+  if (!hasBossRunParticipation(run, userId)) return false;
   return !(run.claimed && run.claimed[userId]);
 }
 
@@ -25766,7 +25766,14 @@ function openBossBattle(){
 }
 
   // 멤버 체크
-  if (!(run.members && run.members[userId])) {
+  const runStatus = String(run.status || "");
+  const isMember = !!(run.members && run.members[userId]);
+  const hasParticipation = hasBossRunParticipation(run, userId);
+  if (!isMember && hasParticipation && (runStatus === "cleared" || runStatus === "failed")) {
+    openBossRewardOverlay();
+    return;
+  }
+  if (!isMember) {
   showNpcMessage("참여중인 보스전이 없습니다.", LEON_IMG.focus, true, "길드마스터 – 레온하르트 발렌");
   return;
 }
@@ -25831,6 +25838,10 @@ function openBossBattle(){
   }
 
   // ✅ 보스전 참여신청(멤버) 안 한 경우: NPC 없는 팝업
+  if (!(run.members && run.members[userId]) && hasBossRunParticipation(run, userId) && ["cleared","failed"].includes(String(run.status || ""))) {
+    openBossRewardOverlay();
+    return;
+  }
   if (!(run.members && run.members[userId])) {
     showSimpleMessage("현재 참여중인 보스전이 없습니다", "보스전");
     return;
@@ -36926,14 +36937,15 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     targetUid = String(targetUid || "");
     delta = Number(delta || 0);
     if (!targetUid || !delta) return Promise.resolve();
-    if (targetUid === uid()) {
-      adjustAuctionCredit(delta);
-      return save();
-    }
     return db.ref("users/" + targetUid + "/auctionCredit").transaction(cur => {
       const base = (cur === null || cur === undefined) ? 70 : Number(cur || 0);
       return Math.max(0, Math.min(100, Math.round(base + delta)));
-    }).then(() => null);
+    }).then(res => {
+      if (targetUid === uid() && res && res.snapshot) {
+        setAuctionCredit(res.snapshot.val());
+      }
+      return null;
+    });
   }
 
   function isAuctionCreditBlocked(){
@@ -37747,7 +37759,34 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     if (!a || !a.id || a.sellerUid !== uid() || auctionStatus(a) !== "failed" || a.sellerCreditPenaltyApplied) {
       return Promise.resolve(false);
     }
-    return new Promise(resolve => {
+    const me = uid();
+    const penaltyKey = safeKey(a.id);
+    const debitSellerCredit = () => new Promise((resolve, reject) => {
+      db.ref("users/" + me).transaction(cur => {
+        if (!cur) return cur;
+        const debits = (cur.auctionCreditPenaltyDebits && typeof cur.auctionCreditPenaltyDebits === "object") ? cur.auctionCreditPenaltyDebits : {};
+        if (debits[penaltyKey]) return cur;
+        const base = (cur.auctionCredit === null || cur.auctionCredit === undefined) ? 70 : Number(cur.auctionCredit || 0);
+        cur.auctionCredit = Math.max(0, Math.min(100, Math.round(base - 20)));
+        cur.auctionCreditPenaltyDebits = Object.assign({}, debits, {
+          [penaltyKey]: { auctionId: a.id, amount: 20, debitedAt: nowMs() }
+        });
+        return cur;
+      }, (err, committed, snap) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        const data = snap && snap.val && snap.val();
+        if (!data || !data.auctionCreditPenaltyDebits || !data.auctionCreditPenaltyDebits[penaltyKey]) {
+          reject(new Error("auction credit penalty debit was not recorded"));
+          return;
+        }
+        setAuctionCredit(data.auctionCredit);
+        resolve(!!committed);
+      }, false);
+    });
+    const markAuctionPenaltyApplied = () => new Promise(resolve => {
       auctionRef().child(a.id).transaction(cur => {
         if (!cur || cur.sellerUid !== uid() || auctionStatus(cur) !== "failed" || cur.sellerCreditPenaltyApplied) return;
         cur.sellerCreditFailApplied = true;
@@ -37764,14 +37803,18 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         if (committed) {
           a.sellerCreditFailApplied = true;
           a.sellerCreditPenaltyApplied = true;
-          adjustAuctionCredit(-20);
-          save();
           resolve(true);
           return;
         }
         resolve(false);
       }, false);
     });
+    return debitSellerCredit()
+      .then(markAuctionPenaltyApplied)
+      .catch(error => {
+        console.warn("auction fail credit save failed", error);
+        return false;
+      });
   }
 
   function estimateUnitPrice(item){
