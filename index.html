@@ -36558,6 +36558,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         try { leaveEpicField(fieldId); } catch(e){}
         renderEpicOverlay();
         setHuntButtonLocked(false);
+        if (typeof playRewardGetSound === 'function') playRewardGetSound();
         showEpicRewardConfirm(lines);
       }).catch(() => {
         gold = beforeState.gold;
@@ -36936,7 +36937,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function showAuctionClosedMessage(){
-    kyloMessage("경매장 오픈시간이 아닙니다. (오픈시간 : am9:00-pm11:00)", null, null, "확인");
+    kyloMessage("경매장 오픈시간이 아닙니다.<br>(오픈시간 : am9:00-pm11:00)", null, null, "확인");
   }
 
   function getAuctionCredit(){
