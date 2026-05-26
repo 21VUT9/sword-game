@@ -8891,7 +8891,11 @@ function playSfx(src, baseVol=1.0){
   }
 }
   
-// ✅ 강화 성공 SFX
+// ✅ 보상 획득 SFX
+function playRewardGetSound(){
+  playSfx("sounds/get_sound.mp3", 0.95);
+}
+
 function playShardSfx(){
   playSfx("sounds/sfx_upgrade_success.mp3", 0.9);
 }
@@ -9519,18 +9523,29 @@ let activeSkillEquipPresets = [
 
 function normalizeActiveSkillEquip(v){
   const src = (v && typeof v === "object") ? v : {};
-  return {
+  const out = {
     Q: String(src.Q || ""),
     W: String(src.W || ""),
     E: String(src.E || ""),
     R: String(src.R || "")
   };
+  const seen = {};
+  ["Q","W","E","R"].forEach(k => {
+    const id = out[k];
+    if (!id) return;
+    if (seen[id]) out[k] = "";
+    else seen[id] = true;
+  });
+  return out;
 }
 
 function normalizeActiveSkillEquipPresets(v, fallback){
   const fallbackEquip = normalizeActiveSkillEquip(fallback);
   const src = Array.isArray(v) ? v : [];
-  return [0,1,2].map(i => normalizeActiveSkillEquip(src[i] || (i === 0 ? fallbackEquip : null)));
+  return [0,1,2].map(i => {
+    if (src[i] && typeof src[i] === "object") return normalizeActiveSkillEquip(src[i]);
+    return normalizeActiveSkillEquip(i === 0 ? fallbackEquip : null);
+  });
 }
 
 function getActiveSkillEquipPresetName(idx){
@@ -13966,6 +13981,7 @@ function claimDailyGift(dayKey){
   if (cumulativeRewardState.dailyClaims[dayKey]) return;
   grantCumulativeReward(today.reward);
   cumulativeRewardState.dailyClaims[dayKey] = true;
+  playRewardGetSound();
   save();
   update();
   renderCumulativeRewardOverlay();
@@ -13979,6 +13995,7 @@ function claimAttendanceMilestoneReward(days){
   if (cumulativeRewardState.attendanceClaims[String(target.days)]) return;
   grantCumulativeReward(target.reward);
   cumulativeRewardState.attendanceClaims[String(target.days)] = true;
+  playRewardGetSound();
   save();
   update();
   renderCumulativeRewardOverlay();
@@ -16049,6 +16066,7 @@ function claimTitleCollectionReward(targetCount){
 
   reward.grant();
   titleCollectionRewardClaimed[targetCount] = Date.now();
+  playRewardGetSound();
   save();
   update();
   renderTitleRewardList();
@@ -23585,6 +23603,7 @@ function grantWeeklyDuelReward(myRank, rewardWeekKey) {
 
   save();
   update();
+  playRewardGetSound();
   return rewardText;
 }
 
@@ -27185,7 +27204,7 @@ function calcBossAttackResult(bossId){
 
   // 4) 방어력(공격력/주문력 공통)
   const bossDef = Math.max(0, Number(stats.physDef || 0));
-  const pen = Math.max(0, Number(my.penetration || 0));
+  const pen = Math.max(0, Number(my.penetration || 0) + Number(window.__activeSkillExtraPenetration || 0));
   const effDef = bossDef * (1 - pen);
   dmg = dmg * (1 - effDef);
 
@@ -31475,7 +31494,7 @@ calcBossAttackResult = function(bossId){
   } catch (e) {}
 
   const bossDef = Math.max(0, Number(stats.physDef || 0));
-  const pen = Math.max(0, Number(my.penetration || 0));
+  const pen = Math.max(0, Number(my.penetration || 0) + Number(window.__activeSkillExtraPenetration || 0));
   const effDef = bossDef * (1 - pen);
   dmg = dmg * (1 - effDef);
 
@@ -31810,6 +31829,7 @@ function grantWeeklyRankingBattleReward(myRank, rewardWeekKey){
   itemScroll15 = Number(itemScroll15 || 0) + Number(rw.itemScroll15 || 0);
   save();
   update();
+  playRewardGetSound();
 
   return rw.text || "";
 }
@@ -38534,6 +38554,44 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   const ACTIVE_SKILL_USE_DISABLED = false;
   const skillCooldownUntil = {};
   const localSkillMpByRun = {};
+  const ACTIVE_SKILLS = {
+    sword_1: {
+      id: "sword_1",
+      pathType: "sword",
+      pathName: "검사의길",
+      name: "난무",
+      detailIcon: "images/skills/active_sword_1.png",
+      equipIcon: "images/ui/active_sword_utill_1.png",
+      cooldownMs: 3000,
+      hitCount: 8,
+      damagePct: [125, 150, 175, 200, 225],
+      mpCost: [70, 60, 50, 40, 30],
+      huntCost: 7,
+      extraPenetration: 0,
+      description: "강력한 검기로 단일 적을 무차별적으로 베어낸다.",
+      hitText: "공격력/주문력 {pct}로 8회 공격데미지를 입힘",
+      cooldownText: "쿨타임 : 3초"
+    },
+    spear_1: {
+      id: "spear_1",
+      pathType: "spear",
+      pathName: "전사의길",
+      name: "투창",
+      detailIcon: "images/skills/active_spear_1.png",
+      equipIcon: "images/ui/active_spear_utill_1.png",
+      cooldownMs: 5000,
+      hitCount: 3,
+      damagePct: [370, 450, 530, 610, 690],
+      mpCost: [100, 87, 74, 61, 48],
+      huntCost: 9,
+      extraPenetration: 0.20,
+      description: "강력한 투창으로 적에게 치명적 일격을 가한다.",
+      hitText: "공격력 {pct}의 데미지로 3회공격",
+      cooldownText: "쿨타임 : 5초"
+    }
+  };
+  let activeSkillDetailId = SKILL_ID;
+  let equipTargetSkillId = SKILL_ID;
 
   const SPRITES = {
     effect: [
@@ -38551,7 +38609,11 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     spark: [
       { src:"images/effects/swordskill1-spark-1.png", frameW:64, frameH:64, cols:8, total:8 },
       { src:"images/effects/swordskill1-spark-2.png", frameW:64, frameH:64, cols:8, total:8 }
-    ]
+    ],
+    spearFlash: { src:"images/effects/spearskill1-flash-1.png", frameW:452, frameH:496, cols:6, total:6 },
+    spearEffect: { src:"images/effects/spearskill1-effect-2.png", frameW:226, frameH:312, cols:4, total:11 },
+    spearImpact: { src:"images/effects/spearskill1-impactburst-1.png", frameW:64, frameH:64, cols:9, total:9 },
+    spearSpark: { src:"images/effects/spearskill1-spark-1.png", frameW:64, frameH:64, cols:8, total:8 }
   };
   const SOUND_MAP = [
     "sounds/swordskill1-sound-1.mp3",
@@ -38587,11 +38649,33 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     activeSkillEquipPresetIdx = [0,1,2].includes(Number(activeSkillEquipPresetIdx)) ? Number(activeSkillEquipPresetIdx) : 0;
     activeSkillEquipPresets = normalizeActiveSkillEquipPresets(activeSkillEquipPresets, activeSkillEquip);
     activeSkillEquip = normalizeActiveSkillEquip(activeSkillEquipPresets[activeSkillEquipPresetIdx]);
-    activeSkillLevels[SKILL_ID] = Math.max(1, Number(activeSkillLevels[SKILL_ID] || 1));
+    Object.keys(ACTIVE_SKILLS).forEach((id) => {
+      activeSkillLevels[id] = Math.max(1, Number(activeSkillLevels[id] || 1));
+    });
+  }
+
+  function getActiveSkillDef(skillId){
+    const id = String(skillId || "");
+    return id ? (ACTIVE_SKILLS[id] || null) : null;
+  }
+
+  function isKnownActiveSkill(skillId){
+    return !!getActiveSkillDef(skillId);
+  }
+
+  function getEquippedSkillDef(slot){
+    ensureSkillState();
+    return getActiveSkillDef(activeSkillEquip[String(slot || "").toUpperCase()]);
+  }
+
+  function getActiveSkillIcon(skillId, mode){
+    const def = getActiveSkillDef(skillId);
+    if (!def) return BLANK_ICON;
+    return mode === "detail" ? def.detailIcon : def.equipIcon;
   }
 
   function cloneEquipPresets(src){
-    return normalizeActiveSkillEquipPresets(src, activeSkillEquip).map(p => normalizeActiveSkillEquip(p));
+    return normalizeActiveSkillEquipPresets(src, null).map(p => normalizeActiveSkillEquip(p));
   }
 
   function ensureEquipDraft(){
@@ -38609,17 +38693,22 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     return equipDraftPresets[equipDraftPresetIdx];
   }
 
-  function getSkillLevel(){
+  function getSkillLevel(skillId = SKILL_ID){
     ensureSkillState();
-    return Math.max(1, Number(activeSkillLevels[SKILL_ID] || 1));
+    return Math.max(1, Number(activeSkillLevels[String(skillId || SKILL_ID)] || 1));
   }
 
-  function getSkillDamagePct(level){
-    return 125 + (Math.max(1, Number(level || 1)) - 1) * 25;
-  }
-
-  function getSkillMpCost(level){
+  function getSkillDamagePct(level, skillId = SKILL_ID){
+    const def = getActiveSkillDef(skillId);
     const lv = Math.max(1, Math.min(5, Number(level || 1)));
+    if (def && Array.isArray(def.damagePct)) return Number(def.damagePct[lv - 1] || def.damagePct[0] || 0);
+    return 125 + (lv - 1) * 25;
+  }
+
+  function getSkillMpCost(level, skillId = SKILL_ID){
+    const def = getActiveSkillDef(skillId);
+    const lv = Math.max(1, Math.min(5, Number(level || 1)));
+    if (def && Array.isArray(def.mpCost)) return Number(def.mpCost[lv - 1] || def.mpCost[0] || 0);
     return Math.max(30, 80 - lv * 10);
   }
 
@@ -38649,6 +38738,16 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       const a = new Audio(src);
       a.volume = options.volume ?? 0.78;
       a.playbackRate = options.rate ?? (0.98 + Math.random() * 0.08);
+      const p = a.play();
+      if (p && p.catch) p.catch(()=>{});
+    } catch(e) {}
+  }
+
+  function playSpearSkillSound(options = {}){
+    try {
+      const a = new Audio("sounds/spearskill1-sound-1.wav");
+      a.volume = options.volume ?? 0.95;
+      a.playbackRate = options.rate ?? (0.96 + Math.random() * 0.06);
       const p = a.play();
       if (p && p.catch) p.catch(()=>{});
     } catch(e) {}
@@ -38843,9 +38942,79 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     try { if (typeof playBossHitFx === "function") playBossHitFx(); } catch(e) {}
   }
 
+  function getSpearSkillDamagePoint(center, index){
+    return {
+      clientX: center.clientX + 70 + (index - 1) * 34 + (Math.random() * 10 - 5),
+      clientY: center.clientY - 58 - index * 22 + (Math.random() * 8 - 4)
+    };
+  }
+
+  function playSpearSkillFx(hitResults){
+    clearSkillCanvasLoop();
+    const center = getBossSkillPoint();
+    const rawScale = 1 / SKILL_SPRITE_SCALE;
+    playSpearSkillSound({ volume:0.95 });
+
+    spawnSpriteEffect(SPRITES.spearFlash, {
+      x:center.x,
+      y:center.y,
+      scale:1.52 * rawScale,
+      life:520,
+      alpha:0.8,
+      delay:100
+    });
+
+    spawnSpriteEffect(SPRITES.spearEffect, {
+      x:center.x + 10,
+      y:center.y + 12,
+      scale:1.85 * rawScale,
+      life:920,
+      alpha:1,
+      delay:950
+    });
+
+    for (let i = 0; i < 5; i++) {
+      spawnSpriteEffect(SPRITES.spearSpark, {
+        x:center.x + 86 + (Math.random() * 68 - 34),
+        y:center.y + 62 + (Math.random() * 52 - 26),
+        scale:(1.8 + Math.random()) * rawScale,
+        rotate:Math.random() * Math.PI,
+        life:360,
+        alpha:0.92,
+        delay:1000 + i * 24
+      });
+    }
+
+    spawnSpriteEffect(SPRITES.spearImpact, {
+      x:center.x - 8,
+      y:center.y + 70,
+      scale:4.9 * rawScale,
+      life:520,
+      alpha:1,
+      delay:1040
+    });
+
+    setTimeout(() => {
+      triggerSwordSkillScreenShake(34);
+      (hitResults || []).forEach((r, i) => {
+        const dmgPt = getSpearSkillDamagePoint(center, i);
+        if (r && typeof spawnBossDamageFloatAt === "function") {
+          spawnBossDamageFloatAt(dmgPt.clientX, dmgPt.clientY, r.isMiss ? "MISS" : r.displayDamage, r.isMiss ? "miss" : (r.isCrit ? "crit" : "hit"));
+        }
+        if (typeof spawnBossHitEffectAt === "function" && r && !r.isMiss) {
+          spawnBossHitEffectAt(center.clientX + 58, center.clientY + 48, r.isCrit ? "crit" : "hit", false);
+        }
+      });
+    }, 1040);
+
+    try { if (typeof playBossHitFx === "function") playBossHitFx(); } catch(e) {}
+  }
+
   function calcSkillHitResult(bossId, pct, options = {}){
     const prevSuppress = window.__activeSkillSuppressFirstHitBonus;
+    const prevExtraPen = window.__activeSkillExtraPenetration;
     if (options.suppressFirstHitBonus) window.__activeSkillSuppressFirstHitBonus = true;
+    if (Number(options.extraPenetration || 0) > 0) window.__activeSkillExtraPenetration = Number(options.extraPenetration || 0);
     let result;
     try {
       result = (typeof calcBossAttackResult === "function")
@@ -38853,6 +39022,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         : { damage:0, isMiss:false, isCrit:false };
     } finally {
       if (options.suppressFirstHitBonus) window.__activeSkillSuppressFirstHitBonus = prevSuppress;
+      window.__activeSkillExtraPenetration = prevExtraPen;
     }
     const base = Number(result.damage || 0);
     let dmg = result.isMiss ? 0 : Math.max(1, Math.floor(base * (Number(pct || 100) / 100)));
@@ -39035,14 +39205,16 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function useEquippedActiveSkill(slot){
     ensureSkillState();
     slot = String(slot || "").toUpperCase();
-    if (activeSkillEquip[slot] !== SKILL_ID) return false;
+    const skillId = String(activeSkillEquip[slot] || "");
+    const skillDef = getActiveSkillDef(skillId);
+    if (!skillDef) return false;
     if (ACTIVE_SKILL_USE_DISABLED) {
       showNpcMessage("업데이트 중입니다", null, true, "액티브 스킬");
       return true;
     }
     const nowTime = Date.now();
     if (isActiveSkillBusy()) return true;
-    if (nowTime < Number(skillCooldownUntil[SKILL_ID] || 0)) return false;
+    if (nowTime < Number(skillCooldownUntil[skillId] || 0)) return false;
 
     const isRanking = !!(typeof isRankingBattleMode !== "undefined" && isRankingBattleMode && rankingBattleRun && String(rankingBattleRun.status || "") === "active");
     const bossId = isRanking ? (typeof RANKING_BATTLE_BOSS_ID !== "undefined" ? RANKING_BATTLE_BOSS_ID : "ranking_battle") : String(activeBossId || "");
@@ -39050,10 +39222,10 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     if (!run || String(run.status || "") !== "active") return false;
     if (String(bossId || "") === "wraith_king" && typeof window.canUseWraithActiveSkill === "function" && !window.canUseWraithActiveSkill()) return true;
 
-    const level = getSkillLevel();
-    const mpCost = getSkillMpCost(level);
+    const level = getSkillLevel(skillId);
+    const mpCost = getSkillMpCost(level, skillId);
     const spendHunt = shouldActiveSkillSpendHunt(bossId, run, isRanking);
-    const huntCost = 7;
+    const huntCost = Math.max(1, Number(skillDef.huntCost || 7));
     if (spendHunt && !hasActiveSkillHuntCost(huntCost, run, isRanking)) {
       if (isRanking) {
         showNpcMessage(`랭킹전 남은 공격횟수가 ${huntCost}회 이상 필요합니다.`, null, true, "액티브 스킬");
@@ -39071,27 +39243,29 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     if (!spendActiveSkillMp(bossId, run, isRanking, mpCost, slot)) return true;
     if (spendHunt && !spendActiveSkillHuntCost(huntCost, run, isRanking)) return true;
 
-    skillCooldownUntil[SKILL_ID] = nowTime + COOLDOWN_MS;
+    skillCooldownUntil[skillId] = nowTime + Math.max(1, Number(skillDef.cooldownMs || COOLDOWN_MS));
     syncBossSkillButtons();
 
-    const pct = getSkillDamagePct(level);
+    const pct = getSkillDamagePct(level, skillId);
     const hits = [];
     let total = 0;
     let firstHitBonusConsumed = false;
     const limitFirstHitBonus = isRanking || String(bossId || "") !== "wraith_king";
-    for (let i = 0; i < HIT_COUNT; i++) {
+    for (let i = 0; i < Math.max(1, Number(skillDef.hitCount || HIT_COUNT)); i++) {
       const hit = calcSkillHitResult(bossId, pct, {
         suppressFirstHitBonus: limitFirstHitBonus && firstHitBonusConsumed,
-        attackType: "physical"
+        attackType: "physical",
+        extraPenetration: Number(skillDef.extraPenetration || 0)
       });
       hits.push(hit);
       total += Number(hit.damage || 0);
       if (!hit.isMiss) firstHitBonusConsumed = true;
     }
 
-    markActiveSkillBusy(1200);
+    markActiveSkillBusy(skillId === "spear_1" ? 1100 : 1200);
     flashBossSkillInUse(slot);
-    playSwordSkillFx(hits);
+    if (skillId === "spear_1") playSpearSkillFx(hits);
+    else playSwordSkillFx(hits);
 
     if (isRanking) {
       rankingBattleRun.myDamage = Number(rankingBattleRun.myDamage || 0) + total;
@@ -39109,11 +39283,9 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     const activeListEl = document.getElementById("activeSkillList");
     if (!activeListEl) return;
     const counts = (typeof weapon30Counts === "object" && weapon30Counts) ? weapon30Counts : {};
-    const swordUnlocked = Number(counts.sword || 0) >= 1;
-    const lv = getSkillLevel();
     const rows = [
-      { type:"sword", name:"검사의 길", first:true },
-      { type:"spear", name:"전사의 길" },
+      { type:"sword", name:"검사의 길", firstSkillId:"sword_1" },
+      { type:"spear", name:"전사의 길", firstSkillId:"spear_1" },
       { type:"axe", name:"바이킹의 길" },
       { type:"bow", name:"사냥꾼의 길" },
       { type:"staff", name:"마법사의 길" },
@@ -39133,11 +39305,14 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
               const lockedBy30Count = count < required30Count;
               const lockedByFirstSkillLevel = idx === 3 && getActiveSkillFirstLevel(row.type) < 3;
               const locked = lockedBy30Count || lockedByFirstSkillLevel;
-              const isNammu = row.first && idx === 1 && !locked;
-              const img = isNammu ? DETAIL_ICON : "images/skills/skill-block.png";
-              const label = isNammu ? `<span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;"><span style="color:#f2f2f2;font-size:11px;font-weight:900;">${SKILL_NAME}</span><span>LV${lv}</span></span>` : "LV0";
-              const click = isNammu ? `openNammuSkillDetail()` : `showActiveSkillNotImplemented()`;
-              return `<button class="active-skill-slot ${locked ? "locked" : ""} ${isNammu ? "learned" : ""}" type="button" ${locked ? 'disabled aria-disabled="true"' : `onclick="${click}"`}>
+              const skillId = idx === 1 ? row.firstSkillId : "";
+              const skillDef = skillId ? getActiveSkillDef(skillId) : null;
+              const learned = !!(skillDef && !locked);
+              const img = learned ? skillDef.detailIcon : "images/skills/skill-block.png";
+              const lv = learned ? getSkillLevel(skillId) : 0;
+              const label = learned ? `<span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;"><span style="color:#f2f2f2;font-size:11px;font-weight:900;">${skillDef.name}</span><span>LV${lv}</span></span>` : "LV0";
+              const click = learned ? `openActiveSkillDetail('${skillId}')` : `showActiveSkillNotImplemented()`;
+              return `<button class="active-skill-slot ${locked ? "locked" : ""} ${learned ? "learned" : ""}" type="button" ${locked ? 'disabled aria-disabled="true"' : `onclick="${click}"`}>
                 <img src="${img}" alt="">
                 <span class="active-skill-lv">${locked ? "LOCK" : label}</span>
               </button>`;
@@ -39148,39 +39323,50 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     }).join("");
   }
 
-  function openNammuSkillDetail(){
+  function renderActiveSkillDescription(def, level, highlightChanges){
+    const pct = getSkillDamagePct(level, def.id);
+    const mpCost = getSkillMpCost(level, def.id);
+    const pctHtml = highlightChanges ? `<span style="color:#7CFF7C;font-weight:900;">${pct}%</span>` : `${pct}%`;
+    const mpHtml = highlightChanges ? `<span style="color:#7CFF7C;font-weight:900;">${mpCost}</span>` : `${mpCost}`;
+    const penLine = Number(def.extraPenetration || 0) > 0
+      ? `추가 관통력 +${Math.round(Number(def.extraPenetration || 0) * 100)}%<br>`
+      : "";
+    return `
+      <b>Lv${level}</b><br>
+      ${def.description}<br>
+      ${def.hitText.replace("{pct}", pctHtml)}<br>
+      ${penLine}
+      ${def.cooldownText}<br>
+      마나 ${mpHtml}소모
+    `;
+  }
+
+  function openActiveSkillDetail(skillId){
     ensureSkillState();
-    const lv = getSkillLevel();
-    const next = lv + 1;
-    const curPct = getSkillDamagePct(lv);
-    const nextPct = getSkillDamagePct(next);
-    const curMpCost = getSkillMpCost(lv);
-    const nextMpCost = getSkillMpCost(next);
+    const def = getActiveSkillDef(skillId);
+    if (!def) return showActiveSkillNotImplemented();
+    activeSkillDetailId = def.id;
+    const lv = Math.max(1, Math.min(5, getSkillLevel(def.id)));
+    const next = Math.min(5, lv + 1);
+    const nextTitle = lv >= 5 ? "최대 레벨" : `Lv${next}`;
     const html = `
       <div class="nammu-skill-detail" style="width:100%; max-width:320px; margin:0 auto; color:#eee; box-sizing:border-box;">
         <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
-          <img src="${DETAIL_ICON}" style="width:54px;height:54px;object-fit:contain;border:1px solid rgba(255,255,255,.22);border-radius:8px;background:rgba(255,255,255,.06);">
+          <img src="${def.detailIcon}" style="width:54px;height:54px;object-fit:contain;border:1px solid rgba(255,255,255,.22);border-radius:8px;background:rgba(255,255,255,.06);">
           <div style="flex:1; font-size:18px; font-weight:900; display:flex; align-items:center; justify-content:center; gap:4px; min-width:0;">
-            <span>${SKILL_NAME} Lv${lv}</span>
+            <span>${def.name} Lv${lv}</span>
             <button type="button" onclick="confirmNammuSkillLevelUp()" aria-label="레벨업" style="appearance:none;-webkit-appearance:none;border:0;background:transparent;padding:0;margin:0;color:#ffd54f;font-weight:900;font-size:18px;line-height:1;cursor:pointer;text-shadow:0 0 8px rgba(255,213,79,.55);">▲</button>
           </div>
         </div>
         <div style="padding:10px;border:1px solid rgba(124,255,124,.28);border-radius:8px;background:linear-gradient(180deg, rgba(124,255,124,.13), rgba(124,255,124,.06));font-size:13px;line-height:1.65;">
-          <b>Lv${lv}</b><br>
-          강력한 검기로 단일 적을 무차별적으로 베어낸다.<br>
-          공격력/주문력 ${curPct}%로 8회 공격데미지를 입힘<br>
-          마나 ${curMpCost}소모<br>
-          쿨타임 : 3초
+          ${renderActiveSkillDescription(def, lv, false)}
         </div>
         <div style="margin-top:8px;padding:10px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:rgba(255,255,255,.04);font-size:13px;line-height:1.65;">
-          <b>Lv${next}</b><br>
-          강력한 검기로 단일 적을 무차별적으로 베어낸다.<br>
-          공격력/주문력 <span style="color:#7CFF7C;font-weight:900;">${nextPct}%</span>로 8회 공격데미지를 입힘<br>
-          마나 <span style="color:#7CFF7C;font-weight:900;">${nextMpCost}</span>소모<br>
-          쿨타임 : 3초
+          <b>${nextTitle}</b><br>
+          ${renderActiveSkillDescription(def, next, lv < 5).replace(/^\s*<b>Lv\d+<\/b><br>\s*/, "")}
         </div>
         <div style="margin-top:12px;display:flex;gap:8px;">
-          <button type="button" onclick="openActiveSkillEquipPopup()" style="flex:1;padding:10px 8px;border-radius:8px;border:1px solid rgba(255,213,79,.42);background:linear-gradient(180deg,rgba(255,213,79,.16),rgba(80,62,18,.72));color:#ffe18a;font-weight:900;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 4px 10px rgba(0,0,0,.22);">장착</button>
+          <button type="button" onclick="openActiveSkillEquipPopup('${def.id}')" style="flex:1;padding:10px 8px;border-radius:8px;border:1px solid rgba(255,213,79,.42);background:linear-gradient(180deg,rgba(255,213,79,.16),rgba(80,62,18,.72));color:#ffe18a;font-weight:900;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 4px 10px rgba(0,0,0,.22);">장착</button>
           <button type="button" onclick="closeNpcPopup()" style="flex:1;padding:10px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(18,18,18,.82));color:#ddd;font-weight:900;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 4px 10px rgba(0,0,0,.22);">닫기</button>
         </div>
       </div>
@@ -39188,7 +39374,20 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     showNpcMessage(html, null, false, "스킬 상세");
   }
 
+  function openNammuSkillDetail(){
+    openActiveSkillDetail("sword_1");
+  }
+
+  function openSpearSkillDetail(){
+    openActiveSkillDetail("spear_1");
+  }
+
   function confirmNammuSkillLevelUp(){
+    const def = getActiveSkillDef(activeSkillDetailId) || getActiveSkillDef(SKILL_ID);
+    if (getSkillLevel(def.id) >= 5) {
+      showNpcMessage("이미 최대 레벨입니다.", null, true, "레벨업");
+      return;
+    }
     const html = `
       <div style="font-size:14px;line-height:1.6;">
         스킬석 1개를 사용하여 레벨업 하시겠습니까?<br>
@@ -39196,7 +39395,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
       </div>
       <div style="margin-top:12px;display:flex;gap:8px;">
         <button type="button" onclick="levelUpNammuSkill()" style="flex:1;padding:9px;border-radius:8px;font-weight:900;">확인</button>
-        <button type="button" onclick="openNammuSkillDetail()" style="flex:1;padding:9px;border-radius:8px;font-weight:900;">취소</button>
+        <button type="button" onclick="openActiveSkillDetail('${def.id}')" style="flex:1;padding:9px;border-radius:8px;font-weight:900;">취소</button>
       </div>
     `;
     showNpcMessage(html, null, false, "레벨업");
@@ -39204,25 +39403,32 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
   function levelUpNammuSkill(){
     ensureSkillState();
+    const def = getActiveSkillDef(activeSkillDetailId) || getActiveSkillDef(SKILL_ID);
+    if (getSkillLevel(def.id) >= 5) {
+      showNpcMessage("이미 최대 레벨입니다.", null, true, "레벨업");
+      return;
+    }
     if (Number(itemSkillStone || 0) <= 0) {
       showNpcMessage("스킬석이 부족합니다.", null, true, "레벨업");
       return;
     }
     itemSkillStone = Math.max(0, Number(itemSkillStone || 0) - 1);
-    activeSkillLevels[SKILL_ID] = getSkillLevel() + 1;
+    activeSkillLevels[def.id] = Math.min(5, getSkillLevel(def.id) + 1);
     save();
     renderActiveSkillBook();
-    openNammuSkillDetail();
+    openActiveSkillDetail(def.id);
   }
 
-  function openActiveSkillEquipPopup(){
+  function openActiveSkillEquipPopup(skillId = equipTargetSkillId){
     ensureEquipDraft();
+    const def = getActiveSkillDef(skillId) || getActiveSkillDef(SKILL_ID);
+    equipTargetSkillId = def.id;
     const slots = ["Q","W","E","R"];
     const html = `
       <div id="activeSkillEquipPopup" style="width:100%;max-width:320px;margin:0 auto;box-sizing:border-box;color:#eee;position:relative;padding-top:2px;">
         <style>#activeSkillEquipPopup > button[onclick="closeNpcPopup()"]{display:none!important;}</style>
         <button type="button" onclick="closeNpcPopup()" aria-label="닫기" style="position:absolute;right:0;top:0;width:28px;height:28px;border:0;background:transparent;color:rgba(255,255,255,.72);font-size:22px;line-height:28px;font-weight:900;cursor:pointer;text-shadow:0 2px 8px rgba(0,0,0,.75);z-index:2;">×</button>
-        <div style="font-size:15px;font-weight:900;margin-bottom:10px;text-align:center;color:#ffd54f;">스킬 장착</div>
+        <div style="font-size:15px;font-weight:900;margin-bottom:10px;text-align:center;color:#ffd54f;">${def.name} 장착</div>
         <div style="display:flex;gap:6px;margin:0 0 10px;">
           ${[0,1,2].map(i => `<button type="button" onclick="selectActiveSkillEquipPreset(${i})" class="rune-preset-btn ${Number(equipDraftPresetIdx) === i ? "active" : ""}" style="flex:1;">${getActiveSkillEquipPresetName(i)}</button>`).join("")}
         </div>
@@ -39235,7 +39441,7 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
           <div></div>
           <div></div>
         </div>
-        <div style="font-size:12px;color:#aaa;line-height:1.45;text-align:center;">난무는 Q, W, E 칸에만 장착할 수 있습니다.</div>
+        <div style="font-size:12px;color:#aaa;line-height:1.45;text-align:center;">${def.pathName} 1번 스킬은 Q, W, E 칸에만 장착할 수 있습니다.</div>
       </div>
     `;
     showNpcMessage(html, null, false, "스킬 장착");
@@ -39243,10 +39449,12 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
 
   function renderEquipSlot(k){
     const draft = getDraftEquip();
-    const equipped = draft[k] === SKILL_ID;
+    const skillId = String(draft[k] || "");
+    const equipped = isKnownActiveSkill(skillId);
+    const selected = skillId === equipTargetSkillId;
     const canEquip = k !== "R";
-    const img = equipped ? EQUIP_ICON : BLANK_ICON;
-    const glow = equipped ? "filter:drop-shadow(0 0 12px rgba(124,255,124,.52));" : "filter:drop-shadow(0 0 10px rgba(255,213,79,.72));";
+    const img = equipped ? getActiveSkillIcon(skillId, "equip") : BLANK_ICON;
+    const glow = selected ? "filter:drop-shadow(0 0 12px rgba(124,255,124,.52));" : (equipped ? "filter:drop-shadow(0 0 8px rgba(255,255,255,.38));" : "filter:drop-shadow(0 0 10px rgba(255,213,79,.72));");
     return `
       <button type="button" onclick="${canEquip ? `equipNammuSkill('${k}')` : `showSkillEquipBlocked('R')`}" style="height:78px;min-width:0;border:0;background:transparent;color:#ffd54f;font-weight:900;padding:6px 4px;${glow}">
         <img src="${img}" style="width:46px;height:46px;object-fit:contain;display:block;margin:0 auto 3px;">
@@ -39258,22 +39466,24 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   function equipNammuSkill(slot){
     ensureEquipDraft();
     slot = String(slot || "").toUpperCase();
+    const def = getActiveSkillDef(equipTargetSkillId) || getActiveSkillDef(SKILL_ID);
+    equipTargetSkillId = def.id;
     if (!["Q","W","E"].includes(slot)) {
       showSkillEquipBlocked(slot);
       return;
     }
     const draft = getDraftEquip();
     ["Q","W","E","R"].forEach(k => {
-      if (draft[k] === SKILL_ID) draft[k] = "";
+      if (draft[k] === def.id) draft[k] = "";
     });
-    draft[slot] = SKILL_ID;
-    openActiveSkillEquipPopup();
+    draft[slot] = def.id;
+    openActiveSkillEquipPopup(def.id);
   }
 
   function selectActiveSkillEquipPreset(idx){
     ensureEquipDraft();
     equipDraftPresetIdx = [0,1,2].includes(Number(idx)) ? Number(idx) : 0;
-    openActiveSkillEquipPopup();
+    openActiveSkillEquipPopup(equipTargetSkillId);
   }
 
   function saveActiveSkillEquipPreset(){
@@ -39306,12 +39516,13 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
   }
 
   function showSkillEquipBlocked(){
+    const def = getActiveSkillDef(equipTargetSkillId) || getActiveSkillDef(SKILL_ID);
     const html = `
       <div style="font-size:14px;line-height:1.6;color:#eee;">
-        검사의 길 1번 스킬은 Q, W, E 칸에만 장착할 수 있습니다.
+        ${def.pathName} 1번 스킬은 Q, W, E 칸에만 장착할 수 있습니다.
       </div>
       <div style="margin-top:12px;">
-        <button type="button" onclick="openActiveSkillEquipPopup()" style="width:100%;padding:10px 8px;border-radius:8px;border:1px solid rgba(255,213,79,.42);background:linear-gradient(180deg,rgba(255,213,79,.16),rgba(80,62,18,.72));color:#ffe18a;font-weight:900;">확인</button>
+        <button type="button" onclick="openActiveSkillEquipPopup('${def.id}')" style="width:100%;padding:10px 8px;border-radius:8px;border:1px solid rgba(255,213,79,.42);background:linear-gradient(180deg,rgba(255,213,79,.16),rgba(80,62,18,.72));color:#ffe18a;font-weight:900;">확인</button>
       </div>
     `;
     showNpcMessage(html, null, false, "스킬 장착");
@@ -39377,13 +39588,16 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     ["Q","W","E","R"].forEach(k => {
       const btn = document.getElementById(`bossSkillBtn${k}`);
       if (!btn) return;
-      const equipped = activeSkillEquip[k] === SKILL_ID;
+      const skillId = String(activeSkillEquip[k] || "");
+      const skillDef = getActiveSkillDef(skillId);
+      const equipped = !!skillDef;
       btn.classList.toggle("blank", !equipped);
-      btn.style.backgroundImage = `url("${equipped ? EQUIP_ICON : BLANK_ICON}")`;
-      const left = Math.max(0, Number(skillCooldownUntil[SKILL_ID] || 0) - Date.now());
+      btn.style.backgroundImage = `url("${equipped ? skillDef.equipIcon : BLANK_ICON}")`;
+      const cooldownMs = equipped ? Math.max(1, Number(skillDef.cooldownMs || COOLDOWN_MS)) : COOLDOWN_MS;
+      const left = Math.max(0, Number(skillCooldownUntil[skillId] || 0) - Date.now());
       btn.classList.toggle("is-cooling", equipped && left > 0);
       if (equipped && left > 0) {
-        const p = 1 - (left / COOLDOWN_MS);
+        const p = 1 - (left / cooldownMs);
         btn.style.setProperty("--cool", `${Math.floor(Math.max(0, Math.min(1, p)) * 360)}deg`);
       } else {
         btn.style.removeProperty("--cool");
@@ -39435,6 +39649,8 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     appendActiveSkillEquipActions();
   }, 120);
   window.openNammuSkillDetail = openNammuSkillDetail;
+  window.openSpearSkillDetail = openSpearSkillDetail;
+  window.openActiveSkillDetail = openActiveSkillDetail;
   window.confirmNammuSkillLevelUp = confirmNammuSkillLevelUp;
   window.levelUpNammuSkill = levelUpNammuSkill;
   window.openActiveSkillEquipPopup = openActiveSkillEquipPopup;
