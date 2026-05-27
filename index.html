@@ -38428,12 +38428,9 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
     })).then(() => null);
   }
 
-  function kstWeeklyKey(){
+  function kstDailyKey(){
     const d = new Date(nowMs() + 9 * HOUR);
-    const day = d.getUTCDay();
-    const diff = (day + 6) % 7;
-    const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - diff));
-    return `${monday.getUTCFullYear()}-${String(monday.getUTCMonth()+1).padStart(2,"0")}-${String(monday.getUTCDate()).padStart(2,"0")}`;
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}-${String(d.getUTCDate()).padStart(2,"0")}`;
   }
 
   function ensureSpecialAuctions(){
@@ -38455,19 +38452,20 @@ body.epic-warning-shake{animation:epicWarningShake .45s linear 2}
         jobs.push(stateRef.update({ initialRuneSeedDone:true, initialRuneSeedAt: nowMs() }));
       }
       const kst = new Date(nowMs() + 9 * HOUR);
-      const isMondayReady = kst.getUTCDay() === 1 && (kst.getUTCHours() > 0 || (kst.getUTCHours() === 0 && kst.getUTCMinutes() >= 10));
-      const weekKey = kstWeeklyKey();
-      if (isMondayReady && state.weeklyKey !== weekKey) {
+      const isDailyReady = kst.getUTCHours() >= 17;
+      const dailyKey = kstDailyKey();
+      if (isDailyReady && state.dailyKey !== dailyKey) {
         const candidates = [
           ...types.map(type => ({ kind:"item", type })),
           ...runeKinds.map(kind => ({ kind:"rune", runeKind: kind }))
         ];
-        const shuffled = candidates.slice().sort(() => Math.random() - 0.5).slice(0, 3);
+        const dailyCount = 1 + Math.floor(Math.random() * 2);
+        const shuffled = candidates.slice().sort(() => Math.random() - 0.5).slice(0, dailyCount);
         shuffled.forEach(entry => {
-          if (entry.kind === "rune") jobs.push(createSystemRuneAuction(entry.runeKind, `weekly_${weekKey}`));
-          else jobs.push(createSystemAuction(entry.type, `weekly_${weekKey}`));
+          if (entry.kind === "rune") jobs.push(createSystemRuneAuction(entry.runeKind, `daily_${dailyKey}`));
+          else jobs.push(createSystemAuction(entry.type, `daily_${dailyKey}`));
         });
-        jobs.push(stateRef.update({ weeklyKey, weeklyAt: nowMs() }));
+        jobs.push(stateRef.update({ dailyKey, dailyAt: nowMs(), dailyCount: shuffled.length }));
       }
       return Promise.all(jobs);
     }).then(() => refresh()).catch(err => console.warn("auction special seed failed", err));
